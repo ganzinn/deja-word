@@ -11,33 +11,47 @@
 - **認証**: [Better Auth](https://www.better-auth.com/) を採用、初期スコープは **メール + パスワードのみ**（メール確認・パスワードリセットは後回し）
 - **ローカル DB**: Docker Compose で PostgreSQL を起動
 - **DX ツール**: ESLint（Next.js 既定）＋ Prettier
+- **パッケージマネージャー**: pnpm（`src/` ディレクトリ構成、import alias `@/*`）
+- **ランタイム管理**: mise（`.mise.toml` に Node / pnpm を exact pin。`package.json` の `engines` / `packageManager` と 3 箇所同期）
 - **スコープ外（別計画）**: 単語モデル・登録/一覧 UI・重複検知体験
 
 ---
 
 ## マイルストーン一覧
 
-| # | マイルストーン | 主眼 |
-|---|---|---|
-| M1 | プロジェクト土台 | Next.js / TS / Tailwind / Prettier の初期化 |
-| M2 | DB 基盤 | Docker Compose + Prisma セットアップ |
-| M3 | Better Auth 導入 | メール＋パスワード認証の組込み |
-| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、ミドルウェア |
-| M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 |
+| # | マイルストーン | 主眼 | 状態 |
+|---|---|---|---|
+| M1 | プロジェクト土台 | Next.js / TS / Tailwind / Prettier の初期化 | ✅ 完了（2026-04-19） |
+| M2 | DB 基盤 | Docker Compose + Prisma セットアップ | 未着手 |
+| M3 | Better Auth 導入 | メール＋パスワード認証の組込み | 未着手 |
+| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、ミドルウェア | 未着手 |
+| M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 | 未着手 |
 
 このフェーズ完了後に、別セッションで「単語アプリ機能の全体設計」を行う想定。
 
 ---
 
-## M1: プロジェクト土台
+## M1: プロジェクト土台 ✅
 
 - **目的**: これから全てのコードが載る土台を整える。
 - **成果物**:
   - `create-next-app` ベースの Next.js (App Router) + TypeScript プロジェクト
-  - Tailwind CSS 設定（`tailwind.config.ts` / グローバル CSS）
-  - Prettier 設定（`.prettierrc` / `.prettierignore`）と npm script (`format` / `format:check`)
+  - Tailwind CSS v4（CSS ベース設定。`tailwind.config.ts` ではなく `@import "tailwindcss";` + `@theme` を `globals.css` に記述）
+  - Prettier 設定（`.prettierrc.json` / `.prettierignore`）と npm script (`format` / `format:check`)
   - `.gitignore`、トップページに動作確認用の最小 UI
-- **次セッションへの引き継ぎ**: 使用したパッケージバージョン、ディレクトリ構成方針（`src/` 利用有無、alias 設定）。
+- **実装結果（2026-04-19）**:
+  - Next.js 16.2.4 / React 19.2.4 / TypeScript 5.9.3 / Tailwind 4.2.2 / ESLint 9.39.4
+  - Prettier 3.8.3 + `prettier-plugin-tailwindcss` 0.7.2 + `eslint-config-prettier` 10.1.8
+  - `src/` ディレクトリ構成、import alias `@/*`
+  - `.mise.toml` で Node `24.15.0` / pnpm `10.33.0` を exact pin
+  - `package.json` に `engines.node` / `engines.pnpm` / `packageManager` を追記（Vercel デプロイ時の正規ルート）
+  - scripts: `dev` / `build` / `start` / `lint` / `typecheck` / `format` / `format:check`
+  - `create-next-app` 16 が生成する `AGENTS.md` / `CLAUDE.md` / `pnpm-workspace.yaml` をそのまま採用
+- **次セッションへの引き継ぎ**:
+  - 使用パッケージバージョン（上記）
+  - `src/` 採用、import alias `@/*`
+  - Node / pnpm は `.mise.toml` + `package.json` の `engines` + `packageManager` の 3 箇所で exact pin 同期。アップデート時は同じ PR で同時更新
+  - Tailwind は v4 で CSS ベース設定（`tailwind.config.ts` 不使用）
 
 ## M2: DB 基盤
 
@@ -101,6 +115,6 @@
 
 ## 次に着手するセッション
 
-**M1: プロジェクト土台** から開始する。本計画書を共有したうえで「M1 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
+**M2: DB 基盤** から開始する（M1 は 2026-04-19 に完了）。本計画書を共有したうえで「M2 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
 
 基盤整備フェーズ（M1〜M5）の完了後に、**別途「単語アプリ機能の全体設計」セッション** を開き、データモデル・重複検知の仕様・拡張性（将来の機能追加）を議論したうえで実装計画を立てる。

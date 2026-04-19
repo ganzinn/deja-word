@@ -198,6 +198,32 @@
 
 ---
 
+## ローカルデブ向けユーティリティ
+
+### パスワード強制リセット（旧パスワード不要）
+
+開発中にテストアカウントのパスワードを忘れた / 任意値に差し替えたい場合に使う。Better Auth の admin プラグインやメール送信を追加せずに、`account` テーブルの scrypt ハッシュを直接上書きする。**本番では使わない**。
+
+- 実装: `scripts/reset-password.ts`
+  - `better-auth/crypto` の `hashPassword`（Node の `crypto.scrypt`、`salt:key` 形式）でハッシュ
+  - 既存の Prisma Client（`@prisma/adapter-pg` + `src/generated/prisma/client`）で `account.password` を更新（`providerId = "credential"` 行のみ）
+  - `src/lib/auth.ts` の `import "server-only"` に触れないよう、`auth` インスタンスではなく `hashPassword` を直接 import
+- 実行:
+  ```
+  pnpm dlx tsx scripts/reset-password.ts <email> <newPassword>
+  ```
+  - パスワードは 8〜128 文字（Better Auth デフォルト）
+  - `DATABASE_URL` は `.env` 経由で読まれる（`dotenv/config`）
+- 副作用と制限:
+  - **既存セッションは失効させない**。強制ログアウトが欲しい場合は `DELETE FROM session WHERE "userId" = ...` を併用
+  - OAuth アカウント（将来 `providerId != "credential"` で作られた行）は触らない
+  - shell 履歴に平文パスワードが残る点に注意（気になる場合は `history -d` 等で消すか、環境変数経由に改造する）
+- 検証方法:
+  1. `psql` で `account.password` が `salt:key` 形式（hex 16 + `:` + hex 128 ≒ 161 文字）になり `updatedAt` が進んでいることを確認
+  2. `curl -X POST http://localhost:3000/api/auth/sign-in/email -H "Content-Type: application/json" -H "Origin: http://localhost:3000" -d '{"email":"...","password":"..."}'` で 200 + `set-cookie: better-auth.session_token` が返ること
+
+---
+
 ## 次に着手するセッション
 
 **M5: デプロイ準備** から開始する（M4 は 2026-04-20 に完了）。本計画書を共有したうえで「M5 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。

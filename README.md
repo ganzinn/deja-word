@@ -12,13 +12,53 @@
 
 ## 技術スタック
 
-- フロント / バックエンド: Next.js (App Router) + TypeScript
-- UI: Tailwind CSS
-- DB: PostgreSQL
-- ORM: Prisma
-- デプロイ: Vercel (予定)
+- フロント / バックエンド: Next.js 16（App Router）+ TypeScript
+- UI: Tailwind CSS v4（CSS ベース設定）
+- DB: PostgreSQL（ローカルは Docker Compose）
+- ORM: Prisma 7（driver adapter 方式、`@prisma/adapter-pg`）
+- 認証: Better Auth（メール + パスワード）
+- パッケージマネージャー: pnpm
+- ランタイム管理: mise（Node / pnpm を exact pin）
+- デプロイ先: Vercel
 
-※ 上記は現時点での想定であり、開発の進行に伴い変更する可能性があります。
+詳細な実装計画は [`docs/plan/foundation-milestones.md`](./docs/plan/foundation-milestones.md) を参照してください。
+
+## セットアップ
+
+前提として、[mise](https://mise.jdx.dev/)・Docker・pnpm が利用できる環境を想定しています。
+
+1. `.env` を作成し、`BETTER_AUTH_SECRET` に `openssl rand -base64 32` の出力値を設定します。
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. PostgreSQL を起動します。
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Node / pnpm のバージョンを固定します（初回のみ）。
+
+   ```bash
+   mise install
+   ```
+
+4. 依存関係をインストールし、初回マイグレーションを適用します。
+
+   ```bash
+   pnpm install
+   pnpm db:migrate
+   ```
+
+5. 開発サーバーを起動します。
+
+   ```bash
+   pnpm dev
+   ```
+
+   <http://localhost:3000> にアクセスして動作を確認してください。
 
 ## ライセンス
 

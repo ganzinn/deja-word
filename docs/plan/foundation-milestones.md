@@ -36,8 +36,8 @@
 |---|---|---|---|
 | M1 | プロジェクト土台 | Next.js / TS / Tailwind / Prettier の初期化 | ✅ 完了（2026-04-19） |
 | M2 | DB 基盤 | Docker Compose + Prisma セットアップ | ✅ 完了（2026-04-19） |
-| M3 | Better Auth 導入 | メール＋パスワード認証の組込み | 未着手 |
-| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、ミドルウェア | 未着手 |
+| M3 | Better Auth 導入 | メール＋パスワード認証の組込み | ✅ 完了（2026-04-19） |
+| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、`proxy.ts`（Next.js 16 で middleware から改名）でのセッションチェック | 未着手 |
 | M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 | 未着手 |
 
 このフェーズ完了後に、別セッションで「単語アプリ機能の全体設計」を行う想定。
@@ -90,7 +90,7 @@
   - DB 既定値: user=`dejaword` / password=`dejaword` / db=`dejaword` / port=`5432`、接続 URL は `.env.example` の通り
   - Prisma 7 規約とマイグレーション運用は冒頭の「Prisma / DB 運用ルール」を参照（M3 以降の全セッションで遵守）
 
-## M3: Better Auth 導入
+## M3: Better Auth 導入 ✅
 
 - **目的**: メール＋パスワードで登録・ログイン・ログアウト・セッション維持を成立させる。
 - **成果物**:
@@ -102,16 +102,35 @@
 - **M2 から持ち越した DB 周りの仕上げ作業**（モデル登場と同時に意味が出るため M3 で実施）:
   - `src/lib/prisma.ts` 先頭に `import "server-only";` を追加（Client Component への混入を **ビルド時に静的検出**するガード。`pnpm add server-only` も併せて）
   - `package.json` に `"postinstall": "prisma generate"` を追加（生成クライアントは gitignore 対象。clone 直後の `pnpm install` だけで typecheck/build が通る状態を保つため）
-- **参考**: Better Auth 公式ドキュメントの Next.js + Prisma セクション。
-- **次セッションへの引き継ぎ**: 採用した cookie / session 設定、UI からの呼び出し方（`signUp.email` / `signIn.email` / `signOut`）。
+- **実装結果（2026-04-19）**:
+  - `better-auth` 1.6.5 / `server-only` 0.0.1 を追加
+  - `src/lib/auth.ts`: `betterAuth({ database: prismaAdapter(prisma, { provider: "postgresql" }), emailAndPassword: { enabled: true }, plugins: [nextCookies()] })`。先頭に `import "server-only"`
+  - `src/lib/auth-client.ts`: `createAuthClient()`（`better-auth/react`）、baseURL は同一オリジンのため省略
+  - `src/app/api/auth/[...all]/route.ts`: `export const { GET, POST } = toNextJsHandler(auth)`。Next.js 16 の async params / async cookies は `toNextJsHandler` が内部吸収
+  - `src/lib/prisma.ts` 先頭に `import "server-only"` を追加
+  - `package.json` scripts に `"postinstall": "prisma generate"` を追加（clone 直後の `pnpm install` だけで生成クライアントが揃う）
+  - Better Auth CLI（`npx auth@latest generate`）で `prisma/schema.prisma` に user / session / account / verification の 4 モデルを追記（`@relation` 付き FK、`@@unique([email])` / `@@unique([token])` / `@@index([userId])` を含む）
+    - CLI 実行中は auth.ts / prisma.ts の `import "server-only"` を一時的に外す必要あり（CLI が esbuild で設定ファイルを解決する際にエラーになる）。実行後に必ず戻す
+  - 初回マイグレーション `20260419132900_init_auth` を適用（user / session / account / verification の CREATE TABLE、UNIQUE / INDEX / FK を含む）
+  - `.env` / `.env.example` に `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL="http://localhost:3000"` を追加（`.env.example` は空値、`.env` のみ `openssl rand -base64 32` で生成した実値）
+  - 動作確認（cURL）で `/api/auth/sign-up/email` → `/api/auth/get-session` → `/api/auth/sign-out` → `/api/auth/sign-in/email` が通過。`set-cookie: better-auth.session_token` が付与され、DB の `user` / `session` / `account` にレコード作成を確認（password は scrypt のコロン区切りハッシュ）
+  - `pnpm lint` / `pnpm typecheck` パス
+- **運用上の注意**:
+  - **sign-out はサーバ側で CSRF 保護**: `Content-Type: application/json`・`Origin` ヘッダ・`{}` 以上の JSON body が必須。`fetch`/`authClient` 経由では自動で付くが、cURL で叩くときは要指定
+  - **スキーマ編集後は `pnpm db:generate` を忘れない**: Turbopack dev はクライアントをキャッシュするため、新モデル追加後に dev を再起動しないと `Model X does not exist` で 500 になる
+- **参考**: Better Auth 公式ドキュメント（Next.js / Prisma / CLI）
+- **次セッションへの引き継ぎ**:
+  - session cookie のデフォルト: `better-auth.session_token` / `HttpOnly` / `SameSite=Lax` / `Max-Age=604800`（7 日）。本番で `secure` を有効にするのは M5
+  - UI からの呼び出し: `authClient.signUp.email({ email, password, name })` / `authClient.signIn.email({ email, password })` / `authClient.signOut()`
+  - M4 で Next.js 16 の `proxy.ts`（旧 `middleware.ts`）を使う際、`auth.api.getSession({ headers: await headers() })` で DB 検証可能。Cookie 存在確認のみの `getSessionCookie` は軽量だが不十分（公式でも補助的扱い）
 
 ## M4: 認証 UI & ルート保護
 
 - **目的**: ユーザーが画面から登録・ログインでき、未ログイン時に保護領域へアクセスできない状態を作る。
 - **成果物**:
-  - `/sign-up`・`/sign-in` のフォーム（Tailwind、バリデーション最小）
-  - ヘッダー等にログイン状態表示 & ログアウトボタン
-  - `middleware.ts` もしくは Server Component でのセッションチェック
+  - `/sign-up`・`/sign-in` のフォーム（Tailwind、バリデーション最小、`authClient.signUp.email` / `authClient.signIn.email` を使用）
+  - ヘッダー等にログイン状態表示 & ログアウトボタン（`authClient.signOut`）
+  - `proxy.ts`（**Next.js 16 で `middleware.ts` は deprecated、`proxy.ts` に改名済み**。関数名も `export async function proxy(request)`）での DB 検証付きセッションチェック。`auth.api.getSession({ headers: await headers() })` を使い、`cookies()` / `headers()` は async なので `await` 必須
   - ログイン済みユーザー用の `/dashboard`（空で可、単語機能は別計画）
 - **次セッションへの引き継ぎ**: セッション取得の共通ヘルパー、保護されたルートの一覧。
 
@@ -150,6 +169,6 @@
 
 ## 次に着手するセッション
 
-**M3: Better Auth 導入** から開始する（M2 は 2026-04-19 に完了）。本計画書を共有したうえで「M3 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
+**M4: 認証 UI & ルート保護** から開始する（M3 は 2026-04-19 に完了）。本計画書を共有したうえで「M4 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
 
 基盤整備フェーズ（M1〜M5）の完了後に、**別途「単語アプリ機能の全体設計」セッション** を開き、データモデル・重複検知の仕様・拡張性（将来の機能追加）を議論したうえで実装計画を立てる。

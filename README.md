@@ -22,4 +22,4 @@
 
 ## ライセンス
 
-本プロジェクトは [MIT License](https://opensource.org/licenses/MIT) のもとで公開予定です。`LICENSE` ファイルは今後追加します。
+本プロジェクトは [MIT License](./LICENSE) のもとで公開しています。

@@ -37,7 +37,7 @@
 | M1 | プロジェクト土台 | Next.js / TS / Tailwind / Prettier の初期化 | ✅ 完了（2026-04-19） |
 | M2 | DB 基盤 | Docker Compose + Prisma セットアップ | ✅ 完了（2026-04-19） |
 | M3 | Better Auth 導入 | メール＋パスワード認証の組込み | ✅ 完了（2026-04-19） |
-| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、`proxy.ts`（Next.js 16 で middleware から改名）でのセッションチェック | 未着手 |
+| M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、`proxy.ts`（Next.js 16 で middleware から改名）でのセッションチェック | ✅ 完了（2026-04-20） |
 | M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 | 未着手 |
 
 このフェーズ完了後に、別セッションで「単語アプリ機能の全体設計」を行う想定。
@@ -122,17 +122,48 @@
 - **次セッションへの引き継ぎ**:
   - session cookie のデフォルト: `better-auth.session_token` / `HttpOnly` / `SameSite=Lax` / `Max-Age=604800`（7 日）。本番で `secure` を有効にするのは M5
   - UI からの呼び出し: `authClient.signUp.email({ email, password, name })` / `authClient.signIn.email({ email, password })` / `authClient.signOut()`
-  - M4 で Next.js 16 の `proxy.ts`（旧 `middleware.ts`）を使う際、`auth.api.getSession({ headers: await headers() })` で DB 検証可能。Cookie 存在確認のみの `getSessionCookie` は軽量だが不十分（公式でも補助的扱い）
+  - M4 で Next.js 16 の `proxy.ts`（旧 `middleware.ts`）を使う際の注意:
+    - `next/headers` の `headers()` は **Server Component 専用** のため `proxy.ts` では使えない。`NextRequest` の `request.headers` を直接渡す（例: `auth.api.getSession({ headers: request.headers })`）
+    - Better Auth 公式は `proxy.ts` では **Cookie 存在確認のみの `getSessionCookie(request)`**（`better-auth/cookies` から export）を楽観的リダイレクト用途で推奨。DB を含む権威的検証は各ページ / ルートで `auth.api.getSession()` を呼ぶ 2 段構えが公式パターン（<https://www.better-auth.com/docs/integrations/next>）
 
-## M4: 認証 UI & ルート保護
+## M4: 認証 UI & ルート保護 ✅
 
 - **目的**: ユーザーが画面から登録・ログインでき、未ログイン時に保護領域へアクセスできない状態を作る。
 - **成果物**:
   - `/sign-up`・`/sign-in` のフォーム（Tailwind、バリデーション最小、`authClient.signUp.email` / `authClient.signIn.email` を使用）
   - ヘッダー等にログイン状態表示 & ログアウトボタン（`authClient.signOut`）
-  - `proxy.ts`（**Next.js 16 で `middleware.ts` は deprecated、`proxy.ts` に改名済み**。関数名も `export async function proxy(request)`）での DB 検証付きセッションチェック。`auth.api.getSession({ headers: await headers() })` を使い、`cookies()` / `headers()` は async なので `await` 必須
+  - `proxy.ts`（**Next.js 16 で `middleware.ts` は deprecated、`proxy.ts` に改名済み**。関数名も `export function proxy(request)`）でのセッションチェック
   - ログイン済みユーザー用の `/dashboard`（空で可、単語機能は別計画）
-- **次セッションへの引き継ぎ**: セッション取得の共通ヘルパー、保護されたルートの一覧。
+- **方針確定（実装前に決定）**:
+  - **認証チェックは 2 段構え**（Better Auth 公式推奨）:
+    1. `proxy.ts`: `getSessionCookie(request)` で **Cookie 存在のみ確認**して楽観的リダイレクト（DB / Prisma を import しない → 軽量）
+    2. 保護ページ / `SiteHeader` の Server Component: `auth.api.getSession({ headers: await headers() })` で **DB による権威的検証**
+  - 公式引用: 「`getSessionCookie` ... does not validate it. ... This is the recommended approach to optimistically redirect users. We recommend handling auth checks in each page/route.」
+  - Cookie 偽装時のフロー: proxy は素通り → ページ側 `getSession` が DB で null → `redirect("/sign-in")`。偽装では保護コンテンツに到達できない
+- **実装結果（2026-04-20）**:
+  - `src/proxy.ts`: `getSessionCookie(request)` を `better-auth/cookies` から import。Cookie なしなら `/sign-in?redirect=<元パス>` に 307。`matcher: ["/dashboard/:path*"]`
+  - `src/lib/session.ts`: `"server-only"` ガード付き。`getCurrentSession()` が `auth.api.getSession({ headers: await headers() })` を呼ぶ共通ヘルパー
+  - `src/app/sign-up/page.tsx` / `src/app/sign-in/page.tsx`: Client Component。`authClient.signUp.email` / `authClient.signIn.email` を呼び、成功時 `router.push` + `router.refresh()` で SiteHeader を再フェッチ
+  - `/sign-in` は `useSearchParams` を使うため `Suspense` ラップ必須（Next.js 16 の CSR bailout 要件）。`redirect` クエリは `startsWith("/")` かつ `startsWith("//")` でない内部パスのみ許容（open redirect 対策）
+  - `src/app/dashboard/page.tsx`: Server Component。`getCurrentSession()` が null なら `redirect("/sign-in")`（proxy 透過後の権威的検証）
+  - `src/app/_components/site-header.tsx`（Server）+ `sign-out-button.tsx`（Client, `authClient.signOut` + `router.push("/")` + `router.refresh()`）。`src/app/layout.tsx` の `<body>` 先頭に `<SiteHeader />` を配置
+  - `src/app/page.tsx`: M1 の「M1: ... セットアップ完了」バッジを撤去し、`/sign-up` / `/sign-in` への CTA ボタンに差し替え
+  - `pnpm lint` / `pnpm typecheck` / `pnpm format:check` 全通過
+- **動作確認（cURL による E2E、実際の HTTP で検証済み）**:
+  - `/`, `/sign-up`, `/sign-in`: いずれも 200
+  - 未ログインで `/dashboard` → **307** `Location: /sign-in?redirect=%2Fdashboard`（proxy によるリダイレクト）
+  - sign-up → Cookie `better-auth.session_token` 付与 → `/dashboard` 200、`/api/auth/get-session` が DB セッション返却
+  - sign-out → Cookie 失効 → `/dashboard` 再度 307
+  - sign-in → 新トークン発行 → `/dashboard` 200 に復帰
+  - **Cookie 偽装攻撃シミュレーション**: 任意値の `better-auth.session_token` Cookie を付けて `/dashboard` アクセス → proxy は素通りするが、Server Component 側の DB 照合が null → 307 `Location: /sign-in`（権威的検証が効いている証跡）
+- **運用上の注意**:
+  - **proxy.ts 内では `next/headers` の `headers()` を使えない**（Server Component 専用）。proxy では `NextRequest` の `request.headers` を直接使用。ヘルパー `getCurrentSession()` は Server Component から呼ぶ前提で `await headers()` を使う
+  - SiteHeader が毎リクエストで `auth.api.getSession` を呼ぶため、全ページに軽い DB アクセスが載る。M4 規模では許容範囲。M5 以降で負荷が気になれば Better Auth の Cookie Cache プラグインを検討
+- **次セッションへの引き継ぎ**:
+  - セッション取得の共通ヘルパー: `import { getCurrentSession } from "@/lib/session";`（Server Component 専用、`server-only` 付き）
+  - 保護されたルート: 現状 `/dashboard/:path*` のみ（`src/proxy.ts` の `config.matcher` を更新する運用）
+  - ログイン成功後の遷移先は `useSearchParams().get("redirect")` を `safeRedirect()` で検証してから使用。追加時は同じヘルパーを流用
+  - ログアウトは `authClient.signOut()` の後に `router.refresh()` が必要（SiteHeader の Server Component を再実行させるため）
 
 ## M5: デプロイ準備
 
@@ -169,6 +200,6 @@
 
 ## 次に着手するセッション
 
-**M4: 認証 UI & ルート保護** から開始する（M3 は 2026-04-19 に完了）。本計画書を共有したうえで「M4 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
+**M5: デプロイ準備** から開始する（M4 は 2026-04-20 に完了）。本計画書を共有したうえで「M5 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
 
 基盤整備フェーズ（M1〜M5）の完了後に、**別途「単語アプリ機能の全体設計」セッション** を開き、データモデル・重複検知の仕様・拡張性（将来の機能追加）を議論したうえで実装計画を立てる。

@@ -28,7 +28,7 @@ A-2 + B-1 を採用した理由:
 |---|---|---|
 | 本番 DB | **Neon**（Vercel-Managed Integration 経由で作成） | PG 17 系、無料枠 |
 | DB 接続方式 | **Integration 自動注入の `DATABASE_URL`（pooled）＋ `DATABASE_URL_UNPOOLED`（direct）** | Neon 標準。コード側で `DIRECT_URL ?? DATABASE_URL_UNPOOLED ?? DATABASE_URL` の優先フォールバック |
-| Preview 環境 | **作らない**（Vercel Dashboard で Preview Deployments OFF） | 無料枠 Storage 0.5 GB を本番データで使い切れるよう温存。`vercel.ts` では指定不可のため Dashboard 操作 |
+| Preview 環境 | **作らない**（`vercel.ts` の `git.deploymentEnabled` で main 以外を false） | 無料枠 Storage 0.5 GB を本番データで使い切れるよう温存。Vercel Dashboard には Preview 全体を OFF にする単一トグルは存在しないため、`vercel.ts` で宣言する |
 | CI | **M5 に含める**。GitHub Actions で `pnpm lint` + `pnpm typecheck` | PR / main push で走らせる |
 | IaC | **なし**（Terraform 撤廃）。`vercel.ts` でビルド・ランタイム挙動を管理 | プロジェクト作成・env var・Integration は Vercel Dashboard 一撃で完結 |
 | リージョン | **Vercel Function: `sin1` (Singapore) / Neon: `aws-ap-southeast-1` (Singapore)** | 日本ユーザー体感最速（~75ms）。Function↔DB が同一リージョンで ~5ms |
@@ -62,7 +62,7 @@ Neon GA の最新 17 にローカルを揃える。
 
 Neon 本番プロジェクト作成は Phase 3 の Marketplace Install に移動。
 
-### Phase 2: `vercel.ts` 作成
+### Phase 2: `vercel.ts` 作成 ✅（2026-04-23 完了）
 
 `@vercel/config` を追加し、プロジェクト設定を TypeScript で記述:
 
@@ -74,11 +74,19 @@ export const config: VercelConfig = {
   framework: "nextjs",
   fluid: true,          // Fluid Compute を明示（新規プロジェクトはデフォルト有効だが、将来のデフォルト変更に強くなる）
   regions: ["sin1"],    // Function を Singapore に固定。Hobby は 1 region のみ
+  git: {
+    // main 以外の自動デプロイを止める（Preview 発生抑止）。minimatch で '**' が全階層マッチ、複数ルールで true が 1 つでもあれば deploy されるので main だけ true にする
+    deploymentEnabled: {
+      "**": false,
+      main: true,
+    },
+  },
 };
 ```
 
 - 依存追加: `pnpm add -D @vercel/config`
-- ⚠️ `vercel.ts` **では Preview Deployments 無効化や環境変数の値は投入できない**。これらは Vercel Dashboard で設定する（Phase 3）
+- ⚠️ `vercel.ts` **では環境変数の値は投入できない**。これらは Vercel Dashboard で設定する（Phase 3）
+- Preview Deployments 抑止は Vercel Dashboard に単独トグルが無く、`git.deploymentEnabled` が公式の宣言的手段（2026-04-23 に当初の Dashboard 手順から差し替え）
 
 ### Phase 3: Vercel プロジェクト作成 + Neon Marketplace Install + Secret 投入
 
@@ -89,9 +97,10 @@ Vercel Dashboard で 4 ステップ:
    - Framework Preset は Next.js（自動検出）。Root Directory / Build Command はデフォルト
    - 初回 Deploy は **失敗してよい**（`vercel-build` script / DB env var がまだ揃っていない）。Phase 6 の Merge で自動デプロイが走るまで触らない
 
-2. **Preview Deployments を無効化**:
-   - Project → **Settings → Git → Preview Deployments** を OFF
-   - こうしておかないと Neon 側で Preview branching を有効化しなくても、Vercel 上に Preview URL だけできてしまう
+2. **Preview Deployments の抑止は Phase 2 で済み**:
+   - `vercel.ts` の `git.deploymentEnabled` で main 以外の自動デプロイを止めてある
+   - Vercel Dashboard には Preview 全体を OFF にする単一トグルは存在しないため、コード側の宣言で対応する
+   - Dashboard の **Settings → Git** では Production Branch が `main` になっていることだけ確認（通常は自動検出）
 
 3. **Neon Postgres を Marketplace から Install**:
    - Project → **Storage → Connect Database → Marketplace → Neon Postgres** → **Install**
@@ -197,7 +206,7 @@ Vercel Dashboard で 4 ステップ:
 |---|---|---|
 | `docker-compose.yml` | ✅ edited (Phase 1) | `postgres:18-alpine` → `postgres:17-alpine` |
 | `.mise.toml` | edit | `terraform = "1.14.9"` の行を削除（撤廃方針のため） |
-| `vercel.ts` | new | `framework: "nextjs"` / `fluid: true` / `regions: ["sin1"]` |
+| `vercel.ts` | new | `framework: "nextjs"` / `fluid: true` / `regions: ["sin1"]` / `git.deploymentEnabled` で main 以外 false |
 | `package.json` | edit | `@vercel/config` を devDependencies に追加 / `vercel-build` script 追加 |
 | `prisma.config.ts` | edit | `datasource.url` を `DIRECT_URL ?? DATABASE_URL_UNPOOLED ?? DATABASE_URL` に |
 | `src/lib/auth.ts` | edit | `baseURL` に `BETTER_AUTH_URL ?? https://${VERCEL_PROJECT_PRODUCTION_URL}` フォールバック実装 |
@@ -224,7 +233,7 @@ Vercel Dashboard で 4 ステップ:
 
 - **Neon プロジェクトが Vercel 組織配下にある**ため、Vercel プロジェクトを削除すると Neon も連動して削除される可能性。M5 スコープでは発動しないが、将来プロジェクト作り直しを行う際は順序に注意
 - **`DATABASE_URL_UNPOOLED` は Neon Integration 固有の変数名**。`@prisma/adapter-neon` / Prisma 公式ドキュメントが `DIRECT_URL` の名前で示すことが多いので、コード側のフォールバック順（`DIRECT_URL ?? DATABASE_URL_UNPOOLED ?? DATABASE_URL`）を保つことで両方の慣例に追従できる
-- **Preview Deployments を OFF にしないと Preview URL だけ残る**。Integration 側の Preview branching を有効化していない場合、Preview デプロイは production DB を指すため認証データが混ざる。Phase 3 の Dashboard 設定を忘れない
+- **Preview Deployments 抑止は `vercel.ts` の `git.deploymentEnabled` で行う**。Dashboard に Preview 全体を OFF にする単一トグルは無い（2026-04-23 時点）。もし `vercel.ts` からこの設定を削除すると main 以外の push でも preview が立ち、Integration 側の Preview branching を有効化していないため production DB を指してしまい認証データが混ざる
 - **`prisma migrate deploy` 失敗 = デプロイ全体失敗**。`vercel-build` script 内でマイグレーションが走るため、破壊的 migration（列の rename / drop など）は慎重に分割する
 - **Fluid Compute を誤って無効化すると Hobby は急速に制限される**。default 300s / max 300s から **default 10s / max 60s** に急落。`vercel.ts` の `fluid: true` を明示指定で誤操作を防ぐ
 - **Neon Free プラン: Scale-to-Zero 5 分固定（無効化不可）**。5 分アクセスがないと compute が停止し、次回アクセス時に数百 ms 〜 数秒の cold start が発生。Phase 7 初回のレスポンスが遅くても 2 回目以降が速ければ正常

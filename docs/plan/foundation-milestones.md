@@ -38,7 +38,7 @@
 | M2 | DB 基盤 | Docker Compose + Prisma セットアップ | ✅ 完了（2026-04-19） |
 | M3 | Better Auth 導入 | メール＋パスワード認証の組込み | ✅ 完了（2026-04-19） |
 | M4 | 認証 UI & ルート保護 | サインアップ / ログイン画面、`proxy.ts`（Next.js 16 で middleware から改名）でのセッションチェック | ✅ 完了（2026-04-20） |
-| M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 | 未着手 |
+| M5 | デプロイ準備 | Vercel + 本番 DB + 環境変数 + CI | 計画確定済み（[詳細](./m5-deployment.md)）・実装未着手 |
 
 このフェーズ完了後に、別セッションで「単語アプリ機能の全体設計」を行う想定。
 
@@ -167,20 +167,23 @@
 
 ## M5: デプロイ準備
 
-- **目的**: Vercel にデプロイし、本番環境で「サインアップ → ログイン → 保護ページ閲覧」まで通す。
+詳細計画は **[`docs/plan/m5-deployment.md`](./m5-deployment.md)** を参照（プランニングセッション 2026-04-20〜21 で詳細化済み）。
+
+- **目的**: Vercel にデプロイし、本番環境で「サインアップ → ログイン → 保護ページ閲覧」まで通す。併せて GitHub Actions による lint / typecheck の CI も整える。
+- **確定した方針（抜粋）**:
+  - 本番 DB: **Neon**（Vercel-Managed Integration 経由、Free プラン、リージョン `aws-ap-southeast-1` Singapore、PG 17）
+  - DB 接続: **Integration 自動注入の `DATABASE_URL`（pooled）＋ `DATABASE_URL_UNPOOLED`（direct）**。コード側で `DIRECT_URL ?? DATABASE_URL_UNPOOLED ?? DATABASE_URL` の優先フォールバック
+  - Preview 環境: **作らない**（Vercel Dashboard で Preview Deployments OFF）
+  - IaC: **なし**（`vercel.ts` でビルド・ランタイム挙動を管理、プロジェクト作成・環境変数・Integration は Vercel Dashboard）
+  - リージョン: **Vercel Function `sin1` + Neon Singapore** で Function↔DB を同一リージョンに揃える
+  - CI: **M5 に含める**（`.github/workflows/ci.yml` で `pnpm lint` + `pnpm typecheck`）
 - **成果物**:
-  - 本番用 PostgreSQL（Neon / Supabase など）を選定し `DATABASE_URL` 発行
-  - Vercel プロジェクト作成と環境変数投入（`DATABASE_URL` / `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` 等）
-  - ビルドコマンドに `prisma migrate deploy` を組み込み
-  - `main` ブランチ push → 自動デプロイの確認
-  - 本番環境での認証フロー動作確認
-- **検討事項（宿題として残す）**:
-  - GitHub Actions での型チェック / Lint 自走
-  - プレビュー環境の DB 分離方針
-  - 監視・ロギング
-  - 本番 PostgreSQL のメジャーバージョンとローカル 18 の整合（揃わなければ `docker-compose.yml` の image を引き下げ）
-  - `PrismaPg` の接続文字列を Prisma Accelerate URL に切り替えるか、直接接続のままにするか
-- **次セッションへの引き継ぎ**: 本番の認証 cookie 設定（`secure` / `sameSite`）、採用した本番 DB プロバイダ。
+  - Neon production project（Vercel Marketplace Install 経由）
+  - `vercel.ts` + `@vercel/config`（`framework: 'nextjs'` / `fluid: true` / `regions: ['sin1']`）
+  - コード改修（`prisma.config.ts` フォールバック、`src/lib/auth.ts` baseURL、`src/lib/prisma.ts` cold start 対策、`package.json` の `vercel-build`）
+  - `.github/workflows/ci.yml`
+  - 本番 URL での認証フロー動作確認
+- **次セッションへの引き継ぎ**: 詳細計画書（上記リンク先）の「事前にユーザー側で準備するもの」を事前に済ませる（Vercel アカウントと Vercel GitHub App インストールのみ）。本番の認証 cookie 設定（`secure` / `sameSite`）、Neon Integration Install 時のオプション選択結果を記録。
 
 ---
 
@@ -226,6 +229,6 @@
 
 ## 次に着手するセッション
 
-**M5: デプロイ準備** から開始する（M4 は 2026-04-20 に完了）。本計画書を共有したうえで「M5 を実装して」と伝えれば、新しいセッションで詳細設計と実装を進められる。
+**M5: デプロイ準備** から開始する（M4 は 2026-04-20 に完了）。詳細計画は [`docs/plan/m5-deployment.md`](./m5-deployment.md) に配置済み。次セッションではこのドキュメントと本計画書を共有したうえで「M5 を実装して」と伝えれば、事前準備（Vercel / Neon アカウント・Vercel Access Token）と合わせて実装を進められる。
 
 基盤整備フェーズ（M1〜M5）の完了後に、**別途「単語アプリ機能の全体設計」セッション** を開き、データモデル・重複検知の仕様・拡張性（将来の機能追加）を議論したうえで実装計画を立てる。

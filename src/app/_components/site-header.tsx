@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getCurrentSession } from "@/lib/session";
+import { signUpDisabled } from "@/lib/signup-policy";
 
 import { SignOutButton } from "./sign-out-button";
 
@@ -36,12 +37,14 @@ export async function SiteHeader() {
               >
                 ログイン
               </Link>
-              <Link
-                href="/sign-up"
-                className="inline-flex items-center rounded-md bg-zinc-900 px-3 py-1.5 font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                新規登録
-              </Link>
+              {signUpDisabled ? null : (
+                <Link
+                  href="/sign-up"
+                  className="inline-flex items-center rounded-md bg-zinc-900 px-3 py-1.5 font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  新規登録
+                </Link>
+              )}
             </>
           )}
         </nav>

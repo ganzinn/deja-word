@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-zinc-900 dark:text-zinc-50">
       <div className="flex w-full max-w-xl flex-col items-center gap-6 text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">deja-word</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">DejaWord</h1>
         <p className="text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
           一度忘れた単語との再会体験をコンセプトにした英単語学習アプリ
         </p>

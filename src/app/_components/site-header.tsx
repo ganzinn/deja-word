@@ -15,7 +15,7 @@ export async function SiteHeader() {
           href="/"
           className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
         >
-          deja-word
+          DejaWord
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {session ? (

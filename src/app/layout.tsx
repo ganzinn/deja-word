@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "deja-word",
+  title: "DejaWord",
   description: "一度忘れた単語との再会体験をコンセプトにした英単語学習アプリ",
 };
 

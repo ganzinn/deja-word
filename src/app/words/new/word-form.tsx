@@ -65,7 +65,7 @@ export function WordForm() {
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
           <Accordion
             multiple
-            defaultValue={["basic", "meanings", "related", "memos"]}
+            defaultValue={["basic", "meanings", "related", "memos", "tags"]}
             className="w-full"
           >
             <FormSection value="basic" title="基本" required>
@@ -89,7 +89,7 @@ export function WordForm() {
             <FormSection value="memos" title="メモ" count={memos?.length ?? 0}>
               <MemosFields />
             </FormSection>
-            <FormSection value="tags" title="タグ" count={tags?.length ?? 0}>
+            <FormSection value="tags" title="掲載箇所" count={tags?.length ?? 0}>
               <TagsFields />
             </FormSection>
           </Accordion>

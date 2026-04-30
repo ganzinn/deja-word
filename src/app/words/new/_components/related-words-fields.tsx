@@ -102,7 +102,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
                     size="sm"
                     pressed={f.value === k}
                     onPressedChange={(pressed) => {
-                      if (pressed) f.onChange(k);
+                      f.onChange(pressed ? k : undefined);
                     }}
                   >
                     {relatedWordKindLabels[k]}

@@ -9,7 +9,7 @@ const meaningSchema = z.object({
 });
 
 const relatedWordSchema = z.object({
-  kind: z.enum(relatedWordKinds),
+  kind: z.enum(relatedWordKinds).optional(),
   text: z.string().trim().min(1, "関連語を入力してください"),
   meaning: z.string().trim().optional().or(z.literal("")),
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
@@ -23,14 +23,33 @@ const memoSchema = z.object({
   text: z.string().trim().min(1, "メモを入力してください"),
 });
 
-const wordTagSchema = z.object({
-  tagId: z.string().min(1),
-  pageNumber: z
-    .number({ invalid_type_error: "数字で入力してください" })
-    .int("整数で入力してください")
-    .positive("1 以上で入力してください")
-    .optional(),
-});
+const wordTagSchema = z
+  .object({
+    source: z.enum(["mock", "custom"]),
+    tagId: z.string().optional().or(z.literal("")),
+    name: z.string().trim().optional().or(z.literal("")),
+    locations: z.array(
+      z.object({
+        value: z.string().trim().optional().or(z.literal("")),
+      }),
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.source === "mock" && !data.tagId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tagId"],
+        message: "掲載箇所が不正です",
+      });
+    }
+    if (data.source === "custom" && !data.name) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["name"],
+        message: "掲載箇所名を入力してください",
+      });
+    }
+  });
 
 export const wordFormSchema = z.object({
   word: z.string().trim().min(1, "単語を入力してください"),
@@ -54,7 +73,7 @@ export const emptyMeaning: MeaningValue = {
 };
 
 export const emptyRelatedWord: RelatedWordValue = {
-  kind: "example",
+  kind: undefined,
   text: "",
   meaning: "",
   partOfSpeech: "",
@@ -66,11 +85,27 @@ export const emptyRelatedWord: RelatedWordValue = {
 
 export const emptyMemo: MemoValue = { text: "" };
 
+export const emptyCustomTag: WordTagValue = {
+  source: "custom",
+  tagId: "",
+  name: "",
+  locations: [{ value: "" }],
+};
+
+export function createMockTag(tagId: string): WordTagValue {
+  return {
+    source: "mock",
+    tagId,
+    name: "",
+    locations: [{ value: "" }],
+  };
+}
+
 export const defaultWordFormValues: WordFormValues = {
   word: "",
   pronunciation: "",
   meanings: [emptyMeaning],
-  relatedWords: [emptyRelatedWord],
-  memos: [emptyMemo],
+  relatedWords: [],
+  memos: [],
   tags: [],
 };

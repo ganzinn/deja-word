@@ -8,15 +8,21 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String        @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean       @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   sessions      Session[]
   accounts      Account[]
+  words         Word[]
+  meanings      Meaning[]
+  examples      Example[]
+  relatedWords  RelatedWord[]
+  memos         Memo[]
+  occurrences   Occurrence[]
 
   @@unique([email])
   @@map("user")
@@ -68,4 +74,135 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum ExampleKind {
+  PHRASE
+  SENTENCE
+  TARGET
+  MINIMAL
+}
+
+enum RelatedKind {
+  SYNONYM
+  ANTONYM
+  DERIVATIVE
+}
+
+model Word {
+  id        String   @id @default(cuid())
+  ownerId   String   @map("owner_id")
+  headword  String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt       @map("updated_at")
+
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  meanings     Meaning[]
+  examples     Example[]
+  relatedWords RelatedWord[]
+  memos        Memo[]
+  occurrences  Occurrence[]
+
+  @@unique([ownerId, headword])
+  @@index([ownerId])
+  @@map("word")
+}
+
+model Meaning {
+  id            String  @id @default(cuid())
+  wordId        String  @map("word_id")
+  ownerId       String  @map("owner_id")
+  partOfSpeech  String? @map("part_of_speech")
+  pronunciation String?
+  text          String
+  note          String?
+  sortOrder     Int     @default(0) @map("sort_order")
+
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+  @@index([ownerId])
+  @@map("meaning")
+}
+
+model Example {
+  id        String      @id @default(cuid())
+  wordId    String      @map("word_id")
+  ownerId   String      @map("owner_id")
+  kind      ExampleKind
+  text      String
+  meaning   String?
+  note      String?
+  sortOrder Int         @default(0) @map("sort_order")
+
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+  @@index([ownerId])
+  @@map("example")
+}
+
+model RelatedWord {
+  id            String       @id @default(cuid())
+  wordId        String       @map("word_id")
+  ownerId       String       @map("owner_id")
+  kind          RelatedKind?
+  term          String
+  partOfSpeech  String?      @map("part_of_speech")
+  pronunciation String?
+  meaning       String?
+  note          String?
+  sortOrder     Int          @default(0) @map("sort_order")
+
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+  @@index([ownerId])
+  @@map("related_word")
+}
+
+model Memo {
+  id        String @id @default(cuid())
+  wordId    String @map("word_id")
+  ownerId   String @map("owner_id")
+  text      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+  @@index([ownerId])
+  @@map("memo")
+}
+
+model Occurrence {
+  id        String @id @default(cuid())
+  wordId    String @map("word_id")
+  ownerId   String @map("owner_id")
+  location  String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  word    Word               @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner   User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  details OccurrenceDetail[]
+
+  @@index([wordId])
+  @@index([ownerId])
+  @@map("occurrence")
+}
+
+model OccurrenceDetail {
+  id           String @id @default(cuid())
+  occurrenceId String @map("occurrence_id")
+  detail       String
+  sortOrder    Int    @default(0) @map("sort_order")
+
+  occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+
+  @@index([occurrenceId])
+  @@map("occurrence_detail")
 }

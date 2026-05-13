@@ -18,11 +18,12 @@ import {
 } from "@/lib/schema/word-form";
 
 import { BasicFields } from "./_components/basic-fields";
+import { ExamplesFields } from "./_components/examples-fields";
 import { FormSection } from "./_components/form-section";
 import { MeaningsFields } from "./_components/meanings-fields";
 import { MemosFields } from "./_components/memos-fields";
+import { OccurrencesFields } from "./_components/occurrences-fields";
 import { RelatedWordsFields } from "./_components/related-words-fields";
-import { TagsFields } from "./_components/tags-fields";
 
 export function WordForm() {
   const form = useForm<WordFormValues>({
@@ -32,9 +33,10 @@ export function WordForm() {
   });
 
   const meanings = useWatch({ control: form.control, name: "meanings" });
+  const examples = useWatch({ control: form.control, name: "examples" });
   const relatedWords = useWatch({ control: form.control, name: "relatedWords" });
   const memos = useWatch({ control: form.control, name: "memos" });
-  const tags = useWatch({ control: form.control, name: "tags" });
+  const occurrences = useWatch({ control: form.control, name: "occurrences" });
 
   function onSubmit(values: WordFormValues) {
     console.log("[words/new mock submit]", values);
@@ -65,7 +67,14 @@ export function WordForm() {
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
           <Accordion
             multiple
-            defaultValue={["basic", "meanings", "related", "memos", "tags"]}
+            defaultValue={[
+              "basic",
+              "meanings",
+              "examples",
+              "related",
+              "memos",
+              "occurrences",
+            ]}
             className="w-full"
           >
             <FormSection value="basic" title="基本" required>
@@ -80,6 +89,13 @@ export function WordForm() {
               <MeaningsFields />
             </FormSection>
             <FormSection
+              value="examples"
+              title="例文"
+              count={examples?.length ?? 0}
+            >
+              <ExamplesFields />
+            </FormSection>
+            <FormSection
               value="related"
               title="関連語"
               count={relatedWords?.length ?? 0}
@@ -89,8 +105,12 @@ export function WordForm() {
             <FormSection value="memos" title="メモ" count={memos?.length ?? 0}>
               <MemosFields />
             </FormSection>
-            <FormSection value="tags" title="掲載箇所" count={tags?.length ?? 0}>
-              <TagsFields />
+            <FormSection
+              value="occurrences"
+              title="掲載箇所"
+              count={occurrences?.length ?? 0}
+            >
+              <OccurrencesFields />
             </FormSection>
           </Accordion>
 

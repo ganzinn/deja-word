@@ -1,17 +1,9 @@
-export const relatedWordKinds = [
-  "example",
-  "idiom",
-  "synonym",
-  "antonym",
-  "derivative",
-] as const;
+export const relatedWordKinds = ["SYNONYM", "ANTONYM", "DERIVATIVE"] as const;
 
 export type RelatedWordKind = (typeof relatedWordKinds)[number];
 
 export const relatedWordKindLabels: Record<RelatedWordKind, string> = {
-  example: "例文",
-  idiom: "熟語",
-  synonym: "同意語",
-  antonym: "反意語",
-  derivative: "派生語",
+  SYNONYM: "同意語",
+  ANTONYM: "反意語",
+  DERIVATIVE: "派生語",
 };

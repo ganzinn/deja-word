@@ -8,21 +8,22 @@ datasource db {
 }
 
 model User {
-  id            String        @id
-  name          String
-  email         String
-  emailVerified Boolean       @default(false)
-  image         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  words         Word[]
-  meanings      Meaning[]
-  examples      Example[]
-  relatedWords  RelatedWord[]
-  memos         Memo[]
-  occurrences   Occurrence[]
+  id              String           @id
+  name            String
+  email           String
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        Session[]
+  accounts        Account[]
+  words           Word[]
+  meanings        Meaning[]
+  examples        Example[]
+  relatedWords    RelatedWord[]
+  memos           Memo[]
+  occurrences     Occurrence[]
+  wordOccurrences WordOccurrence[]
 
   @@unique([email])
   @@map("user")
@@ -94,14 +95,14 @@ model Word {
   ownerId   String   @map("owner_id")
   headword  String
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt       @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  meanings     Meaning[]
-  examples     Example[]
-  relatedWords RelatedWord[]
-  memos        Memo[]
-  occurrences  Occurrence[]
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  meanings        Meaning[]
+  examples        Example[]
+  relatedWords    RelatedWord[]
+  memos           Memo[]
+  wordOccurrences WordOccurrence[]
 
   @@unique([ownerId, headword])
   @@index([ownerId])
@@ -181,28 +182,45 @@ model Memo {
 
 model Occurrence {
   id        String @id @default(cuid())
-  wordId    String @map("word_id")
   ownerId   String @map("owner_id")
   location  String
   sortOrder Int    @default(0) @map("sort_order")
 
-  word    Word               @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  owner   User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  details OccurrenceDetail[]
+  owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  wordLinks WordOccurrence[]
 
-  @@index([wordId])
+  @@unique([ownerId, location])
   @@index([ownerId])
   @@map("occurrence")
 }
 
-model OccurrenceDetail {
+model WordOccurrence {
   id           String @id @default(cuid())
+  wordId       String @map("word_id")
   occurrenceId String @map("occurrence_id")
-  detail       String
+  ownerId      String @map("owner_id")
   sortOrder    Int    @default(0) @map("sort_order")
 
-  occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  word       Word               @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  occurrence Occurrence         @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  details    OccurrenceDetail[]
 
+  @@unique([wordId, occurrenceId])
+  @@index([wordId])
   @@index([occurrenceId])
+  @@index([ownerId])
+  @@map("word_occurrence")
+}
+
+model OccurrenceDetail {
+  id               String @id @default(cuid())
+  wordOccurrenceId String @map("word_occurrence_id")
+  detail           String
+  sortOrder        Int    @default(0) @map("sort_order")
+
+  wordOccurrence WordOccurrence @relation(fields: [wordOccurrenceId], references: [id], onDelete: Cascade)
+
+  @@index([wordOccurrenceId])
   @@map("occurrence_detail")
 }

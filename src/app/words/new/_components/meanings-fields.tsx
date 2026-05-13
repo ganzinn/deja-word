@@ -11,10 +11,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { emptyMeaning, type WordFormValues } from "@/lib/schema/word-form";
 
+import { CollapsibleField } from "./collapsible-field";
 import { PartOfSpeechPicker } from "./part-of-speech-picker";
 
 export function MeaningsFields() {
@@ -79,6 +81,28 @@ export function MeaningsFields() {
               </FormItem>
             )}
           />
+
+          <CollapsibleField label="発音記号">
+            <FormField
+              control={form.control}
+              name={`meanings.${index}.pronunciation`}
+              render={({ field: f }) => (
+                <FormItem>
+                  <FormLabel>発音記号</FormLabel>
+                  <FormControl>
+                    <Input
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      placeholder="例: /ɪˈfemərəl/"
+                      {...f}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CollapsibleField>
 
           <FormField
             control={form.control}

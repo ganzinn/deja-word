@@ -14,61 +14,57 @@ import {
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 
-import { findTag, mockTags } from "@/lib/mock/tags";
+import { presetOccurrenceLocations } from "@/lib/mock/occurrence-locations";
 import {
-  createMockTag,
-  emptyCustomTag,
+  createPresetOccurrence,
+  emptyOccurrence,
   type WordFormValues,
 } from "@/lib/schema/word-form";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-export function TagsFields() {
+export function OccurrencesFields() {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "tags",
+    name: "occurrences",
   });
 
-  const selectedMockIds = fields
-    .filter((f) => f.source === "mock")
-    .map((f) => f.tagId)
-    .filter((id): id is string => Boolean(id));
+  const currentLocations = fields.map((f) => f.location);
 
-  function toggleMockTag(tagId: string) {
-    const idx = fields.findIndex(
-      (f) => f.source === "mock" && f.tagId === tagId,
-    );
+  function togglePreset(location: string) {
+    const idx = fields.findIndex((f) => f.location === location);
     if (idx >= 0) {
       remove(idx);
     } else {
-      append(createMockTag(tagId));
+      append(createPresetOccurrence(location));
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        {mockTags.map((tag) => (
+        {presetOccurrenceLocations.map((location) => (
           <Toggle
-            key={tag.id}
+            key={location}
             variant="outline"
             size="sm"
-            pressed={selectedMockIds.includes(tag.id)}
-            onPressedChange={() => toggleMockTag(tag.id)}
+            pressed={currentLocations.includes(location)}
+            onPressedChange={() => togglePreset(location)}
           >
-            {tag.name}
+            {location}
           </Toggle>
         ))}
       </div>
 
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          既存掲載箇所から選ぶか、カスタム掲載箇所を追加してください。
+          既存掲載箇所から選ぶか、掲載箇所を追加してください。
         </p>
       ) : null}
 
       <div className="flex flex-col gap-3">
         {fields.map((field, index) => (
-          <TagEntryCard
+          <OccurrenceCard
             key={field.id}
             index={index}
             onRemove={() => remove(index)}
@@ -81,31 +77,31 @@ export function TagsFields() {
         variant="outline"
         size="sm"
         className="self-start"
-        onClick={() => append(emptyCustomTag)}
+        onClick={() => append(emptyOccurrence)}
       >
         <PlusIcon />
-        カスタム掲載箇所を追加
+        掲載箇所を追加
       </Button>
     </div>
   );
 }
 
-type TagEntryCardProps = {
+type OccurrenceCardProps = {
   index: number;
   onRemove: () => void;
 };
 
-function TagEntryCard({ index, onRemove }: TagEntryCardProps) {
+function OccurrenceCard({ index, onRemove }: OccurrenceCardProps) {
   const form = useFormContext<WordFormValues>();
-  const entry = form.watch(`tags.${index}`);
-  const isMock = entry?.source === "mock";
-  const mockTag = isMock ? findTag(entry?.tagId ?? "") : undefined;
+  const location = form.watch(`occurrences.${index}.location`);
+  const ownerId = form.watch(`occurrences.${index}.ownerId`);
+  const isSystemOwned = ownerId === SYSTEM_USER_ID;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">
-          {isMock ? mockTag?.name ?? "(不明な掲載箇所)" : "カスタム"}
+          {location || "(未入力)"}
         </span>
         <Button
           type="button"
@@ -118,10 +114,10 @@ function TagEntryCard({ index, onRemove }: TagEntryCardProps) {
         </Button>
       </div>
 
-      {!isMock ? (
+      {isSystemOwned ? null : (
         <FormField
           control={form.control}
-          name={`tags.${index}.name`}
+          name={`occurrences.${index}.location`}
           render={({ field: f }) => (
             <FormItem>
               <FormLabel className="text-xs text-muted-foreground">
@@ -139,28 +135,28 @@ function TagEntryCard({ index, onRemove }: TagEntryCardProps) {
             </FormItem>
           )}
         />
-      ) : null}
+      )}
 
-      <LocationList tagIndex={index} />
+      <DetailList occurrenceIndex={index} />
     </div>
   );
 }
 
-function LocationList({ tagIndex }: { tagIndex: number }) {
+function DetailList({ occurrenceIndex }: { occurrenceIndex: number }) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: `tags.${tagIndex}.locations`,
+    name: `occurrences.${occurrenceIndex}.details`,
   });
 
   return (
     <div className="flex flex-col gap-2">
-      <FormLabel className="text-xs text-muted-foreground">掲載詳細</FormLabel>
-      {fields.map((field, locIndex) => (
+      <FormLabel className="text-xs text-muted-foreground">詳細</FormLabel>
+      {fields.map((field, detailIndex) => (
         <FormField
           key={field.id}
           control={form.control}
-          name={`tags.${tagIndex}.locations.${locIndex}.value`}
+          name={`occurrences.${occurrenceIndex}.details.${detailIndex}.detail`}
           render={({ field: f }) => (
             <FormItem>
               <div className="flex items-center gap-2">
@@ -176,8 +172,8 @@ function LocationList({ tagIndex }: { tagIndex: number }) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="この掲載詳細を削除"
-                  onClick={() => remove(locIndex)}
+                  aria-label="この詳細を削除"
+                  onClick={() => remove(detailIndex)}
                 >
                   <XIcon />
                 </Button>
@@ -192,10 +188,10 @@ function LocationList({ tagIndex }: { tagIndex: number }) {
         variant="ghost"
         size="sm"
         className="self-start"
-        onClick={() => append({ value: "" })}
+        onClick={() => append({ detail: "" })}
       >
         <PlusIcon />
-        掲載詳細を追加
+        詳細を追加
       </Button>
     </div>
   );

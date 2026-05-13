@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2Icon, PlusIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -11,38 +11,31 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 
-import {
-  relatedWordKindLabels,
-  relatedWordKinds,
-} from "@/lib/mock/related-word-kinds";
-import { emptyRelatedWord, type WordFormValues } from "@/lib/schema/word-form";
+import { exampleKindLabels, exampleKinds } from "@/lib/mock/example-kinds";
+import { emptyExample, type WordFormValues } from "@/lib/schema/word-form";
 
-import { CollapsibleField } from "./collapsible-field";
-import { PartOfSpeechPicker } from "./part-of-speech-picker";
-
-type RelatedWordCardProps = {
+type ExampleCardProps = {
   index: number;
   onRemove: () => void;
 };
 
-function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
+function ExampleCard({ index, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
-          関連語 {index + 1}
+          例文 {index + 1}
         </span>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="この関連語を削除"
+          aria-label="この例文を削除"
           onClick={onRemove}
         >
           <Trash2Icon />
@@ -51,23 +44,23 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
 
       <FormField
         control={form.control}
-        name={`relatedWords.${index}.kind`}
+        name={`examples.${index}.kind`}
         render={({ field: f }) => (
           <FormItem>
             <FormLabel>種別</FormLabel>
             <FormControl>
               <div className="flex flex-wrap gap-1">
-                {relatedWordKinds.map((k) => (
+                {exampleKinds.map((k) => (
                   <Toggle
                     key={k}
                     variant="outline"
                     size="sm"
                     pressed={f.value === k}
                     onPressedChange={(pressed) => {
-                      f.onChange(pressed ? k : undefined);
+                      if (pressed) f.onChange(k);
                     }}
                   >
-                    {relatedWordKindLabels[k]}
+                    {exampleKindLabels[k]}
                   </Toggle>
                 ))}
               </div>
@@ -79,30 +72,16 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
 
       <FormField
         control={form.control}
-        name={`relatedWords.${index}.partOfSpeech`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>品詞</FormLabel>
-            <FormControl>
-              <PartOfSpeechPicker value={f.value ?? ""} onChange={f.onChange} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name={`relatedWords.${index}.term`}
+        name={`examples.${index}.text`}
         render={({ field: f }) => (
           <FormItem>
             <FormLabel>
-              語句<span className="ml-1 text-destructive">*</span>
+              例文<span className="ml-1 text-destructive">*</span>
             </FormLabel>
             <FormControl>
               <Textarea
                 rows={2}
-                placeholder="例: fleeting / transient"
+                placeholder="例: The fleeting beauty of cherry blossoms."
                 {...f}
               />
             </FormControl>
@@ -111,35 +90,14 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
         )}
       />
 
-      <CollapsibleField label="発音記号">
-        <FormField
-          control={form.control}
-          name={`relatedWords.${index}.pronunciation`}
-          render={({ field: f }) => (
-            <FormItem>
-              <FormLabel>発音記号</FormLabel>
-              <FormControl>
-                <Input
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  {...f}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </CollapsibleField>
-
       <FormField
         control={form.control}
-        name={`relatedWords.${index}.meaning`}
+        name={`examples.${index}.meaning`}
         render={({ field: f }) => (
           <FormItem>
             <FormLabel>意味</FormLabel>
             <FormControl>
-              <Textarea rows={2} placeholder="関連語の意味" {...f} />
+              <Textarea rows={2} placeholder="例文の和訳" {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -148,7 +106,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
 
       <FormField
         control={form.control}
-        name={`relatedWords.${index}.note`}
+        name={`examples.${index}.note`}
         render={({ field: f }) => (
           <FormItem>
             <FormLabel>補足説明</FormLabel>
@@ -163,23 +121,23 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
   );
 }
 
-export function RelatedWordsFields() {
+export function ExamplesFields() {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "relatedWords",
+    name: "examples",
   });
 
   return (
     <div className="flex flex-col gap-4">
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          同意語・反意語・派生語などを追加できます。
+          例文・成句・熟語などを追加できます。
         </p>
       ) : null}
 
       {fields.map((field, index) => (
-        <RelatedWordCard
+        <ExampleCard
           key={field.id}
           index={index}
           onRemove={() => remove(index)}
@@ -190,10 +148,10 @@ export function RelatedWordsFields() {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append(emptyRelatedWord)}
+        onClick={() => append(emptyExample)}
       >
         <PlusIcon />
-        関連語を追加
+        例文を追加
       </Button>
     </div>
   );

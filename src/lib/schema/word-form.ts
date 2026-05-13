@@ -1,111 +1,106 @@
 import { z } from "zod/v3";
 
+import { exampleKinds } from "@/lib/mock/example-kinds";
 import { relatedWordKinds } from "@/lib/mock/related-word-kinds";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 const meaningSchema = z.object({
-  text: z.string().trim().min(1, "意味を入力してください"),
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
+  pronunciation: z.string().trim().optional().or(z.literal("")),
+  text: z.string().trim().min(1, "意味を入力してください"),
+  note: z.string().trim().optional().or(z.literal("")),
+});
+
+const exampleSchema = z.object({
+  kind: z.enum(exampleKinds),
+  text: z.string().trim().min(1, "例文を入力してください"),
+  meaning: z.string().trim().optional().or(z.literal("")),
   note: z.string().trim().optional().or(z.literal("")),
 });
 
 const relatedWordSchema = z.object({
   kind: z.enum(relatedWordKinds).optional(),
-  text: z.string().trim().min(1, "関連語を入力してください"),
-  meaning: z.string().trim().optional().or(z.literal("")),
+  term: z.string().trim().min(1, "関連語を入力してください"),
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
-  note: z.string().trim().optional().or(z.literal("")),
   pronunciation: z.string().trim().optional().or(z.literal("")),
-  isMP: z.boolean(),
-  isBM: z.boolean(),
+  meaning: z.string().trim().optional().or(z.literal("")),
+  note: z.string().trim().optional().or(z.literal("")),
 });
 
 const memoSchema = z.object({
   text: z.string().trim().min(1, "メモを入力してください"),
 });
 
-const wordTagSchema = z
-  .object({
-    source: z.enum(["mock", "custom"]),
-    tagId: z.string().optional().or(z.literal("")),
-    name: z.string().trim().optional().or(z.literal("")),
-    locations: z.array(
-      z.object({
-        value: z.string().trim().optional().or(z.literal("")),
-      }),
-    ),
-  })
-  .superRefine((data, ctx) => {
-    if (data.source === "mock" && !data.tagId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["tagId"],
-        message: "掲載箇所が不正です",
-      });
-    }
-    if (data.source === "custom" && !data.name) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["name"],
-        message: "掲載箇所名を入力してください",
-      });
-    }
-  });
+const occurrenceSchema = z.object({
+  ownerId: z.string(),
+  location: z.string().trim().min(1, "掲載箇所名を入力してください"),
+  details: z.array(
+    z.object({
+      detail: z.string().trim().optional().or(z.literal("")),
+    }),
+  ),
+});
 
 export const wordFormSchema = z.object({
-  word: z.string().trim().min(1, "単語を入力してください"),
-  pronunciation: z.string().trim().optional().or(z.literal("")),
+  headword: z.string().trim().min(1, "単語を入力してください"),
   meanings: z.array(meaningSchema).min(1, "意味は 1 つ以上必要です"),
+  examples: z.array(exampleSchema),
   relatedWords: z.array(relatedWordSchema),
   memos: z.array(memoSchema),
-  tags: z.array(wordTagSchema),
+  occurrences: z.array(occurrenceSchema),
 });
 
 export type WordFormValues = z.infer<typeof wordFormSchema>;
 export type MeaningValue = z.infer<typeof meaningSchema>;
+export type ExampleValue = z.infer<typeof exampleSchema>;
 export type RelatedWordValue = z.infer<typeof relatedWordSchema>;
 export type MemoValue = z.infer<typeof memoSchema>;
-export type WordTagValue = z.infer<typeof wordTagSchema>;
+export type OccurrenceValue = z.infer<typeof occurrenceSchema>;
 
 export const emptyMeaning: MeaningValue = {
-  text: "",
   partOfSpeech: "",
+  pronunciation: "",
+  text: "",
+  note: "",
+};
+
+export const emptyExample: ExampleValue = {
+  kind: "SENTENCE",
+  text: "",
+  meaning: "",
   note: "",
 };
 
 export const emptyRelatedWord: RelatedWordValue = {
   kind: undefined,
-  text: "",
-  meaning: "",
+  term: "",
   partOfSpeech: "",
-  note: "",
   pronunciation: "",
-  isMP: false,
-  isBM: false,
+  meaning: "",
+  note: "",
 };
 
 export const emptyMemo: MemoValue = { text: "" };
 
-export const emptyCustomTag: WordTagValue = {
-  source: "custom",
-  tagId: "",
-  name: "",
-  locations: [{ value: "" }],
+export const emptyOccurrence: OccurrenceValue = {
+  ownerId: "",
+  location: "",
+  details: [{ detail: "" }],
 };
 
-export function createMockTag(tagId: string): WordTagValue {
+export function createPresetOccurrence(location: string): OccurrenceValue {
   return {
-    source: "mock",
-    tagId,
-    name: "",
-    locations: [{ value: "" }],
+    ownerId: SYSTEM_USER_ID,
+    location,
+    details: [{ detail: "" }],
   };
 }
 
 export const defaultWordFormValues: WordFormValues = {
-  word: "",
-  pronunciation: "",
+  headword: "",
   meanings: [emptyMeaning],
+  examples: [],
   relatedWords: [],
   memos: [],
-  tags: [],
+  occurrences: [],
 };

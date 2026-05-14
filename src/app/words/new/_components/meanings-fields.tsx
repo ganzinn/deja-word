@@ -66,22 +66,6 @@ export function MeaningsFields() {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name={`meanings.${index}.text`}
-            render={({ field: f }) => (
-              <FormItem>
-                <FormLabel>
-                  意味<span className="ml-1 text-destructive">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Textarea rows={2} placeholder="例: 短命の、つかの間の" {...f} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <CollapsibleField label="発音記号">
             <FormField
               control={form.control}
@@ -103,6 +87,22 @@ export function MeaningsFields() {
               )}
             />
           </CollapsibleField>
+
+          <FormField
+            control={form.control}
+            name={`meanings.${index}.text`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel>
+                  意味<span className="ml-1 text-destructive">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Textarea rows={2} placeholder="例: 短命の、つかの間の" {...f} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

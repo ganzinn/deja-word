@@ -91,26 +91,6 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name={`relatedWords.${index}.term`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>
-              語句<span className="ml-1 text-destructive">*</span>
-            </FormLabel>
-            <FormControl>
-              <Textarea
-                rows={2}
-                placeholder="例: fleeting / transient"
-                {...f}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <CollapsibleField label="発音記号">
         <FormField
           control={form.control}
@@ -131,6 +111,26 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
           )}
         />
       </CollapsibleField>
+
+      <FormField
+        control={form.control}
+        name={`relatedWords.${index}.term`}
+        render={({ field: f }) => (
+          <FormItem>
+            <FormLabel>
+              語句<span className="ml-1 text-destructive">*</span>
+            </FormLabel>
+            <FormControl>
+              <Textarea
+                rows={2}
+                placeholder="例: fleeting / transient"
+                {...f}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}

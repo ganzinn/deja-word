@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
+import type { OccurrencePreset } from "@/lib/occurrences";
 import {
   defaultWordFormValues,
   wordFormSchema,
@@ -25,7 +26,11 @@ import { MemosFields } from "./_components/memos-fields";
 import { OccurrencesFields } from "./_components/occurrences-fields";
 import { RelatedWordsFields } from "./_components/related-words-fields";
 
-export function WordForm() {
+type WordFormProps = {
+  occurrencePresets: OccurrencePreset[];
+};
+
+export function WordForm({ occurrencePresets }: WordFormProps) {
   const form = useForm<WordFormValues>({
     resolver: zodResolver(wordFormSchema),
     defaultValues: defaultWordFormValues,
@@ -110,7 +115,7 @@ export function WordForm() {
               title="掲載箇所"
               count={occurrences?.length ?? 0}
             >
-              <OccurrencesFields />
+              <OccurrencesFields presets={occurrencePresets} />
             </FormSection>
           </Accordion>
 

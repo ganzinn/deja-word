@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 
-import { presetOccurrenceLocations } from "@/lib/mock/occurrence-locations";
+import type { OccurrencePreset } from "@/lib/occurrences";
 import {
   createPresetOccurrence,
   emptyOccurrence,
@@ -22,39 +22,47 @@ import {
 } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-export function OccurrencesFields() {
+type OccurrencesFieldsProps = {
+  presets: OccurrencePreset[];
+};
+
+export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "occurrences",
   });
 
-  const currentLocations = fields.map((f) => f.location);
+  const currentOccurrenceIds = fields
+    .map((f) => f.occurrenceId)
+    .filter((id): id is string => !!id);
 
-  function togglePreset(location: string) {
-    const idx = fields.findIndex((f) => f.location === location);
+  function togglePreset(preset: OccurrencePreset) {
+    const idx = fields.findIndex((f) => f.occurrenceId === preset.id);
     if (idx >= 0) {
       remove(idx);
     } else {
-      append(createPresetOccurrence(location));
+      append(createPresetOccurrence(preset));
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {presetOccurrenceLocations.map((location) => (
-          <Toggle
-            key={location}
-            variant="outline"
-            size="sm"
-            pressed={currentLocations.includes(location)}
-            onPressedChange={() => togglePreset(location)}
-          >
-            {location}
-          </Toggle>
-        ))}
-      </div>
+      {presets.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {presets.map((preset) => (
+            <Toggle
+              key={preset.id}
+              variant="outline"
+              size="sm"
+              pressed={currentOccurrenceIds.includes(preset.id)}
+              onPressedChange={() => togglePreset(preset)}
+            >
+              {preset.location}
+            </Toggle>
+          ))}
+        </div>
+      ) : null}
 
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">

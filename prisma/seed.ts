@@ -25,6 +25,29 @@ async function main() {
     },
   });
   console.log(`Seeded system user: ${SYSTEM_USER_ID}`);
+
+  const systemOccurrences = [
+    { location: "ターゲット1900", sortOrder: 0 },
+    { location: "システム英単語", sortOrder: 1 },
+  ];
+  for (const o of systemOccurrences) {
+    await prisma.occurrence.upsert({
+      where: {
+        ownerId_location: { ownerId: SYSTEM_USER_ID, location: o.location },
+      },
+      update: { sortOrder: o.sortOrder },
+      create: {
+        ownerId: SYSTEM_USER_ID,
+        location: o.location,
+        sortOrder: o.sortOrder,
+      },
+    });
+  }
+  console.log(
+    `Seeded ${systemOccurrences.length} system occurrence(s): ${systemOccurrences
+      .map((o) => o.location)
+      .join(", ")}`,
+  );
 }
 
 main()

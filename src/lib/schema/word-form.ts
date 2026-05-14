@@ -32,6 +32,7 @@ const memoSchema = z.object({
 });
 
 const occurrenceSchema = z.object({
+  occurrenceId: z.string().optional(),
   ownerId: z.string(),
   location: z.string().trim().min(1, "掲載箇所名を入力してください"),
   details: z.array(
@@ -88,10 +89,14 @@ export const emptyOccurrence: OccurrenceValue = {
   details: [{ detail: "" }],
 };
 
-export function createPresetOccurrence(location: string): OccurrenceValue {
+export function createPresetOccurrence(preset: {
+  id: string;
+  location: string;
+}): OccurrenceValue {
   return {
+    occurrenceId: preset.id,
     ownerId: SYSTEM_USER_ID,
-    location,
+    location: preset.location,
     details: [{ detail: "" }],
   };
 }

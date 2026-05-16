@@ -9,7 +9,10 @@ import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
 import { relatedWordKindLabels } from "@/lib/mock/related-word-kinds";
 import { getCurrentSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { countIncomingLinksForUser } from "@/lib/words-delete";
 import { getWordDetailForUser, type WordDetail } from "@/lib/words-detail";
+
+import { DeleteWordButton } from "./_components/delete-word-button";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -25,6 +28,7 @@ export default async function WordDetailPage({ params }: PageProps) {
   if (!word) notFound();
 
   const canEdit = word.ownerId === session.user.id;
+  const incomingLinkCount = canEdit ? await countIncomingLinksForUser(session.user.id, id) : 0;
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
@@ -38,13 +42,20 @@ export default async function WordDetailPage({ params }: PageProps) {
         </Link>
         <h1 className="truncate text-base font-semibold">{word.headword}</h1>
         {canEdit ? (
-          <Link
-            href={`/words/${id}/edit`}
-            aria-label="編集"
-            className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "ml-auto")}
-          >
-            <PencilIcon />
-          </Link>
+          <div className="ml-auto flex items-center gap-1">
+            <Link
+              href={`/words/${id}/edit`}
+              aria-label="編集"
+              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+            >
+              <PencilIcon />
+            </Link>
+            <DeleteWordButton
+              wordId={id}
+              headword={word.headword}
+              incomingLinkCount={incomingLinkCount}
+            />
+          </div>
         ) : null}
       </header>
 

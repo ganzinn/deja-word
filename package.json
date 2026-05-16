@@ -15,6 +15,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:set-system-password": "tsx scripts/set-system-password.ts",
     "vercel-build": "prisma migrate deploy && next build",
     "postinstall": "prisma generate"
   },

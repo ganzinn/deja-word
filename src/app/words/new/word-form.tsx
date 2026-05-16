@@ -80,7 +80,7 @@ export function WordForm({ occurrencePresets }: WordFormProps) {
             <FormSection value="basic" title="基本" required>
               <BasicFields />
             </FormSection>
-            <FormSection value="meanings" title="意味" required count={meanings?.length ?? 0}>
+            <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
               <MeaningsFields />
             </FormSection>
             <FormSection value="examples" title="例文" count={examples?.length ?? 0}>

@@ -19,31 +19,29 @@ export function MeaningsFields() {
     control: form.control,
     name: "meanings",
   });
-  const rootError = form.formState.errors.meanings?.root?.message;
 
   return (
     <div className="flex flex-col gap-4">
+      {fields.length === 0 ? (
+        <p className="text-muted-foreground text-xs">意味を追加できます。</p>
+      ) : null}
+
       {fields.map((field, index) => (
         <div
           key={field.id}
           className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3"
         >
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs font-medium">
-              意味 {index + 1}
-              {index === 0 ? <span className="text-destructive ml-1">*</span> : null}
-            </span>
-            {fields.length > 1 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="この意味を削除"
-                onClick={() => remove(index)}
-              >
-                <Trash2Icon />
-              </Button>
-            ) : null}
+            <span className="text-muted-foreground text-xs font-medium">意味 {index + 1}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="この意味を削除"
+              onClick={() => remove(index)}
+            >
+              <Trash2Icon />
+            </Button>
           </div>
 
           <FormField
@@ -113,12 +111,6 @@ export function MeaningsFields() {
           />
         </div>
       ))}
-
-      {rootError ? (
-        <p className="text-destructive text-sm" role="alert">
-          {rootError}
-        </p>
-      ) : null}
 
       <Button type="button" variant="outline" size="sm" onClick={() => append(emptyMeaning)}>
         <PlusIcon />

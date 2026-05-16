@@ -45,7 +45,7 @@ const occurrenceSchema = z.object({
 
 export const wordFormSchema = z.object({
   headword: z.string().trim().min(1, "単語を入力してください"),
-  meanings: z.array(meaningSchema).min(1, "意味は 1 つ以上必要です"),
+  meanings: z.array(meaningSchema),
   examples: z.array(exampleSchema),
   relatedWords: z.array(relatedWordSchema),
   memos: z.array(memoSchema),

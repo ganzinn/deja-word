@@ -25,6 +25,7 @@ const relatedWordSchema = z.object({
   pronunciation: z.string().trim().optional().or(z.literal("")),
   meaning: z.string().trim().optional().or(z.literal("")),
   note: z.string().trim().optional().or(z.literal("")),
+  linkedWordId: z.string().cuid().optional(),
 });
 
 const memoSchema = z.object({
@@ -79,6 +80,7 @@ export const emptyRelatedWord: RelatedWordValue = {
   pronunciation: "",
   meaning: "",
   note: "",
+  linkedWordId: undefined,
 };
 
 export const emptyMemo: MemoValue = { text: "" };
@@ -89,10 +91,7 @@ export const emptyOccurrence: OccurrenceValue = {
   details: [{ detail: "" }],
 };
 
-export function createPresetOccurrence(preset: {
-  id: string;
-  location: string;
-}): OccurrenceValue {
+export function createPresetOccurrence(preset: { id: string; location: string }): OccurrenceValue {
   return {
     occurrenceId: preset.id,
     ownerId: SYSTEM_USER_ID,

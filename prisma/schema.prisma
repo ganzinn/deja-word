@@ -97,12 +97,13 @@ model Word {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  meanings        Meaning[]
-  examples        Example[]
-  relatedWords    RelatedWord[]
-  memos           Memo[]
-  wordOccurrences WordOccurrence[]
+  owner                  User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  meanings               Meaning[]
+  examples               Example[]
+  relatedWords           RelatedWord[]    @relation("RelatedWordOnWord")
+  linkedFromRelatedWords RelatedWord[]    @relation("RelatedWordLinkedWord")
+  memos                  Memo[]
+  wordOccurrences        WordOccurrence[]
 
   @@unique([ownerId, headword])
   @@index([ownerId])
@@ -156,12 +157,15 @@ model RelatedWord {
   meaning       String?
   note          String?
   sortOrder     Int          @default(0) @map("sort_order")
+  linkedWordId  String?      @map("linked_word_id")
 
-  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  word       Word  @relation("RelatedWordOnWord", fields: [wordId], references: [id], onDelete: Cascade)
+  owner      User  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  linkedWord Word? @relation("RelatedWordLinkedWord", fields: [linkedWordId], references: [id], onDelete: SetNull)
 
   @@index([wordId])
   @@index([ownerId])
+  @@index([linkedWordId])
   @@map("related_word")
 }
 

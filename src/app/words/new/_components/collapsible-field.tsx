@@ -19,7 +19,7 @@ export function CollapsibleField({ label, defaultOpen = false, children }: Props
         type="button"
         variant="ghost"
         size="sm"
-        className="self-start text-xs text-muted-foreground"
+        className="text-muted-foreground self-start text-xs"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />

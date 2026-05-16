@@ -4,13 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -26,11 +20,9 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-3">
+    <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          例文 {index + 1}
-        </span>
+        <span className="text-muted-foreground text-xs font-medium">例文 {index + 1}</span>
         <Button
           type="button"
           variant="ghost"
@@ -76,14 +68,10 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
         render={({ field: f }) => (
           <FormItem>
             <FormLabel>
-              例文<span className="ml-1 text-destructive">*</span>
+              例文<span className="text-destructive ml-1">*</span>
             </FormLabel>
             <FormControl>
-              <Textarea
-                rows={2}
-                placeholder="例: The fleeting beauty of cherry blossoms."
-                {...f}
-              />
+              <Textarea rows={2} placeholder="例: The fleeting beauty of cherry blossoms." {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -131,25 +119,14 @@ export function ExamplesFields() {
   return (
     <div className="flex flex-col gap-4">
       {fields.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          例文・成句・熟語などを追加できます。
-        </p>
+        <p className="text-muted-foreground text-xs">例文・成句・熟語などを追加できます。</p>
       ) : null}
 
       {fields.map((field, index) => (
-        <ExampleCard
-          key={field.id}
-          index={index}
-          onRemove={() => remove(index)}
-        />
+        <ExampleCard key={field.id} index={index} onRemove={() => remove(index)} />
       ))}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => append(emptyExample)}
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => append(emptyExample)}>
         <PlusIcon />
         例文を追加
       </Button>

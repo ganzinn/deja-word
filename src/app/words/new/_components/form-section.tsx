@@ -2,11 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {
@@ -19,7 +15,7 @@ type Props = {
 
 export function FormSection({ value, title, count, required, children }: Props) {
   return (
-    <AccordionItem value={value} className="border-b border-border last:border-b">
+    <AccordionItem value={value} className="border-border border-b last:border-b">
       <AccordionTrigger className="px-4">
         <span className="flex items-center gap-2">
           <span className="text-base font-semibold">{title}</span>

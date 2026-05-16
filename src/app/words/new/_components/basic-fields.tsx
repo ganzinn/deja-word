@@ -2,13 +2,7 @@
 
 import { useFormContext } from "react-hook-form";
 
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
@@ -23,7 +17,7 @@ export function BasicFields() {
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              単語<span className="ml-1 text-destructive">*</span>
+              単語<span className="text-destructive ml-1">*</span>
             </FormLabel>
             <FormControl>
               <Input

@@ -19,7 +19,7 @@ export function MemosFields() {
   return (
     <div className="flex flex-col gap-3">
       {fields.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           覚え方や個人的な気づきをメモとして残せます。
         </p>
       ) : null}
@@ -53,12 +53,7 @@ export function MemosFields() {
         </div>
       ))}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => append(emptyMemo)}
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => append(emptyMemo)}>
         <PlusIcon />
         メモを追加
       </Button>

@@ -4,13 +4,7 @@ import { Trash2Icon, PlusIcon } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -32,12 +26,12 @@ export function MeaningsFields() {
       {fields.map((field, index) => (
         <div
           key={field.id}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-3"
+          className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-muted-foreground text-xs font-medium">
               意味 {index + 1}
-              {index === 0 ? <span className="ml-1 text-destructive">*</span> : null}
+              {index === 0 ? <span className="text-destructive ml-1">*</span> : null}
             </span>
             {fields.length > 1 ? (
               <Button
@@ -94,7 +88,7 @@ export function MeaningsFields() {
             render={({ field: f }) => (
               <FormItem>
                 <FormLabel>
-                  意味<span className="ml-1 text-destructive">*</span>
+                  意味<span className="text-destructive ml-1">*</span>
                 </FormLabel>
                 <FormControl>
                   <Textarea rows={2} placeholder="例: 短命の、つかの間の" {...f} />
@@ -121,17 +115,12 @@ export function MeaningsFields() {
       ))}
 
       {rootError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {rootError}
         </p>
       ) : null}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => append(emptyMeaning)}
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => append(emptyMeaning)}>
         <PlusIcon />
         意味を追加
       </Button>

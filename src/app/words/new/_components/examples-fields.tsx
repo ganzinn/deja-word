@@ -119,7 +119,7 @@ export function ExamplesFields() {
   return (
     <div className="flex flex-col gap-4">
       {fields.length === 0 ? (
-        <p className="text-muted-foreground text-xs">例文・成句・熟語などを追加できます。</p>
+        <p className="text-muted-foreground text-xs">例文、成句・熟語などを追加できます。</p>
       ) : null}
 
       {fields.map((field, index) => (

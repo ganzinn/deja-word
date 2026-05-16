@@ -22,3 +22,7 @@ export const commonPartOfSpeechValues = commonPartsOfSpeech.map((p) => p.value);
 export function isCommonPartOfSpeech(value: string): boolean {
   return commonPartOfSpeechValues.includes(value);
 }
+
+export function commonPartOfSpeechFullLabel(value: string): string {
+  return commonPartsOfSpeech.find((p) => p.value === value)?.fullLabel ?? value;
+}

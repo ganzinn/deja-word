@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ type WordFormProps = {
 };
 
 export function WordForm({ occurrencePresets }: WordFormProps) {
+  const router = useRouter();
   const form = useForm<WordFormValues>({
     resolver: zodResolver(wordFormSchema),
     defaultValues: defaultWordFormValues,
@@ -44,7 +46,7 @@ export function WordForm({ occurrencePresets }: WordFormProps) {
     const result = await createWord(values);
     if (result.ok) {
       toast.success("登録しました");
-      form.reset(defaultWordFormValues);
+      router.push(`/words/${result.wordId}`);
       return;
     }
     if (result.error === "duplicate") {

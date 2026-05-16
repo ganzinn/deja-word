@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { OccurrencePreset } from "@/lib/occurrences";
 import { defaultWordFormValues, wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 
+import { createWord } from "./actions";
 import { BasicFields } from "./_components/basic-fields";
 import { ExamplesFields } from "./_components/examples-fields";
 import { FormSection } from "./_components/form-section";
@@ -39,12 +40,17 @@ export function WordForm({ occurrencePresets }: WordFormProps) {
   const memos = useWatch({ control: form.control, name: "memos" });
   const occurrences = useWatch({ control: form.control, name: "occurrences" });
 
-  function onSubmit(values: WordFormValues) {
-    console.log("[words/new mock submit]", values);
-    toast.success("登録しました（モック）", {
-      description: "送信値はブラウザの DevTools コンソールに出力しました。",
-    });
-    form.reset(defaultWordFormValues);
+  async function onSubmit(values: WordFormValues) {
+    const result = await createWord(values);
+    if (result.ok) {
+      toast.success("登録しました");
+      form.reset(defaultWordFormValues);
+      return;
+    }
+    if (result.error === "duplicate") {
+      form.setError("headword", { type: "manual", message: result.message });
+    }
+    toast.error(result.message);
   }
 
   function onInvalid() {

@@ -19,11 +19,8 @@ export default async function DashboardPage() {
             href="/words/new"
             className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            単語を登録（モック）
+            単語を登録
           </Link>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            ※ 永続化は未実装。送信値は DevTools コンソールに出力されます。
-          </p>
         </div>
       </div>
     </main>

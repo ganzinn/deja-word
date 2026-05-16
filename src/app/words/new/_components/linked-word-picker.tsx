@@ -24,6 +24,7 @@ type WordSuggestion = {
 type LinkedWordPickerProps = {
   term: string;
   linkedWordId: string | undefined;
+  initialLinkedHeadword?: string;
   onLink: (wordId: string, headword: string) => void;
   onUnlink: () => void;
 };
@@ -32,12 +33,18 @@ function firstToken(term: string): string {
   return term.split(/[\s/、,]+/).filter(Boolean)[0] ?? "";
 }
 
-export function LinkedWordPicker({ term, linkedWordId, onLink, onUnlink }: LinkedWordPickerProps) {
+export function LinkedWordPicker({
+  term,
+  linkedWordId,
+  initialLinkedHeadword,
+  onLink,
+  onUnlink,
+}: LinkedWordPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WordSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [linkedHeadword, setLinkedHeadword] = useState<string | undefined>(undefined);
+  const [linkedHeadword, setLinkedHeadword] = useState<string | undefined>(initialLinkedHeadword);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && query.length === 0) {

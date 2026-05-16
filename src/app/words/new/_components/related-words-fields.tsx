@@ -13,6 +13,7 @@ import { relatedWordKindLabels, relatedWordKinds } from "@/lib/mock/related-word
 import { emptyRelatedWord, type WordFormValues } from "@/lib/schema/word-form";
 
 import { CollapsibleField } from "./collapsible-field";
+import { useLinkedHeadword } from "./linked-headwords-context";
 import { LinkedWordPicker } from "./linked-word-picker";
 import { PartOfSpeechPicker } from "./part-of-speech-picker";
 
@@ -122,7 +123,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
             <FormItem>
               <FormLabel>既存単語へのリンク</FormLabel>
               <FormControl>
-                <LinkedWordPicker
+                <LinkedWordPickerForRow
                   term={term ?? ""}
                   linkedWordId={f.value}
                   onLink={(id) => f.onChange(id)}
@@ -164,6 +165,16 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
       />
     </div>
   );
+}
+
+function LinkedWordPickerForRow(props: {
+  term: string;
+  linkedWordId: string | undefined;
+  onLink: (id: string, headword: string) => void;
+  onUnlink: () => void;
+}) {
+  const initialLinkedHeadword = useLinkedHeadword(props.linkedWordId);
+  return <LinkedWordPicker {...props} initialLinkedHeadword={initialLinkedHeadword} />;
 }
 
 export function RelatedWordsFields() {

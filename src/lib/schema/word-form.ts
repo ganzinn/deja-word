@@ -3,6 +3,7 @@ import { z } from "zod/v3";
 import { exampleKinds } from "@/lib/mock/example-kinds";
 import { relatedWordKinds } from "@/lib/mock/related-word-kinds";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
+import type { WordDetail } from "@/lib/words-detail";
 
 const meaningSchema = z.object({
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
@@ -108,3 +109,40 @@ export const defaultWordFormValues: WordFormValues = {
   memos: [],
   occurrences: [],
 };
+
+export function wordDetailToFormValues(word: WordDetail): WordFormValues {
+  return {
+    headword: word.headword,
+    meanings: word.meanings.map((m) => ({
+      partOfSpeech: m.partOfSpeech ?? "",
+      pronunciation: m.pronunciation ?? "",
+      text: m.text,
+      note: m.note ?? "",
+    })),
+    examples: word.examples.map((e) => ({
+      kind: e.kind,
+      text: e.text,
+      meaning: e.meaning ?? "",
+      note: e.note ?? "",
+    })),
+    relatedWords: word.relatedWords.map((r) => ({
+      kind: r.kind ?? undefined,
+      term: r.term,
+      partOfSpeech: r.partOfSpeech ?? "",
+      pronunciation: r.pronunciation ?? "",
+      meaning: r.meaning ?? "",
+      note: r.note ?? "",
+      linkedWordId: r.linkedWordId ?? undefined,
+    })),
+    memos: word.memos.map((m) => ({ text: m.text })),
+    occurrences: word.wordOccurrences.map((wo) => ({
+      occurrenceId: wo.occurrence.id,
+      ownerId: wo.occurrence.ownerId,
+      location: wo.occurrence.location,
+      details:
+        wo.details.length > 0
+          ? wo.details.map((d) => ({ detail: d.detail }))
+          : [{ detail: "" }],
+    })),
+  };
+}

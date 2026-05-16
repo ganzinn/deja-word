@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, LinkIcon } from "lucide-react";
+import { ChevronLeftIcon, LinkIcon, PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -24,6 +24,8 @@ export default async function WordDetailPage({ params }: PageProps) {
   const word = await getWordDetailForUser(session.user.id, id);
   if (!word) notFound();
 
+  const canEdit = word.ownerId === session.user.id;
+
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
       <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
@@ -35,6 +37,15 @@ export default async function WordDetailPage({ params }: PageProps) {
           <ChevronLeftIcon />
         </Link>
         <h1 className="truncate text-base font-semibold">{word.headword}</h1>
+        {canEdit ? (
+          <Link
+            href={`/words/${id}/edit`}
+            aria-label="編集"
+            className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "ml-auto")}
+          >
+            <PencilIcon />
+          </Link>
+        ) : null}
       </header>
 
       <div className="flex flex-col gap-6 px-4 pt-6">

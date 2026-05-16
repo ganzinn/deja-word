@@ -19,7 +19,7 @@ export async function getWordDetailForUser(userId: string, wordId: string) {
       wordOccurrences: {
         orderBy: { sortOrder: "asc" },
         include: {
-          occurrence: { select: { id: true, location: true } },
+          occurrence: { select: { id: true, ownerId: true, location: true } },
           details: { orderBy: { sortOrder: "asc" } },
         },
       },

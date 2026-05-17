@@ -65,7 +65,7 @@ export function WordForm({
   const title = isEdit ? "単語を編集" : "単語を登録";
   const submitLabel = isEdit ? "更新する" : "登録する";
   const submittingLabel = "送信中…";
-  const backHref = isEdit && wordId ? `/words/${wordId}` : "/dashboard";
+  const backHref = isEdit && wordId ? `/words/${wordId}` : "/words";
 
   async function onSubmit(values: WordFormValues) {
     const result = isEdit && wordId ? await updateWord(wordId, values) : await createWord(values);

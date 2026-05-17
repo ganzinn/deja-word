@@ -38,7 +38,7 @@ export function DeleteWordButton({ wordId, headword, incomingLinkCount }: Delete
       if (result.ok) {
         toast.success("削除しました");
         setOpen(false);
-        router.push("/dashboard");
+        router.push("/words");
         return;
       }
       toast.error(result.message);

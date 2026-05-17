@@ -71,6 +71,9 @@ export function WordForm({
     if (result.error === "duplicate") {
       form.setError("headword", { type: "manual", message: result.message });
     }
+    if (result.error === "duplicate_occurrence_number") {
+      form.setError("occurrences", { type: "manual", message: result.message });
+    }
     toast.error(result.message);
   }
 

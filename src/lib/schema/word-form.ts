@@ -43,6 +43,11 @@ const occurrenceSchema = z.object({
   occurrenceId: z.string().optional(),
   ownerId: z.string(),
   location: z.string().trim().min(1, "掲載箇所名を入力してください"),
+  occurrenceNumber: z
+    .number()
+    .int("整数で入力してください")
+    .min(1, "1 以上を入力してください")
+    .nullable(),
   details: z.array(
     z.object({
       detail: z.string().trim().optional().or(z.literal("")),
@@ -95,6 +100,7 @@ export const emptyMemo: MemoValue = { text: "" };
 export const emptyOccurrence: OccurrenceValue = {
   ownerId: "",
   location: "",
+  occurrenceNumber: null,
   details: [{ detail: "" }],
 };
 
@@ -103,6 +109,7 @@ export function createPresetOccurrence(preset: { id: string; location: string })
     occurrenceId: preset.id,
     ownerId: SYSTEM_USER_ID,
     location: preset.location,
+    occurrenceNumber: null,
     details: [{ detail: "" }],
   };
 }
@@ -145,6 +152,7 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
       occurrenceId: wo.occurrence.id,
       ownerId: wo.occurrence.ownerId,
       location: wo.occurrence.location,
+      occurrenceNumber: wo.occurrenceNumber ?? null,
       details:
         wo.details.length > 0
           ? wo.details.map((d) => ({ detail: d.detail }))

@@ -211,11 +211,12 @@ model Occurrence {
 }
 
 model WordOccurrence {
-  id           String @id @default(cuid())
-  wordId       String @map("word_id")
-  occurrenceId String @map("occurrence_id")
-  ownerId      String @map("owner_id")
-  sortOrder    Int    @default(0) @map("sort_order")
+  id               String @id @default(cuid())
+  wordId           String @map("word_id")
+  occurrenceId     String @map("occurrence_id")
+  ownerId          String @map("owner_id")
+  sortOrder        Int    @default(0) @map("sort_order")
+  occurrenceNumber Int?   @map("occurrence_number")
 
   word       Word               @relation(fields: [wordId], references: [id], onDelete: Cascade)
   occurrence Occurrence         @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
@@ -223,6 +224,7 @@ model WordOccurrence {
   details    OccurrenceDetail[]
 
   @@unique([wordId, occurrenceId])
+  @@unique([occurrenceId, occurrenceNumber])
   @@index([wordId])
   @@index([occurrenceId])
   @@index([ownerId])

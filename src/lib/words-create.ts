@@ -6,12 +6,24 @@ import { createWordChildren, resolveChildAllowedIds } from "@/lib/words-children
 
 import type { WordFormValues } from "@/lib/schema/word-form";
 
-export type CreateWordError = "unauthorized" | "invalid" | "duplicate" | "unknown";
+export type CreateWordError =
+  | "unauthorized"
+  | "invalid"
+  | "duplicate"
+  | "duplicate_occurrence_number"
+  | "unknown";
 
 export class DuplicateHeadwordError extends Error {
   constructor() {
     super("DUPLICATE_HEADWORD");
     this.name = "DuplicateHeadwordError";
+  }
+}
+
+export class DuplicateOccurrenceNumberError extends Error {
+  constructor() {
+    super("DUPLICATE_OCCURRENCE_NUMBER");
+    this.name = "DuplicateOccurrenceNumberError";
   }
 }
 
@@ -35,13 +47,23 @@ export async function createWordForUser(
     if (isDuplicateHeadword(e)) {
       throw new DuplicateHeadwordError();
     }
+    if (isDuplicateOccurrenceNumber(e)) {
+      throw new DuplicateOccurrenceNumberError();
+    }
     throw e;
   }
 }
 
-function isDuplicateHeadword(e: unknown): boolean {
+export function isDuplicateHeadword(e: unknown): boolean {
   if (typeof e !== "object" || e === null) return false;
   const err = e as { code?: unknown; meta?: { modelName?: unknown } };
   if (err.code !== "P2002") return false;
   return err.meta?.modelName === "Word";
+}
+
+export function isDuplicateOccurrenceNumber(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const err = e as { code?: unknown; meta?: { modelName?: unknown } };
+  if (err.code !== "P2002") return false;
+  return err.meta?.modelName === "WordOccurrence";
 }

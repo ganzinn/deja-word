@@ -2,7 +2,7 @@
 
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
-import { DuplicateHeadwordError } from "@/lib/words-create";
+import { DuplicateHeadwordError, DuplicateOccurrenceNumberError } from "@/lib/words-create";
 import {
   WordNotFoundError,
   updateWordForUser,
@@ -47,6 +47,13 @@ export async function updateWord(
         ok: false,
         error: "duplicate",
         message: "この単語はすでに登録されています。",
+      };
+    }
+    if (e instanceof DuplicateOccurrenceNumberError) {
+      return {
+        ok: false,
+        error: "duplicate_occurrence_number",
+        message: "同じ出典内で重複する掲載番号が指定されています。",
       };
     }
     console.error("[words/edit] updateWord failed", e);

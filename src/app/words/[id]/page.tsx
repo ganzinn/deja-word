@@ -237,7 +237,14 @@ function OccurrenceCard({
 }) {
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      <p className="text-sm font-medium">{wordOccurrence.occurrence.location}</p>
+      <p className="text-sm font-medium">
+        {wordOccurrence.occurrence.location}
+        {wordOccurrence.occurrenceNumber !== null ? (
+          <span className="text-muted-foreground ml-2 font-mono text-xs">
+            #{wordOccurrence.occurrenceNumber}
+          </span>
+        ) : null}
+      </p>
       {wordOccurrence.details.length > 0 ? (
         <ul className="text-muted-foreground ml-4 list-disc text-sm">
           {wordOccurrence.details.map((d) => (

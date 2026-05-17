@@ -139,7 +139,13 @@ export async function createWordChildren(
     seenOccurrenceIds.add(occurrenceId);
 
     const wordOccurrence = await tx.wordOccurrence.create({
-      data: { wordId, occurrenceId, ownerId: userId, sortOrder: i },
+      data: {
+        wordId,
+        occurrenceId,
+        ownerId: userId,
+        sortOrder: i,
+        occurrenceNumber: oc.occurrenceNumber ?? null,
+      },
       select: { id: true },
     });
 

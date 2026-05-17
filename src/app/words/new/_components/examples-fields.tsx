@@ -1,8 +1,9 @@
 "use client";
 
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,9 @@ import { Toggle } from "@/components/ui/toggle";
 
 import { exampleKindLabels, exampleKinds } from "@/lib/mock/example-kinds";
 import { emptyExample, type WordFormValues } from "@/lib/schema/word-form";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
+
+import { useIsCurrentUserSystem } from "./word-form-permissions-context";
 
 type ExampleCardProps = {
   index: number;
@@ -18,20 +22,32 @@ type ExampleCardProps = {
 
 function ExampleCard({ index, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
+  const ownerId = useWatch({ control: form.control, name: `examples.${index}.ownerId` });
+  const isCurrentUserSystem = useIsCurrentUserSystem();
+  const isSystemOwned = ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
 
   return (
     <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-medium">例文 {index + 1}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="この例文を削除"
-          onClick={onRemove}
-        >
-          <Trash2Icon />
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs font-medium">例文 {index + 1}</span>
+          {isSystemOwned ? (
+            <Badge variant="outline" className="text-[10px]">
+              共通
+            </Badge>
+          ) : null}
+        </div>
+        {isSystemOwned ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="この例文を削除"
+            onClick={onRemove}
+          >
+            <Trash2Icon />
+          </Button>
+        )}
       </div>
 
       <FormField
@@ -48,6 +64,7 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
                     variant="outline"
                     size="sm"
                     pressed={f.value === k}
+                    disabled={isSystemOwned}
                     onPressedChange={(pressed) => {
                       if (pressed) f.onChange(k);
                     }}
@@ -71,7 +88,12 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
               例文<span className="text-destructive ml-1">*</span>
             </FormLabel>
             <FormControl>
-              <Textarea rows={2} placeholder="例: The fleeting beauty of cherry blossoms." {...f} />
+              <Textarea
+                rows={2}
+                placeholder="例: The fleeting beauty of cherry blossoms."
+                disabled={isSystemOwned}
+                {...f}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -85,7 +107,7 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
           <FormItem>
             <FormLabel>意味</FormLabel>
             <FormControl>
-              <Textarea rows={2} placeholder="例文の和訳" {...f} />
+              <Textarea rows={2} placeholder="例文の和訳" disabled={isSystemOwned} {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -99,7 +121,7 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
           <FormItem>
             <FormLabel>補足説明</FormLabel>
             <FormControl>
-              <Textarea rows={2} {...f} />
+              <Textarea rows={2} disabled={isSystemOwned} {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>

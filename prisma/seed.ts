@@ -48,6 +48,147 @@ async function main() {
       .map((o) => o.location)
       .join(", ")}`,
   );
+
+  await seedSystemWord({
+    headword: "ubiquitous",
+    meanings: [
+      {
+        partOfSpeech: "adjective",
+        pronunciation: "/juːˈbɪkwɪtəs/",
+        texts: ["どこにでもある、遍在する", "至る所に存在する"],
+        note: "フォーマルな場面で使われる",
+      },
+    ],
+    examples: [
+      {
+        kind: "SENTENCE",
+        text: "Smartphones have become ubiquitous in modern society.",
+        meaning: "スマートフォンは現代社会に遍在している。",
+      },
+      { kind: "PHRASE", text: "ubiquitous computing" },
+    ],
+    relatedWords: [
+      { kind: "SYNONYM", term: "omnipresent" },
+      { kind: "SYNONYM", term: "pervasive" },
+    ],
+    memos: ["語源: ラテン語 ubique (どこでも)"],
+    occurrenceLocations: ["ターゲット1900", "システム英単語"],
+  });
+}
+
+type SystemWordSeed = {
+  headword: string;
+  meanings: {
+    partOfSpeech?: string;
+    pronunciation?: string;
+    texts: string[];
+    note?: string;
+  }[];
+  examples: {
+    kind: "PHRASE" | "SENTENCE" | "TARGET" | "MINIMAL";
+    text: string;
+    meaning?: string;
+    note?: string;
+  }[];
+  relatedWords: {
+    kind?: "SYNONYM" | "ANTONYM" | "DERIVATIVE";
+    term: string;
+  }[];
+  memos: string[];
+  occurrenceLocations: string[];
+};
+
+async function seedSystemWord(seed: SystemWordSeed): Promise<void> {
+  const existing = await prisma.word.findFirst({
+    where: { ownerId: SYSTEM_USER_ID, headword: seed.headword },
+    select: { id: true },
+  });
+  if (existing) {
+    console.log(`Skipped existing system word: ${seed.headword}`);
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const word = await tx.word.create({
+      data: { ownerId: SYSTEM_USER_ID, headword: seed.headword },
+      select: { id: true },
+    });
+    for (let i = 0; i < seed.meanings.length; i++) {
+      const m = seed.meanings[i];
+      await tx.meaning.create({
+        data: {
+          wordId: word.id,
+          ownerId: SYSTEM_USER_ID,
+          partOfSpeech: m.partOfSpeech ?? null,
+          pronunciation: m.pronunciation ?? null,
+          note: m.note ?? null,
+          sortOrder: i,
+          texts: {
+            createMany: {
+              data: m.texts.map((t, j) => ({
+                ownerId: SYSTEM_USER_ID,
+                text: t,
+                sortOrder: j,
+              })),
+            },
+          },
+        },
+        select: { id: true },
+      });
+    }
+    if (seed.examples.length > 0) {
+      await tx.example.createMany({
+        data: seed.examples.map((e, i) => ({
+          wordId: word.id,
+          ownerId: SYSTEM_USER_ID,
+          kind: e.kind,
+          text: e.text,
+          meaning: e.meaning ?? null,
+          note: e.note ?? null,
+          sortOrder: i,
+        })),
+      });
+    }
+    if (seed.relatedWords.length > 0) {
+      await tx.relatedWord.createMany({
+        data: seed.relatedWords.map((r, i) => ({
+          wordId: word.id,
+          ownerId: SYSTEM_USER_ID,
+          kind: r.kind ?? null,
+          term: r.term,
+          sortOrder: i,
+        })),
+      });
+    }
+    if (seed.memos.length > 0) {
+      await tx.memo.createMany({
+        data: seed.memos.map((text, i) => ({
+          wordId: word.id,
+          ownerId: SYSTEM_USER_ID,
+          text,
+          sortOrder: i,
+        })),
+      });
+    }
+    for (let i = 0; i < seed.occurrenceLocations.length; i++) {
+      const location = seed.occurrenceLocations[i];
+      const occ = await tx.occurrence.findFirst({
+        where: { ownerId: SYSTEM_USER_ID, location },
+        select: { id: true },
+      });
+      if (!occ) continue;
+      await tx.wordOccurrence.create({
+        data: {
+          wordId: word.id,
+          occurrenceId: occ.id,
+          ownerId: SYSTEM_USER_ID,
+          sortOrder: i,
+        },
+        select: { id: true },
+      });
+    }
+  });
+  console.log(`Seeded system word: ${seed.headword}`);
 }
 
 main()

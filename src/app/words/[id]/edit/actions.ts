@@ -4,6 +4,7 @@ import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { DuplicateHeadwordError, DuplicateOccurrenceNumberError } from "@/lib/words-create";
 import {
+  ForbiddenUpdateError,
   WordNotFoundError,
   updateWordForUser,
   type UpdateWordError,
@@ -13,10 +14,7 @@ export type UpdateWordResult =
   | { ok: true; wordId: string }
   | { ok: false; error: UpdateWordError; message: string };
 
-export async function updateWord(
-  wordId: string,
-  input: WordFormValues,
-): Promise<UpdateWordResult> {
+export async function updateWord(wordId: string, input: WordFormValues): Promise<UpdateWordResult> {
   const session = await getCurrentSession();
   if (!session) {
     return {
@@ -40,6 +38,13 @@ export async function updateWord(
         ok: false,
         error: "not_found",
         message: "対象の単語が見つかりません。",
+      };
+    }
+    if (e instanceof ForbiddenUpdateError) {
+      return {
+        ok: false,
+        error: "forbidden",
+        message: "編集権限のない項目が含まれています。",
       };
     }
     if (e instanceof DuplicateHeadwordError) {

@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
 
-export function BasicFields() {
+type BasicFieldsProps = {
+  readOnly?: boolean;
+};
+
+export function BasicFields({ readOnly = false }: BasicFieldsProps) {
   const form = useFormContext<WordFormValues>();
   return (
     <div className="flex flex-col gap-4">
@@ -25,6 +29,7 @@ export function BasicFields() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 placeholder="例: ephemeral"
+                disabled={readOnly}
                 {...field}
               />
             </FormControl>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSystemOccurrencePresets } from "@/lib/occurrences";
 import { defaultWordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import { WordForm } from "./word-form";
 
@@ -17,6 +18,7 @@ export default async function NewWordPage() {
       mode="create"
       defaultValues={defaultWordFormValues}
       occurrencePresets={occurrencePresets}
+      isCurrentUserSystem={session.user.id === SYSTEM_USER_ID}
     />
   );
 }

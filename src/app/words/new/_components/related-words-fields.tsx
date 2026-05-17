@@ -1,8 +1,9 @@
 "use client";
 
 import { Trash2Icon, PlusIcon } from "lucide-react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -11,11 +12,13 @@ import { Toggle } from "@/components/ui/toggle";
 
 import { relatedWordKindLabels, relatedWordKinds } from "@/lib/mock/related-word-kinds";
 import { emptyRelatedWord, type WordFormValues } from "@/lib/schema/word-form";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import { CollapsibleField } from "./collapsible-field";
 import { useLinkedHeadword } from "./linked-headwords-context";
 import { LinkedWordPicker } from "./linked-word-picker";
 import { PartOfSpeechPicker } from "./part-of-speech-picker";
+import { useIsCurrentUserSystem } from "./word-form-permissions-context";
 
 type RelatedWordCardProps = {
   index: number;
@@ -24,20 +27,32 @@ type RelatedWordCardProps = {
 
 function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
   const form = useFormContext<WordFormValues>();
+  const ownerId = useWatch({ control: form.control, name: `relatedWords.${index}.ownerId` });
+  const isCurrentUserSystem = useIsCurrentUserSystem();
+  const isSystemOwned = ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
 
   return (
     <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-medium">関連語 {index + 1}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="この関連語を削除"
-          onClick={onRemove}
-        >
-          <Trash2Icon />
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs font-medium">関連語 {index + 1}</span>
+          {isSystemOwned ? (
+            <Badge variant="outline" className="text-[10px]">
+              共通
+            </Badge>
+          ) : null}
+        </div>
+        {isSystemOwned ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="この関連語を削除"
+            onClick={onRemove}
+          >
+            <Trash2Icon />
+          </Button>
+        )}
       </div>
 
       <FormField
@@ -54,6 +69,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
                     variant="outline"
                     size="sm"
                     pressed={f.value === k}
+                    disabled={isSystemOwned}
                     onPressedChange={(pressed) => {
                       f.onChange(pressed ? k : undefined);
                     }}
@@ -75,7 +91,11 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
           <FormItem>
             <FormLabel>品詞</FormLabel>
             <FormControl>
-              <PartOfSpeechPicker value={f.value ?? ""} onChange={f.onChange} />
+              <PartOfSpeechPicker
+                value={f.value ?? ""}
+                onChange={f.onChange}
+                disabled={isSystemOwned}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -90,7 +110,13 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
             <FormItem>
               <FormLabel>発音記号</FormLabel>
               <FormControl>
-                <Input inputMode="text" autoCapitalize="none" autoCorrect="off" {...f} />
+                <Input
+                  inputMode="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  disabled={isSystemOwned}
+                  {...f}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,7 +133,12 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
               語句<span className="text-destructive ml-1">*</span>
             </FormLabel>
             <FormControl>
-              <Textarea rows={2} placeholder="例: fleeting / transient" {...f} />
+              <Textarea
+                rows={2}
+                placeholder="例: fleeting / transient"
+                disabled={isSystemOwned}
+                {...f}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -128,6 +159,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
                   linkedWordId={f.value}
                   onLink={(id) => f.onChange(id)}
                   onUnlink={() => f.onChange(undefined)}
+                  disabled={isSystemOwned}
                 />
               </FormControl>
               <FormMessage />
@@ -143,7 +175,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
           <FormItem>
             <FormLabel>意味</FormLabel>
             <FormControl>
-              <Textarea rows={2} placeholder="関連語の意味" {...f} />
+              <Textarea rows={2} placeholder="関連語の意味" disabled={isSystemOwned} {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -157,7 +189,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
           <FormItem>
             <FormLabel>補足説明</FormLabel>
             <FormControl>
-              <Textarea rows={2} {...f} />
+              <Textarea rows={2} disabled={isSystemOwned} {...f} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -172,6 +204,7 @@ function LinkedWordPickerForRow(props: {
   linkedWordId: string | undefined;
   onLink: (id: string, headword: string) => void;
   onUnlink: () => void;
+  disabled?: boolean;
 }) {
   const initialLinkedHeadword = useLinkedHeadword(props.linkedWordId);
   return <LinkedWordPicker {...props} initialLinkedHeadword={initialLinkedHeadword} />;

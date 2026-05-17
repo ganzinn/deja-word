@@ -4,26 +4,44 @@ import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
 
 export async function getWordDetailForUser(userId: string, wordId: string) {
+  const allowed = scopedOwnerIds(userId);
   return prisma.word.findFirst({
-    where: { id: wordId, ownerId: { in: scopedOwnerIds(userId) } },
+    where: { id: wordId, ownerId: { in: allowed } },
     include: {
       meanings: {
+        where: { ownerId: { in: allowed } },
         orderBy: { sortOrder: "asc" },
-        include: { texts: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          texts: {
+            where: { ownerId: { in: allowed } },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
       },
-      examples: { orderBy: { sortOrder: "asc" } },
+      examples: {
+        where: { ownerId: { in: allowed } },
+        orderBy: { sortOrder: "asc" },
+      },
       relatedWords: {
+        where: { ownerId: { in: allowed } },
         orderBy: { sortOrder: "asc" },
         include: {
           linkedWord: { select: { id: true, headword: true } },
         },
       },
-      memos: { orderBy: { sortOrder: "asc" } },
+      memos: {
+        where: { ownerId: { in: allowed } },
+        orderBy: { sortOrder: "asc" },
+      },
       wordOccurrences: {
+        where: { ownerId: { in: allowed } },
         orderBy: { sortOrder: "asc" },
         include: {
           occurrence: { select: { id: true, ownerId: true, location: true } },
-          details: { orderBy: { sortOrder: "asc" } },
+          details: {
+            where: { ownerId: { in: allowed } },
+            orderBy: { sortOrder: "asc" },
+          },
         },
       },
     },

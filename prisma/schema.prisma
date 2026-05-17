@@ -8,22 +8,24 @@ datasource db {
 }
 
 model User {
-  id              String           @id
-  name            String
-  email           String
-  emailVerified   Boolean          @default(false)
-  image           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  sessions        Session[]
-  accounts        Account[]
-  words           Word[]
-  meanings        Meaning[]
-  examples        Example[]
-  relatedWords    RelatedWord[]
-  memos           Memo[]
-  occurrences     Occurrence[]
-  wordOccurrences WordOccurrence[]
+  id                String             @id
+  name              String
+  email             String
+  emailVerified     Boolean            @default(false)
+  image             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessions          Session[]
+  accounts          Account[]
+  words             Word[]
+  meanings          Meaning[]
+  meaningTexts      MeaningText[]
+  examples          Example[]
+  relatedWords      RelatedWord[]
+  memos             Memo[]
+  occurrences       Occurrence[]
+  wordOccurrences   WordOccurrence[]
+  occurrenceDetails OccurrenceDetail[]
 
   @@unique([email])
   @@map("user")
@@ -131,12 +133,15 @@ model Meaning {
 model MeaningText {
   id        String @id @default(cuid())
   meaningId String @map("meaning_id")
+  ownerId   String @map("owner_id")
   text      String
   sortOrder Int    @default(0) @map("sort_order")
 
   meaning Meaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+  owner   User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([meaningId])
+  @@index([ownerId])
   @@map("meaning_text")
 }
 
@@ -234,11 +239,14 @@ model WordOccurrence {
 model OccurrenceDetail {
   id               String @id @default(cuid())
   wordOccurrenceId String @map("word_occurrence_id")
+  ownerId          String @map("owner_id")
   detail           String
   sortOrder        Int    @default(0) @map("sort_order")
 
   wordOccurrence WordOccurrence @relation(fields: [wordOccurrenceId], references: [id], onDelete: Cascade)
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([wordOccurrenceId])
+  @@index([ownerId])
   @@map("occurrence_detail")
 }

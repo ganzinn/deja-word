@@ -27,6 +27,7 @@ type LinkedWordPickerProps = {
   initialLinkedHeadword?: string;
   onLink: (wordId: string, headword: string) => void;
   onUnlink: () => void;
+  disabled?: boolean;
 };
 
 function firstToken(term: string): string {
@@ -39,6 +40,7 @@ export function LinkedWordPicker({
   initialLinkedHeadword,
   onLink,
   onUnlink,
+  disabled: disabledProp = false,
 }: LinkedWordPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -104,23 +106,25 @@ export function LinkedWordPicker({
           <LinkIcon className="size-3" />
           リンク中: {linkedHeadword ?? linkedWordId}
         </Badge>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          onClick={() => {
-            onUnlink();
-            setLinkedHeadword(undefined);
-          }}
-        >
-          <XIcon />
-          解除
-        </Button>
+        {disabledProp ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              onUnlink();
+              setLinkedHeadword(undefined);
+            }}
+          >
+            <XIcon />
+            解除
+          </Button>
+        )}
       </div>
     );
   }
 
-  const disabled = term.trim().length === 0;
+  const disabled = disabledProp || term.trim().length === 0;
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>

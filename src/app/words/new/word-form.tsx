@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 import type { OccurrencePreset } from "@/lib/occurrences";
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import { createWord } from "./actions";
 import { updateWord } from "../[id]/edit/actions";
@@ -25,12 +26,15 @@ import { MeaningsFields } from "./_components/meanings-fields";
 import { MemosFields } from "./_components/memos-fields";
 import { OccurrencesFields } from "./_components/occurrences-fields";
 import { RelatedWordsFields } from "./_components/related-words-fields";
+import { WordFormPermissionsProvider } from "./_components/word-form-permissions-context";
 
 type WordFormProps = {
   mode: "create" | "edit";
   defaultValues: WordFormValues;
   occurrencePresets: OccurrencePreset[];
   wordId?: string;
+  wordOwnerId?: string;
+  isCurrentUserSystem?: boolean;
   linkedHeadwords?: Record<string, string>;
 };
 
@@ -39,8 +43,11 @@ export function WordForm({
   defaultValues,
   occurrencePresets,
   wordId,
+  wordOwnerId,
+  isCurrentUserSystem = false,
   linkedHeadwords,
 }: WordFormProps) {
+  const headwordReadOnly = wordOwnerId === SYSTEM_USER_ID && !isCurrentUserSystem;
   const router = useRouter();
   const form = useForm<WordFormValues>({
     resolver: zodResolver(wordFormSchema),
@@ -61,8 +68,7 @@ export function WordForm({
   const backHref = isEdit && wordId ? `/words/${wordId}` : "/dashboard";
 
   async function onSubmit(values: WordFormValues) {
-    const result =
-      isEdit && wordId ? await updateWord(wordId, values) : await createWord(values);
+    const result = isEdit && wordId ? await updateWord(wordId, values) : await createWord(values);
     if (result.ok) {
       toast.success(isEdit ? "更新しました" : "登録しました");
       router.push(`/words/${result.wordId}`);
@@ -95,50 +101,52 @@ export function WordForm({
       </header>
 
       <Form {...form}>
-        <LinkedHeadwordsProvider value={linkedHeadwords ?? {}}>
-          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
-            <Accordion
-              multiple
-              defaultValue={["basic", "meanings", "examples", "related", "memos", "occurrences"]}
-              className="w-full"
-            >
-              <FormSection value="basic" title="基本" required>
-                <BasicFields />
-              </FormSection>
-              <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
-                <MeaningsFields />
-              </FormSection>
-              <FormSection value="examples" title="例文" count={examples?.length ?? 0}>
-                <ExamplesFields />
-              </FormSection>
-              <FormSection value="related" title="関連語" count={relatedWords?.length ?? 0}>
-                <RelatedWordsFields />
-              </FormSection>
-              <FormSection value="memos" title="メモ" count={memos?.length ?? 0}>
-                <MemosFields />
-              </FormSection>
-              <FormSection value="occurrences" title="掲載箇所" count={occurrences?.length ?? 0}>
-                <OccurrencesFields presets={occurrencePresets} />
-              </FormSection>
-            </Accordion>
+        <WordFormPermissionsProvider value={{ isCurrentUserSystem }}>
+          <LinkedHeadwordsProvider value={linkedHeadwords ?? {}}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
+              <Accordion
+                multiple
+                defaultValue={["basic", "meanings", "examples", "related", "memos", "occurrences"]}
+                className="w-full"
+              >
+                <FormSection value="basic" title="基本" required>
+                  <BasicFields readOnly={headwordReadOnly} />
+                </FormSection>
+                <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
+                  <MeaningsFields />
+                </FormSection>
+                <FormSection value="examples" title="例文" count={examples?.length ?? 0}>
+                  <ExamplesFields />
+                </FormSection>
+                <FormSection value="related" title="関連語" count={relatedWords?.length ?? 0}>
+                  <RelatedWordsFields />
+                </FormSection>
+                <FormSection value="memos" title="メモ" count={memos?.length ?? 0}>
+                  <MemosFields />
+                </FormSection>
+                <FormSection value="occurrences" title="掲載箇所" count={occurrences?.length ?? 0}>
+                  <OccurrencesFields presets={occurrencePresets} />
+                </FormSection>
+              </Accordion>
 
-            <div
-              className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 fixed inset-x-0 bottom-0 z-10 border-t p-3 backdrop-blur"
-              style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
-            >
-              <div className="mx-auto w-full max-w-sm md:max-w-md">
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="h-11 w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting ? submittingLabel : submitLabel}
-                </Button>
+              <div
+                className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 fixed inset-x-0 bottom-0 z-10 border-t p-3 backdrop-blur"
+                style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+              >
+                <div className="mx-auto w-full max-w-sm md:max-w-md">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="h-11 w-full"
+                    disabled={form.formState.isSubmitting}
+                  >
+                    {form.formState.isSubmitting ? submittingLabel : submitLabel}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
-        </LinkedHeadwordsProvider>
+            </form>
+          </LinkedHeadwordsProvider>
+        </WordFormPermissionsProvider>
       </Form>
     </main>
   );

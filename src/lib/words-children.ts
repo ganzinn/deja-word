@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
 import type { Prisma } from "@/generated/prisma/client";
@@ -48,13 +49,64 @@ export async function createWordChildren(
   values: WordFormValues,
   allowed: ChildAllowedIds,
 ): Promise<void> {
+  const editorIsSystem = userId === SYSTEM_USER_ID;
+
   for (let i = 0; i < values.meanings.length; i++) {
     const m = values.meanings[i];
-    const texts = m.texts
-      .map((t) => t.text.trim())
-      .filter((t) => t.length > 0);
-    if (texts.length === 0) continue;
 
+    if (m.id && m.ownerId === SYSTEM_USER_ID && !editorIsSystem) {
+      await tx.meaning.update({
+        where: { id: m.id },
+        data: { sortOrder: i },
+        select: { id: true },
+      });
+      for (let j = 0; j < m.texts.length; j++) {
+        const t = m.texts[j];
+        const trimmed = t.text.trim();
+        if (trimmed.length === 0) continue;
+        if (t.id && t.ownerId === SYSTEM_USER_ID) {
+          await tx.meaningText.update({
+            where: { id: t.id },
+            data: { sortOrder: j },
+            select: { id: true },
+          });
+        } else {
+          await tx.meaningText.create({
+            data: { meaningId: m.id, ownerId: userId, text: trimmed, sortOrder: j },
+            select: { id: true },
+          });
+        }
+      }
+      continue;
+    }
+
+    if (m.id && m.ownerId === userId) {
+      await tx.meaning.update({
+        where: { id: m.id },
+        data: {
+          partOfSpeech: nullable(m.partOfSpeech),
+          pronunciation: nullable(m.pronunciation),
+          note: nullable(m.note),
+          sortOrder: i,
+        },
+        select: { id: true },
+      });
+      const texts = m.texts.map((t) => t.text.trim()).filter((text) => text.length > 0);
+      if (texts.length > 0) {
+        await tx.meaningText.createMany({
+          data: texts.map((text, j) => ({
+            meaningId: m.id!,
+            ownerId: userId,
+            text,
+            sortOrder: j,
+          })),
+        });
+      }
+      continue;
+    }
+
+    const texts = m.texts.map((t) => t.text.trim()).filter((text) => text.length > 0);
+    if (texts.length === 0) continue;
     await tx.meaning.create({
       data: {
         wordId,
@@ -65,7 +117,7 @@ export async function createWordChildren(
         sortOrder: i,
         texts: {
           createMany: {
-            data: texts.map((text, j) => ({ text, sortOrder: j })),
+            data: texts.map((text, j) => ({ ownerId: userId, text, sortOrder: j })),
           },
         },
       },
@@ -73,9 +125,35 @@ export async function createWordChildren(
     });
   }
 
-  if (values.examples.length > 0) {
-    await tx.example.createMany({
-      data: values.examples.map((e, i) => ({
+  for (let i = 0; i < values.examples.length; i++) {
+    const e = values.examples[i];
+
+    if (e.id && e.ownerId === SYSTEM_USER_ID && !editorIsSystem) {
+      await tx.example.update({
+        where: { id: e.id },
+        data: { sortOrder: i },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    if (e.id && e.ownerId === userId) {
+      await tx.example.update({
+        where: { id: e.id },
+        data: {
+          kind: e.kind,
+          text: e.text.trim(),
+          meaning: nullable(e.meaning),
+          note: nullable(e.note),
+          sortOrder: i,
+        },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    await tx.example.create({
+      data: {
         wordId,
         ownerId: userId,
         kind: e.kind,
@@ -83,13 +161,45 @@ export async function createWordChildren(
         meaning: nullable(e.meaning),
         note: nullable(e.note),
         sortOrder: i,
-      })),
+      },
+      select: { id: true },
     });
   }
 
-  if (values.relatedWords.length > 0) {
-    await tx.relatedWord.createMany({
-      data: values.relatedWords.map((r, i) => ({
+  for (let i = 0; i < values.relatedWords.length; i++) {
+    const r = values.relatedWords[i];
+    const linkedWordId =
+      r.linkedWordId && allowed.linkedWordIds.has(r.linkedWordId) ? r.linkedWordId : null;
+
+    if (r.id && r.ownerId === SYSTEM_USER_ID && !editorIsSystem) {
+      await tx.relatedWord.update({
+        where: { id: r.id },
+        data: { sortOrder: i },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    if (r.id && r.ownerId === userId) {
+      await tx.relatedWord.update({
+        where: { id: r.id },
+        data: {
+          kind: r.kind ?? null,
+          term: r.term.trim(),
+          partOfSpeech: nullable(r.partOfSpeech),
+          pronunciation: nullable(r.pronunciation),
+          meaning: nullable(r.meaning),
+          note: nullable(r.note),
+          sortOrder: i,
+          linkedWordId,
+        },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    await tx.relatedWord.create({
+      data: {
         wordId,
         ownerId: userId,
         kind: r.kind ?? null,
@@ -99,26 +209,100 @@ export async function createWordChildren(
         meaning: nullable(r.meaning),
         note: nullable(r.note),
         sortOrder: i,
-        linkedWordId:
-          r.linkedWordId && allowed.linkedWordIds.has(r.linkedWordId) ? r.linkedWordId : null,
-      })),
+        linkedWordId,
+      },
+      select: { id: true },
     });
   }
 
-  if (values.memos.length > 0) {
-    await tx.memo.createMany({
-      data: values.memos.map((m, i) => ({
-        wordId,
-        ownerId: userId,
-        text: m.text.trim(),
-        sortOrder: i,
-      })),
+  for (let i = 0; i < values.memos.length; i++) {
+    const m = values.memos[i];
+
+    if (m.id && m.ownerId === SYSTEM_USER_ID && !editorIsSystem) {
+      await tx.memo.update({
+        where: { id: m.id },
+        data: { sortOrder: i },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    if (m.id && m.ownerId === userId) {
+      await tx.memo.update({
+        where: { id: m.id },
+        data: { text: m.text.trim(), sortOrder: i },
+        select: { id: true },
+      });
+      continue;
+    }
+
+    await tx.memo.create({
+      data: { wordId, ownerId: userId, text: m.text.trim(), sortOrder: i },
+      select: { id: true },
     });
   }
 
   const seenOccurrenceIds = new Set<string>();
   for (let i = 0; i < values.occurrences.length; i++) {
     const oc = values.occurrences[i];
+
+    if (oc.id && oc.ownerId === SYSTEM_USER_ID && !editorIsSystem) {
+      await tx.wordOccurrence.update({
+        where: { id: oc.id },
+        data: { sortOrder: i },
+        select: { id: true },
+      });
+      for (let j = 0; j < oc.details.length; j++) {
+        const d = oc.details[j];
+        const detailText = (d.detail ?? "").trim();
+        if (detailText.length === 0) continue;
+        if (d.id && d.ownerId === SYSTEM_USER_ID) {
+          await tx.occurrenceDetail.update({
+            where: { id: d.id },
+            data: { sortOrder: j },
+            select: { id: true },
+          });
+        } else {
+          await tx.occurrenceDetail.create({
+            data: {
+              wordOccurrenceId: oc.id,
+              ownerId: userId,
+              detail: detailText,
+              sortOrder: j,
+            },
+            select: { id: true },
+          });
+        }
+      }
+      continue;
+    }
+
+    if (oc.id && oc.ownerId === userId && editorIsSystem) {
+      await tx.wordOccurrence.update({
+        where: { id: oc.id },
+        data: {
+          sortOrder: i,
+          occurrenceNumber: oc.occurrenceNumber ?? null,
+        },
+        select: { id: true },
+      });
+      const details = oc.details.map((d) => (d.detail ?? "").trim()).filter((d) => d.length > 0);
+      if (details.length > 0) {
+        await tx.occurrenceDetail.createMany({
+          data: details.map((detail, di) => ({
+            wordOccurrenceId: oc.id!,
+            ownerId: userId,
+            detail,
+            sortOrder: di,
+          })),
+        });
+      }
+      continue;
+    }
+
+    if (oc.id && oc.ownerId === userId && !editorIsSystem) {
+      await tx.wordOccurrence.delete({ where: { id: oc.id } });
+    }
 
     let occurrenceId: string;
     if (oc.occurrenceId && allowed.presetOccurrenceIds.has(oc.occurrenceId)) {
@@ -154,6 +338,7 @@ export async function createWordChildren(
       await tx.occurrenceDetail.createMany({
         data: details.map((detail, di) => ({
           wordOccurrenceId: wordOccurrence.id,
+          ownerId: userId,
           detail,
           sortOrder: di,
         })),

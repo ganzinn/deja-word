@@ -107,8 +107,244 @@ describe("createWordForUser", () => {
   test("different users may reuse the same headword (unique is (ownerId, headword))", async () => {
     const userA = await createTestUser();
     const userB = await createTestUser();
-    await createWordForUser(userA.id, emptyForm("shared"));
-    await expect(createWordForUser(userB.id, emptyForm("shared"))).resolves.toBeDefined();
+    const wA = await createWordForUser(userA.id, emptyForm("shared"));
+    const wB = await createWordForUser(userB.id, emptyForm("shared"));
+    expect(wB).toBeDefined();
+
+    const rows = await prisma.word.findMany({
+      where: { headword: "shared" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, ownerId: true },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.id).sort()).toEqual([wA.id, wB.id].sort());
+    const owners = rows.map((r) => r.ownerId).sort();
+    expect(owners).toEqual([userA.id, userB.id].sort());
+  });
+
+  test("system register transfers existing single regular-user word; children stay with original owner", async () => {
+    const userA = await createTestUser();
+    const aWord = await createWordForUser(
+      userA.id,
+      emptyForm("apple", {
+        meanings: [
+          {
+            partOfSpeech: "n",
+            pronunciation: "",
+            texts: [{ text: "りんご (A)" }],
+            note: "",
+          },
+        ],
+        examples: [{ kind: "SENTENCE", text: "I ate an apple.", meaning: "", note: "" }],
+      }),
+    );
+
+    const created = await createWordForUser(
+      SYSTEM_USER_ID,
+      emptyForm("apple", {
+        meanings: [
+          {
+            partOfSpeech: "n",
+            pronunciation: "",
+            texts: [{ text: "りんご (system)" }],
+            note: "",
+          },
+        ],
+      }),
+    );
+
+    expect(created.id).toBe(aWord.id);
+
+    const word = await prisma.word.findUnique({
+      where: { id: aWord.id },
+      include: {
+        meanings: { include: { texts: true }, orderBy: { sortOrder: "asc" } },
+        examples: true,
+      },
+    });
+    expect(word).not.toBeNull();
+    expect(word!.ownerId).toBe(SYSTEM_USER_ID);
+
+    expect(word!.meanings).toHaveLength(2);
+    const ownersOfMeanings = word!.meanings.map((m) => m.ownerId).sort();
+    expect(ownersOfMeanings).toEqual([SYSTEM_USER_ID, userA.id].sort());
+
+    expect(word!.examples).toHaveLength(1);
+    expect(word!.examples[0].ownerId).toBe(userA.id);
+
+    const all = await prisma.word.findMany({ where: { headword: "apple" } });
+    expect(all).toHaveLength(1);
+  });
+
+  test("system register absorbs all regular-user rows when multiple users hold the headword", async () => {
+    const userA = await createTestUser();
+    const userB = await createTestUser();
+    await createWordForUser(
+      userA.id,
+      emptyForm("shared", {
+        meanings: [
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], note: "" },
+        ],
+      }),
+    );
+    await createWordForUser(
+      userB.id,
+      emptyForm("shared", {
+        meanings: [
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], note: "" },
+        ],
+      }),
+    );
+
+    await createWordForUser(
+      SYSTEM_USER_ID,
+      emptyForm("shared", {
+        meanings: [
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 system" }], note: "" },
+        ],
+      }),
+    );
+
+    const rows = await prisma.word.findMany({
+      where: { headword: "shared" },
+      include: { meanings: { include: { texts: true } } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].ownerId).toBe(SYSTEM_USER_ID);
+
+    const meaningOwners = rows[0].meanings.map((m) => m.ownerId).sort();
+    expect(meaningOwners).toEqual([SYSTEM_USER_ID, userA.id, userB.id].sort());
+
+    const allTexts = rows[0].meanings.flatMap((m) => m.texts.map((t) => t.text)).sort();
+    expect(allTexts).toEqual(["意味 A", "意味 B", "意味 system"].sort());
+  });
+
+  test("system register throws DuplicateHeadwordError when (system, X) already exists", async () => {
+    const userA = await createTestUser();
+    const aWord = await createWordRow(userA.id, "dup");
+    await prisma.word.create({
+      data: { ownerId: SYSTEM_USER_ID, headword: "dup" },
+      select: { id: true },
+    });
+
+    await expect(
+      createWordForUser(SYSTEM_USER_ID, emptyForm("dup")),
+    ).rejects.toBeInstanceOf(DuplicateHeadwordError);
+
+    const aStill = await prisma.word.findUnique({ where: { id: aWord.id } });
+    expect(aStill).not.toBeNull();
+    expect(aStill!.ownerId).toBe(userA.id);
+  });
+
+  test("system register dedups WordOccurrence when multiple regular users reference the same system occurrence", async () => {
+    const userA = await createTestUser();
+    const userB = await createTestUser();
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+
+    await createWordForUser(
+      userA.id,
+      emptyForm("shared", {
+        occurrences: [
+          {
+            occurrenceId: sysOcc.id,
+            ownerId: "",
+            occurrenceOwnerId: SYSTEM_USER_ID,
+            location: "ターゲット1900",
+            occurrenceNumber: 11,
+            details: [{ detail: "A の詳細" }],
+          },
+        ],
+      }),
+    );
+    await createWordForUser(
+      userB.id,
+      emptyForm("shared", {
+        occurrences: [
+          {
+            occurrenceId: sysOcc.id,
+            ownerId: "",
+            occurrenceOwnerId: SYSTEM_USER_ID,
+            location: "ターゲット1900",
+            occurrenceNumber: 12,
+            details: [{ detail: "B の詳細" }],
+          },
+        ],
+      }),
+    );
+
+    await createWordForUser(SYSTEM_USER_ID, emptyForm("shared"));
+
+    const word = await prisma.word.findFirst({
+      where: { headword: "shared" },
+      include: {
+        wordOccurrences: { include: { details: true } },
+      },
+    });
+    expect(word).not.toBeNull();
+    expect(word!.ownerId).toBe(SYSTEM_USER_ID);
+    expect(word!.wordOccurrences).toHaveLength(1);
+    const details = word!.wordOccurrences[0].details.map((d) => d.detail).sort();
+    expect(details).toEqual(["A の詳細", "B の詳細"].sort());
+  });
+
+  test("system register repoints linkedWordId from other words to the surviving primary id", async () => {
+    const userA = await createTestUser();
+    const userB = await createTestUser();
+
+    const aApple = await createWordForUser(userA.id, emptyForm("apple"));
+    const bApple = await createWordForUser(userB.id, emptyForm("apple"));
+
+    await createWordForUser(
+      userA.id,
+      emptyForm("fruit-a", {
+        relatedWords: [
+          {
+            kind: "SYNONYM",
+            term: "apple-syn-a",
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            note: "",
+            linkedWordId: aApple.id,
+          },
+        ],
+      }),
+    );
+    await createWordForUser(
+      userB.id,
+      emptyForm("fruit-b", {
+        relatedWords: [
+          {
+            kind: "SYNONYM",
+            term: "apple-syn-b",
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            note: "",
+            linkedWordId: bApple.id,
+          },
+        ],
+      }),
+    );
+
+    await createWordForUser(SYSTEM_USER_ID, emptyForm("apple"));
+
+    const surviving = await prisma.word.findFirst({
+      where: { headword: "apple" },
+      select: { id: true, ownerId: true },
+    });
+    expect(surviving).not.toBeNull();
+    expect(surviving!.ownerId).toBe(SYSTEM_USER_ID);
+    expect(surviving!.id).toBe(aApple.id);
+
+    const relatedRows = await prisma.relatedWord.findMany({
+      where: { term: { in: ["apple-syn-a", "apple-syn-b"] } },
+      select: { term: true, linkedWordId: true },
+    });
+    expect(relatedRows).toHaveLength(2);
+    for (const r of relatedRows) {
+      expect(r.linkedWordId).toBe(surviving!.id);
+    }
   });
 
   test("duplicate (occurrenceId, occurrenceNumber) throws DuplicateOccurrenceNumberError — validates meta.modelName='WordOccurrence' contract", async () => {

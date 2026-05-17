@@ -111,19 +111,28 @@ function WordRow({ item }: { item: WordListItem }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold break-words">{item.headword}</span>
-        {item.partOfSpeech ? (
-          <Badge variant="outline">{commonPartOfSpeechFullLabel(item.partOfSpeech)}</Badge>
-        ) : null}
         {item.isSystem ? (
           <Badge variant="secondary" className="ml-auto">
             共通
           </Badge>
         ) : null}
       </div>
-      {item.meaningPreview ? (
-        <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-wrap">
-          {item.meaningPreview}
-        </p>
+      {item.partOfSpeech || item.meaningTexts.length > 0 ? (
+        <div className="flex items-start gap-2">
+          {item.partOfSpeech ? (
+            <Badge variant="outline" className="shrink-0">
+              {commonPartOfSpeechFullLabel(item.partOfSpeech)}
+            </Badge>
+          ) : null}
+          {item.meaningTexts.length > 0 ? (
+            <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-wrap">
+              <span className="text-red-600">{item.meaningTexts[0]}</span>
+              {item.meaningTexts.length > 1
+                ? `; ${item.meaningTexts.slice(1).join("; ")}`
+                : null}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </Link>
   );

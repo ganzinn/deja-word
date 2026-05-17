@@ -11,7 +11,7 @@ export type WordListItem = {
   ownerId: string;
   isSystem: boolean;
   partOfSpeech: string | null;
-  meaningPreview: string | null;
+  meaningTexts: string[];
 };
 
 export type WordListParams = {
@@ -55,7 +55,6 @@ export async function listWordsForUser(
             partOfSpeech: true,
             texts: {
               orderBy: { sortOrder: "asc" },
-              take: 1,
               select: { text: true },
             },
           },
@@ -70,14 +69,13 @@ export async function listWordsForUser(
 
   const items: WordListItem[] = rows.map((row) => {
     const firstMeaning = row.meanings[0];
-    const firstText = firstMeaning?.texts[0];
     return {
       id: row.id,
       headword: row.headword,
       ownerId: row.ownerId,
       isSystem: row.ownerId === SYSTEM_USER_ID,
       partOfSpeech: firstMeaning?.partOfSpeech ?? null,
-      meaningPreview: firstText?.text ?? null,
+      meaningTexts: firstMeaning?.texts.map((t) => t.text) ?? [],
     };
   });
 

@@ -84,12 +84,12 @@ describe("listWordsForUser", () => {
     expect(byRecent.items.map((i) => i.id)).toEqual([cId, bId, aId]);
   });
 
-  test("returns meaningPreview from the first text of the first meaning", async () => {
+  test("returns meaningTexts from all texts of the first meaning", async () => {
     const user = await createTestUser();
     const w = await createWordForUser(user.id, form("hello"));
     const result = await listWordsForUser(user.id, { sort: "headword", skip: 0, take: 50 });
     const item = result.items.find((i) => i.id === w.id);
-    expect(item?.meaningPreview).toBe("意味:hello");
+    expect(item?.meaningTexts).toEqual(["意味:hello"]);
     expect(item?.partOfSpeech).toBe("n");
   });
 });

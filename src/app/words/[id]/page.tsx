@@ -71,8 +71,8 @@ export default async function WordDetailPage({ params }: PageProps) {
         {word.meanings.length > 0 ? (
           <Section title="意味">
             <div className="flex flex-col gap-3">
-              {word.meanings.map((m) => (
-                <MeaningCard key={m.id} meaning={m} />
+              {word.meanings.map((m, i) => (
+                <MeaningCard key={m.id} meaning={m} isFirst={i === 0} />
               ))}
             </div>
           </Section>
@@ -149,7 +149,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function MeaningCard({ meaning }: { meaning: WordDetail["meanings"][number] }) {
+function MeaningCard({
+  meaning,
+  isFirst,
+}: {
+  meaning: WordDetail["meanings"][number];
+  isFirst: boolean;
+}) {
   const partOfSpeech = nonEmpty(meaning.partOfSpeech);
   const pronunciation = nonEmpty(meaning.pronunciation);
   const note = nonEmpty(meaning.note);
@@ -166,11 +172,18 @@ function MeaningCard({ meaning }: { meaning: WordDetail["meanings"][number] }) {
         </div>
       ) : null}
       {meaning.texts.length === 1 ? (
-        <p className="text-sm whitespace-pre-wrap">{meaning.texts[0].text}</p>
+        <p
+          className={`text-sm whitespace-pre-wrap${isFirst ? " text-red-600" : ""}`}
+        >
+          {meaning.texts[0].text}
+        </p>
       ) : meaning.texts.length > 1 ? (
         <ul className="ml-4 list-disc text-sm">
-          {meaning.texts.map((t) => (
-            <li key={t.id} className="whitespace-pre-wrap">
+          {meaning.texts.map((t, i) => (
+            <li
+              key={t.id}
+              className={`whitespace-pre-wrap${isFirst && i === 0 ? " text-red-600" : ""}`}
+            >
               {t.text}
             </li>
           ))}

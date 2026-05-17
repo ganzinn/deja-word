@@ -48,17 +48,28 @@ export async function createWordChildren(
   values: WordFormValues,
   allowed: ChildAllowedIds,
 ): Promise<void> {
-  if (values.meanings.length > 0) {
-    await tx.meaning.createMany({
-      data: values.meanings.map((m, i) => ({
+  for (let i = 0; i < values.meanings.length; i++) {
+    const m = values.meanings[i];
+    const texts = m.texts
+      .map((t) => t.text.trim())
+      .filter((t) => t.length > 0);
+    if (texts.length === 0) continue;
+
+    await tx.meaning.create({
+      data: {
         wordId,
         ownerId: userId,
         partOfSpeech: nullable(m.partOfSpeech),
         pronunciation: nullable(m.pronunciation),
-        text: m.text.trim(),
         note: nullable(m.note),
         sortOrder: i,
-      })),
+        texts: {
+          createMany: {
+            data: texts.map((text, j) => ({ text, sortOrder: j })),
+          },
+        },
+      },
+      select: { id: true },
     });
   }
 

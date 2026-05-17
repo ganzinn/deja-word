@@ -64,20 +64,9 @@ export default async function WordDetailPage({ params }: PageProps) {
 
         {word.meanings.length > 0 ? (
           <Section title="意味">
-            <div className="flex flex-col gap-5">
-              {groupMeaningsByPartOfSpeech(word.meanings).map((group) => (
-                <div key={group.partOfSpeech ?? "__unspecified"} className="flex flex-col gap-2">
-                  {group.partOfSpeech ? (
-                    <h4 className="text-muted-foreground text-sm font-medium">
-                      {commonPartOfSpeechFullLabel(group.partOfSpeech)}
-                    </h4>
-                  ) : null}
-                  <div className="flex flex-col gap-3">
-                    {group.meanings.map((m) => (
-                      <MeaningCard key={m.id} meaning={m} />
-                    ))}
-                  </div>
-                </div>
+            <div className="flex flex-col gap-3">
+              {word.meanings.map((m) => (
+                <MeaningCard key={m.id} meaning={m} />
               ))}
             </div>
           </Section>
@@ -154,45 +143,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-type MeaningGroup = {
-  partOfSpeech: string | null;
-  meanings: WordDetail["meanings"];
-};
-
-function groupMeaningsByPartOfSpeech(meanings: WordDetail["meanings"]): MeaningGroup[] {
-  const buckets = new Map<string, WordDetail["meanings"][number][]>();
-  const unspecified: WordDetail["meanings"][number][] = [];
-
-  for (const m of meanings) {
-    const key = nonEmpty(m.partOfSpeech);
-    if (key === null) {
-      unspecified.push(m);
-      continue;
-    }
-    const existing = buckets.get(key);
-    if (existing) existing.push(m);
-    else buckets.set(key, [m]);
-  }
-
-  const groups: MeaningGroup[] = [];
-  for (const [partOfSpeech, items] of buckets) {
-    groups.push({ partOfSpeech, meanings: items });
-  }
-  if (unspecified.length > 0) {
-    groups.push({ partOfSpeech: null, meanings: unspecified });
-  }
-  return groups;
-}
-
 function MeaningCard({ meaning }: { meaning: WordDetail["meanings"][number] }) {
+  const partOfSpeech = nonEmpty(meaning.partOfSpeech);
   const pronunciation = nonEmpty(meaning.pronunciation);
   const note = nonEmpty(meaning.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {pronunciation ? (
-        <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+      {partOfSpeech || pronunciation ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {partOfSpeech ? (
+            <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
+          ) : null}
+          {pronunciation ? (
+            <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+          ) : null}
+        </div>
       ) : null}
-      <p className="text-sm whitespace-pre-wrap">{meaning.text}</p>
+      {meaning.texts.length === 1 ? (
+        <p className="text-sm whitespace-pre-wrap">{meaning.texts[0].text}</p>
+      ) : meaning.texts.length > 1 ? (
+        <ul className="ml-4 list-disc text-sm">
+          {meaning.texts.map((t) => (
+            <li key={t.id} className="whitespace-pre-wrap">
+              {t.text}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {note ? <Field label="補足">{note}</Field> : null}
     </div>
   );

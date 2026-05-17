@@ -116,16 +116,28 @@ model Meaning {
   ownerId       String  @map("owner_id")
   partOfSpeech  String? @map("part_of_speech")
   pronunciation String?
-  text          String
   note          String?
   sortOrder     Int     @default(0) @map("sort_order")
 
-  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  texts MeaningText[]
 
   @@index([wordId])
   @@index([ownerId])
   @@map("meaning")
+}
+
+model MeaningText {
+  id        String @id @default(cuid())
+  meaningId String @map("meaning_id")
+  text      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  meaning Meaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
+  @@index([meaningId])
+  @@map("meaning_text")
 }
 
 model Example {

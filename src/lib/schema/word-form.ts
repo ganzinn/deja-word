@@ -8,7 +8,13 @@ import type { WordDetail } from "@/lib/words-detail";
 const meaningSchema = z.object({
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
   pronunciation: z.string().trim().optional().or(z.literal("")),
-  text: z.string().trim().min(1, "意味を入力してください"),
+  texts: z
+    .array(
+      z.object({
+        text: z.string().trim().min(1, "意味を入力してください"),
+      }),
+    )
+    .min(1, "意味を 1 件以上入力してください"),
   note: z.string().trim().optional().or(z.literal("")),
 });
 
@@ -63,7 +69,7 @@ export type OccurrenceValue = z.infer<typeof occurrenceSchema>;
 export const emptyMeaning: MeaningValue = {
   partOfSpeech: "",
   pronunciation: "",
-  text: "",
+  texts: [{ text: "" }],
   note: "",
 };
 
@@ -116,7 +122,7 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
     meanings: word.meanings.map((m) => ({
       partOfSpeech: m.partOfSpeech ?? "",
       pronunciation: m.pronunciation ?? "",
-      text: m.text,
+      texts: m.texts.length > 0 ? m.texts.map((t) => ({ text: t.text })) : [{ text: "" }],
       note: m.note ?? "",
     })),
     examples: word.examples.map((e) => ({

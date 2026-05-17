@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2Icon, PlusIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -80,21 +80,7 @@ export function MeaningsFields() {
             />
           </CollapsibleField>
 
-          <FormField
-            control={form.control}
-            name={`meanings.${index}.text`}
-            render={({ field: f }) => (
-              <FormItem>
-                <FormLabel>
-                  意味<span className="text-destructive ml-1">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Textarea rows={2} placeholder="例: 短命の、つかの間の" {...f} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <MeaningTextList meaningIndex={index} />
 
           <FormField
             control={form.control}
@@ -113,6 +99,60 @@ export function MeaningsFields() {
       ))}
 
       <Button type="button" variant="outline" size="sm" onClick={() => append(emptyMeaning)}>
+        <PlusIcon />
+        意味を追加
+      </Button>
+    </div>
+  );
+}
+
+function MeaningTextList({ meaningIndex }: { meaningIndex: number }) {
+  const form = useFormContext<WordFormValues>();
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: `meanings.${meaningIndex}.texts`,
+  });
+
+  return (
+    <div className="flex flex-col gap-2">
+      <FormLabel>
+        意味<span className="text-destructive ml-1">*</span>
+      </FormLabel>
+      {fields.map((field, textIndex) => (
+        <FormField
+          key={field.id}
+          control={form.control}
+          name={`meanings.${meaningIndex}.texts.${textIndex}.text`}
+          render={({ field: f }) => (
+            <FormItem>
+              <div className="flex items-start gap-2">
+                <FormControl>
+                  <Textarea rows={2} placeholder="例: 短命の、つかの間の" {...f} />
+                </FormControl>
+                {fields.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="この意味テキストを削除"
+                    onClick={() => remove(textIndex)}
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        onClick={() => append({ text: "" })}
+      >
         <PlusIcon />
         意味を追加
       </Button>

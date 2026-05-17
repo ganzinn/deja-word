@@ -7,7 +7,10 @@ export async function getWordDetailForUser(userId: string, wordId: string) {
   return prisma.word.findFirst({
     where: { id: wordId, ownerId: { in: scopedOwnerIds(userId) } },
     include: {
-      meanings: { orderBy: { sortOrder: "asc" } },
+      meanings: {
+        orderBy: { sortOrder: "asc" },
+        include: { texts: { orderBy: { sortOrder: "asc" } } },
+      },
       examples: { orderBy: { sortOrder: "asc" } },
       relatedWords: {
         orderBy: { sortOrder: "asc" },

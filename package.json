@@ -16,6 +16,11 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:set-system-password": "tsx scripts/set-system-password.ts",
+    "test": "dotenv -e .env.test -- vitest run",
+    "test:watch": "dotenv -e .env.test -- vitest",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "dotenv -e .env.test -- vitest run --project integration",
+    "test:coverage": "dotenv -e .env.test -- vitest run --coverage",
     "vercel-build": "prisma migrate deploy && next build",
     "postinstall": "prisma generate"
   },
@@ -53,7 +58,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vercel/config": "^0.2.1",
+    "@vitest/coverage-v8": "^4.1.6",
     "dotenv": "^17.4.2",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "eslint-config-prettier": "^10.1.8",
@@ -62,7 +69,8 @@
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

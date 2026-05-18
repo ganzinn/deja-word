@@ -264,7 +264,11 @@ function OccurrenceCard({
           </span>
         ) : null}
       </p>
-      {wordOccurrence.details.length > 0 ? (
+      {wordOccurrence.details.length === 1 ? (
+        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+          {wordOccurrence.details[0].detail}
+        </p>
+      ) : wordOccurrence.details.length > 1 ? (
         <ul className="text-muted-foreground ml-4 list-disc text-sm">
           {wordOccurrence.details.map((d) => (
             <li key={d.id} className="whitespace-pre-wrap">

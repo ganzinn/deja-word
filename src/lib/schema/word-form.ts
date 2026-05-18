@@ -2,7 +2,6 @@ import { z } from "zod/v3";
 
 import { exampleKinds } from "@/lib/mock/example-kinds";
 import { relatedWordKinds } from "@/lib/mock/related-word-kinds";
-import { SYSTEM_USER_ID } from "@/lib/system-user";
 import type { WordDetail } from "@/lib/words-detail";
 
 const meaningTextSchema = z.object({
@@ -118,11 +117,15 @@ export const emptyOccurrence: OccurrenceValue = {
   details: [{ detail: "" }],
 };
 
-export function createPresetOccurrence(preset: { id: string; location: string }): OccurrenceValue {
+export function createPresetOccurrence(preset: {
+  id: string;
+  ownerId: string;
+  location: string;
+}): OccurrenceValue {
   return {
     occurrenceId: preset.id,
     ownerId: "",
-    occurrenceOwnerId: SYSTEM_USER_ID,
+    occurrenceOwnerId: preset.ownerId,
     location: preset.location,
     occurrenceNumber: null,
     details: [{ detail: "" }],

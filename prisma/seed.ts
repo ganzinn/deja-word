@@ -49,6 +49,24 @@ async function main() {
       .join(", ")}`,
   );
 
+  const allUsers = await prisma.user.findMany({ select: { id: true } });
+  const allSystemOccurrences = await prisma.occurrence.findMany({
+    where: { ownerId: SYSTEM_USER_ID },
+    select: { id: true },
+  });
+  if (allUsers.length > 0 && allSystemOccurrences.length > 0) {
+    const settings = allUsers.flatMap((u) =>
+      allSystemOccurrences.map((o) => ({ userId: u.id, occurrenceId: o.id })),
+    );
+    const result = await prisma.occurrencePresetSetting.createMany({
+      data: settings,
+      skipDuplicates: true,
+    });
+    console.log(
+      `Seeded ${result.count} occurrence preset setting(s) (skipped existing)`,
+    );
+  }
+
   await seedSystemWord({
     headword: "ubiquitous",
     meanings: [

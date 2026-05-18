@@ -23,9 +23,10 @@ model User {
   examples          Example[]
   relatedWords      RelatedWord[]
   memos             Memo[]
-  occurrences       Occurrence[]
-  wordOccurrences   WordOccurrence[]
-  occurrenceDetails OccurrenceDetail[]
+  occurrences              Occurrence[]
+  wordOccurrences          WordOccurrence[]
+  occurrenceDetails        OccurrenceDetail[]
+  occurrencePresetSettings OccurrencePresetSetting[]
 
   @@unique([email])
   @@map("user")
@@ -207,12 +208,26 @@ model Occurrence {
   location  String
   sortOrder Int    @default(0) @map("sort_order")
 
-  owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  wordLinks WordOccurrence[]
+  owner          User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  wordLinks      WordOccurrence[]
+  presetSettings OccurrencePresetSetting[]
 
   @@unique([ownerId, location])
   @@index([ownerId])
   @@map("occurrence")
+}
+
+model OccurrencePresetSetting {
+  userId       String @map("user_id")
+  occurrenceId String @map("occurrence_id")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, occurrenceId])
+  @@index([userId])
+  @@index([occurrenceId])
+  @@map("occurrence_preset_setting")
 }
 
 model WordOccurrence {

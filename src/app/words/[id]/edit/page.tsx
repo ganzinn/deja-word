@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getSystemOccurrencePresets } from "@/lib/occurrences";
+import { getOccurrencePresetsForUser } from "@/lib/occurrences";
 import { wordDetailToFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
@@ -22,7 +22,7 @@ export default async function EditWordPage({ params }: PageProps) {
   if (!word) notFound();
   if (word.ownerId !== session.user.id && word.ownerId !== SYSTEM_USER_ID) notFound();
 
-  const occurrencePresets = await getSystemOccurrencePresets();
+  const occurrencePresets = await getOccurrencePresetsForUser(session.user.id);
   const defaultValues = wordDetailToFormValues(word);
   const linkedHeadwords = Object.fromEntries(
     word.relatedWords

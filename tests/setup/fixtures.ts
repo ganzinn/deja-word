@@ -5,6 +5,18 @@ import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 export const SYSTEM_OCCURRENCE_LOCATIONS = ["ターゲット1900", "システム英単語"];
 
+async function seedOccurrencePresetForUser(userId: string) {
+  const systemOccurrences = await prisma.occurrence.findMany({
+    where: { ownerId: SYSTEM_USER_ID },
+    select: { id: true },
+  });
+  if (systemOccurrences.length === 0) return;
+  await prisma.occurrencePresetSetting.createMany({
+    data: systemOccurrences.map((o) => ({ userId, occurrenceId: o.id })),
+    skipDuplicates: true,
+  });
+}
+
 export async function seedSystemFixtures() {
   await prisma.user.create({
     data: {
@@ -19,13 +31,14 @@ export async function seedSystemFixtures() {
       data: { ownerId: SYSTEM_USER_ID, location, sortOrder: i },
     });
   }
+  await seedOccurrencePresetForUser(SYSTEM_USER_ID);
 }
 
 export async function createTestUser(
   overrides: Partial<{ id: string; email: string; name: string }> = {},
 ) {
   const id = overrides.id ?? `u_${randomUUID()}`;
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       id,
       email: overrides.email ?? `${id}@test.local`,
@@ -33,6 +46,8 @@ export async function createTestUser(
       emailVerified: true,
     },
   });
+  await seedOccurrencePresetForUser(user.id);
+  return user;
 }
 
 export async function createWordRow(ownerId: string, headword: string) {
@@ -42,11 +57,23 @@ export async function createWordRow(ownerId: string, headword: string) {
   });
 }
 
-export async function createOccurrenceRow(ownerId: string, location: string, sortOrder = 0) {
-  return prisma.occurrence.create({
+export async function createOccurrenceRow(
+  ownerId: string,
+  location: string,
+  sortOrder = 0,
+  presetForUserIds?: string[],
+) {
+  const occurrence = await prisma.occurrence.create({
     data: { ownerId, location, sortOrder },
     select: { id: true },
   });
+  if (presetForUserIds && presetForUserIds.length > 0) {
+    await prisma.occurrencePresetSetting.createMany({
+      data: presetForUserIds.map((userId) => ({ userId, occurrenceId: occurrence.id })),
+      skipDuplicates: true,
+    });
+  }
+  return occurrence;
 }
 
 export async function getSystemOccurrence(location: string) {

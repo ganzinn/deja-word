@@ -109,13 +109,26 @@ describe("wordFormSchema", () => {
 });
 
 describe("createPresetOccurrence", () => {
-  test("sets occurrenceOwnerId to SYSTEM_USER_ID and carries through id+location", () => {
-    const preset = createPresetOccurrence({ id: "occ_1", location: "ターゲット1900" });
+  test("carries the preset ownerId into occurrenceOwnerId (system case)", () => {
+    const preset = createPresetOccurrence({
+      id: "occ_1",
+      ownerId: SYSTEM_USER_ID,
+      location: "ターゲット1900",
+    });
     expect(preset.occurrenceId).toBe("occ_1");
     expect(preset.occurrenceOwnerId).toBe(SYSTEM_USER_ID);
     expect(preset.location).toBe("ターゲット1900");
     expect(preset.occurrenceNumber).toBeNull();
     expect(preset.details).toEqual([{ detail: "" }]);
+  });
+
+  test("carries the preset ownerId into occurrenceOwnerId (user-owned case)", () => {
+    const preset = createPresetOccurrence({
+      id: "occ_2",
+      ownerId: "user_xyz",
+      location: "自分のもの",
+    });
+    expect(preset.occurrenceOwnerId).toBe("user_xyz");
   });
 });
 

@@ -67,4 +67,20 @@ describe("updateOccurrenceForUser", () => {
       }),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
   });
+
+  test("rejects updating to a location already owned by system user", async () => {
+    const user = await createTestUser();
+    const own = await createOccurrenceRow(user.id, "私の出典", 0);
+    await expect(
+      updateOccurrenceForUser(user.id, own.id, {
+        location: "ターゲット1900",
+        isPreset: false,
+      }),
+    ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
+    const after = await prisma.occurrence.findUniqueOrThrow({
+      where: { id: own.id },
+      select: { location: true },
+    });
+    expect(after.location).toBe("私の出典");
+  });
 });

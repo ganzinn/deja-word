@@ -88,4 +88,15 @@ describe("createOccurrenceForUser", () => {
       createOccurrenceForUser(b.id, { location: "shared", isPreset: false }),
     ).resolves.toMatchObject({ id: expect.any(String) });
   });
+
+  test("rejects duplicate when system user already owns the location", async () => {
+    const user = await createTestUser();
+    await expect(
+      createOccurrenceForUser(user.id, { location: "ターゲット1900", isPreset: false }),
+    ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
+    const own = await prisma.occurrence.findFirst({
+      where: { ownerId: user.id, location: "ターゲット1900" },
+    });
+    expect(own).toBeNull();
+  });
 });

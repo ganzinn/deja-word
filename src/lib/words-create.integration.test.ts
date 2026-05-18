@@ -442,6 +442,38 @@ describe("createWordForUser", () => {
     expect(wo!.occurrence.id).not.toBe(strangerOcc.id);
   });
 
+  test("inline new occurrence with system-owned location auto-links to the system occurrence", async () => {
+    const user = await createTestUser();
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+    const beforeOwn = await prisma.occurrence.count({ where: { ownerId: user.id } });
+
+    const created = await createWordForUser(
+      user.id,
+      emptyForm("auto-link", {
+        occurrences: [
+          {
+            occurrenceId: "",
+            ownerId: "",
+            occurrenceOwnerId: "",
+            location: "ターゲット1900",
+            occurrenceNumber: null,
+            details: [],
+          },
+        ],
+      }),
+    );
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: created.id },
+      include: { occurrence: true },
+    });
+    expect(wo.occurrenceId).toBe(sysOcc.id);
+    expect(wo.occurrence.ownerId).toBe(SYSTEM_USER_ID);
+
+    const afterOwn = await prisma.occurrence.count({ where: { ownerId: user.id } });
+    expect(afterOwn).toBe(beforeOwn);
+  });
+
   test("preset occurrence within scope (system) is linked as-is", async () => {
     const user = await createTestUser();
     const sysOcc = await getSystemOccurrence("システム英単語");

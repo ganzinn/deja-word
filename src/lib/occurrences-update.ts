@@ -5,6 +5,7 @@ import {
   isDuplicateOccurrenceLocation,
 } from "@/lib/occurrences-create";
 import { prisma } from "@/lib/prisma";
+import { scopedOwnerIds } from "@/lib/system-user";
 
 export type OccurrenceUpdateInput = {
   location: string;
@@ -29,6 +30,16 @@ export async function updateOccurrenceForUser(
     select: { id: true },
   });
   if (!existing) throw new OccurrenceNotFoundError();
+
+  const conflict = await prisma.occurrence.findFirst({
+    where: {
+      ownerId: { in: scopedOwnerIds(userId) },
+      location,
+      NOT: { id: occurrenceId },
+    },
+    select: { id: true },
+  });
+  if (conflict) throw new DuplicateOccurrenceLocationError();
 
   try {
     await prisma.$transaction(async (tx) => {

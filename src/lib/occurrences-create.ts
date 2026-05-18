@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { scopedOwnerIds } from "@/lib/system-user";
 
 export type OccurrenceCreateInput = {
   location: string;
@@ -19,6 +20,11 @@ export async function createOccurrenceForUser(
   input: OccurrenceCreateInput,
 ): Promise<{ id: string }> {
   const location = input.location.trim();
+  const conflict = await prisma.occurrence.findFirst({
+    where: { ownerId: { in: scopedOwnerIds(userId) }, location },
+    select: { id: true },
+  });
+  if (conflict) throw new DuplicateOccurrenceLocationError();
   try {
     return await prisma.$transaction(async (tx) => {
       const occ = await tx.occurrence.create({

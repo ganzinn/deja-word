@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
 import type { Prisma } from "@/generated/prisma/client";
@@ -310,13 +310,19 @@ export async function createWordChildren(
     } else {
       const location = oc.location.trim();
       if (location === "") continue;
-      const upserted = await tx.occurrence.upsert({
-        where: { ownerId_location: { ownerId: userId, location } },
-        create: { ownerId: userId, location },
-        update: {},
+      const existing = await tx.occurrence.findFirst({
+        where: { ownerId: { in: scopedOwnerIds(userId) }, location },
         select: { id: true },
       });
-      occurrenceId = upserted.id;
+      if (existing) {
+        occurrenceId = existing.id;
+      } else {
+        const created = await tx.occurrence.create({
+          data: { ownerId: userId, location },
+          select: { id: true },
+        });
+        occurrenceId = created.id;
+      }
     }
 
     if (seenOccurrenceIds.has(occurrenceId)) continue;

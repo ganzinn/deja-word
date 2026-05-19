@@ -461,38 +461,45 @@ pnpm lint                     # スタイル
 
 純 LOC はほぼ不変、効果は「1 ファイル LOC 半減」「責務単一化」「`SYSTEM_USER_ID` の局所化」。
 
-## 将来の方向性: 「共通辞書 + 個人オーバーレイ」のスキーマ設計
+## 将来の方向性: side table 加算による進化
 
-本リファクタはスキーマ不変だが、複雑さの根源は **「同じ論理エンティティに対し『共通行』と『user オーバーライド行』を単一テーブルで混在させ、`ownerId = SYSTEM_USER_ID` というマジック文字列で区別している」** こと。フェーズ 4 完了後に判定が `policy/` に閉じても、以下の構造的痛点は残る:
+本リファクタはスキーマ不変。複雑さの根源は **「同じ論理エンティティに対し『共通行』と『user オーバーライド行』を単一テーブルで混在させ、`ownerId = SYSTEM_USER_ID` というマジック文字列で区別している」** ことだが、フェーズ 4 完了後にはこの判定が `policy/` 配下に閉じる。この状態を出発点とし、**将来要件は本体テーブルの分離ではなく side table（per-user × per-row の差分情報を別テーブルで持つ）の加算で対応する** スタンスを取る。
 
-- **A. pass-through 編集**: 共通行を編集すると、DB 上は user 所有の新規行を create する。「同じ概念に行が 2 つ」になり、create/update の分岐が混ざる
-- **B. マージ表示**: 表示時に common + user の優先規則がアプリ層に分散
-- **C. 「user が共通行を非表示にしたい」が表現不能**: 現状この要件は実装手段がない（隠れ要件）
+### 想定する将来要件と対応スケッチ
 
-### 中長期の理想形候補
+| 要件 | 対応 | 影響 |
+|---|---|---|
+| 全文検索（headword だけでなく意味文・例文も） | 既存テーブルに pg_trgm GIN index を貼り、検索クエリの `where` を拡張 | スキーマは index 追加のみ。既存ロジック不変 |
+| テスト出題機能（user が選んだセットから出題） | `StudySet { id, userId, name }` + `StudySetItem { studySetId, wordId }` を新規追加 | 既存テーブルに影響なし |
+| 進捗管理（SM-2 等の間隔反復） | `WordProgress { userId, wordId, easeFactor, nextReviewAt, ... }` を新規追加 | 同上 |
+| user が共通行を非表示にしたい（隠れ要件） | `WordHide { userId, wordId }`（必要なら `MeaningHide` も）を新規追加。検索の `where` に `NOT EXISTS` 1 行追加 | 本体テーブル不変、`policy/` に判定関数 1 つ追加 |
+| user 独自のお気に入り | `WordFavorite { userId, wordId, starredAt }` を新規追加 | 既存テーブルに影響なし |
 
-| 案 | 概要 | 痛点解消 | 移行コスト |
-|---|---|---|---|
-| 案 2: enum `scope` 列 + CHECK 制約 | `Meaning.scope = COMMON \| PERSONAL`、`ownerId` を nullable に | マジック文字列のみ消滅、A/B/C は残存 | 中 |
-| **案 3: テーブル分離（推奨）** | `Meaning`（共通専用）+ `PersonalMeaning { userId, wordId, overrides?, deleted, text, ... }`（個人専用、5 エンティティ全部） | A 完全解消 / B は JOIN で表現 / C は `deleted: bool` で表現可能 | 大 |
-| 案 5: Postgres RLS | `scope` 列 + DB ポリシーで自動フィルタ | B のみ部分解消 | 中（Prisma との相性悪い） |
-| 案 6: Word 完全共有 + `UserDictionaryEntry` | `Word.headword` global unique、参照テーブル経由 | C2（system/user word 並立マージ）が消える | 極大 |
+これらはすべて **本体テーブル（Word / Meaning 等）を一切変更しない加算的変更** で実現できる。`policy/` 配下に対応する判定関数（例: `isWordHiddenFor(userId, wordId)`）を足すだけで、既存の create/update/表示ロジックへの影響を局所化できる。
 
-### 案 3 が中長期の本命と判断する理由
+### side table 方式が成立する理由
 
-- pass-through の分岐コード（`words-children.ts` で各エンティティ ~30 行ずつ占有）が「`PersonalMeaning` を 1 行 create」だけになる
-- 「user が共通行を辞書から外す」が `deleted: boolean` で型表現でき、現状は手段がない要件を解放できる
-- system seed が common テーブルのみに書き込み、user 経路は Personal* にしか書けない → 権限が DB 構造で保証される（policy 層のチェックがほぼ不要に）
+- **共通行と user 行は構造ではなく "見え方" の差**: 共通行のテキスト自体を user ごとに書き換えるユースケースは想定されていない。user は「自分の意味を追加する」「共通の意味を辞書から外す」しかしないため、**user ごとの追加情報** が side table 1 個で完結する
+- **共通行の更新を全 user に即時反映できる**: side table はキー参照だけを持ち本体をコピーしないので、共通行が更新されても全 user の view が自動的に最新化される（テーブル分離方式が抱える "コピー行 stale 問題" が原理的に発生しない）
+- **検索クエリは現状の `scopedOwnerIds()` の延長で書ける**: pg の `NOT EXISTS` や anti-join は最適化が効きやすく、`(userId, wordId)` 複合 PK index がそのまま使える。UNION 起点の検索より素直
 
-### 案 3 への着手タイミング
+### 検討して採用しなかった案
 
-**今回のリファクタとは別プロジェクトとして** 実施することを推奨:
+| 案 | 理由 |
+|---|---|
+| 案 2: enum `scope` 列 + CHECK 制約 | マジック文字列が消えるだけで構造的痛点（pass-through、表示マージ）は残存。フェーズ 4 後の状態と効果がほぼ等しく、移行コストに見合わない |
+| 案 3: テーブル分離（`Meaning` + `PersonalMeaning` を分ける） | 検索を全文化したい場合に共通テーブルと Personal テーブルを UNION する必要があり、現状の単一テーブル + `scopedOwnerIds` より検索ロジックが悪化する。"user が共通行を非表示にしたい" は `WordHide` 1 テーブル追加で代替可能で、本案を起動する justification にならない。pass-through 解消のためだけにテーブル分離はトータルコスト過大 |
+| 案 5: Postgres RLS | Prisma との相性が悪く、テスト/seed 経路の取り回しが重くなる |
+| 案 6: `Word.headword` を global unique 化し参照テーブル経由 | 個人辞書アプリのメンタルモデル（user 間で単語は独立）と合わない。同一 headword を user ごとに別概念として登録したいケース（例: ラテン語 "ad hoc" と IT 用語 "ad hoc"）が表現できない |
 
-1. 動作・スキーマ不変という本リファクタの趣旨と相容れない
-2. 案 3 は本質的に「新機能（共通行の非表示）を入れるタイミング」と抱き合わせる方が筋がよい
-3. フェーズ 3-4 完了後の方が「common と personal の境界」が policy 層で明確化され、剥がし方が見えやすい
+### 残る構造的痛点と許容理由
 
-→ 本リファクタは現状維持で進め、フェーズ 4 完了後に「機能要件として『user が共通行を非表示にしたい』が出てきたら案 3 を起動する」スタンスを取る。それまでは `policy/` 層のテストカバレッジで安全網を確保する。
+フェーズ 4 完了後も以下は残るが、許容可能と判断する:
+
+- **pass-through 編集の概念**: 「共通行を編集すると user 行が create される」分岐は handler 内に残るが、`policy/` のヘルパー（`isPassThroughSystemRow`）と handler ごとの分離で局所化される。コード量としては全体で 100 行程度に収まる
+- **表示時のマージロジック**: 共通行と user 行を ownerId で区別して表示する処理は `lib/words-detail.ts` 等に残る。これも `scopedOwnerIds()` で読み出し範囲を統一できているため、複雑度は限定的
+
+これらを完全に消すには案 3 のテーブル分離が必要だが、上記の検索・テスト・進捗等の将来要件を見据えると **テーブル分離はトータルでむしろコストを増やす**。**本リファクタは現状維持で進め、その後の進化は side table 加算で行う** 方針を採る。
 
 ## 進捗記録
 

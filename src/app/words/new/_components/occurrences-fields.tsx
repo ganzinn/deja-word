@@ -159,28 +159,32 @@ function OccurrenceCard({ index, onRemove }: OccurrenceCardProps) {
         />
       )}
 
-      <FormField
-        control={form.control}
-        name={`occurrences.${index}.occurrenceNumber`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel className="text-muted-foreground text-xs">掲載番号</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                placeholder="例: 42"
-                disabled={isRowSystemOwned}
-                value={f.value ?? ""}
-                onChange={(e) => f.onChange(e.target.value === "" ? null : Number(e.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {isPresetSystemOwned && !isCurrentUserSystem ? null : (
+        <FormField
+          control={form.control}
+          name={`occurrences.${index}.occurrenceNumber`}
+          render={({ field: f }) => (
+            <FormItem>
+              <FormLabel className="text-muted-foreground text-xs">掲載番号</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  placeholder="例: 42"
+                  disabled={isRowSystemOwned}
+                  value={f.value ?? ""}
+                  onChange={(e) =>
+                    f.onChange(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       <DetailList occurrenceIndex={index} parentSystemOwned={isRowSystemOwned} />
     </div>

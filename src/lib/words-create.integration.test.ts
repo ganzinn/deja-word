@@ -347,11 +347,11 @@ describe("createWordForUser", () => {
     }
   });
 
-  test("duplicate (occurrenceId, occurrenceNumber) throws DuplicateOccurrenceNumberError — validates meta.modelName='WordOccurrence' contract", async () => {
+  test("regular user supplied occurrenceNumber on a system Occurrence is silently nulled", async () => {
     const user = await createTestUser();
     const sysOcc = await getSystemOccurrence("ターゲット1900");
 
-    await createWordForUser(
+    const created = await createWordForUser(
       user.id,
       emptyForm("first", {
         occurrences: [
@@ -367,10 +367,35 @@ describe("createWordForUser", () => {
       }),
     );
 
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: created.id },
+    });
+    expect(wo.occurrenceNumber).toBeNull();
+  });
+
+  test("system editor: duplicate (occurrenceId, occurrenceNumber) throws DuplicateOccurrenceNumberError — validates meta.modelName='WordOccurrence' contract", async () => {
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+
+    await createWordForUser(
+      SYSTEM_USER_ID,
+      emptyForm("first-sys", {
+        occurrences: [
+          {
+            occurrenceId: sysOcc.id,
+            ownerId: "",
+            occurrenceOwnerId: SYSTEM_USER_ID,
+            location: "ターゲット1900",
+            occurrenceNumber: 1,
+            details: [],
+          },
+        ],
+      }),
+    );
+
     await expect(
       createWordForUser(
-        user.id,
-        emptyForm("second", {
+        SYSTEM_USER_ID,
+        emptyForm("second-sys", {
           occurrences: [
             {
               occurrenceId: sysOcc.id,
@@ -384,6 +409,60 @@ describe("createWordForUser", () => {
         }),
       ),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceNumberError);
+  });
+
+  test("inline location matching a system Occurrence silently nulls occurrenceNumber for regular user", async () => {
+    const user = await createTestUser();
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+
+    const created = await createWordForUser(
+      user.id,
+      emptyForm("inline-sys-with-number", {
+        occurrences: [
+          {
+            occurrenceId: "",
+            ownerId: "",
+            occurrenceOwnerId: "",
+            location: "ターゲット1900",
+            occurrenceNumber: 5,
+            details: [],
+          },
+        ],
+      }),
+    );
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: created.id },
+    });
+    expect(wo.occurrenceId).toBe(sysOcc.id);
+    expect(wo.occurrenceNumber).toBeNull();
+  });
+
+  test("user-owned Occurrence keeps the regular user supplied occurrenceNumber", async () => {
+    const user = await createTestUser();
+
+    const created = await createWordForUser(
+      user.id,
+      emptyForm("own-occ-with-number", {
+        occurrences: [
+          {
+            occurrenceId: "",
+            ownerId: "",
+            occurrenceOwnerId: "",
+            location: "自分の出典",
+            occurrenceNumber: 3,
+            details: [],
+          },
+        ],
+      }),
+    );
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: created.id },
+      include: { occurrence: true },
+    });
+    expect(wo.occurrence.ownerId).toBe(user.id);
+    expect(wo.occurrenceNumber).toBe(3);
   });
 
   test("out-of-scope linkedWordId is silently nulled, not linked", async () => {
@@ -474,7 +553,7 @@ describe("createWordForUser", () => {
     expect(afterOwn).toBe(beforeOwn);
   });
 
-  test("preset occurrence within scope (system) is linked as-is", async () => {
+  test("preset occurrence within scope (system) is linked, with regular user number nulled", async () => {
     const user = await createTestUser();
     const sysOcc = await getSystemOccurrence("システム英単語");
     const created = await createWordForUser(
@@ -497,7 +576,7 @@ describe("createWordForUser", () => {
       include: { details: true },
     });
     expect(wo!.occurrenceId).toBe(sysOcc.id);
-    expect(wo!.occurrenceNumber).toBe(42);
+    expect(wo!.occurrenceNumber).toBeNull();
     expect(wo!.details).toHaveLength(1);
     expect(wo!.details[0].detail).toBe("テスト備考");
   });

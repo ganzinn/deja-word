@@ -305,28 +305,40 @@ export async function createWordChildren(
     }
 
     let occurrenceId: string;
+    let occurrenceOwnerIdResolved: string;
     if (oc.occurrenceId && allowed.presetOccurrenceIds.has(oc.occurrenceId)) {
       occurrenceId = oc.occurrenceId;
+      const presetRow = await tx.occurrence.findUniqueOrThrow({
+        where: { id: occurrenceId },
+        select: { ownerId: true },
+      });
+      occurrenceOwnerIdResolved = presetRow.ownerId;
     } else {
       const location = oc.location.trim();
       if (location === "") continue;
       const existing = await tx.occurrence.findFirst({
         where: { ownerId: { in: scopedOwnerIds(userId) }, location },
-        select: { id: true },
+        select: { id: true, ownerId: true },
       });
       if (existing) {
         occurrenceId = existing.id;
+        occurrenceOwnerIdResolved = existing.ownerId;
       } else {
         const created = await tx.occurrence.create({
           data: { ownerId: userId, location },
-          select: { id: true },
+          select: { id: true, ownerId: true },
         });
         occurrenceId = created.id;
+        occurrenceOwnerIdResolved = created.ownerId;
       }
     }
 
     if (seenOccurrenceIds.has(occurrenceId)) continue;
     seenOccurrenceIds.add(occurrenceId);
+
+    const occurrenceIsSystem = occurrenceOwnerIdResolved === SYSTEM_USER_ID;
+    const effectiveOccurrenceNumber =
+      occurrenceIsSystem && !editorIsSystem ? null : (oc.occurrenceNumber ?? null);
 
     const wordOccurrence = await tx.wordOccurrence.create({
       data: {
@@ -334,7 +346,7 @@ export async function createWordChildren(
         occurrenceId,
         ownerId: userId,
         sortOrder: i,
-        occurrenceNumber: oc.occurrenceNumber ?? null,
+        occurrenceNumber: effectiveOccurrenceNumber,
       },
       select: { id: true },
     });

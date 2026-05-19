@@ -8,7 +8,7 @@ import { createWordForUser, DuplicateHeadwordError } from "@/lib/words-create";
 import { getWordDetailForUser } from "@/lib/words-detail";
 import { ForbiddenUpdateError, updateWordForUser } from "@/lib/words-update";
 
-import { createTestUser } from "../../tests/setup/fixtures";
+import { createTestUser, getSystemOccurrence } from "../../tests/setup/fixtures";
 
 function minimalForm(headword: string): WordFormValues {
   return {
@@ -107,5 +107,86 @@ describe("updateWordForUser", () => {
     await expect(updateWordForUser(user.id, beta.id, form)).rejects.toBeInstanceOf(
       DuplicateHeadwordError,
     );
+  });
+
+  test("editing a regular-user-owned WordOccurrence linked to a system Occurrence silently nulls the occurrenceNumber", async () => {
+    const user = await createTestUser();
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+    const word = await createWordForUser(user.id, minimalForm("legacy-dirty"));
+    await prisma.wordOccurrence.create({
+      data: {
+        wordId: word.id,
+        occurrenceId: sysOcc.id,
+        ownerId: user.id,
+        occurrenceNumber: 42,
+        sortOrder: 0,
+      },
+    });
+
+    const detail = await getWordDetailForUser(user.id, word.id);
+    const form = wordDetailToFormValues(detail!);
+    await updateWordForUser(user.id, word.id, form);
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: word.id },
+    });
+    expect(wo.occurrenceId).toBe(sysOcc.id);
+    expect(wo.occurrenceNumber).toBeNull();
+  });
+
+  test("system editor can update occurrenceNumber on their own WordOccurrence linked to a system Occurrence", async () => {
+    const sysOcc = await getSystemOccurrence("ターゲット1900");
+    const word = await createWordForUser(SYSTEM_USER_ID, {
+      ...minimalForm("sys-numbered"),
+      occurrences: [
+        {
+          occurrenceId: sysOcc.id,
+          ownerId: "",
+          occurrenceOwnerId: SYSTEM_USER_ID,
+          location: "ターゲット1900",
+          occurrenceNumber: 10,
+          details: [],
+        },
+      ],
+    });
+
+    const detail = await getWordDetailForUser(SYSTEM_USER_ID, word.id);
+    const form = wordDetailToFormValues(detail!);
+    form.occurrences[0].occurrenceNumber = 99;
+    await updateWordForUser(SYSTEM_USER_ID, word.id, form);
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: word.id },
+    });
+    expect(wo.occurrenceNumber).toBe(99);
+  });
+
+  test("regular user keeps occurrenceNumber when WordOccurrence links to their own Occurrence", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(user.id, {
+      ...minimalForm("own-numbered"),
+      occurrences: [
+        {
+          occurrenceId: "",
+          ownerId: "",
+          occurrenceOwnerId: "",
+          location: "自分の出典",
+          occurrenceNumber: 3,
+          details: [],
+        },
+      ],
+    });
+
+    const detail = await getWordDetailForUser(user.id, word.id);
+    const form = wordDetailToFormValues(detail!);
+    form.occurrences[0].occurrenceNumber = 7;
+    await updateWordForUser(user.id, word.id, form);
+
+    const wo = await prisma.wordOccurrence.findFirstOrThrow({
+      where: { wordId: word.id },
+      include: { occurrence: true },
+    });
+    expect(wo.occurrence.ownerId).toBe(user.id);
+    expect(wo.occurrenceNumber).toBe(7);
   });
 });

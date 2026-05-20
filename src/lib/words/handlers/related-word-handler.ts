@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isPassThroughSystemRow } from "@/lib/words/policy/row-policy";
 
 import { nullable, type EditorContext, type Tx } from "./shared";
 
@@ -18,7 +18,7 @@ export async function upsertRelatedWords(
       r.linkedWordId && opts.allowedLinkedIds.has(r.linkedWordId) ? r.linkedWordId : null;
 
     // 共通行の pass-through: 並び順だけ更新（本文は触らない）
-    if (r.id && r.ownerId === SYSTEM_USER_ID && !ctx.isSystem) {
+    if (r.id && isPassThroughSystemRow(ctx, r.ownerId)) {
       await tx.relatedWord.update({
         where: { id: r.id },
         data: { sortOrder: i },

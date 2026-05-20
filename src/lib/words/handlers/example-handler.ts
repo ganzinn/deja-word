@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isPassThroughSystemRow } from "@/lib/words/policy/row-policy";
 
 import { nullable, type EditorContext, type Tx } from "./shared";
 
@@ -16,7 +16,7 @@ export async function upsertExamples(
     const e = rows[i];
 
     // 共通行の pass-through: 並び順だけ更新（本文は触らない）
-    if (e.id && e.ownerId === SYSTEM_USER_ID && !ctx.isSystem) {
+    if (e.id && isPassThroughSystemRow(ctx, e.ownerId)) {
       await tx.example.update({
         where: { id: e.id },
         data: { sortOrder: i },

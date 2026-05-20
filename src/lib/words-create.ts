@@ -33,19 +33,20 @@ export async function createWordForUser(
   values: WordFormValues,
 ): Promise<{ id: string }> {
   const headword = values.headword.trim();
+  const ctx = editorContextFor(userId);
   const allowedOwnerIds = scopedOwnerIds(userId);
   const allowed = await resolveChildAllowedIds(userId, values, allowedOwnerIds);
 
   try {
     return await prisma.$transaction(async (tx) => {
-      if (userId === SYSTEM_USER_ID) {
+      if (ctx.isSystem) {
         return await createWordAsSystem(tx, headword, values, allowed);
       }
       const word = await tx.word.create({
         data: { ownerId: userId, headword },
         select: { id: true },
       });
-      await writeWordChildren(tx, editorContextFor(userId), word.id, values, allowed);
+      await writeWordChildren(tx, ctx, word.id, values, allowed);
       return word;
     });
   } catch (e) {
@@ -59,6 +60,9 @@ export async function createWordForUser(
   }
 }
 
+// system principal として共通単語を生成/マージするパス。ここで参照する
+// SYSTEM_USER_ID は「行レベルの認可判定」ではなく「書き込む owner（データ値）」であり、
+// policy/ への集約対象外（フェーズ 4 の許容例外）。
 async function createWordAsSystem(
   tx: Prisma.TransactionClient,
   headword: string,

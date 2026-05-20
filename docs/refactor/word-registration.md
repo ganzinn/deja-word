@@ -532,5 +532,15 @@ pnpm lint                     # スタイル
   - `pnpm typecheck` / `lint` / `test:unit`（91/91、既存 75 + 新規 16）/ `test:integration`（76/76、動作不変）全 pass
   - DoD grep: `createWordChildren` の実体参照 0（index.ts のコメントのみ）、`words-children.ts` 不在、`@/lib/prisma` import は `allowed-ids.ts`（tx 外の事前読み取り）のみで 5 handler は tx 経由
   - 学び: `resolveChildAllowedIds` は `prisma.$transaction` の外で読み取る純粋な「許可集合解決」なので handler とは別ファイル（`allowed-ids.ts`）に分離。handler は DB 書き込みが本質で純関数化できないため、unit テストは tx モック方式を採用（フェーズ 2 の「純関数に切り出して node テスト」と同じく、リポジトリのテスト基盤に合わせた判断）。3 呼び出し箇所の DRY のため計画の「inline 展開」ではなく薄い `writeWordChildren` オーケストレータに集約した
-- [ ] フェーズ 4: 認可 Policy
+- [x] フェーズ 4: 認可 Policy（2026-05-20 完了）
+  - 新規 `src/lib/words/policy/`: `editor-context.ts`（`EditorContext` / `editorContextFor` を `handlers/shared.ts` から移設）/ `row-policy.ts`（`ForbiddenUpdateError` + `isSystemOwned` / `isPassThroughSystemRow` / `assertHeadwordChangeAllowed` / `assertRowsAllowed` / 純オーケストレータ `assertWordUpdateAllowed` + module-private `assertNoOrphanedDeletion`）/ `row-policy.unit.test.ts`（16 ケース）
+  - 新規 `src/lib/words/handlers/orphan-delete.ts`: `deleteOrphanedEditorOwned` を `words-update.ts` から移設（tx write helper を handler 群へ寄せ、UseCase をオーケストレーションに専念）
+  - 認可ロジックは純関数（prisma/tx 非依存）。DB 読み取りは `words-update.ts`（UseCase）が行い、取得済み行を `assertWordUpdateAllowed` に渡す方針。`assertFormRowsAllowed` / 見出し語チェック / 孤児チェックを 1:1 で policy へ移植
+  - `EditorContext` / `editorContextFor` を policy へ移設し、`handlers/shared.ts`（type re-export）/ `handlers/index.ts`（`@/lib/words/policy/editor-context` から re-export）で既存 import パスを温存。handler / UseCase 側の import 行は不変
+  - 5 handler の pass-through 判定 `ownerId === SYSTEM_USER_ID && !ctx.isSystem` を `isPassThroughSystemRow(ctx, ownerId)`、子行判定を `isSystemOwned(...)` に置換。`SYSTEM_USER_ID` import を全 handler + `shared.ts` から削除（`word-occurrence-handler` は `scopedOwnerIds` のみ残す）
+  - `ForbiddenUpdateError` は policy 定義 + `words-update.ts` から re-export（`error-map.ts` / actions テスト / integration テストが `@/lib/words-update` から import するため。class 同一性が保たれ `instanceof` 維持）
+  - `words-create.ts` は `const ctx = editorContextFor(userId)` を導入し編集者判定を `ctx.isSystem` に置換。`createWordAsSystem` 内の `SYSTEM_USER_ID` リテラル（system principal の owner 値）はコメント付きで残置（許容例外）
+  - `pnpm typecheck` / `lint` / `test:unit`（107/107、既存 91 + 新規 16）/ `test:integration`（76/76、動作不変）全 pass
+  - DoD: `src/lib/words-update.ts` 265 → 124 行（≤130 達成）。`grep SYSTEM_USER_ID src/lib/`（非テスト）は `system-user.ts`・`policy/`・読み取り mapper（words-list / words-search / occurrences-list / occurrences-detail / occurrence-preset-settings）・`words-create.ts`(createWordAsSystem) のみ。5 handler / `shared.ts` / `words-update.ts` からは消滅
+  - 学び: 行 owner（`ownerId`）はフォームスキーマ上 `string | undefined`（新規行は未設定）なので `isSystemOwned` / `isPassThroughSystemRow` の引数を `string | undefined` に広げ、旧 `=== SYSTEM_USER_ID` 比較の挙動（undefined は false）を保持。policy を純関数に保つため I/O（7 つの findMany）は UseCase に残し、≤130 達成のため write helper `deleteOrphanedEditorOwned` を handler へ移設した
 - [ ] フェーズ 5: *Fields 分割（任意）

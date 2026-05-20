@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isPassThroughSystemRow } from "@/lib/words/policy/row-policy";
 
 import type { EditorContext, Tx } from "./shared";
 
@@ -16,7 +16,7 @@ export async function upsertMemos(
     const m = rows[i];
 
     // 共通行の pass-through: 並び順だけ更新（本文は触らない）
-    if (m.id && m.ownerId === SYSTEM_USER_ID && !ctx.isSystem) {
+    if (m.id && isPassThroughSystemRow(ctx, m.ownerId)) {
       await tx.memo.update({
         where: { id: m.id },
         data: { sortOrder: i },

@@ -1,20 +1,19 @@
 "use client";
 
-import { PlusIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { emptyMeaning, type WordFormValues } from "@/lib/schema/word-form";
-import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import { CollapsibleField } from "./collapsible-field";
 import { PartOfSpeechPicker } from "./part-of-speech-picker";
-import { useIsCurrentUserSystem } from "./word-form-permissions-context";
+import { ArrayAddButton } from "./shared/array-add-button";
+import { ArrayRemoveButton } from "./shared/array-remove-button";
+import { FieldCard } from "./shared/field-card";
+import { useRowOwnership } from "./shared/use-row-ownership";
 
 export function MeaningsFields() {
   const form = useFormContext<WordFormValues>();
@@ -33,10 +32,7 @@ export function MeaningsFields() {
         <MeaningCard key={field.id} index={index} onRemove={() => remove(index)} />
       ))}
 
-      <Button type="button" variant="outline" size="sm" onClick={() => append(emptyMeaning)}>
-        <PlusIcon />
-        意味を追加
-      </Button>
+      <ArrayAddButton label="意味を追加" onClick={() => append(emptyMeaning)} />
     </div>
   );
 }
@@ -48,34 +44,15 @@ type MeaningCardProps = {
 
 function MeaningCard({ index, onRemove }: MeaningCardProps) {
   const form = useFormContext<WordFormValues>();
-  const ownerId = useWatch({ control: form.control, name: `meanings.${index}.ownerId` });
-  const isCurrentUserSystem = useIsCurrentUserSystem();
-  const isSystemOwned = ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
+  const { isSystemOwned } = useRowOwnership(`meanings.${index}.ownerId`);
 
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs font-medium">意味 {index + 1}</span>
-          {isSystemOwned ? (
-            <Badge variant="outline" className="text-[10px]">
-              共通
-            </Badge>
-          ) : null}
-        </div>
-        {isSystemOwned ? null : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="この意味を削除"
-            onClick={onRemove}
-          >
-            <Trash2Icon />
-          </Button>
-        )}
-      </div>
-
+    <FieldCard
+      title={`意味 ${index + 1}`}
+      isSystemOwned={isSystemOwned}
+      onRemove={onRemove}
+      removeAriaLabel="この意味を削除"
+    >
       <FormField
         control={form.control}
         name={`meanings.${index}.partOfSpeech`}
@@ -137,7 +114,7 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
           </FormItem>
         )}
       />
-    </div>
+    </FieldCard>
   );
 }
 
@@ -168,16 +145,12 @@ function MeaningTextList({
           onRemove={() => remove(textIndex)}
         />
       ))}
-      <Button
-        type="button"
+      <ArrayAddButton
+        label="意味を追加"
         variant="ghost"
-        size="sm"
         className="self-start"
         onClick={() => append(parentSystemOwned ? { ownerId: "", text: "" } : { text: "" })}
-      >
-        <PlusIcon />
-        意味を追加
-      </Button>
+      />
     </div>
   );
 }
@@ -194,12 +167,7 @@ function MeaningTextRow({
   onRemove: () => void;
 }) {
   const form = useFormContext<WordFormValues>();
-  const textOwnerId = useWatch({
-    control: form.control,
-    name: `meanings.${meaningIndex}.texts.${textIndex}.ownerId`,
-  });
-  const isCurrentUserSystem = useIsCurrentUserSystem();
-  const isSystemText = textOwnerId === SYSTEM_USER_ID && !isCurrentUserSystem;
+  const { isSystemOwned } = useRowOwnership(`meanings.${meaningIndex}.texts.${textIndex}.ownerId`);
 
   return (
     <FormField
@@ -212,20 +180,16 @@ function MeaningTextRow({
               <Textarea
                 rows={2}
                 placeholder="例: 短命の、つかの間の"
-                disabled={isSystemText}
+                disabled={isSystemOwned}
                 {...f}
               />
             </FormControl>
-            {canRemove && !isSystemText ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="この意味テキストを削除"
+            {canRemove && !isSystemOwned ? (
+              <ArrayRemoveButton
+                icon="x"
+                ariaLabel="この意味テキストを削除"
                 onClick={onRemove}
-              >
-                <XIcon />
-              </Button>
+              />
             ) : null}
           </div>
           <FormMessage />

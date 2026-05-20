@@ -1,19 +1,17 @@
 "use client";
 
-import { PlusIcon, Trash2Icon } from "lucide-react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 
 import { exampleKindLabels, exampleKinds } from "@/lib/mock/example-kinds";
 import { emptyExample, type WordFormValues } from "@/lib/schema/word-form";
-import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-import { useIsCurrentUserSystem } from "./word-form-permissions-context";
+import { ArrayAddButton } from "./shared/array-add-button";
+import { FieldCard } from "./shared/field-card";
+import { useRowOwnership } from "./shared/use-row-ownership";
 
 type ExampleCardProps = {
   index: number;
@@ -22,34 +20,15 @@ type ExampleCardProps = {
 
 function ExampleCard({ index, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
-  const ownerId = useWatch({ control: form.control, name: `examples.${index}.ownerId` });
-  const isCurrentUserSystem = useIsCurrentUserSystem();
-  const isSystemOwned = ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
+  const { isSystemOwned } = useRowOwnership(`examples.${index}.ownerId`);
 
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs font-medium">例文 {index + 1}</span>
-          {isSystemOwned ? (
-            <Badge variant="outline" className="text-[10px]">
-              共通
-            </Badge>
-          ) : null}
-        </div>
-        {isSystemOwned ? null : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="この例文を削除"
-            onClick={onRemove}
-          >
-            <Trash2Icon />
-          </Button>
-        )}
-      </div>
-
+    <FieldCard
+      title={`例文 ${index + 1}`}
+      isSystemOwned={isSystemOwned}
+      onRemove={onRemove}
+      removeAriaLabel="この例文を削除"
+    >
       <FormField
         control={form.control}
         name={`examples.${index}.kind`}
@@ -127,7 +106,7 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
           </FormItem>
         )}
       />
-    </div>
+    </FieldCard>
   );
 }
 
@@ -148,10 +127,7 @@ export function ExamplesFields() {
         <ExampleCard key={field.id} index={index} onRemove={() => remove(index)} />
       ))}
 
-      <Button type="button" variant="outline" size="sm" onClick={() => append(emptyExample)}>
-        <PlusIcon />
-        例文を追加
-      </Button>
+      <ArrayAddButton label="例文を追加" onClick={() => append(emptyExample)} />
     </div>
   );
 }

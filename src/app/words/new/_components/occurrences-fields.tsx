@@ -1,10 +1,7 @@
 "use client";
 
-import { PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -17,6 +14,10 @@ import {
 } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
+import { ArrayAddButton } from "./shared/array-add-button";
+import { ArrayRemoveButton } from "./shared/array-remove-button";
+import { FieldCard } from "./shared/field-card";
+import { useRowOwnership } from "./shared/use-row-ownership";
 import { useIsCurrentUserSystem } from "./word-form-permissions-context";
 
 type OccurrencesFieldsProps = {
@@ -78,16 +79,11 @@ export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
         ))}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
+      <ArrayAddButton
+        label="掲載箇所を追加"
         className="self-start"
         onClick={() => append(emptyOccurrence)}
-      >
-        <PlusIcon />
-        掲載箇所を追加
-      </Button>
+      />
     </div>
   );
 }
@@ -99,42 +95,23 @@ type OccurrenceCardProps = {
 
 function OccurrenceCard({ index, onRemove }: OccurrenceCardProps) {
   const form = useFormContext<WordFormValues>();
-  const isCurrentUserSystem = useIsCurrentUserSystem();
   const location = useWatch({ control: form.control, name: `occurrences.${index}.location` });
-  const ownerId = useWatch({ control: form.control, name: `occurrences.${index}.ownerId` });
   const occurrenceOwnerId = useWatch({
     control: form.control,
     name: `occurrences.${index}.occurrenceOwnerId`,
   });
-  const isRowSystemOwned = ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
+  const { isSystemOwned: isRowSystemOwned, isCurrentUserSystem } = useRowOwnership(
+    `occurrences.${index}.ownerId`,
+  );
   const isPresetSystemOwned = occurrenceOwnerId === SYSTEM_USER_ID;
 
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs font-medium">
-            {location || "(未入力)"}
-          </span>
-          {isRowSystemOwned ? (
-            <Badge variant="outline" className="text-[10px]">
-              共通
-            </Badge>
-          ) : null}
-        </div>
-        {isRowSystemOwned ? null : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="この掲載箇所を削除"
-            onClick={onRemove}
-          >
-            <Trash2Icon />
-          </Button>
-        )}
-      </div>
-
+    <FieldCard
+      title={location || "(未入力)"}
+      isSystemOwned={isRowSystemOwned}
+      onRemove={onRemove}
+      removeAriaLabel="この掲載箇所を削除"
+    >
       {isPresetSystemOwned ? null : (
         <FormField
           control={form.control}
@@ -187,7 +164,7 @@ function OccurrenceCard({ index, onRemove }: OccurrenceCardProps) {
       )}
 
       <DetailList occurrenceIndex={index} parentSystemOwned={isRowSystemOwned} />
-    </div>
+    </FieldCard>
   );
 }
 
@@ -215,16 +192,12 @@ function DetailList({
           onRemove={() => remove(detailIndex)}
         />
       ))}
-      <Button
-        type="button"
+      <ArrayAddButton
+        label="詳細を追加"
         variant="ghost"
-        size="sm"
         className="self-start"
         onClick={() => append(parentSystemOwned ? { ownerId: "", detail: "" } : { detail: "" })}
-      >
-        <PlusIcon />
-        詳細を追加
-      </Button>
+      />
     </div>
   );
 }
@@ -239,12 +212,9 @@ function DetailRow({
   onRemove: () => void;
 }) {
   const form = useFormContext<WordFormValues>();
-  const isCurrentUserSystem = useIsCurrentUserSystem();
-  const detailOwnerId = useWatch({
-    control: form.control,
-    name: `occurrences.${occurrenceIndex}.details.${detailIndex}.ownerId`,
-  });
-  const isSystemDetail = detailOwnerId === SYSTEM_USER_ID && !isCurrentUserSystem;
+  const { isSystemOwned } = useRowOwnership(
+    `occurrences.${occurrenceIndex}.details.${detailIndex}.ownerId`,
+  );
 
   return (
     <FormField
@@ -257,21 +227,13 @@ function DetailRow({
               <Input
                 type="text"
                 placeholder="例: 128 / lesson_12 / 00:32:15"
-                disabled={isSystemDetail}
+                disabled={isSystemOwned}
                 value={f.value ?? ""}
                 onChange={(e) => f.onChange(e.target.value)}
               />
             </FormControl>
-            {isSystemDetail ? null : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="この詳細を削除"
-                onClick={onRemove}
-              >
-                <XIcon />
-              </Button>
+            {isSystemOwned ? null : (
+              <ArrayRemoveButton icon="x" ariaLabel="この詳細を削除" onClick={onRemove} />
             )}
           </div>
           <FormMessage />

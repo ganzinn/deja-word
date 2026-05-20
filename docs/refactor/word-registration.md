@@ -513,7 +513,16 @@ pnpm lint                     # スタイル
   - `pnpm typecheck` / `lint` / `test:unit`（70/70）/ `test:integration`（76/76）全 pass
   - DoD grep: `P2002` は `src/lib/prisma-errors.ts` 1 ファイルのみ、`isDuplicate` / `instanceof *Error in app/` は 0 件
   - 学び: `mapWordWriteErrorToResult` は word write 専用に絞り、`DuplicateOccurrenceLocationError` は含めない判断にした（occurrences 系 actions の集約はフェーズ 1 スコープ外のため）
-- [ ] フェーズ 2: UI 共通プリミティブ
+- [x] フェーズ 2: UI 共通プリミティブ（2026-05-20 完了）
+  - 新規 `src/app/words/new/_components/shared/`: `row-ownership.ts`（純関数 `isSystemOwned(ownerId, isCurrentUserSystem)`）/ `use-row-ownership.ts`（`useRowOwnership(name)` フック）/ `field-card.tsx` / `system-badge.tsx` / `array-add-button.tsx` / `array-remove-button.tsx`
+  - 編集: `meanings` / `examples` / `related-words` / `occurrences` / `memos` の各 `*-fields.tsx`。Card ヘッダーを `FieldCard`、ownerId 判定を `useRowOwnership`、add/remove ボタンを `ArrayAddButton` / `ArrayRemoveButton` に置換
+  - `memos-fields.tsx` は Card ではなく横並びレイアウトのため `FieldCard` は使わず `SystemBadge` + `ArrayRemoveButton` + `useRowOwnership` のみ適用
+  - 新規テスト: `row-ownership.unit.test.ts`（純関数の境界 5 ケース）。DOM テスト基盤（happy-dom / testing-library）はリポジトに無いため今回は導入せず、判定ロジックを純関数に切り出して node 環境でテストする方針を採用
+  - `pnpm typecheck` / `lint` / `test:unit`（75/75、既存 70 + 新規 5）/ `pnpm build`（全 13 route コンパイル成功）全 pass
+  - DoD grep: `grep -rn "SYSTEM_USER_ID" src/app/words/new/_components/` の結果は `occurrences-fields.tsx`（preset toolbar + `isPresetSystemOwned`、DoD で許容）と `shared/row-ownership.ts` のみ。他 4 ファイルからは消滅
+  - LOC: `*Fields` 合計 999 → 864（-13.5%）。DoD の「-20% 以上」は未達。ユーザー判断によりフェーズ 2 は**プリミティブ抽出のみ**に絞り、残る LOC 削減（行レベル分割）はフェーズ 5 に委ねた
+  - 学び: `occurrences` の `isPresetSystemOwned = occurrenceOwnerId === SYSTEM_USER_ID` は `!isCurrentUserSystem` を含まない別式のため `useRowOwnership` に寄せず raw 判定を維持。`FieldCard` の `title` は `ReactNode` とし、`意味 {i+1}` 系も `location || "(未入力)"` 系も吸収できるようにした
+  - 未確認: 認証済みブラウザでの 4 状態（system 所有 / 自分所有 / 新規行 / pass-through）の目視は本環境では未実施（middleware 認証のため curl では到達不可）。コンパイル・型・JSX 等価性は確認済み
 - [ ] フェーズ 3: Handler 分割
 - [ ] フェーズ 4: 認可 Policy
 - [ ] フェーズ 5: *Fields 分割（任意）

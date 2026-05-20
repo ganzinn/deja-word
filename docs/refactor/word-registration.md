@@ -523,6 +523,14 @@ pnpm lint                     # スタイル
   - LOC: `*Fields` 合計 999 → 864（-13.5%）。DoD の「-20% 以上」は未達。ユーザー判断によりフェーズ 2 は**プリミティブ抽出のみ**に絞り、残る LOC 削減（行レベル分割）はフェーズ 5 に委ねた
   - 学び: `occurrences` の `isPresetSystemOwned = occurrenceOwnerId === SYSTEM_USER_ID` は `!isCurrentUserSystem` を含まない別式のため `useRowOwnership` に寄せず raw 判定を維持。`FieldCard` の `title` は `ReactNode` とし、`意味 {i+1}` 系も `location || "(未入力)"` 系も吸収できるようにした
   - 未確認: 認証済みブラウザでの 4 状態（system 所有 / 自分所有 / 新規行 / pass-through）の目視は本環境では未実施（middleware 認証のため curl では到達不可）。コンパイル・型・JSX 等価性は確認済み
-- [ ] フェーズ 3: Handler 分割
+- [x] フェーズ 3: Handler 分割（2026-05-20 完了）
+  - 新規 `src/lib/words/handlers/`: `shared.ts`（`Tx` / `EditorContext` / `editorContextFor` / `nullable` / `uniqueStrings`）/ `allowed-ids.ts`（`ChildAllowedIds` / `resolveChildAllowedIds` を移設）/ `meaning-handler.ts` / `example-handler.ts` / `related-word-handler.ts` / `memo-handler.ts` / `word-occurrence-handler.ts` / `index.ts`（`writeWordChildren` オーケストレータ + re-export）
+  - 旧 `createWordChildren`（376 行 1 関数）を 5 handler（`upsertMeanings` / `upsertExamples` / `upsertRelatedWords` / `upsertMemos` / `upsertWordOccurrences`、各 `(tx, ctx, rows, opts)`）に分解。`src/lib/words-children.ts` は**削除**
+  - `EditorContext`（`{ userId, isSystem }`）を導入し、handler 内の `userId` → `ctx.userId`、`editorIsSystem` → `ctx.isSystem` に置換（行レベル `ownerId === SYSTEM_USER_ID` 判定はフェーズ 4 まで handler 内に据え置き）
+  - `words-create.ts`（通常 + `createWordAsSystem` の計 3 箇所）/ `words-update.ts` の `createWordChildren` 呼び出しを `writeWordChildren(tx, editorContextFor(...), wordId, values, allowed)` に置換。`prisma.$transaction` は UseCase でのみ開始、handler は tx 受け取りのみ（S6 達成）
+  - 新規テスト: handler ごとに `*-handler.unit.test.ts`（tx を `vi.fn()` でモックする `tests/setup/tx-mock.ts` を新設）。pass-through / 自分の行更新 / 新規 の 3 ケース、occurrence は番号 null 化 + `seenOccurrenceIds` 重複排除も固定（計 16 ケース）
+  - `pnpm typecheck` / `lint` / `test:unit`（91/91、既存 75 + 新規 16）/ `test:integration`（76/76、動作不変）全 pass
+  - DoD grep: `createWordChildren` の実体参照 0（index.ts のコメントのみ）、`words-children.ts` 不在、`@/lib/prisma` import は `allowed-ids.ts`（tx 外の事前読み取り）のみで 5 handler は tx 経由
+  - 学び: `resolveChildAllowedIds` は `prisma.$transaction` の外で読み取る純粋な「許可集合解決」なので handler とは別ファイル（`allowed-ids.ts`）に分離。handler は DB 書き込みが本質で純関数化できないため、unit テストは tx モック方式を採用（フェーズ 2 の「純関数に切り出して node テスト」と同じく、リポジトリのテスト基盤に合わせた判断）。3 呼び出し箇所の DRY のため計画の「inline 展開」ではなく薄い `writeWordChildren` オーケストレータに集約した
 - [ ] フェーズ 4: 認可 Policy
 - [ ] フェーズ 5: *Fields 分割（任意）

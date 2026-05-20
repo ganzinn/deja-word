@@ -4,21 +4,16 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Toggle } from "@/components/ui/toggle";
 
 import type { OccurrencePreset } from "@/lib/occurrences";
-import {
-  createPresetOccurrence,
-  emptyOccurrence,
-  type WordFormValues,
-} from "@/lib/schema/word-form";
+import { emptyOccurrence, type WordFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
+import { OccurrencePresetPicker } from "./occurrence-preset-picker";
 import { ArrayAddButton } from "./shared/array-add-button";
 import { ArrayRemoveButton } from "./shared/array-remove-button";
 import { FieldCard } from "./shared/field-card";
 import { useRowOwnership } from "./shared/use-row-ownership";
-import { useIsCurrentUserSystem } from "./word-form-permissions-context";
 
 type OccurrencesFieldsProps = {
   presets: OccurrencePreset[];
@@ -26,46 +21,19 @@ type OccurrencesFieldsProps = {
 
 export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
   const form = useFormContext<WordFormValues>();
-  const isCurrentUserSystem = useIsCurrentUserSystem();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "occurrences",
   });
 
-  function togglePreset(preset: OccurrencePreset) {
-    const idx = fields.findIndex((f) => f.occurrenceId === preset.id);
-    if (idx >= 0) {
-      const target = fields[idx];
-      if (target.ownerId === SYSTEM_USER_ID && !isCurrentUserSystem) return;
-      remove(idx);
-    } else {
-      append(createPresetOccurrence(preset));
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {presets.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {presets.map((preset) => {
-            const linkedField = fields.find((f) => f.occurrenceId === preset.id);
-            const pressed = !!linkedField;
-            const systemLocked = linkedField?.ownerId === SYSTEM_USER_ID && !isCurrentUserSystem;
-            return (
-              <Toggle
-                key={preset.id}
-                variant="outline"
-                size="sm"
-                pressed={pressed}
-                disabled={systemLocked}
-                onPressedChange={() => togglePreset(preset)}
-              >
-                {preset.location}
-              </Toggle>
-            );
-          })}
-        </div>
-      ) : null}
+      <OccurrencePresetPicker
+        presets={presets}
+        fields={fields}
+        append={append}
+        remove={remove}
+      />
 
       {fields.length === 0 ? (
         <p className="text-muted-foreground text-xs">

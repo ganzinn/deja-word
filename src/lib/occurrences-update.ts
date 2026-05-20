@@ -1,9 +1,7 @@
 import "server-only";
 
-import {
-  DuplicateOccurrenceLocationError,
-  isDuplicateOccurrenceLocation,
-} from "@/lib/occurrences-create";
+import { DuplicateOccurrenceLocationError } from "@/lib/occurrences-create";
+import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
 
@@ -60,7 +58,7 @@ export async function updateOccurrenceForUser(
       }
     });
   } catch (e) {
-    if (isDuplicateOccurrenceLocation(e)) {
+    if (isUniqueConstraintOn(e, "Occurrence")) {
       throw new DuplicateOccurrenceLocationError();
     }
     throw e;

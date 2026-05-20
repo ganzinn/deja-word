@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 import {
@@ -11,13 +12,6 @@ import { mergeWordInto } from "@/lib/words-merge";
 
 import type { Prisma } from "@/generated/prisma/client";
 import type { WordFormValues } from "@/lib/schema/word-form";
-
-export type CreateWordError =
-  | "unauthorized"
-  | "invalid"
-  | "duplicate"
-  | "duplicate_occurrence_number"
-  | "unknown";
 
 export class DuplicateHeadwordError extends Error {
   constructor() {
@@ -54,10 +48,10 @@ export async function createWordForUser(
       return word;
     });
   } catch (e) {
-    if (isDuplicateHeadword(e)) {
+    if (isUniqueConstraintOn(e, "Word")) {
       throw new DuplicateHeadwordError();
     }
-    if (isDuplicateOccurrenceNumber(e)) {
+    if (isUniqueConstraintOn(e, "WordOccurrence")) {
       throw new DuplicateOccurrenceNumberError();
     }
     throw e;
@@ -106,18 +100,4 @@ async function createWordAsSystem(
 
   await createWordChildren(tx, primary.id, SYSTEM_USER_ID, values, allowed);
   return { id: primary.id };
-}
-
-export function isDuplicateHeadword(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const err = e as { code?: unknown; meta?: { modelName?: unknown } };
-  if (err.code !== "P2002") return false;
-  return err.meta?.modelName === "Word";
-}
-
-export function isDuplicateOccurrenceNumber(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const err = e as { code?: unknown; meta?: { modelName?: unknown } };
-  if (err.code !== "P2002") return false;
-  return err.meta?.modelName === "WordOccurrence";
 }

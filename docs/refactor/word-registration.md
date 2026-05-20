@@ -505,7 +505,14 @@ pnpm lint                     # スタイル
 
 各フェーズ完了時に、対応する PR 番号 / commit / 学びをここに追記する。
 
-- [ ] フェーズ 1: エラー集約
+- [x] フェーズ 1: エラー集約（2026-05-20 完了）
+  - 新規: `src/lib/prisma-errors.ts`（`isUniqueConstraintOn(e, model)` 8 行）、`src/lib/words/error-map.ts`（`mapWordWriteErrorToResult` 50 行）
+  - 編集: `words-create.ts` / `words-update.ts` / `occurrences-create.ts` / `occurrences-update.ts` / `app/words/new/actions.ts` / `app/words/[id]/edit/actions.ts`
+  - 既存 `isDuplicateHeadword` / `isDuplicateOccurrenceNumber` / `isDuplicateOccurrenceLocation` の 3 関数を完全削除し、呼出側を `isUniqueConstraintOn(e, "Word|WordOccurrence|Occurrence")` に直接置換
+  - lib 側の `CreateWordError` / `UpdateWordError` 型を撤去し、actions.ts 側で `WordWriteErrorCode` superset として再定義
+  - `pnpm typecheck` / `lint` / `test:unit`（70/70）/ `test:integration`（76/76）全 pass
+  - DoD grep: `P2002` は `src/lib/prisma-errors.ts` 1 ファイルのみ、`isDuplicate` / `instanceof *Error in app/` は 0 件
+  - 学び: `mapWordWriteErrorToResult` は word write 専用に絞り、`DuplicateOccurrenceLocationError` は含めない判断にした（occurrences 系 actions の集約はフェーズ 1 スコープ外のため）
 - [ ] フェーズ 2: UI 共通プリミティブ
 - [ ] フェーズ 3: Handler 分割
 - [ ] フェーズ 4: 認可 Policy

@@ -2,12 +2,13 @@
 
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
+import { createWordForUser } from "@/lib/words-create";
 import {
-  DuplicateHeadwordError,
-  DuplicateOccurrenceNumberError,
-  createWordForUser,
-  type CreateWordError,
-} from "@/lib/words-create";
+  mapWordWriteErrorToResult,
+  type WordWriteErrorCode,
+} from "@/lib/words/error-map";
+
+export type CreateWordError = "unauthorized" | "invalid" | WordWriteErrorCode;
 
 export type CreateWordResult =
   | { ok: true; wordId: string }
@@ -32,25 +33,6 @@ export async function createWord(input: WordFormValues): Promise<CreateWordResul
     const word = await createWordForUser(session.user.id, parsed.data);
     return { ok: true, wordId: word.id };
   } catch (e) {
-    if (e instanceof DuplicateHeadwordError) {
-      return {
-        ok: false,
-        error: "duplicate",
-        message: "この単語はすでに登録されています。",
-      };
-    }
-    if (e instanceof DuplicateOccurrenceNumberError) {
-      return {
-        ok: false,
-        error: "duplicate_occurrence_number",
-        message: "同じ出典内で重複する掲載番号が指定されています。",
-      };
-    }
-    console.error("[words/new] createWord failed", e);
-    return {
-      ok: false,
-      error: "unknown",
-      message: "登録に失敗しました。しばらくしてから再度お試しください。",
-    };
+    return mapWordWriteErrorToResult(e);
   }
 }

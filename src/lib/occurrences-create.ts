@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
 
@@ -39,16 +40,9 @@ export async function createOccurrenceForUser(
       return occ;
     });
   } catch (e) {
-    if (isDuplicateOccurrenceLocation(e)) {
+    if (isUniqueConstraintOn(e, "Occurrence")) {
       throw new DuplicateOccurrenceLocationError();
     }
     throw e;
   }
-}
-
-export function isDuplicateOccurrenceLocation(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const err = e as { code?: unknown; meta?: { modelName?: unknown } };
-  if (err.code !== "P2002") return false;
-  return err.meta?.modelName === "Occurrence";
 }

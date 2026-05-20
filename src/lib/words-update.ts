@@ -1,26 +1,16 @@
 import "server-only";
 
+import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 import {
   DuplicateHeadwordError,
   DuplicateOccurrenceNumberError,
-  isDuplicateHeadword,
-  isDuplicateOccurrenceNumber,
 } from "@/lib/words-create";
 import { createWordChildren, resolveChildAllowedIds } from "@/lib/words-children";
 
 import type { Prisma } from "@/generated/prisma/client";
 import type { WordFormValues } from "@/lib/schema/word-form";
-
-export type UpdateWordError =
-  | "unauthorized"
-  | "invalid"
-  | "not_found"
-  | "forbidden"
-  | "duplicate"
-  | "duplicate_occurrence_number"
-  | "unknown";
 
 export class WordNotFoundError extends Error {
   constructor() {
@@ -187,10 +177,10 @@ export async function updateWordForUser(
       return { id: wordId };
     });
   } catch (e) {
-    if (isDuplicateHeadword(e)) {
+    if (isUniqueConstraintOn(e, "Word")) {
       throw new DuplicateHeadwordError();
     }
-    if (isDuplicateOccurrenceNumber(e)) {
+    if (isUniqueConstraintOn(e, "WordOccurrence")) {
       throw new DuplicateOccurrenceNumberError();
     }
     throw e;

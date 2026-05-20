@@ -2,13 +2,13 @@
 
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
-import { DuplicateHeadwordError, DuplicateOccurrenceNumberError } from "@/lib/words-create";
+import { updateWordForUser } from "@/lib/words-update";
 import {
-  ForbiddenUpdateError,
-  WordNotFoundError,
-  updateWordForUser,
-  type UpdateWordError,
-} from "@/lib/words-update";
+  mapWordWriteErrorToResult,
+  type WordWriteErrorCode,
+} from "@/lib/words/error-map";
+
+export type UpdateWordError = "unauthorized" | "invalid" | WordWriteErrorCode;
 
 export type UpdateWordResult =
   | { ok: true; wordId: string }
@@ -33,39 +33,6 @@ export async function updateWord(wordId: string, input: WordFormValues): Promise
     const word = await updateWordForUser(session.user.id, wordId, parsed.data);
     return { ok: true, wordId: word.id };
   } catch (e) {
-    if (e instanceof WordNotFoundError) {
-      return {
-        ok: false,
-        error: "not_found",
-        message: "対象の単語が見つかりません。",
-      };
-    }
-    if (e instanceof ForbiddenUpdateError) {
-      return {
-        ok: false,
-        error: "forbidden",
-        message: "編集権限のない項目が含まれています。",
-      };
-    }
-    if (e instanceof DuplicateHeadwordError) {
-      return {
-        ok: false,
-        error: "duplicate",
-        message: "この単語はすでに登録されています。",
-      };
-    }
-    if (e instanceof DuplicateOccurrenceNumberError) {
-      return {
-        ok: false,
-        error: "duplicate_occurrence_number",
-        message: "同じ出典内で重複する掲載番号が指定されています。",
-      };
-    }
-    console.error("[words/edit] updateWord failed", e);
-    return {
-      ok: false,
-      error: "unknown",
-      message: "更新に失敗しました。しばらくしてから再度お試しください。",
-    };
+    return mapWordWriteErrorToResult(e);
   }
 }

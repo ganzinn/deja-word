@@ -7,7 +7,7 @@ import {
   DuplicateHeadwordError,
   DuplicateOccurrenceNumberError,
 } from "@/lib/words-create";
-import { createWordChildren, resolveChildAllowedIds } from "@/lib/words-children";
+import { editorContextFor, resolveChildAllowedIds, writeWordChildren } from "@/lib/words/handlers";
 
 import type { Prisma } from "@/generated/prisma/client";
 import type { WordFormValues } from "@/lib/schema/word-form";
@@ -172,7 +172,7 @@ export async function updateWordForUser(
         deleteOrphanedEditorOwned(tx, "wordOccurrence", wordId, userId, wordOccurrenceIdsInForm),
       ]);
 
-      await createWordChildren(tx, wordId, userId, values, allowed);
+      await writeWordChildren(tx, editorContextFor(userId), wordId, values, allowed);
 
       return { id: wordId };
     });

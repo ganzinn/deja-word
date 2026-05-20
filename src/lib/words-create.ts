@@ -4,10 +4,11 @@ import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 import {
-  createWordChildren,
+  editorContextFor,
   resolveChildAllowedIds,
+  writeWordChildren,
   type ChildAllowedIds,
-} from "@/lib/words-children";
+} from "@/lib/words/handlers";
 import { mergeWordInto } from "@/lib/words-merge";
 
 import type { Prisma } from "@/generated/prisma/client";
@@ -44,7 +45,7 @@ export async function createWordForUser(
         data: { ownerId: userId, headword },
         select: { id: true },
       });
-      await createWordChildren(tx, word.id, userId, values, allowed);
+      await writeWordChildren(tx, editorContextFor(userId), word.id, values, allowed);
       return word;
     });
   } catch (e) {
@@ -83,7 +84,7 @@ async function createWordAsSystem(
       data: { ownerId: SYSTEM_USER_ID, headword },
       select: { id: true },
     });
-    await createWordChildren(tx, word.id, SYSTEM_USER_ID, values, allowed);
+    await writeWordChildren(tx, editorContextFor(SYSTEM_USER_ID), word.id, values, allowed);
     return word;
   }
 
@@ -98,6 +99,6 @@ async function createWordAsSystem(
     select: { id: true },
   });
 
-  await createWordChildren(tx, primary.id, SYSTEM_USER_ID, values, allowed);
+  await writeWordChildren(tx, editorContextFor(SYSTEM_USER_ID), primary.id, values, allowed);
   return { id: primary.id };
 }

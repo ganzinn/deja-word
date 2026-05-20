@@ -11,7 +11,7 @@ import type { EditorContext, Tx } from "./shared";
 import type { WordFormValues } from "@/lib/schema/word-form";
 
 export { resolveChildAllowedIds, type ChildAllowedIds } from "./allowed-ids";
-export { editorContextFor, type EditorContext } from "./shared";
+export { editorContextFor, type EditorContext } from "@/lib/words/policy/editor-context";
 
 /**
  * 単語の子エンティティ（意味 / 例文 / 関連語 / メモ / 出典）を 5 つの handler に

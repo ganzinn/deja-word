@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isPassThroughSystemRow, isSystemOwned } from "@/lib/words/policy/row-policy";
 
 import { nullable, type EditorContext, type Tx } from "./shared";
 
@@ -16,7 +16,7 @@ export async function upsertMeanings(
     const m = rows[i];
 
     // 共通（system 所有）行の pass-through: 並び順だけ更新し、自分のテキストを追記する
-    if (m.id && m.ownerId === SYSTEM_USER_ID && !ctx.isSystem) {
+    if (m.id && isPassThroughSystemRow(ctx, m.ownerId)) {
       await tx.meaning.update({
         where: { id: m.id },
         data: { sortOrder: i },
@@ -26,7 +26,7 @@ export async function upsertMeanings(
         const t = m.texts[j];
         const trimmed = t.text.trim();
         if (trimmed.length === 0) continue;
-        if (t.id && t.ownerId === SYSTEM_USER_ID) {
+        if (t.id && isSystemOwned(t.ownerId)) {
           await tx.meaningText.update({
             where: { id: t.id },
             data: { sortOrder: j },

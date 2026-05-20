@@ -1,6 +1,7 @@
 import "server-only";
 
-import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
+import { scopedOwnerIds } from "@/lib/system-user";
+import { isPassThroughSystemRow, isSystemOwned } from "@/lib/words/policy/row-policy";
 
 import type { EditorContext, Tx } from "./shared";
 
@@ -17,7 +18,7 @@ export async function upsertWordOccurrences(
     const oc = rows[i];
 
     // 共通行の pass-through: WordOccurrence は並び順だけ更新し、自分の detail を追記する
-    if (oc.id && oc.ownerId === SYSTEM_USER_ID && !ctx.isSystem) {
+    if (oc.id && isPassThroughSystemRow(ctx, oc.ownerId)) {
       await tx.wordOccurrence.update({
         where: { id: oc.id },
         data: { sortOrder: i },
@@ -27,7 +28,7 @@ export async function upsertWordOccurrences(
         const d = oc.details[j];
         const detailText = (d.detail ?? "").trim();
         if (detailText.length === 0) continue;
-        if (d.id && d.ownerId === SYSTEM_USER_ID) {
+        if (d.id && isSystemOwned(d.ownerId)) {
           await tx.occurrenceDetail.update({
             where: { id: d.id },
             data: { sortOrder: j },
@@ -111,7 +112,7 @@ export async function upsertWordOccurrences(
     seenOccurrenceIds.add(occurrenceId);
 
     // 共通 Occurrence に一般ユーザーが番号を付けることは許さない（強制 null）
-    const occurrenceIsSystem = occurrenceOwnerIdResolved === SYSTEM_USER_ID;
+    const occurrenceIsSystem = isSystemOwned(occurrenceOwnerIdResolved);
     const effectiveOccurrenceNumber =
       occurrenceIsSystem && !ctx.isSystem ? null : (oc.occurrenceNumber ?? null);
 

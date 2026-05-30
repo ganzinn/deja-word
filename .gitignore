@@ -35,6 +35,9 @@ yarn-error.log*
 !.env.example
 !.env.test.example
 
+# local blob driver store (dev only)
+/.dev-blob/
+
 # prisma generated client
 /src/generated/
 

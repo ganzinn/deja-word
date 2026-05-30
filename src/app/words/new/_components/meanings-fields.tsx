@@ -1,7 +1,8 @@
 "use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { MeaningAudioManager } from "@/components/meaning-audio-manager";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +46,15 @@ type MeaningCardProps = {
 function MeaningCard({ index, onRemove }: MeaningCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`meanings.${index}.ownerId`);
+  const meaningId = useWatch({ control: form.control, name: `meanings.${index}.id` });
+  const pronunciationAudioUrl = useWatch({
+    control: form.control,
+    name: `meanings.${index}.pronunciationAudioUrl`,
+  });
+  const translationAudioUrl = useWatch({
+    control: form.control,
+    name: `meanings.${index}.translationAudioUrl`,
+  });
 
   return (
     <FieldCard
@@ -114,6 +124,18 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
           </FormItem>
         )}
       />
+
+      {!isSystemOwned ? (
+        meaningId ? (
+          <MeaningAudioManager
+            meaningId={meaningId}
+            pronunciationAudioUrl={pronunciationAudioUrl}
+            translationAudioUrl={translationAudioUrl}
+          />
+        ) : (
+          <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
+        )
+      ) : null}
     </FieldCard>
   );
 }
@@ -185,11 +207,7 @@ function MeaningTextRow({
               />
             </FormControl>
             {canRemove && !isSystemOwned ? (
-              <ArrayRemoveButton
-                icon="x"
-                ariaLabel="この意味テキストを削除"
-                onClick={onRemove}
-              />
+              <ArrayRemoveButton icon="x" ariaLabel="この意味テキストを削除" onClick={onRemove} />
             ) : null}
           </div>
           <FormMessage />

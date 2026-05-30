@@ -1,12 +1,17 @@
 "use server";
 
+import {
+  InvalidAudioError,
+  MeaningNotFoundError,
+  deletePronunciationAudioForUser,
+  deleteTranslationAudioForUser,
+  uploadPronunciationAudioForUser,
+  uploadTranslationAudioForUser,
+} from "@/lib/meaning-audio";
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
-import { updateWordForUser } from "@/lib/words-update";
-import {
-  mapWordWriteErrorToResult,
-  type WordWriteErrorCode,
-} from "@/lib/words/error-map";
+import { ForbiddenUpdateError, updateWordForUser } from "@/lib/words-update";
+import { mapWordWriteErrorToResult, type WordWriteErrorCode } from "@/lib/words/error-map";
 
 export type UpdateWordError = "unauthorized" | "invalid" | WordWriteErrorCode;
 
@@ -35,4 +40,98 @@ export async function updateWord(wordId: string, input: WordFormValues): Promise
   } catch (e) {
     return mapWordWriteErrorToResult(e);
   }
+}
+
+export type AudioActionError = "unauthorized" | "invalid" | "forbidden" | "not_found" | "unknown";
+
+export type UploadAudioResult =
+  | { ok: true; url: string }
+  | { ok: false; error: AudioActionError; message: string };
+
+export type DeleteAudioResult =
+  | { ok: true }
+  | { ok: false; error: AudioActionError; message: string };
+
+function mapAudioError(e: unknown): { error: AudioActionError; message: string } {
+  if (e instanceof InvalidAudioError) {
+    return { error: "invalid", message: "mp3（音声）ファイルを 4MB 以下で選択してください。" };
+  }
+  if (e instanceof ForbiddenUpdateError) {
+    return { error: "forbidden", message: "この意味の音源を操作する権限がありません。" };
+  }
+  if (e instanceof MeaningNotFoundError) {
+    return { error: "not_found", message: "対象の意味が見つかりません。" };
+  }
+  console.error("[meaning-audio] action failed", e);
+  return {
+    error: "unknown",
+    message: "処理に失敗しました。しばらくしてから再度お試しください。",
+  };
+}
+
+async function runUpload(
+  meaningId: string,
+  fd: FormData,
+  fn: (userId: string, meaningId: string, file: File) => Promise<{ url: string }>,
+): Promise<UploadAudioResult> {
+  const session = await getCurrentSession();
+  if (!session) {
+    return {
+      ok: false,
+      error: "unauthorized",
+      message: "ログインが必要です。再度ログインしてください。",
+    };
+  }
+  const file = fd.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "invalid", message: "音声ファイルを選択してください。" };
+  }
+  try {
+    const { url } = await fn(session.user.id, meaningId, file);
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, ...mapAudioError(e) };
+  }
+}
+
+async function runDelete(
+  meaningId: string,
+  fn: (userId: string, meaningId: string) => Promise<void>,
+): Promise<DeleteAudioResult> {
+  const session = await getCurrentSession();
+  if (!session) {
+    return {
+      ok: false,
+      error: "unauthorized",
+      message: "ログインが必要です。再度ログインしてください。",
+    };
+  }
+  try {
+    await fn(session.user.id, meaningId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, ...mapAudioError(e) };
+  }
+}
+
+export async function uploadPronunciationAudio(
+  meaningId: string,
+  fd: FormData,
+): Promise<UploadAudioResult> {
+  return runUpload(meaningId, fd, uploadPronunciationAudioForUser);
+}
+
+export async function deletePronunciationAudio(meaningId: string): Promise<DeleteAudioResult> {
+  return runDelete(meaningId, deletePronunciationAudioForUser);
+}
+
+export async function uploadTranslationAudio(
+  meaningId: string,
+  fd: FormData,
+): Promise<UploadAudioResult> {
+  return runUpload(meaningId, fd, uploadTranslationAudioForUser);
+}
+
+export async function deleteTranslationAudio(meaningId: string): Promise<DeleteAudioResult> {
+  return runDelete(meaningId, deleteTranslationAudioForUser);
 }

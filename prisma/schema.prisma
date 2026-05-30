@@ -8,21 +8,21 @@ datasource db {
 }
 
 model User {
-  id                String             @id
-  name              String
-  email             String
-  emailVerified     Boolean            @default(false)
-  image             String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  sessions          Session[]
-  accounts          Account[]
-  words             Word[]
-  meanings          Meaning[]
-  meaningTexts      MeaningText[]
-  examples          Example[]
-  relatedWords      RelatedWord[]
-  memos             Memo[]
+  id                       String                    @id
+  name                     String
+  email                    String
+  emailVerified            Boolean                   @default(false)
+  image                    String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  sessions                 Session[]
+  accounts                 Account[]
+  words                    Word[]
+  meanings                 Meaning[]
+  meaningTexts             MeaningText[]
+  examples                 Example[]
+  relatedWords             RelatedWord[]
+  memos                    Memo[]
   occurrences              Occurrence[]
   wordOccurrences          WordOccurrence[]
   occurrenceDetails        OccurrenceDetail[]
@@ -114,13 +114,15 @@ model Word {
 }
 
 model Meaning {
-  id            String  @id @default(cuid())
-  wordId        String  @map("word_id")
-  ownerId       String  @map("owner_id")
-  partOfSpeech  String? @map("part_of_speech")
-  pronunciation String?
-  note          String?
-  sortOrder     Int     @default(0) @map("sort_order")
+  id                    String  @id @default(cuid())
+  wordId                String  @map("word_id")
+  ownerId               String  @map("owner_id")
+  partOfSpeech          String? @map("part_of_speech")
+  pronunciation         String?
+  note                  String?
+  sortOrder             Int     @default(0) @map("sort_order")
+  pronunciationAudioUrl String? @map("pronunciation_audio_url") // 英単語の発音音源
+  translationAudioUrl   String? @map("translation_audio_url") // 日本語訳の読み上げ（別用途）
 
   word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
   owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)

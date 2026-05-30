@@ -2,6 +2,7 @@ import { ChevronLeftIcon, LinkIcon, PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AudioPlayButton } from "@/components/audio-play-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { exampleKindLabels, type ExampleKind } from "@/lib/mock/example-kinds";
@@ -158,10 +159,11 @@ function MeaningCard({
 }) {
   const partOfSpeech = nonEmpty(meaning.partOfSpeech);
   const pronunciation = nonEmpty(meaning.pronunciation);
+  const pronunciationAudioUrl = nonEmpty(meaning.pronunciationAudioUrl);
   const note = nonEmpty(meaning.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {partOfSpeech || pronunciation ? (
+      {partOfSpeech || pronunciation || pronunciationAudioUrl ? (
         <div className="flex flex-wrap items-center gap-2">
           {partOfSpeech ? (
             <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
@@ -169,12 +171,11 @@ function MeaningCard({
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
           ) : null}
+          <AudioPlayButton src={pronunciationAudioUrl} label="発音" />
         </div>
       ) : null}
       {meaning.texts.length === 1 ? (
-        <p
-          className={`text-sm whitespace-pre-wrap${isFirst ? " text-red-600" : ""}`}
-        >
+        <p className={`text-sm whitespace-pre-wrap ${isFirst ? "text-red-600" : ""}`}>
           {meaning.texts[0].text}
         </p>
       ) : meaning.texts.length > 1 ? (
@@ -182,7 +183,7 @@ function MeaningCard({
           {meaning.texts.map((t, i) => (
             <li
               key={t.id}
-              className={`whitespace-pre-wrap${isFirst && i === 0 ? " text-red-600" : ""}`}
+              className={`whitespace-pre-wrap ${isFirst && i === 0 ? "text-red-600" : ""}`}
             >
               {t.text}
             </li>

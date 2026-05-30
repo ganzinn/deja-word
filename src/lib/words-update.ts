@@ -1,5 +1,7 @@
 import "server-only";
 
+import { defaultBlobClient, type BlobClient } from "@/lib/blob-client";
+import { bestEffortDeleteAudioUrls } from "@/lib/meaning-audio";
 import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
@@ -23,6 +25,7 @@ export async function updateWordForUser(
   userId: string,
   wordId: string,
   values: WordFormValues,
+  blob: BlobClient = defaultBlobClient,
 ): Promise<{ id: string }> {
   const existing = await prisma.word.findFirst({
     where: {
@@ -79,8 +82,12 @@ export async function updateWordForUser(
 
   const allowed = await resolveChildAllowedIds(userId, values, scopedOwnerIds(userId));
 
+  // orphan delete で消える Meaning の音源 URL を tx 前に控え、commit 後に Blob を消す
+  // （ネットワーク I/O を tx に入れない）。
+  let orphanedAudioUrls: ReadonlyArray<string | null> = [];
+
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       if (wordOwnedByEditor) {
         await tx.word.update({
           where: { id: wordId },
@@ -96,6 +103,20 @@ export async function updateWordForUser(
         where: { wordOccurrence: { wordId }, ownerId: userId },
       });
 
+      const meaningIdsArray = Array.from(meaningIdsInForm);
+      const orphanedMeanings = await tx.meaning.findMany({
+        where: {
+          wordId,
+          ownerId: userId,
+          ...(meaningIdsArray.length > 0 ? { id: { notIn: meaningIdsArray } } : {}),
+        },
+        select: { pronunciationAudioUrl: true, translationAudioUrl: true },
+      });
+      orphanedAudioUrls = orphanedMeanings.flatMap((m) => [
+        m.pronunciationAudioUrl,
+        m.translationAudioUrl,
+      ]);
+
       await Promise.all([
         deleteOrphanedEditorOwned(tx, "meaning", wordId, userId, meaningIdsInForm),
         deleteOrphanedEditorOwned(tx, "example", wordId, userId, exampleIdsInForm),
@@ -108,6 +129,9 @@ export async function updateWordForUser(
 
       return { id: wordId };
     });
+
+    await bestEffortDeleteAudioUrls(orphanedAudioUrls, blob);
+    return result;
   } catch (e) {
     if (isUniqueConstraintOn(e, "Word")) {
       throw new DuplicateHeadwordError();

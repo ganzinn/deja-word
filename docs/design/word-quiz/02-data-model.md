@@ -44,7 +44,7 @@ enum QuizFormat {
 enum QuizResult {
   CORRECT
   INCORRECT
-  GAVE_UP // 四択の「わからない」。drill の残数計算上は INCORRECT と同じ扱い
+  GAVE_UP // 四択・多義語選択の「わからない」、自己判定の「思い浮かばなかった」。drill の残数計算上は INCORRECT と同じ扱い（03 で3形式に拡張）
 }
 
 enum QuizMode {

@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -77,6 +77,7 @@ model Drill {
   occurrenceId String    @map("occurrence_id")
   rangeFrom    Int       @map("range_from")
   rangeTo      Int       @map("range_to")
+  roundCount   Int       @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う（05 確定）
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   completedAt  DateTime? @map("completed_at") // 全単語卒業時に設定。進行中一覧は completedAt IS NULL
@@ -117,5 +118,7 @@ model DrillWord {
 - **「わからない」は GAVE_UP として誤答と区別して記録**。情報量が増えコストはほぼゼロ。表示で使うかは 04 で判断。
 - **日時はサーバー受領時刻（createdAt）**。一括送信のため1回のテスト／ラウンド内の解答は同じタイムスタンプになる（1問ごとの解答時刻は残らない）。「単語をいつテストしたか」の粒度としては十分。
 - **形式・結果・mode は Prisma enum**。型安全を優先。将来形式（SPELLING 等）は enum 値追加のマイグレーションで対応。
+- **Drill.roundCount（05 起因の加算改訂）**。drill ラウンド送信の冪等化のため、完了ラウンド数を持つ。送信時に「期待ラウンド数と一致したら +1」の compare-and-swap を行い、二重送信で remaining が二重に減るのを防ぐ（詳細は [05](05-architecture.md) の決定 4）。
+- **rangeFrom / rangeTo は drill 生成時の実効範囲を保存する（05 で明確化）**。開始画面の範囲指定は「空欄＝制限なし」があり得るため、drill 生成時は実際に出題された単語の occurrenceNumber の min / max を保存する。列定義の変更はなし（非 null のまま）。
 - **Drill に元テストの出題形式は持たせない**。「drill のラウンドが元テストの形式を引き継ぐか」が 06 の後続論点のため。引き継ぐと決まれば nullable 列を加算（追加コストは小）。
 - **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。

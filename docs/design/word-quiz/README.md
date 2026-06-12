@@ -32,7 +32,7 @@
 - **drill は残数モデル**（元テスト誤答=3・正答=1 から開始、正解で −1、間違いで 3 にリセット、0 で卒業）。ラウンド制で未卒業の単語を全出題。→ [06](06-drill-mode.md)
 - **drill は日をまたいで再開可能**（残数をサーバー永続化）。元テストごとに独立生成（結果画面で開始時のみ）。→ [06](06-drill-mode.md)
 - **drill の履歴は mode 列（TEST / DRILL）で区別**し、各ラウンド終了時に一括送信。→ [06](06-drill-mode.md)
-- **スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ**（QuizFormat / QuizResult / QuizMode）を side table 加算。テストセッションテーブルは持たない。→ [02](02-data-model.md)
+- **スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ**（QuizFormat / QuizResult / QuizMode）を side table 加算。テストセッションテーブルは持たない。Drill には `roundCount`（ラウンド送信の冪等化用、05 起因で加算改訂）を持つ。→ [02](02-data-model.md)
 - **範囲指定の対象は occurrenceNumber 付きの単語のみ**（既存スキーマで nullable のため）。→ [02](02-data-model.md)
 - **意味（MeaningText）未登録の単語も出題対象から除外**（全形式共通。正解選択肢・解答表示が作れないため）。→ [03](03-algorithm.md)
 - **エントリポイントはダッシュボードの「単語クイズ」ボタン → `/quiz`**。カウントダウン〜結果は `/quiz` 内のクライアント状態遷移（URL 遷移なし）。drill ラウンドも同フローを再利用。→ [04](04-ui.md)
@@ -43,6 +43,12 @@
 - **結果一覧の単語タップで単語詳細をフルスクリーンダイアログ表示**（表示専用・閉じると結果画面に戻る。詳細表示部は `/words/[id]` と共有コンポーネント化）。履歴送信失敗時はアラート＋再送ボタン、送信成功までテストでは drill 導線・drill では次ラウンドが無効。→ [04](04-ui.md)
 - **進行中 drill の再開導線は quiz 開始画面の一覧**（ダッシュボードには置かない）。→ [04](04-ui.md)
 - **MVP では既存画面への解答履歴表示は見送り**（変更はダッシュボードのボタン追加のみ）。→ [04](04-ui.md)
+- **モジュール配置は words の相似形**。UseCase は `src/lib/` 直下フラット（`quiz-*.ts` / `drill-*.ts`）、純関数・クエリ・handler・error-map は `src/lib/quiz/` 配下。単語詳細表示部は `src/components/word-detail-view.tsx` に抽出して共有。→ [05](05-architecture.md)
+- **インターフェースは全部 Server Action**（Route Handler 追加なし）。プレビュー・問題生成・履歴送信・drill 生成／ラウンド生成／ラウンド送信・単語詳細の 7 Action を `src/app/quiz/actions.ts` に集約。mode / ownerId はサーバー側で付与、format は送信のトップレベルで 1 回だけ受け取り enum 検証（セッション状態がなくサーバーでは導出不可）。→ [05](05-architecture.md)
+- **drill ラウンド送信は `Drill.roundCount` の CAS で冪等化**（期待ラウンド数一致で +1。再送は適用済み判定して確定残数を冪等返却）。drill 生成の入力はクライアントから結果（wordId・correct）を送る。→ [05](05-architecture.md)
+- **TEST 履歴の多重送信はクライアント single-flight のみで防ぎ、成否不明後の再送による履歴重複は MVP 許容**。送信時に存在確認フィルタで削除済み単語を skip し FK 違反で全件失敗させない。→ [05](05-architecture.md)
+- **素材取得は 1 クエリ＋純関数パーティション**。プレビューと問題生成は同じ取得＋成立判定ロジックを共有。認可は `scopedOwnerIds` の where 句注入（EditorContext / row-policy は使わない）。→ [05](05-architecture.md)
+- **形式追加の拡張点は「形式別生成器＋exhaustive switch ＋ payload の discriminated union」**で 4 箇所に閉じる。音声プリロードは新規 API なし（payload 内 URL を `new Audio()` で先読み）。→ [05](05-architecture.md)
 
 ## トピック状態表
 
@@ -51,15 +57,15 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定 | 要求・ユースケース・スコープ外を確定（2026-06-12） |
-| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12） |
+| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12、同日 05 起因で Drill.roundCount を加算改訂） |
 | [03-algorithm.md](03-algorithm.md) | 確定 | 選択肢生成・問題データ生成（サーバー生成・RNG注入）を確定（2026-06-12） |
 | [04-ui.md](04-ui.md) | 確定 | 画面遷移・各画面仕様を確定（2026-06-12） |
-| [05-architecture.md](05-architecture.md) | 未着手 | UseCase / handler / API 構成 |
+| [05-architecture.md](05-architecture.md) | 確定 | モジュール配置・Server Action 統一・冪等性（roundCount CAS）・認可・形式拡張点・テスト戦略を確定（2026-06-12） |
 | [06-drill-mode.md](06-drill-mode.md) | 議論中 | データ影響論点・ラウンド仕様は確定。UX・ロジック詳細（形式の引き継ぎ等）が残 |
 
-想定順序（残り）: 05 → 06（UX・ロジック詳細の残り）。要求次第で入れ替え可。
+想定順序（残り）: 06（UX・ロジック詳細の残り）のみ。
 
-**次セッションの推奨トピック: 05（アーキテクチャ）**。UseCase / handler / API 構成が主題。04 から「開始画面のプレビュー API（対象件数・除外内訳・形式成立可否）の形」「音声プリロードの取得方式」「履歴送信・再送と drill 生成の依存関係」「単語詳細ダイアログ用の取得 API と詳細表示部の共有コンポーネント化」を引き継いでいる。
+**次セッションの推奨トピック: 06（UX・ロジック詳細の残り）**。残論点は「出題形式の継承（元テストを引き継ぐか、ラウンドごとに選べるか）」「ラウンド間で出題順・選択肢を変えるか」「終了条件・再開導線（04 と連動）」「通常テストとの UI・ロジック共有範囲」。05 から「`startDrillRound` は format を引数に取る形にした。引き継ぐと決まれば Drill に形式列を加算し引数を落とす（02・05 を更新）」「各ラウンド開始時のサーバー再生成（シード永続化なし）のため出題順・選択肢は自然に毎回変わる。固定するならシード保存が必要で 02・03 に影響」を引き継いでいる。
 
 ## セッション運用ルール
 

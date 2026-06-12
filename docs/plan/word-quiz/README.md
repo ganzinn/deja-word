@@ -24,7 +24,7 @@
 | [06-quiz-actions.md](06-quiz-actions.md) | quiz 系 4 Server Action＋zod スキーマ＋error-map（unit test 込み） | 05 | 完了（2026-06-13） | - |
 | [07-question-components.md](07-question-components.md) | 出題形式 3 コンポーネント（四択／自己判定／多義語選択、即時フィードバック込み） | 03 | 完了（2026-06-13） | - |
 | [08-quiz-flow-ui.md](08-quiz-flow-ui.md) | `/quiz` ページ＋テストフロー UI 一式（開始→カウントダウン→出題→結果） | 01, 06, 07 | 実装中 | - |
-| [09-drill-usecases.md](09-drill-usecases.md) | drill 系 UseCase 5 本＋drill-round-handler（CAS 冪等の integration 込み） | 05 | 実装中 | - |
+| [09-drill-usecases.md](09-drill-usecases.md) | drill 系 UseCase 5 本＋drill-round-handler（CAS 冪等の integration 込み） | 05 | 完了（2026-06-13） | - |
 | [10-drill-ui.md](10-drill-ui.md) | drill 系 4 Action＋drill UI 差分＋ダッシュボード「単語テスト」ボタン（最終配線） | 08, 09 | 未着手 | - |
 
 ## 依存関係図

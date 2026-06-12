@@ -1,6 +1,6 @@
 # 09. drill-usecases
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: （未作成）
 
 ## 目的
 
@@ -99,4 +99,10 @@ type ActiveDrill = {
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **エラークラスの配置**: `DrillNotFoundError` / `DrillRoundConflictError` は `src/lib/quiz/handlers/drill-round-handler.ts` で定義（generate / delete も import）。**10 の error-map はここから import すること**。
+- CAS miss＋再読込で drill 不在（削除済み／他人の drill）は `DrillNotFoundError`（決定 5 の「存在を漏らさない」に合わせた補完。delete の `count === 0` も同様に NotFound）。
+- `createDrillForUser` に決定 3 と同形の存在確認フィルタを適用（チケット本文には明記なし）: 結果画面表示中に削除された単語は DrillWord 作成・範囲計算から除外（除外しないと FK 違反で生成全体が失敗するため）。番号付き可視単語が 0 件で実効範囲を計算できない場合は新設の `EmptyDrillResultsError`（`src/lib/drill-create.ts`。改ざん入力・極端な削除レースのみ到達。**10 で error-map への追加要否を判断すること**）。
+- ラウンド生成の出題対象: `partitionMaterial`（範囲ベース）の結果を未卒業 wordId で再分割し、targets ＝未卒業の DrillWord 単語全て、卒業済み等の範囲内他単語は sameOccurrencePool（ダミー候補）側（06-drill-mode.md 決定 1「未卒業の単語を全て出題」の具体化）。
+- drill-list の並び順は `updatedAt desc`（最終実施が新しい順。チケット未指定のため選択）。
+- tx-mock の `DelegateMock` に `findMany` / `updateMany` がないため、drill-round-handler の unit test 内で `word.findMany` / `drill.updateMany` / `drillWord.findMany` をローカルに補った（05 と同じ回避パターン。共有ファイルは未変更）。
+- fixture は既存 `createQuizWordRow` で足りたため `tests/setup/fixtures.ts` への追記なし。

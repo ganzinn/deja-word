@@ -35,7 +35,7 @@
 - **スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ**（QuizFormat / QuizResult / QuizMode）を side table 加算。テストセッションテーブルは持たない。Drill には `roundCount`（ラウンド送信の冪等化用、05 起因で加算改訂）と `format`（元テスト形式の引き継ぎ用、06 起因で加算改訂）を持つ。→ [02](02-data-model.md)
 - **範囲指定の対象は occurrenceNumber 付きの単語のみ**（既存スキーマで nullable のため）。→ [02](02-data-model.md)
 - **意味（MeaningText）未登録の単語も出題対象から除外**（全形式共通。正解選択肢・解答表示が作れないため）。→ [03](03-algorithm.md)
-- **エントリポイントはダッシュボードの「単語クイズ」ボタン → `/quiz`**。カウントダウン〜結果は `/quiz` 内のクライアント状態遷移（URL 遷移なし）。drill ラウンドも同フローを再利用。→ [04](04-ui.md)
+- **エントリポイントはダッシュボードの「単語テスト」ボタン → `/quiz`**。カウントダウン〜結果は `/quiz` 内のクライアント状態遷移（URL 遷移なし）。drill ラウンドも同フローを再利用。→ [04](04-ui.md)
 - **開始画面は Occurrence 選択＋番号範囲＋形式選択＋対象件数プレビュー**。除外件数（番号なし・意味未登録）を注記し、不成立の形式は選択不可＋理由表示（成立可否はサーバー判定）。→ [04](04-ui.md)
 - **解答直後に即時正誤フィードバック**（正誤＋正解内容を表示し「次へ」で進行）。→ [04](04-ui.md)
 - **出題時に発音音源を自動再生**（再生ボタンで再再生可）。音声は先読み（問題データ取得後に第1問、出題中に次問）し、取得失敗しても進行に影響させない。音声取得は「通信なし」原則の例外。**意味音源（読み上げ）は使わない**。→ [04](04-ui.md)
@@ -79,7 +79,7 @@
 - **新規支援モジュール（`src/lib/quiz/` 配下)**: `payload.ts`（discriminated union）/ `error-map.ts` / `generation/`（RNG 注入の純関数 8 ファイル＋unit test）/ `queries/quiz-source.ts` / `handlers/`（quiz-answer-handler / drill-round-handler / shared）（[05](05-architecture.md) 決定 1・6・7・8）。
 - **新規 zod スキーマ**: `src/lib/schema/quiz.ts`（[05](05-architecture.md) 決定 2）。
 - **新規 UI（`src/app/quiz/`）**: `page.tsx` / `actions.ts`（8 Action 集約）/ `_components/` の 8 コンポーネント（quiz-flow / start-form / countdown / result-list / word-detail-dialog / question-choice / question-self-judge / question-multi-meaning）（[04](04-ui.md)・[05](05-architecture.md) 決定 1）。
-- **既存ファイルの変更**: ダッシュボード（`src/app/dashboard/page.tsx`）に「単語クイズ」ボタン追加。`/words/[id]` の詳細表示部を `src/components/word-detail-view.tsx` に抽出して共有（[04](04-ui.md)）。
+- **既存ファイルの変更**: ダッシュボード（`src/app/dashboard/page.tsx`）に「単語テスト」ボタン追加。`/words/[id]` の詳細表示部を `src/components/word-detail-view.tsx` に抽出して共有（[04](04-ui.md)）。
 - **テスト基盤の拡張**: `tests/setup/tx-mock.ts` に quizAnswer / drill / drillWord delegate 追加、`tests/setup/fixtures.ts` に番号付き／なし／意味なし単語の fixture 追加、シード付き PRNG ヘルパ追加（[05](05-architecture.md) 決定 7・9）。
 
 ### 着手順序のヒント

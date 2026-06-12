@@ -147,7 +147,7 @@ export function ResultList({
           <>
             {drillCompleted ? (
               <p className="text-center text-base font-semibold" role="status">
-                すべての単語を卒業しました！定着モード完了です。
+                すべての単語が定着しました！おつかれさまでした！
               </p>
             ) : (
               // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
@@ -184,7 +184,7 @@ function DrillRemainingBadge({ remaining }: { remaining: number | undefined }) {
     );
   }
   if (remaining === 0) {
-    return <Badge className="ml-auto">卒業</Badge>;
+    return <Badge className="ml-auto">定着</Badge>;
   }
   return (
     <Badge variant="secondary" className="ml-auto">

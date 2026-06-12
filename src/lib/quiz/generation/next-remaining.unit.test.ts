@@ -6,7 +6,7 @@ describe("nextRemaining", () => {
   test("CORRECT decrements by 1", () => {
     expect(nextRemaining(3, "CORRECT")).toBe(2);
     expect(nextRemaining(2, "CORRECT")).toBe(1);
-    expect(nextRemaining(1, "CORRECT")).toBe(0); // 卒業
+    expect(nextRemaining(1, "CORRECT")).toBe(0); // 定着
   });
 
   test("CORRECT clamps at the lower bound 0", () => {

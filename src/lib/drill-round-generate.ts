@@ -16,8 +16,8 @@ import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
  *
  * - 出題形式は `Drill.format` から導出（同 決定 4）
  * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。同 決定 5）
- * - 出題対象は未卒業（remaining > 0）の DrillWord の単語**全て**（同 決定 1）。
- *   範囲ベースの partition 結果を未卒業 id で再分割し、卒業済みを含む範囲内の
+ * - 出題対象は未定着（remaining > 0）の DrillWord の単語**全て**（同 決定 1）。
+ *   範囲ベースの partition 結果を未定着 id で再分割し、定着済みを含む範囲内の
  *   他単語は同一 Occurrence プール（ダミー候補）側に回す
  * - 現在の `roundCount` を返し、クライアントはラウンド送信の `expectedRoundCount` に使う
  *   （05-architecture.md 決定 4）

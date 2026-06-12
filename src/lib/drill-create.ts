@@ -21,7 +21,7 @@ export class EmptyDrillResultsError extends Error {
 /** 元テスト 1 問分の結果。ownerId は常にセッション由来のためここには含めない。 */
 export type DrillResultInput = { wordId: string; correct: boolean };
 
-/** 元テスト正解組の初期残数（1 回正解すれば卒業）。誤答組は DRILL_RESET_REMAINING。 */
+/** 元テスト正解組の初期残数（1 回正解すれば定着）。誤答組は DRILL_RESET_REMAINING。 */
 const INITIAL_REMAINING_CORRECT = 1;
 
 /**

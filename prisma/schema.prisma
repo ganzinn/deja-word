@@ -29,6 +29,7 @@ model User {
   occurrencePresetSettings OccurrencePresetSetting[]
   quizAnswers              QuizAnswer[]
   drills                   Drill[]
+  quizDefaultSetting       QuizDefaultSetting?
 
   @@unique([email])
   @@map("user")
@@ -214,10 +215,11 @@ model Occurrence {
   location  String
   sortOrder Int    @default(0) @map("sort_order")
 
-  owner          User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  wordLinks      WordOccurrence[]
-  presetSettings OccurrencePresetSetting[]
-  drills         Drill[]
+  owner               User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  wordLinks           WordOccurrence[]
+  presetSettings      OccurrencePresetSetting[]
+  drills              Drill[]
+  quizDefaultSettings QuizDefaultSetting[]
 
   @@unique([ownerId, location])
   @@index([ownerId])
@@ -307,6 +309,23 @@ model QuizAnswer {
   @@index([ownerId, wordId])
   @@index([wordId])
   @@map("quiz_answer")
+}
+
+// テスト開始画面のデフォルト設定: ユーザーごと 1 行。全項目任意（部分的なデフォルトを許す）
+model QuizDefaultSetting {
+  userId       String      @id @map("user_id")
+  occurrenceId String?     @map("occurrence_id")
+  rangeFrom    Int?        @map("range_from")
+  rangeTo      Int?        @map("range_to")
+  format       QuizFormat?
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Occurrence 削除時は掲載箇所だけ未設定へ戻す（range / format のデフォルトは残す）
+  occurrence Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+
+  @@index([occurrenceId])
+  @@map("quiz_default_setting")
 }
 
 // 定着待ちプール: 元テスト1回から生成、複数並存可

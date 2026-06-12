@@ -5,6 +5,7 @@ import {
   getQuizPreviewInputSchema,
   quizFormatSchema,
   quizRangeInputSchema,
+  saveQuizDefaultsInputSchema,
   startQuizInputSchema,
   submitQuizAnswersInputSchema,
   wordIdSchema,
@@ -143,6 +144,92 @@ describe("submitQuizAnswersInputSchema", () => {
       answers: [{ wordId: "w_1", result: "CORRECT", format: "SELF_JUDGE" }],
     });
     expect(r.answers[0]).toEqual({ wordId: "w_1", result: "CORRECT" });
+  });
+});
+
+describe("saveQuizDefaultsInputSchema", () => {
+  test("accepts all-null (no defaults)", () => {
+    const r = saveQuizDefaultsInputSchema.safeParse({
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("accepts partial defaults (format only / occurrence only)", () => {
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({
+        occurrenceId: null,
+        rangeFrom: null,
+        rangeTo: null,
+        format: "CHOICE",
+      }).success,
+    ).toBe(true);
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({
+        occurrenceId: "occ_1",
+        rangeFrom: null,
+        rangeTo: null,
+        format: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  test("accepts fully specified defaults", () => {
+    const r = saveQuizDefaultsInputSchema.safeParse({
+      occurrenceId: "occ_1",
+      rangeFrom: 1,
+      rangeTo: 100,
+      format: "SELF_JUDGE",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("rejects empty occurrenceId (null is the way to unset)", () => {
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({
+        occurrenceId: "",
+        rangeFrom: null,
+        rangeTo: null,
+        format: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  test("rejects zero / negative / non-integer range values", () => {
+    for (const rangeFrom of [0, -1, 1.5]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({
+          occurrenceId: null,
+          rangeFrom,
+          rangeTo: null,
+          format: null,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  test("rejects an invalid format", () => {
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({
+        occurrenceId: null,
+        rangeFrom: null,
+        rangeTo: null,
+        format: "BOGUS",
+      }).success,
+    ).toBe(false);
+  });
+
+  test("rangeFrom > rangeTo is accepted by the schema (treated as 0 targets downstream)", () => {
+    const r = saveQuizDefaultsInputSchema.safeParse({
+      occurrenceId: null,
+      rangeFrom: 20,
+      rangeTo: 10,
+      format: null,
+    });
+    expect(r.success).toBe(true);
   });
 });
 

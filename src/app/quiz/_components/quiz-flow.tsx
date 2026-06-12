@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { QuizMode } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
+import type { QuizDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
@@ -31,6 +32,8 @@ import { StartForm, type OccurrenceOption } from "./start-form";
 type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
+  /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
+  defaults: QuizDefaults | null;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -119,7 +122,7 @@ function QuestionView({
   }
 }
 
-export function QuizFlow({ occurrences, activeDrills }: Props) {
+export function QuizFlow({ occurrences, activeDrills, defaults }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
   const [mode, setMode] = useState<QuizMode>("TEST");
@@ -420,6 +423,7 @@ export function QuizFlow({ occurrences, activeDrills }: Props) {
         <StartForm
           occurrences={occurrences}
           activeDrills={activeDrills}
+          defaults={defaults}
           onStart={handleStart}
           onResumeDrill={handleResumeDrill}
         />

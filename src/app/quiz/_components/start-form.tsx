@@ -26,9 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FORMAT_OPTIONS } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
+import type { QuizDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPreview } from "@/lib/quiz-preview";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
@@ -45,6 +47,12 @@ type Props = {
   occurrences: OccurrenceOption[];
   /** 進行中（未完了）の drill 一覧（page.tsx が server 取得して渡す）。 */
   activeDrills: ActiveDrill[];
+  /**
+   * フォームの初期値（デフォルト設定。未保存なら null）。occurrenceId は
+   * page.tsx が occurrences に存在するものだけに絞って渡す。初期 format が
+   * プレビューで不成立でも自動解除しない（ユーザー選択と同じ扱い）。
+   */
+  defaults: QuizDefaults | null;
   onStart: (input: StartQuizInput) => void;
   /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */
   onResumeDrill: (drillId: string) => void;
@@ -67,12 +75,6 @@ function previewKeyOf(occurrenceId: string, rangeFrom?: number, rangeTo?: number
 
 const PREVIEW_DEBOUNCE_MS = 300;
 
-const FORMAT_OPTIONS: { value: QuizFormat; label: string; description: string }[] = [
-  { value: "CHOICE", label: "四択", description: "4 つの選択肢から正しい意味を選ぶ" },
-  { value: "SELF_JUDGE", label: "自己判定", description: "解答を見て自分で正誤を判定する" },
-  { value: "MULTI_MEANING", label: "多義語選択", description: "正しい意味をすべて選ぶ" },
-];
-
 /** 空欄は undefined（制限なし）。0 以下・非整数はサーバー側 zod が invalid として弾く。 */
 function parseRangeValue(text: string): number | undefined {
   const trimmed = text.trim();
@@ -81,11 +83,11 @@ function parseRangeValue(text: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-export function StartForm({ occurrences, activeDrills, onStart, onResumeDrill }: Props) {
-  const [occurrenceId, setOccurrenceId] = useState<string | null>(null);
-  const [rangeFromText, setRangeFromText] = useState("");
-  const [rangeToText, setRangeToText] = useState("");
-  const [format, setFormat] = useState<QuizFormat | null>(null);
+export function StartForm({ occurrences, activeDrills, defaults, onStart, onResumeDrill }: Props) {
+  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
+  const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
+  const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
+  const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
   const [previewResponse, setPreviewResponse] = useState<PreviewResponse | null>(null);
   // 応答順逆転対策の単調増加トークン（クライアント内で完結。Action の入出力には含めない）
   const previewTokenRef = useRef(0);

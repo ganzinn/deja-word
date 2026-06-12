@@ -38,6 +38,20 @@ export default async function SettingsPage() {
             <ChevronRightIcon className="text-muted-foreground size-4" />
           </Link>
         </li>
+        <li>
+          <Link
+            href="/settings/quiz-defaults"
+            className="border-border bg-card/50 hover:bg-muted/60 flex items-center justify-between gap-2 rounded-lg border p-4 transition-colors"
+          >
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">単語テスト</span>
+              <span className="text-muted-foreground text-xs">
+                テスト開始画面の初期値（掲載箇所・範囲・出題形式）を設定します
+              </span>
+            </div>
+            <ChevronRightIcon className="text-muted-foreground size-4" />
+          </Link>
+        </li>
       </ul>
     </main>
   );

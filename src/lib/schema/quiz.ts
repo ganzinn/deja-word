@@ -44,6 +44,19 @@ export const submitQuizAnswersInputSchema = z.object({
 /** `getWordDetailForDialog` の入力（wordId 単体）。 */
 export const wordIdSchema = z.string().min(1);
 
+/**
+ * `saveQuizDefaults` の入力（開始画面デフォルト設定）。
+ * 全項目 nullable: Occurrence 削除（DB の SetNull）で「format だけ残る」状態が必ず
+ * 生じるため、部分的なデフォルトをフォームでも表現・保存できるようにする。
+ * rangeFrom > rangeTo は quizRangeInputSchema と同方針で拒否しない。
+ */
+export const saveQuizDefaultsInputSchema = z.object({
+  occurrenceId: z.string().min(1).nullable(),
+  rangeFrom: z.number().int().positive().nullable(),
+  rangeTo: z.number().int().positive().nullable(),
+  format: quizFormatSchema.nullable(),
+});
+
 // ---- drill 系 Server Action の入力スキーマ ----
 
 /** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。 */
@@ -83,6 +96,7 @@ export const deleteDrillInputSchema = z.object({
 });
 
 export type StartQuizInput = z.infer<typeof startQuizInputSchema>;
+export type SaveQuizDefaultsInput = z.infer<typeof saveQuizDefaultsInputSchema>;
 export type SubmitQuizAnswersInput = z.infer<typeof submitQuizAnswersInputSchema>;
 export type StartDrillInput = z.infer<typeof startDrillInputSchema>;
 export type StartDrillRoundInput = z.infer<typeof startDrillRoundInputSchema>;

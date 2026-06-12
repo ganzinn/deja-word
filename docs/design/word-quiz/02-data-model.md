@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -123,3 +123,31 @@ model DrillWord {
 - **rangeFrom / rangeTo は drill 生成時の実効範囲を保存する（05 で明確化）**。開始画面の範囲指定は「空欄＝制限なし」があり得るため、drill 生成時は実際に出題された単語の occurrenceNumber の min / max を保存する。列定義の変更はなし（非 null のまま）。
 - **Drill.format（06 起因の加算改訂）**。drill は元テストの出題形式を全ラウンドで引き継ぐ（[06](06-drill-mode.md) の決定 4）。drill 生成時にクライアントから 1 回だけ受け取って保存し、以降のラウンド生成・QuizAnswer.format の付与はサーバーがこの列から導出する。全 drill が生成時に形式を持つため非 null。QuizAnswer.format は重複して見えるが、QuizAnswer は Drill への FK を持たず Drill 削除後も履歴単独で形式が分かる必要があるため両方持つ。
 - **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。
+
+### 開始画面デフォルト設定（2026-06-13 加算改訂）
+
+開始画面の設定 3 項目（掲載箇所・掲載番号範囲・出題形式）をユーザーごとのデフォルトとして保存する（設定画面は [04](04-ui.md)）。
+
+```prisma
+// テスト開始画面のデフォルト設定: ユーザーごと 1 行。全項目任意（部分的なデフォルトを許す）
+model QuizDefaultSetting {
+  userId       String      @id @map("user_id")
+  occurrenceId String?     @map("occurrence_id")
+  rangeFrom    Int?        @map("range_from")
+  rangeTo      Int?        @map("range_to")
+  format       QuizFormat?
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+
+  @@index([occurrenceId])
+  @@map("quiz_default_setting")
+}
+```
+
+- **ユーザーごと 1 行（userId が PK）**。デフォルトは 1 セットで十分なため。複数プリセットの要求が出たら別途検討。
+- **occurrence の onDelete は SetNull**（既存規約の Cascade からの意図的な逸脱）。Occurrence 削除時は掲載箇所だけ未設定へ戻し、range / format のデフォルトは道連れにしない。`OccurrencePresetSetting` は「occurrence に従属する設定」なので Cascade が正しいが、本モデルは「ユーザーの設定の一部が occurrence を参照」する構図で従属関係が逆。
+- **全項目 nullable（部分的なデフォルトを許す）**。SetNull により「format だけ残る」状態が DB 上必ず生じるため、その状態をフォームでも表現・再保存できるように揃える。「出題形式だけいつも四択」のような使い方も自然。
+- 保存時に occurrence の可視性（`scopedOwnerIds`）を検証し、読み出し時も可視範囲外なら occurrenceId を null に落とす（二重防御）。
+- User / Occurrence 側にはリレーションフィールド（`quizDefaultSetting` / `quizDefaultSettings`）のみ追加（列は増えない＝「既存テーブル無変更」の方針に抵触しない）。

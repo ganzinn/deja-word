@@ -17,10 +17,11 @@ export async function getOccurrenceForUser(
   userId: string,
   occurrenceId: string,
 ): Promise<OccurrenceDetailResult | null> {
+  const allowed = scopedOwnerIds(userId);
   const row = await prisma.occurrence.findFirst({
     where: {
       id: occurrenceId,
-      ownerId: { in: scopedOwnerIds(userId) },
+      ownerId: { in: allowed },
     },
     select: {
       id: true,
@@ -32,7 +33,9 @@ export async function getOccurrenceForUser(
         select: { userId: true },
         take: 1,
       },
-      _count: { select: { wordLinks: true } },
+      _count: {
+        select: { wordLinks: { where: { ownerId: { in: allowed } } } },
+      },
     },
   });
   if (!row) return null;

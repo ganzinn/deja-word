@@ -7,7 +7,9 @@ import { SYSTEM_USER_ID } from "@/lib/system-user";
 import {
   SYSTEM_OCCURRENCE_LOCATIONS,
   createOccurrenceRow,
+  createQuizWordRow,
   createTestUser,
+  getSystemOccurrence,
 } from "../../tests/setup/fixtures";
 
 describe("listOccurrencesForUser", () => {
@@ -57,5 +59,28 @@ describe("listOccurrencesForUser", () => {
     await createOccurrenceRow(b.id, "B's", 0, [b.id]);
     const items = await listOccurrencesForUser(a.id);
     expect(items.map((i) => i.location)).not.toContain("B's");
+  });
+
+  test("wordLinkCount counts only system + own word links", async () => {
+    const a = await createTestUser();
+    const b = await createTestUser();
+    const sys = await getSystemOccurrence(SYSTEM_OCCURRENCE_LOCATIONS[0]);
+    await createQuizWordRow(SYSTEM_USER_ID, "sys-word", {
+      occurrence: { id: sys.id, occurrenceNumber: 1 },
+    });
+    await createQuizWordRow(a.id, "a-word", {
+      occurrence: { id: sys.id, occurrenceNumber: null },
+    });
+    await createQuizWordRow(b.id, "b-word", {
+      occurrence: { id: sys.id, occurrenceNumber: null },
+    });
+
+    const itemForA = (await listOccurrencesForUser(a.id)).find((i) => i.id === sys.id);
+    expect(itemForA!.wordLinkCount).toBe(2);
+
+    const itemForSystem = (await listOccurrencesForUser(SYSTEM_USER_ID)).find(
+      (i) => i.id === sys.id,
+    );
+    expect(itemForSystem!.wordLinkCount).toBe(1);
   });
 });

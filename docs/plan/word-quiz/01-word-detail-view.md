@@ -1,6 +1,6 @@
 # 01. word-detail-view
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: （未作成）
 
 ## 目的
 
@@ -46,4 +46,7 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 抽出対象の列挙（意味・例文・関連語・メモ・掲載箇所の各 Section）に加え、同じコンテンツ div 内の見出し `<h2>`（headword 表示）も `WordDetailView` に含めて移動した。DOM 構造不変を満たす最小の切り出し単位がこの div 全体であり、08 のダイアログでも headword 表示が必要なため。
+- `WordDetailView` のルート div はページ由来の `px-4 pt-6` パディングを保持。08 のダイアログでレイアウトが合わない場合はラッパー側で調整するか、その時点で padding を props 化する（本チケットでは表示不変のため現状維持）。
+- `word-detail-view.tsx` は `"use client"` なしの共有コンポーネント。props の `WordDetail` は type-only import のため `server-only` な `words-detail.ts` を実行時に引き込まない（08 のクライアント側ダイアログから import 可能）。
+- 手動確認（`/words/[id]` の表示・音源再生の不変確認）は未実施。

@@ -1,7 +1,12 @@
+import { EmptyDrillResultsError } from "@/lib/drill-create";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
+import {
+  DrillNotFoundError,
+  DrillRoundConflictError,
+} from "@/lib/quiz/handlers/drill-round-handler";
 
-export type QuizErrorCode = "not_found" | "generation_failed" | "unknown";
+export type QuizErrorCode = "not_found" | "generation_failed" | "conflict" | "unknown";
 
 export type QuizErrorResult = {
   ok: false;
@@ -15,6 +20,10 @@ export type QuizErrorResult = {
  *
  * - `OccurrenceNotFoundError`: 対象 Occurrence が不在・不可視（`fetchQuizSource` 由来）
  * - `QuizGenerationError`: 形式不成立等で問題生成できない（message はユーザー提示可能な日本語）
+ * - `DrillNotFoundError`: drill が不在・不可視（存在を漏らさない）
+ * - `EmptyDrillResultsError`: drill 生成の results に有効な単語が 1 件もない
+ *   （改ざん入力・極端な削除レースのみ到達。バグではないためログは残さず not_found 扱い）
+ * - `DrillRoundConflictError`: ラウンド送信の競合（別画面で 2 ラウンド以上進んでいる等）
  * - 未知のエラー: `words/error-map.ts` と同じ方針で `unknown` にマップ（ログのみ残す）
  */
 export function mapQuizErrorToResult(e: unknown): QuizErrorResult {
@@ -23,6 +32,23 @@ export function mapQuizErrorToResult(e: unknown): QuizErrorResult {
   }
   if (e instanceof QuizGenerationError) {
     return { ok: false, error: "generation_failed", message: e.message };
+  }
+  if (e instanceof DrillNotFoundError) {
+    return { ok: false, error: "not_found", message: "対象の定着モードが見つかりません。" };
+  }
+  if (e instanceof EmptyDrillResultsError) {
+    return {
+      ok: false,
+      error: "not_found",
+      message: "定着モードの対象になる単語が見つかりません。",
+    };
+  }
+  if (e instanceof DrillRoundConflictError) {
+    return {
+      ok: false,
+      error: "conflict",
+      message: "定着モードが別の画面で先に進んでいるため、この結果は送信できません。",
+    };
   }
   console.error("[quiz] action failed", e);
   return {

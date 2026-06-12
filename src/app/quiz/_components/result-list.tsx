@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { QuizResult } from "@/generated/prisma/enums";
+import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
 import { WordDetailDialog } from "./word-detail-dialog";
 
@@ -20,20 +20,43 @@ export type ResultRow = {
   answerDisplay: string | null;
 };
 
-/** 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。 */
+/**
+ * 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。
+ * success は TEST（`submitQuizAnswers`）、drill-success は DRILL（`submitDrillRound`）の成功。
+ * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない。
+ */
 export type SubmitState =
   | { status: "sending" }
   | { status: "success"; skippedWordIds: string[] }
+  | {
+      status: "drill-success";
+      remaining: { wordId: string; remaining: number }[];
+      completed: boolean;
+    }
   | { status: "error"; message: string };
 
 type Props = {
+  mode: QuizMode;
   rows: ResultRow[];
   submitState: SubmitState;
   onResend: () => void;
+  /** TEST: 「開始画面に戻る」／DRILL: 「終了」（確定済み残数は保持される）。 */
   onBackToStart: () => void;
+  /** TEST: 「定着モードをはじめる」。履歴送信成功後のみ有効。 */
+  onStartDrill: () => void;
+  /** DRILL: 「次のラウンドへ」。ラウンド送信成功後のみ有効。 */
+  onNextRound: () => void;
 };
 
-export function ResultList({ rows, submitState, onResend, onBackToStart }: Props) {
+export function ResultList({
+  mode,
+  rows,
+  submitState,
+  onResend,
+  onBackToStart,
+  onStartDrill,
+  onNextRound,
+}: Props) {
   const [dialogWordId, setDialogWordId] = useState<string | null>(null);
 
   const total = rows.length;
@@ -41,6 +64,12 @@ export function ResultList({ rows, submitState, onResend, onBackToStart }: Props
   const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
   const skippedWordIds =
     submitState.status === "success" ? new Set(submitState.skippedWordIds) : null;
+  // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）
+  const remainingByWordId =
+    submitState.status === "drill-success"
+      ? new Map(submitState.remaining.map((r) => [r.wordId, r.remaining]))
+      : null;
+  const drillCompleted = submitState.status === "drill-success" && submitState.completed;
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,6 +111,9 @@ export function ResultList({ rows, submitState, onResend, onBackToStart }: Props
                     削除済み
                   </Badge>
                 ) : null}
+                {remainingByWordId !== null ? (
+                  <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                ) : null}
               </div>
               <p className="text-sm whitespace-pre-wrap">
                 <span className="text-muted-foreground">正解: </span>
@@ -101,17 +133,63 @@ export function ResultList({ rows, submitState, onResend, onBackToStart }: Props
       </ul>
 
       <div className="flex flex-col gap-2 pt-2">
-        {/* チケット 10 で drill 生成（startDrill）を配線する。送信成功までは無効のままにすること */}
-        <Button size="lg" disabled>
-          定着モードをはじめる
-        </Button>
-        <Button size="lg" variant="outline" onClick={onBackToStart}>
-          開始画面に戻る
-        </Button>
+        {mode === "TEST" ? (
+          <>
+            {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効 */}
+            <Button size="lg" disabled={submitState.status !== "success"} onClick={onStartDrill}>
+              定着モードをはじめる
+            </Button>
+            <Button size="lg" variant="outline" onClick={onBackToStart}>
+              開始画面に戻る
+            </Button>
+          </>
+        ) : (
+          <>
+            {drillCompleted ? (
+              <p className="text-center text-base font-semibold" role="status">
+                すべての単語を卒業しました！定着モード完了です。
+              </p>
+            ) : (
+              // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
+              <Button
+                size="lg"
+                disabled={submitState.status !== "drill-success"}
+                onClick={onNextRound}
+              >
+                次のラウンドへ
+              </Button>
+            )}
+            <Button size="lg" variant="outline" onClick={onBackToStart}>
+              終了
+            </Button>
+          </>
+        )}
       </div>
 
       <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
     </div>
+  );
+}
+
+/**
+ * DRILL の残数バッジ。確定残数に行が無い単語はラウンド中に削除されたもの
+ * （DrillWord は Cascade 削除済み）として「削除済み」を表示する。
+ */
+function DrillRemainingBadge({ remaining }: { remaining: number | undefined }) {
+  if (remaining === undefined) {
+    return (
+      <Badge variant="secondary" className="ml-auto">
+        削除済み
+      </Badge>
+    );
+  }
+  if (remaining === 0) {
+    return <Badge className="ml-auto">卒業</Badge>;
+  }
+  return (
+    <Badge variant="secondary" className="ml-auto">
+      あと{remaining}回
+    </Badge>
   );
 }
 

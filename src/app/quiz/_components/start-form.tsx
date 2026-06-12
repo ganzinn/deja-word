@@ -1,8 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Trash2Icon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,10 +28,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
+import type { ActiveDrill } from "@/lib/drill-list";
 import type { QuizPreview } from "@/lib/quiz-preview";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
-import { getQuizPreview } from "../actions";
+import { deleteDrill, getQuizPreview } from "../actions";
 
 /** 開始画面の Occurrence 選択肢（page.tsx が単語数つきで取得して渡す）。 */
 export type OccurrenceOption = {
@@ -28,7 +43,11 @@ export type OccurrenceOption = {
 
 type Props = {
   occurrences: OccurrenceOption[];
+  /** 進行中（未完了）の drill 一覧（page.tsx が server 取得して渡す）。 */
+  activeDrills: ActiveDrill[];
   onStart: (input: StartQuizInput) => void;
+  /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */
+  onResumeDrill: (drillId: string) => void;
 };
 
 type PreviewState =
@@ -62,7 +81,7 @@ function parseRangeValue(text: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-export function StartForm({ occurrences, onStart }: Props) {
+export function StartForm({ occurrences, activeDrills, onStart, onResumeDrill }: Props) {
   const [occurrenceId, setOccurrenceId] = useState<string | null>(null);
   const [rangeFromText, setRangeFromText] = useState("");
   const [rangeToText, setRangeToText] = useState("");
@@ -231,6 +250,82 @@ export function StartForm({ occurrences, onStart }: Props) {
       <Button size="lg" disabled={!canStart} onClick={handleStart}>
         開始
       </Button>
+
+      {/* 進行中 drill がなければセクションごと非表示（04-ui.md「開始画面（/quiz）」） */}
+      {activeDrills.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold">進行中の定着モード</h2>
+          <ul className="flex flex-col gap-2">
+            {activeDrills.map((drill) => (
+              <li key={drill.id}>
+                <ActiveDrillRow drill={drill} onResume={() => onResumeDrill(drill.id)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+/** 進行中の定着モード 1 行（元テストの範囲・残単語数・最終実施日＋再開・削除）。 */
+function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () => void }) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const rangeLabel = `${drill.occurrenceName} No.${drill.rangeFrom}〜${drill.rangeTo}`;
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteDrill({ drillId: drill.id });
+      if (result.ok) {
+        toast.success("削除しました");
+        setConfirmOpen(false);
+        // 一覧は server 取得（page.tsx）のため再取得で反映する
+        router.refresh();
+        return;
+      }
+      toast.error(result.message);
+    });
+  }
+
+  return (
+    <div className="border-border bg-card/50 flex items-center gap-3 rounded-lg border p-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-sm font-semibold break-words">{rangeLabel}</span>
+        <span className="text-muted-foreground text-xs">
+          残り {drill.remainingWordCount} 語・最終実施{" "}
+          {/* SSR とクライアントのタイムゾーン差による表記ゆれは許容する */}
+          <span suppressHydrationWarning>{drill.lastPlayedAt.toLocaleDateString("ja-JP")}</span>
+        </span>
+      </div>
+      <Button variant="outline" size="sm" onClick={onResume}>
+        再開
+      </Button>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogTrigger
+          aria-label="削除"
+          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+        >
+          <Trash2Icon />
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>この定着モードを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{rangeLabel}」（残り {drill.remainingWordCount} 語）の進行状況が削除されます。
+              これまでの解答履歴は残ります。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={isPending} onClick={handleDelete}>
+              {isPending ? "削除中…" : "削除する"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

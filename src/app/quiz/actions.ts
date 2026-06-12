@@ -1,20 +1,28 @@
 "use server";
 
+import { createDrillForUser } from "@/lib/drill-create";
+import { deleteDrillForUser } from "@/lib/drill-delete";
+import { generateDrillRoundForUser } from "@/lib/drill-round-generate";
+import { submitDrillRoundForUser } from "@/lib/drill-round-submit";
 import { submitQuizAnswersForUser } from "@/lib/quiz-answers-submit";
 import { generateQuizForUser } from "@/lib/quiz-generate";
-import {
-  getQuizPreviewForUser,
-  type QuizPreview,
-  type QuizRangeInput,
-} from "@/lib/quiz-preview";
+import { getQuizPreviewForUser, type QuizPreview, type QuizRangeInput } from "@/lib/quiz-preview";
 import { mapQuizErrorToResult, type QuizErrorCode } from "@/lib/quiz/error-map";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import {
+  deleteDrillInputSchema,
   getQuizPreviewInputSchema,
+  startDrillInputSchema,
+  startDrillRoundInputSchema,
   startQuizInputSchema,
+  submitDrillRoundInputSchema,
   submitQuizAnswersInputSchema,
   wordIdSchema,
+  type DeleteDrillInput,
+  type StartDrillInput,
+  type StartDrillRoundInput,
   type StartQuizInput,
+  type SubmitDrillRoundInput,
   type SubmitQuizAnswersInput,
 } from "@/lib/schema/quiz";
 import { getCurrentSession } from "@/lib/session";
@@ -92,6 +100,95 @@ export async function submitQuizAnswers(
       parsed.data,
     );
     return { ok: true, savedCount, skippedWordIds };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type StartDrillResult = { ok: true; drillId: string } | QuizActionFailure;
+
+/** テスト結果からの drill 生成（format はここで 1 回だけ受け取り `Drill.format` に保存）。 */
+export async function startDrill(input: StartDrillInput): Promise<StartDrillResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = startDrillInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    const { drillId } = await createDrillForUser(session.user.id, parsed.data);
+    return { ok: true, drillId };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type StartDrillRoundResult =
+  | { ok: true; quiz: QuizPayload; roundCount: number }
+  | QuizActionFailure;
+
+/**
+ * drill ラウンド 1 回分の問題生成（初回・再開とも同一経路。形式は `Drill.format` から導出）。
+ * roundCount はラウンド送信の expectedRoundCount に使う。
+ */
+export async function startDrillRound(input: StartDrillRoundInput): Promise<StartDrillRoundResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = startDrillRoundInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    const { quiz, roundCount } = await generateDrillRoundForUser(session.user.id, parsed.data);
+    return { ok: true, quiz, roundCount };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type SubmitDrillRoundResult =
+  | {
+      ok: true;
+      remaining: { wordId: string; remaining: number }[];
+      completed: boolean;
+      alreadyApplied: boolean;
+    }
+  | QuizActionFailure;
+
+/** drill ラウンド終了時の履歴一括送信＋残数更新（roundCount CAS で冪等）。 */
+export async function submitDrillRound(
+  input: SubmitDrillRoundInput,
+): Promise<SubmitDrillRoundResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = submitDrillRoundInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    const { remaining, completed, alreadyApplied } = await submitDrillRoundForUser(
+      session.user.id,
+      parsed.data,
+    );
+    return { ok: true, remaining, completed, alreadyApplied };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type DeleteDrillResult = { ok: true } | QuizActionFailure;
+
+/** 進行中一覧からの drill 削除（解答履歴 QuizAnswer は残る）。 */
+export async function deleteDrill(input: DeleteDrillInput): Promise<DeleteDrillResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = deleteDrillInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    await deleteDrillForUser(session.user.id, parsed.data.drillId);
+    return { ok: true };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

@@ -2,16 +2,24 @@
 
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { QuizMode } from "@/generated/prisma/enums";
+import type { ActiveDrill } from "@/lib/drill-list";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
-import { startQuiz, submitQuizAnswers } from "../actions";
+import {
+  startDrill,
+  startDrillRound,
+  startQuiz,
+  submitDrillRound,
+  submitQuizAnswers,
+} from "../actions";
 import { Countdown } from "./countdown";
 import { QuestionChoice } from "./question-choice";
 import { QuestionMultiMeaning } from "./question-multi-meaning";
@@ -22,6 +30,7 @@ import { StartForm, type OccurrenceOption } from "./start-form";
 
 type Props = {
   occurrences: OccurrenceOption[];
+  activeDrills: ActiveDrill[];
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -30,6 +39,13 @@ type Phase =
   | { name: "countdown" }
   | { name: "play"; index: number }
   | { name: "result" };
+
+/** 進行中の drill（DRILL モードのラウンド生成・送信に使う）。 */
+type DrillState = {
+  drillId: string;
+  /** 直近の `startDrillRound` 応答の roundCount（ラウンド送信の CAS 期待値）。 */
+  expectedRoundCount: number;
+};
 
 /**
  * 音声プリロード（05-architecture.md 決定 10）: payload 内の発音音源 URL を
@@ -103,24 +119,36 @@ function QuestionView({
   }
 }
 
-export function QuizFlow({ occurrences }: Props) {
-  // mode は本チケットでは TEST のみ配線。DRILL（チケット 10）は同じ状態機械を mode 違いで再利用する
-  const [mode] = useState<QuizMode>("TEST");
+export function QuizFlow({ occurrences, activeDrills }: Props) {
+  const router = useRouter();
+  // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
+  const [mode, setMode] = useState<QuizMode>("TEST");
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [quiz, setQuiz] = useState<QuizPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rows, setRows] = useState<ResultRow[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState | null>(null);
+  // テスト開始時の入力（drill 生成の occurrenceId に使う）
+  const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
+  const [drill, setDrill] = useState<DrillState | null>(null);
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
   const runIdRef = useRef(0);
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
-  function handleStart(input: StartQuizInput) {
-    const runId = ++runIdRef.current;
+  /** countdown へ遷移する前の共通リセット（payload・結果・送信状態を破棄）。 */
+  function resetRunState() {
     setQuiz(null);
     setLoadError(null);
     setRows([]);
     setSubmitState(null);
+  }
+
+  function handleStart(input: StartQuizInput) {
+    const runId = ++runIdRef.current;
+    setMode("TEST");
+    setDrill(null);
+    setStartInput(input);
+    resetRunState();
     setPhase({ name: "countdown" });
     // カウントダウンの裏で問題データを一括取得し、取得完了後ただちに第 1 問の音声をプリロード
     void startQuiz(input).then((result) => {
@@ -134,21 +162,100 @@ export function QuizFlow({ occurrences }: Props) {
     });
   }
 
+  /** drill ラウンド生成（初回・再開・次ラウンドとも単一経路）。countdown の裏で取得する。 */
+  function loadDrillRound(drillId: string, runId: number) {
+    void startDrillRound({ drillId }).then((result) => {
+      if (runId !== runIdRef.current) return;
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      setDrill({ drillId, expectedRoundCount: result.roundCount });
+      setQuiz(result.quiz);
+      preloadAudio(audioCacheRef.current, result.quiz.questions[0]?.pronunciationAudioUrl ?? null);
+    });
+  }
+
+  /** テスト結果画面の「定着モードをはじめる」: drill 生成 → ラウンド 1 のカウントダウンへ。 */
+  function handleStartDrill() {
+    if (quiz === null || startInput === null) return;
+    // drill 生成は履歴の確定が前提（result-list 側でも送信成功までボタンを無効化している）
+    if (submitState?.status !== "success") return;
+    const input = {
+      occurrenceId: startInput.occurrenceId,
+      format: quiz.format,
+      results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
+    };
+    const runId = ++runIdRef.current;
+    setMode("DRILL");
+    setDrill(null);
+    resetRunState();
+    setPhase({ name: "countdown" });
+    void startDrill(input).then((result) => {
+      if (runId !== runIdRef.current) return;
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      loadDrillRound(result.drillId, runId);
+    });
+  }
+
+  /** 開始画面の進行中一覧からの「再開」: カウントダウン → 次ラウンド。 */
+  function handleResumeDrill(drillId: string) {
+    const runId = ++runIdRef.current;
+    setMode("DRILL");
+    setDrill(null);
+    resetRunState();
+    setPhase({ name: "countdown" });
+    loadDrillRound(drillId, runId);
+  }
+
+  /** drill ラウンド結果画面の「次のラウンドへ」: カウントダウンから再開。 */
+  function handleNextRound() {
+    if (drill === null) return;
+    const runId = ++runIdRef.current;
+    resetRunState();
+    setPhase({ name: "countdown" });
+    loadDrillRound(drill.drillId, runId);
+  }
+
   function resetToStart() {
     runIdRef.current += 1;
     audioCacheRef.current.clear();
-    setQuiz(null);
-    setLoadError(null);
-    setRows([]);
-    setSubmitState(null);
+    setMode("TEST");
+    setDrill(null);
+    setStartInput(null);
+    resetRunState();
     setPhase({ name: "start" });
+    // 進行中の定着モード一覧（server 取得）を最新化する（完了・残数進行・新規生成を反映）
+    router.refresh();
   }
 
   function submitAnswers(format: QuizPayload["format"], allRows: ResultRow[]) {
-    // DRILL の送信（submitDrillRound）はチケット 10 で配線する
-    if (mode !== "TEST") return;
     const runId = runIdRef.current;
     setSubmitState({ status: "sending" });
+    if (mode === "DRILL") {
+      // DRILL: ラウンド送信（履歴一括保存＋残数更新。roundCount CAS で冪等）
+      if (drill === null) return;
+      void submitDrillRound({
+        drillId: drill.drillId,
+        expectedRoundCount: drill.expectedRoundCount,
+        answers: allRows.map((row) => ({ wordId: row.wordId, result: row.result })),
+      }).then((result) => {
+        if (runId !== runIdRef.current) return;
+        if (result.ok) {
+          setSubmitState({
+            status: "drill-success",
+            remaining: result.remaining,
+            completed: result.completed,
+          });
+        } else {
+          setSubmitState({ status: "error", message: result.message });
+        }
+      });
+      return;
+    }
     void submitQuizAnswers({
       format,
       answers: allRows.map((row) => ({ wordId: row.wordId, result: row.result })),
@@ -191,11 +298,10 @@ export function QuizFlow({ occurrences }: Props) {
     submitAnswers(quiz.format, rows);
   }
 
-  // 離脱ガード: カウントダウン開始〜結果の履歴送信完了前
+  // 離脱ガード: カウントダウン開始〜結果の履歴送信完了前（TEST・DRILL とも適用）
+  const submitted = submitState?.status === "success" || submitState?.status === "drill-success";
   const guardActive =
-    phase.name === "countdown" ||
-    phase.name === "play" ||
-    (phase.name === "result" && submitState?.status !== "success");
+    phase.name === "countdown" || phase.name === "play" || (phase.name === "result" && !submitted);
 
   useEffect(() => {
     if (!guardActive) return;
@@ -282,12 +388,17 @@ export function QuizFlow({ occurrences }: Props) {
   if (phase.name === "result") {
     return (
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-4 px-4 pt-6 pb-16 md:max-w-2xl">
-        <h1 className="text-xl font-bold tracking-tight">テスト結果</h1>
+        <h1 className="text-xl font-bold tracking-tight">
+          {mode === "TEST" ? "テスト結果" : "ラウンド結果"}
+        </h1>
         <ResultList
+          mode={mode}
           rows={rows}
           submitState={submitState ?? { status: "sending" }}
           onResend={handleResend}
           onBackToStart={resetToStart}
+          onStartDrill={handleStartDrill}
+          onNextRound={handleNextRound}
         />
       </main>
     );
@@ -306,7 +417,12 @@ export function QuizFlow({ occurrences }: Props) {
         <h1 className="text-base font-semibold">単語テスト</h1>
       </header>
       <div className="px-4 pt-6">
-        <StartForm occurrences={occurrences} onStart={handleStart} />
+        <StartForm
+          occurrences={occurrences}
+          activeDrills={activeDrills}
+          onStart={handleStart}
+          onResumeDrill={handleResumeDrill}
+        />
       </div>
     </main>
   );

@@ -36,21 +36,71 @@ vi.mock("@/lib/words-detail", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/drill-create", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-create")>();
+  return {
+    ...actual,
+    createDrillForUser: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/drill-round-generate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-round-generate")>();
+  return {
+    ...actual,
+    generateDrillRoundForUser: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/drill-round-submit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-round-submit")>();
+  return {
+    ...actual,
+    submitDrillRoundForUser: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/drill-delete", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-delete")>();
+  return {
+    ...actual,
+    deleteDrillForUser: vi.fn(),
+  };
+});
+
 const { getCurrentSession } = await import("@/lib/session");
 const { getQuizPreviewForUser } = await import("@/lib/quiz-preview");
 const { generateQuizForUser } = await import("@/lib/quiz-generate");
 const { submitQuizAnswersForUser } = await import("@/lib/quiz-answers-submit");
 const { getWordDetailForUser } = await import("@/lib/words-detail");
+const { createDrillForUser, EmptyDrillResultsError } = await import("@/lib/drill-create");
+const { generateDrillRoundForUser } = await import("@/lib/drill-round-generate");
+const { submitDrillRoundForUser } = await import("@/lib/drill-round-submit");
+const { deleteDrillForUser } = await import("@/lib/drill-delete");
 const { OccurrenceNotFoundError } = await import("@/lib/occurrences-update");
 const { QuizGenerationError } = await import("@/lib/quiz/generation/dummy-pool");
-const { getQuizPreview, getWordDetailForDialog, startQuiz, submitQuizAnswers } =
-  await import("@/app/quiz/actions");
+const { DrillNotFoundError, DrillRoundConflictError } =
+  await import("@/lib/quiz/handlers/drill-round-handler");
+const {
+  deleteDrill,
+  getQuizPreview,
+  getWordDetailForDialog,
+  startDrill,
+  startDrillRound,
+  startQuiz,
+  submitDrillRound,
+  submitQuizAnswers,
+} = await import("@/app/quiz/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedPreview = vi.mocked(getQuizPreviewForUser);
 const mockedGenerate = vi.mocked(generateQuizForUser);
 const mockedSubmit = vi.mocked(submitQuizAnswersForUser);
 const mockedWordDetail = vi.mocked(getWordDetailForUser);
+const mockedDrillCreate = vi.mocked(createDrillForUser);
+const mockedDrillRoundGenerate = vi.mocked(generateDrillRoundForUser);
+const mockedDrillRoundSubmit = vi.mocked(submitDrillRoundForUser);
+const mockedDrillDelete = vi.mocked(deleteDrillForUser);
 
 const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
@@ -60,6 +110,10 @@ beforeEach(() => {
   mockedGenerate.mockReset();
   mockedSubmit.mockReset();
   mockedWordDetail.mockReset();
+  mockedDrillCreate.mockReset();
+  mockedDrillRoundGenerate.mockReset();
+  mockedDrillRoundSubmit.mockReset();
+  mockedDrillDelete.mockReset();
 });
 
 afterEach(() => {
@@ -255,5 +309,221 @@ describe("getWordDetailForDialog (Server Action)", () => {
     const res = await getWordDetailForDialog("w_1");
     expect(res).toEqual({ ok: true, word });
     expect(mockedWordDetail).toHaveBeenCalledWith("u_1", "w_1");
+  });
+});
+
+describe("startDrill (Server Action)", () => {
+  const input = {
+    occurrenceId: "occ_1",
+    format: "CHOICE" as const,
+    results: [
+      { wordId: "w_1", correct: true },
+      { wordId: "w_2", correct: false },
+    ],
+  };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await startDrill(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillCreate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects empty results", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await startDrill({ occurrenceId: "occ_1", format: "CHOICE", results: [] });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillCreate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects an unknown format", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await startDrill({
+      ...input,
+      format: "BOGUS",
+    } as unknown as Parameters<typeof startDrill>[0]);
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillCreate).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps OccurrenceNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillCreate.mockRejectedValue(new OccurrenceNotFoundError());
+    const res = await startDrill(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("not_found: maps EmptyDrillResultsError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillCreate.mockRejectedValue(new EmptyDrillResultsError());
+    const res = await startDrill(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("ok: returns the created drillId", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillCreate.mockResolvedValue({ drillId: "d_1" });
+    const res = await startDrill(input);
+    expect(res).toEqual({ ok: true, drillId: "d_1" });
+    expect(mockedDrillCreate).toHaveBeenCalledWith("u_1", input);
+  });
+});
+
+describe("startDrillRound (Server Action)", () => {
+  const input = { drillId: "d_1" };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await startDrillRound(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillRoundGenerate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects an empty drillId", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await startDrillRound({ drillId: "" });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRoundGenerate).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps DrillNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundGenerate.mockRejectedValue(new DrillNotFoundError());
+    const res = await startDrillRound(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("generation_failed: maps QuizGenerationError with its message", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundGenerate.mockRejectedValue(
+      new QuizGenerationError("出題できる単語がありません"),
+    );
+    const res = await startDrillRound(input);
+    expect(res).toEqual({
+      ok: false,
+      error: "generation_failed",
+      message: "出題できる単語がありません",
+    });
+  });
+
+  test("ok: returns the round quiz payload and roundCount", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const quiz = {
+      format: "CHOICE" as const,
+      questions: [
+        {
+          wordId: "w_1",
+          headword: "ubiquitous",
+          pronunciationAudioUrl: null,
+          choices: [{ text: "a" }, { text: "b" }],
+          correctIndex: 0,
+        },
+      ],
+    };
+    mockedDrillRoundGenerate.mockResolvedValue({ quiz, roundCount: 2 });
+    const res = await startDrillRound(input);
+    expect(res).toEqual({ ok: true, quiz, roundCount: 2 });
+    expect(mockedDrillRoundGenerate).toHaveBeenCalledWith("u_1", input);
+  });
+});
+
+describe("submitDrillRound (Server Action)", () => {
+  const input = {
+    drillId: "d_1",
+    expectedRoundCount: 1,
+    answers: [{ wordId: "w_1", result: "CORRECT" as const }],
+  };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await submitDrillRound(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillRoundSubmit).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects a negative expectedRoundCount", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await submitDrillRound({ ...input, expectedRoundCount: -1 });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRoundSubmit).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects empty answers", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await submitDrillRound({ ...input, answers: [] });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRoundSubmit).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps DrillNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundSubmit.mockRejectedValue(new DrillNotFoundError());
+    const res = await submitDrillRound(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("conflict: maps DrillRoundConflictError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundSubmit.mockRejectedValue(new DrillRoundConflictError());
+    const res = await submitDrillRound(input);
+    expect(res).toEqual({ ok: false, error: "conflict", message: expect.any(String) });
+  });
+
+  test("ok: returns remaining / completed / alreadyApplied", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundSubmit.mockResolvedValue({
+      remaining: [{ wordId: "w_1", remaining: 0 }],
+      completed: true,
+      alreadyApplied: false,
+    });
+    const res = await submitDrillRound(input);
+    expect(res).toEqual({
+      ok: true,
+      remaining: [{ wordId: "w_1", remaining: 0 }],
+      completed: true,
+      alreadyApplied: false,
+    });
+    expect(mockedDrillRoundSubmit).toHaveBeenCalledWith("u_1", input);
+  });
+});
+
+describe("deleteDrill (Server Action)", () => {
+  const input = { drillId: "d_1" };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await deleteDrill(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillDelete).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects an empty drillId", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await deleteDrill({ drillId: "" });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillDelete).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps DrillNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillDelete.mockRejectedValue(new DrillNotFoundError());
+    const res = await deleteDrill(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("unknown: generic Error is mapped to 'unknown'", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedDrillDelete.mockRejectedValue(new Error("boom"));
+    const res = await deleteDrill(input);
+    expect(res).toEqual({ ok: false, error: "unknown", message: expect.any(String) });
+  });
+
+  test("ok: returns success without extra payload", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillDelete.mockResolvedValue(undefined);
+    const res = await deleteDrill(input);
+    expect(res).toEqual({ ok: true });
+    expect(mockedDrillDelete).toHaveBeenCalledWith("u_1", "d_1");
   });
 });

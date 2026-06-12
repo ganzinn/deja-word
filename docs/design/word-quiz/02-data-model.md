@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -77,6 +77,7 @@ model Drill {
   occurrenceId String    @map("occurrence_id")
   rangeFrom    Int       @map("range_from")
   rangeTo      Int       @map("range_to")
+  format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ（06 確定）
   roundCount   Int       @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う（05 確定）
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -120,5 +121,5 @@ model DrillWord {
 - **形式・結果・mode は Prisma enum**。型安全を優先。将来形式（SPELLING 等）は enum 値追加のマイグレーションで対応。
 - **Drill.roundCount（05 起因の加算改訂）**。drill ラウンド送信の冪等化のため、完了ラウンド数を持つ。送信時に「期待ラウンド数と一致したら +1」の compare-and-swap を行い、二重送信で remaining が二重に減るのを防ぐ（詳細は [05](05-architecture.md) の決定 4）。
 - **rangeFrom / rangeTo は drill 生成時の実効範囲を保存する（05 で明確化）**。開始画面の範囲指定は「空欄＝制限なし」があり得るため、drill 生成時は実際に出題された単語の occurrenceNumber の min / max を保存する。列定義の変更はなし（非 null のまま）。
-- **Drill に元テストの出題形式は持たせない**。「drill のラウンドが元テストの形式を引き継ぐか」が 06 の後続論点のため。引き継ぐと決まれば nullable 列を加算（追加コストは小）。
+- **Drill.format（06 起因の加算改訂）**。drill は元テストの出題形式を全ラウンドで引き継ぐ（[06](06-drill-mode.md) の決定 4）。drill 生成時にクライアントから 1 回だけ受け取って保存し、以降のラウンド生成・QuizAnswer.format の付与はサーバーがこの列から導出する。全 drill が生成時に形式を持つため非 null。QuizAnswer.format は重複して見えるが、QuizAnswer は Drill への FK を持たず Drill 削除後も履歴単独で形式が分かる必要があるため両方持つ。
 - **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。

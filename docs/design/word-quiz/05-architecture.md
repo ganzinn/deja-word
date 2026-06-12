@@ -1,6 +1,6 @@
 # 05. アーキテクチャ（UseCase / handler / API 構成）
 
-状態: **確定**（2026-06-12）
+状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -15,7 +15,7 @@
 - drill の生成はテスト結果画面起点（「定着モードへ」押下時。元テスト結果から DrillWord の初期残数を作る）（06 確定）。
 - 中断は破棄（途中状態のサーバー保存なし。drill の確定済み残数は保持）（01・06 確定）。
 - 出題形式は3形式＋将来形式4・5（日→英）。形式追加に耐える拡張点を設計すること（01 確定）。
-- スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ（02 確定。本トピックの決定により Drill へ `roundCount` を加算 → 02 改訂済み）。範囲指定の対象は occurrenceNumber 付きの WordOccurrence のみ（02 確定）。意味（MeaningText）未登録の単語は出題対象から除外する（03 確定。取得クエリに効く）。
+- スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ（02 確定。本トピックの決定により Drill へ `roundCount` を、06 の決定により `format` を加算 → 02 改訂済み）。範囲指定の対象は occurrenceNumber 付きの WordOccurrence のみ（02 確定）。意味（MeaningText）未登録の単語は出題対象から除外する（03 確定。取得クエリに効く）。
 - 問題データ（選択肢構成・シャッフル済み）はサーバーで全問生成し一括返却する。採点はクライアントで行うため正解情報も payload に含む（カンニングは許容）。drill も各ラウンド開始時に同じロジックでサーバー再生成（03 確定）。
 - 選択肢生成・シャッフルは RNG（`() => number`）を引数に取る純関数として実装し、unit test はシード付き PRNG を注入する（03 確定）。
 
@@ -47,6 +47,7 @@ src/lib/
   drill-round-generate.ts    # generateDrillRoundForUser（ラウンド問題再生成）
   drill-round-submit.ts      # submitDrillRoundForUser（履歴＋残数を同一 tx）
   drill-list.ts              # listActiveDrillsForUser（開始画面の進行中一覧）
+  drill-delete.ts            # deleteDrillForUser（進行中一覧からの削除。06 決定 7 起因の加算）
   quiz/
     payload.ts               # 問題データの discriminated union（クライアントから import 可。server-only を付けない）
     error-map.ts             # mapQuizErrorToResult（words/error-map.ts と同形）
@@ -86,12 +87,13 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）・形式ごとの成立可否 |
 | テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat }` → `{ quiz: QuizPayload }` |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
-| drill 生成 | `startDrill` | `{ occurrenceId, results: { wordId, correct }[] }` → `{ drillId }` |
-| drill ラウンド生成 | `startDrillRound` | `{ drillId, format }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路） |
-| drill ラウンド送信 | `submitDrillRound` | `{ drillId, format, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }` |
+| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, results: { wordId, correct }[] }` → `{ drillId }`（format は `Drill.format` に保存） |
+| drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式は `Drill.format` から導出） |
+| drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
+| drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |
 | 単語詳細ダイアログ | `getWordDetailForDialog` | `wordId` → 既存 `getWordDetailForUser` の結果（薄いラッパ） |
 
-共通型: `QuizRangeInput = { occurrenceId: string; rangeFrom?: number; rangeTo?: number }`、`AnswerInput = { wordId: string; result: QuizResult }`。mode と ownerId はサーバー側（経路とセッション）で決まり、クライアント入力には含めない。**format はクライアントが送信のトップレベルで 1 回だけ送る**（zod の enum で検証。解答ごとの format 指定は許さない）。テストセッションの状態を持たない設計のため、サーバー側に format の導出手段がないことによる。
+共通型: `QuizRangeInput = { occurrenceId: string; rangeFrom?: number; rangeTo?: number }`、`AnswerInput = { wordId: string; result: QuizResult }`。mode と ownerId はサーバー側（経路とセッション）で決まり、クライアント入力には含めない。**format はクライアントが TEST 履歴送信（`submitQuizAnswers`）と drill 生成（`startDrill`）のトップレベルで 1 回だけ送る**（zod の enum で検証。解答ごとの format 指定は許さない）。テストセッションの状態を持たない設計のため、この 2 経路ではサーバー側に format の導出手段がないことによる。drill のラウンド系 Action は `Drill.format` から導出するため format を受け取らない（06 決定 4 起因の改訂）。
 
 - drill 生成の入力はクライアントから結果（`{ wordId, correct }[]`）を送る。QuizAnswer にはテストセッション ID がなく、サーバー側で「今回のテストの結果」を特定する確実な手段がないため（createdAt の時間窓は複数タブ・連続テストで誤集計し得る）。改ざんは可能だがカンニング許容の方針（03）と整合。
 - `startDrill` に範囲（rangeFrom / rangeTo）は含めない。Drill の rangeFrom / rangeTo は results の単語の occurrenceNumber から実効範囲（min / max）をサーバーで計算して保存する（02 の注記どおり）。ユーザー指定の範囲を受け取ると実効値との二重定義になるため。
@@ -195,6 +197,8 @@ src/lib/quiz/generation/
 | `submitQuizAnswersForUser`（削除済み単語 skip）／`createDrillForUser`（初期残数 3/1）／`submitDrillRoundForUser`（残数遷移・completedAt・CAS） | integration | UseCase ごとにコロケート（words-create 等と同形） |
 | `src/app/quiz/actions.ts`（認証なし・zod 不正・エラーマップ） | unit | 既存 actions の unit test と同じモックパターン |
 
+`deleteDrillForUser`（06 決定 7）は `ownerId: userId` 照合＋物理削除のみで特殊ロジックがないため、専用の integration は設けず actions.ts の unit テストパターンでカバーする。
+
 冪等性（決定 4）の検証は integration が本丸: 同一 `expectedRoundCount` で 2 回呼び、2 回目が `alreadyApplied: true` を返し、remaining と QuizAnswer 件数が 1 回分であることを確認する。
 
 ### 決定 10: 音声プリロード（04 引き継ぎ）— 新規 API なし、payload 内 URL をクライアントが先読み
@@ -212,7 +216,8 @@ payload の各問題に発音音源 URL を含める（03 確定済み）。ク�
 5. 結果画面表示時 `submitQuizAnswers` → 失敗時アラート＋再送（single-flight）
 6. 「定着モードへ」→ `startDrill` → `startDrillRound` → ラウンド終了で `submitDrillRound(expectedRoundCount)` → 確定残数で結果表示
 
-## 06 への引き継ぎ
+## 06 への引き継ぎ（解決済み）
 
-- `startDrillRound` / `submitDrillRound` は `format` を引数に取る形にした。06 の「出題形式の継承（元テストの形式を引き継ぐか、ラウンドごとに選べるか）」の判断次第で、引き継ぐ場合は Drill に形式列を加算し両 Action の `format` 引数を落とす（02・本トピックの Action シグネチャを更新）。
-- ラウンド間の出題順序・選択肢の変化（06 未確定）は、本トピックの「各ラウンド開始時にサーバー再生成（シード永続化なし）」の構成だと**自然に毎回変わる**。固定したい場合はシード保存が必要になるため 02・03 に影響する。
+- 出題形式は元テストを引き継ぐと確定（06 決定 4）。`Drill.format` を加算（02 改訂済み）し、`startDrillRound` / `submitDrillRound` の `format` 引数を落とした（決定 2 の表に反映済み。format は `startDrill` が 1 回だけ受け取る）。
+- ラウンド間の出題順序・選択肢は毎回変えると確定（06 決定 5）。本トピックの「各ラウンド開始時にサーバー再生成（シード永続化なし）」の挙動がそのまま仕様であり、追加実装はない。
+- 進行中 drill の削除導線の追加（06 決定 7）に伴い `deleteDrill` Action と `drill-delete.ts` UseCase を加算した（決定 1・2 に反映済み）。

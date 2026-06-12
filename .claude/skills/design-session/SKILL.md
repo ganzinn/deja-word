@@ -64,7 +64,7 @@ disable-model-invocation: true
 
 ## 後続工程との接続
 
-設計完了後は「ticket-split スキル（PR 単位のチケットを `docs/plan/<機能名>/` に生成、優先順位・依存関係を記載）→ 並行実装スキル（別途作成予定）」へ続く。design-session が後続スキルに保証する成果物の契約:
+設計完了後は「ticket-split スキル（PR 単位のチケットを `docs/plan/<機能名>/` に生成、優先順位・依存関係を記載）→ ticket-implement スキル（worktree 並行実装）」へ続く。design-session が後続スキルに保証する成果物の契約:
 
 - ハブ（`docs/design/<機能名>/README.md`）が唯一の入口。トピック状態表が全行「確定」なら設計完了
 - 確定事項サマリ＋「実装への引き継ぎ」セクションだけでチケット分割を開始できる（詳細が必要な場合のみ該当トピックの「決定 N」を参照する）

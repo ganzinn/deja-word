@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # ticket-split
 
-`design-session（docs/design）→ ticket-split（docs/plan）→ 並行実装スキル（別途作成予定）` パイプラインの中間工程。設計完了済み機能のハブ（`docs/design/<機能名>/README.md`）の「確定事項サマリ」＋「実装への引き継ぎ」から、PR 単位のチケット群を `docs/plan/<機能名>/` に生成する。
+`design-session（docs/design）→ ticket-split（docs/plan）→ ticket-implement（実装）` パイプラインの中間工程。設計完了済み機能のハブ（`docs/design/<機能名>/README.md`）の「確定事項サマリ」＋「実装への引き継ぎ」から、PR 単位のチケット群を `docs/plan/<機能名>/` に生成する。
 
 `docs/plan/` 直下の旧形式フラットファイル（foundation-milestones.md 等）は本スキルの管轄外。
 
@@ -78,7 +78,7 @@ disable-model-invocation: true
 ## ステータス運用（実装フェーズの規約）
 
 - 状態遷移: `未着手` → `実装中` → `完了`（日付付き）。PR は plan ハブの一覧表の PR 列にリンクを記載する（PR 作成済み・未マージは「実装中」＋PR リンクで表現し、状態値は増やさない）
-- 更新責務: **実装セッション（または並行実装スキル）が、着手時・PR 作成時・マージ時に、plan ハブの一覧表とチケット冒頭の状態行の両方を更新する**。本スキルは規約を定義するだけで、日常のステータス更新では起動しない
+- 更新責務: **実装セッション（通常は ticket-implement スキル）が、着手時・PR 作成時・マージ時に、plan ハブの一覧表とチケット冒頭の状態行の両方を更新する**。本スキルは規約を定義するだけで、日常のステータス更新では起動しない
 - 実装セッションは、計画との差分・後続チケットへの申し送りをチケットの「実装メモ」に記入してよい
 
 ## 整合性レビュー（必須）
@@ -109,11 +109,11 @@ disable-model-invocation: true
 
 ## 後続工程との接続
 
-ticket-split が並行実装スキル（別途作成予定）に保証する成果物の契約:
+ticket-split が ticket-implement スキルに保証する成果物の契約:
 
 - plan ハブ（`docs/plan/<機能名>/README.md`）が唯一の入口。チケット一覧表の依存・状態列だけで「今並行着手できるチケット集合」を判定できる
 - 各チケットは単体読込（＋plan ハブ）で実装が完結する
-- ステータス・PR リンク・実装メモの更新規約は plan ハブの「ステータス運用ルール」に定義済み。並行実装スキルはこれに従う
+- ステータス・PR リンク・実装メモの更新規約は plan ハブの「ステータス運用ルール」に定義済み。ticket-implement スキルはこれに従う
 
 ## 注意事項
 

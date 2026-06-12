@@ -20,9 +20,9 @@
 | [02-schema.md](02-schema.md) | QuizAnswer / Drill / DrillWord ＋ enum 3 つのマイグレーション一括 1 回、tx-mock delegate 追加 | なし | 完了（2026-06-13） | - |
 | [03-generation.md](03-generation.md) | RNG 注入の問題生成純関数群＋`payload.ts`＋シード付き PRNG ヘルパ（unit test 込み） | 02 | 完了（2026-06-13） | - |
 | [04-quiz-source.md](04-quiz-source.md) | 素材取得クエリ `fetchQuizSource`＋fixture 追加（integration test 込み） | 02 | 完了（2026-06-13） | - |
-| [05-quiz-usecases.md](05-quiz-usecases.md) | quiz 系 UseCase 3 本＋quiz-answer-handler・handlers/shared（unit＋integration） | 03, 04 | 未着手 | - |
+| [05-quiz-usecases.md](05-quiz-usecases.md) | quiz 系 UseCase 3 本＋quiz-answer-handler・handlers/shared（unit＋integration） | 03, 04 | 実装中 | - |
 | [06-quiz-actions.md](06-quiz-actions.md) | quiz 系 4 Server Action＋zod スキーマ＋error-map（unit test 込み） | 05 | 未着手 | - |
-| [07-question-components.md](07-question-components.md) | 出題形式 3 コンポーネント（四択／自己判定／多義語選択、即時フィードバック込み） | 03 | 未着手 | - |
+| [07-question-components.md](07-question-components.md) | 出題形式 3 コンポーネント（四択／自己判定／多義語選択、即時フィードバック込み） | 03 | 実装中 | - |
 | [08-quiz-flow-ui.md](08-quiz-flow-ui.md) | `/quiz` ページ＋テストフロー UI 一式（開始→カウントダウン→出題→結果） | 01, 06, 07 | 未着手 | - |
 | [09-drill-usecases.md](09-drill-usecases.md) | drill 系 UseCase 5 本＋drill-round-handler（CAS 冪等の integration 込み） | 05 | 未着手 | - |
 | [10-drill-ui.md](10-drill-ui.md) | drill 系 4 Action＋drill UI 差分＋ダッシュボード「単語テスト」ボタン（最終配線） | 08, 09 | 未着手 | - |

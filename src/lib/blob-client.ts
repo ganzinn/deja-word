@@ -42,35 +42,40 @@ function withRandomSuffix(pathname: string): string {
   return `${pathname.slice(0, dot)}-${suffix}${pathname.slice(dot)}`;
 }
 
-/** `.dev-blob/` の外を指す key を弾いて絶対パスに解決する。 */
-export function resolveDevBlobPath(key: string): string | null {
-  const full = resolve(DEV_BLOB_ROOT, key);
-  if (full !== DEV_BLOB_ROOT && !full.startsWith(DEV_BLOB_ROOT + "/")) return null;
+/** root の外を指す key を弾いて絶対パスに解決する。 */
+export function resolveDevBlobPath(key: string, root: string = DEV_BLOB_ROOT): string | null {
+  const full = resolve(root, key);
+  if (full !== root && !full.startsWith(root + "/")) return null;
   return full;
 }
 
-export const localDiskBlobClient: BlobClient = {
-  async put(pathname, body) {
-    const key = withRandomSuffix(pathname.replace(/^\/+/, ""));
-    const full = resolveDevBlobPath(key);
-    if (!full) throw new Error(`invalid blob pathname: ${pathname}`);
-    await mkdir(dirname(full), { recursive: true });
-    await writeFile(full, Buffer.from(await body.arrayBuffer()));
-    return { url: `${DEV_BLOB_URL_PREFIX}${key}` };
-  },
-  async del(url) {
-    const urls = Array.isArray(url) ? url : [url];
-    await Promise.all(
-      urls.map(async (u) => {
-        if (!u.startsWith(DEV_BLOB_URL_PREFIX)) return; // 他 driver 由来の URL は無視
-        const key = decodeURIComponent(u.slice(DEV_BLOB_URL_PREFIX.length));
-        const full = resolveDevBlobPath(key);
-        if (!full) return;
-        await rm(full, { force: true });
-      }),
-    );
-  },
-};
+/** 保存先 root を注入できるファクトリ。テストでは一時ディレクトリを渡す。 */
+export function createLocalDiskBlobClient(root: string = DEV_BLOB_ROOT): BlobClient {
+  return {
+    async put(pathname, body) {
+      const key = withRandomSuffix(pathname.replace(/^\/+/, ""));
+      const full = resolveDevBlobPath(key, root);
+      if (!full) throw new Error(`invalid blob pathname: ${pathname}`);
+      await mkdir(dirname(full), { recursive: true });
+      await writeFile(full, Buffer.from(await body.arrayBuffer()));
+      return { url: `${DEV_BLOB_URL_PREFIX}${key}` };
+    },
+    async del(url) {
+      const urls = Array.isArray(url) ? url : [url];
+      await Promise.all(
+        urls.map(async (u) => {
+          if (!u.startsWith(DEV_BLOB_URL_PREFIX)) return; // 他 driver 由来の URL は無視
+          const key = decodeURIComponent(u.slice(DEV_BLOB_URL_PREFIX.length));
+          const full = resolveDevBlobPath(key, root);
+          if (!full) return;
+          await rm(full, { force: true });
+        }),
+      );
+    },
+  };
+}
+
+export const localDiskBlobClient: BlobClient = createLocalDiskBlobClient();
 
 // --- driver 選択（Rails の environments/*.rb での service 選択に相当） ----------
 

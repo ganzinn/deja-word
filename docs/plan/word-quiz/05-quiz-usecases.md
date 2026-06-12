@@ -1,6 +1,6 @@
 # 05. quiz-usecases
 
-状態: **完了（2026-06-13）**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 

@@ -16,16 +16,16 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-word-detail-view.md](01-word-detail-view.md) | `/words/[id]` の表示部を `src/components/word-detail-view.tsx` に抽出（表示は不変のリファクタ） | なし | 完了（2026-06-13） | - |
-| [02-schema.md](02-schema.md) | QuizAnswer / Drill / DrillWord ＋ enum 3 つのマイグレーション一括 1 回、tx-mock delegate 追加 | なし | 完了（2026-06-13） | - |
-| [03-generation.md](03-generation.md) | RNG 注入の問題生成純関数群＋`payload.ts`＋シード付き PRNG ヘルパ（unit test 込み） | 02 | 完了（2026-06-13） | - |
-| [04-quiz-source.md](04-quiz-source.md) | 素材取得クエリ `fetchQuizSource`＋fixture 追加（integration test 込み） | 02 | 完了（2026-06-13） | - |
-| [05-quiz-usecases.md](05-quiz-usecases.md) | quiz 系 UseCase 3 本＋quiz-answer-handler・handlers/shared（unit＋integration） | 03, 04 | 完了（2026-06-13） | - |
-| [06-quiz-actions.md](06-quiz-actions.md) | quiz 系 4 Server Action＋zod スキーマ＋error-map（unit test 込み） | 05 | 完了（2026-06-13） | - |
-| [07-question-components.md](07-question-components.md) | 出題形式 3 コンポーネント（四択／自己判定／多義語選択、即時フィードバック込み） | 03 | 完了（2026-06-13） | - |
-| [08-quiz-flow-ui.md](08-quiz-flow-ui.md) | `/quiz` ページ＋テストフロー UI 一式（開始→カウントダウン→出題→結果） | 01, 06, 07 | 完了（2026-06-13） | - |
-| [09-drill-usecases.md](09-drill-usecases.md) | drill 系 UseCase 5 本＋drill-round-handler（CAS 冪等の integration 込み） | 05 | 完了（2026-06-13） | - |
-| [10-drill-ui.md](10-drill-ui.md) | drill 系 4 Action＋drill UI 差分＋ダッシュボード「単語テスト」ボタン（最終配線） | 08, 09 | 完了（2026-06-13） | - |
+| [01-word-detail-view.md](01-word-detail-view.md) | `/words/[id]` の表示部を `src/components/word-detail-view.tsx` に抽出（表示は不変のリファクタ） | なし | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [02-schema.md](02-schema.md) | QuizAnswer / Drill / DrillWord ＋ enum 3 つのマイグレーション一括 1 回、tx-mock delegate 追加 | なし | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [03-generation.md](03-generation.md) | RNG 注入の問題生成純関数群＋`payload.ts`＋シード付き PRNG ヘルパ（unit test 込み） | 02 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [04-quiz-source.md](04-quiz-source.md) | 素材取得クエリ `fetchQuizSource`＋fixture 追加（integration test 込み） | 02 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [05-quiz-usecases.md](05-quiz-usecases.md) | quiz 系 UseCase 3 本＋quiz-answer-handler・handlers/shared（unit＋integration） | 03, 04 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [06-quiz-actions.md](06-quiz-actions.md) | quiz 系 4 Server Action＋zod スキーマ＋error-map（unit test 込み） | 05 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [07-question-components.md](07-question-components.md) | 出題形式 3 コンポーネント（四択／自己判定／多義語選択、即時フィードバック込み） | 03 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [08-quiz-flow-ui.md](08-quiz-flow-ui.md) | `/quiz` ページ＋テストフロー UI 一式（開始→カウントダウン→出題→結果） | 01, 06, 07 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [09-drill-usecases.md](09-drill-usecases.md) | drill 系 UseCase 5 本＋drill-round-handler（CAS 冪等の integration 込み） | 05 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
+| [10-drill-ui.md](10-drill-ui.md) | drill 系 4 Action＋drill UI 差分＋ダッシュボード「単語テスト」ボタン（最終配線） | 08, 09 | 完了（2026-06-13） | [#13](https://github.com/ganzinn/deja-word/pull/13) |
 
 ## 依存関係図
 

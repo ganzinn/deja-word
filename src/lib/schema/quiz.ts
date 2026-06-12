@@ -1,0 +1,90 @@
+import { z } from "zod/v3";
+
+import type { DrillResultInput } from "@/lib/drill-create";
+import type { AnswerInput } from "@/lib/quiz/handlers/quiz-answer-handler";
+import type { DrillRoundInput } from "@/lib/quiz/handlers/drill-round-handler";
+import type { QuizRangeInput } from "@/lib/quiz-preview";
+
+/**
+ * テスト範囲の入力（05-architecture.md 決定 2）。
+ * mode と ownerId はサーバー側（経路とセッション）で決まるため含めない。
+ * rangeFrom > rangeTo はスキーマでは拒否しない（対象 0 件として下流の
+ * partitionMaterial / checkFormatAvailability が「成立しない」と扱う）。
+ */
+export const quizRangeInputSchema = z.object({
+  occurrenceId: z.string().min(1),
+  rangeFrom: z.number().int().positive().optional(),
+  rangeTo: z.number().int().positive().optional(),
+}) satisfies z.ZodType<QuizRangeInput>;
+
+export const quizFormatSchema = z.enum(["CHOICE", "SELF_JUDGE", "MULTI_MEANING"]);
+
+/** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
+export const answerInputSchema = z.object({
+  wordId: z.string().min(1),
+  result: z.enum(["CORRECT", "INCORRECT", "GAVE_UP"]),
+}) satisfies z.ZodType<AnswerInput>;
+
+// ---- 各 Server Action の入力スキーマ ----
+
+/** `getQuizPreview` の入力。 */
+export const getQuizPreviewInputSchema = quizRangeInputSchema;
+
+/** `startQuiz` の入力。 */
+export const startQuizInputSchema = quizRangeInputSchema.extend({
+  format: quizFormatSchema,
+});
+
+/** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
+export const submitQuizAnswersInputSchema = z.object({
+  format: quizFormatSchema,
+  answers: z.array(answerInputSchema).min(1),
+});
+
+/** `getWordDetailForDialog` の入力（wordId 単体）。 */
+export const wordIdSchema = z.string().min(1);
+
+// ---- drill 系 Server Action の入力スキーマ ----
+
+/** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。 */
+export const drillResultInputSchema = z.object({
+  wordId: z.string().min(1),
+  correct: z.boolean(),
+}) satisfies z.ZodType<DrillResultInput>;
+
+/**
+ * `startDrill` の入力。format はここで 1 回だけ受け取り `Drill.format` に保存する
+ * （06-drill-mode.md 決定 4）。テストは常に 1 問以上のため空の results は不正とする。
+ */
+export const startDrillInputSchema = z.object({
+  occurrenceId: z.string().min(1),
+  format: quizFormatSchema,
+  results: z.array(drillResultInputSchema).min(1),
+});
+
+/** `startDrillRound` の入力（初回・再開とも同一経路。形式は `Drill.format` から導出）。 */
+export const startDrillRoundInputSchema = z.object({
+  drillId: z.string().min(1),
+});
+
+/**
+ * `submitDrillRound` の入力。expectedRoundCount は `startDrillRound` 応答の
+ * roundCount をそのまま返す（CAS 冪等の期待値。05-architecture.md 決定 4）。
+ */
+export const submitDrillRoundInputSchema = z.object({
+  drillId: z.string().min(1),
+  expectedRoundCount: z.number().int().nonnegative(),
+  answers: z.array(answerInputSchema).min(1),
+}) satisfies z.ZodType<DrillRoundInput>;
+
+/** `deleteDrill` の入力。 */
+export const deleteDrillInputSchema = z.object({
+  drillId: z.string().min(1),
+});
+
+export type StartQuizInput = z.infer<typeof startQuizInputSchema>;
+export type SubmitQuizAnswersInput = z.infer<typeof submitQuizAnswersInputSchema>;
+export type StartDrillInput = z.infer<typeof startDrillInputSchema>;
+export type StartDrillRoundInput = z.infer<typeof startDrillRoundInputSchema>;
+export type SubmitDrillRoundInput = z.infer<typeof submitDrillRoundInputSchema>;
+export type DeleteDrillInput = z.infer<typeof deleteDrillInputSchema>;

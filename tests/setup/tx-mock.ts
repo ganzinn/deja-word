@@ -37,6 +37,9 @@ export type TxMock = {
   occurrence: DelegateMock;
   wordOccurrence: DelegateMock;
   occurrenceDetail: DelegateMock;
+  quizAnswer: DelegateMock;
+  drill: DelegateMock;
+  drillWord: DelegateMock;
 };
 
 export function makeTxMock(): TxMock {
@@ -49,6 +52,9 @@ export function makeTxMock(): TxMock {
     occurrence: delegate(),
     wordOccurrence: delegate(),
     occurrenceDetail: delegate(),
+    quizAnswer: delegate(),
+    drill: delegate(),
+    drillWord: delegate(),
   };
 }
 

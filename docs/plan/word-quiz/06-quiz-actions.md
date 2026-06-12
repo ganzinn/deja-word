@@ -1,6 +1,6 @@
 # 06. quiz-actions
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -62,4 +62,7 @@ zod スキーマ: `quizRangeInputSchema`（occurrenceId 必須、rangeFrom / ran
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **未知エラーの扱い**: チケットは「未知のエラーは re-throw（既存 `words/error-map.ts` と同じ方針）」と記すが、実際の `words/error-map.ts` は re-throw せず `console.error`＋`{ error: "unknown" }` にマップする実装。設計（05-architecture.md 決定 1「words/error-map.ts と同形」）に従い既存実装と同じ「unknown へマップ」を採用（チケット文面の「re-throw」は既存方針の誤記と判断）。
+- `submitQuizAnswers` の answers は `min(1)`（空配列は `invalid`）。テストは常に 1 問以上のため実害なし。**08 で空送信を許す必要が出たら外すこと**。
+- エラーコードは `QuizActionError = "unauthorized" | "invalid" | "not_found" | "generation_failed" | "unknown"`。`getWordDetailForDialog` の単語不在（UseCase が null 返却）も `not_found`。**08 はこのコードと `message`（generation_failed は UseCase 由来の日本語 reason）をそのまま表示に使える**。
+- **10 への申し送り**: drill 系コードは `src/lib/schema/quiz.ts` / `src/lib/quiz/error-map.ts` / `src/app/quiz/actions.ts` に追記する前提の構成（`QuizActionFailure` 型・`UNAUTHORIZED` / `INVALID` 定数を actions.ts 内で共有）。

@@ -1,6 +1,6 @@
 # 03. generation
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -120,4 +120,9 @@ mulberry32 等の小さな決定的 PRNG（`seededRng(seed: number): Rng`）を�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- `QuizGenerationError`（ダミー 0 件等のエラークラス）は `generation/dummy-pool.ts` に定義（縮退判定が dummy-pool の責務のため）。**05 の生成 UseCase・06 の error-map はここから import すること**。
+- `checkFormatAvailability` の戻り値は 05 の `QuizPreview.formats[].reason: string | null` に合わせ `{ available: true; reason: null } | { available: false; reason: string }`。reason はそのまま UI 注記に使える日本語文字列。
+- `material.ts` に 3 生成器共用ヘルパ `questionBaseOf` / `allMeaningTexts` を追加。
+- `QuizSourceRow` は 03（`generation/material.ts`、手書き構造型・DB 非依存）と 04（`queries/quiz-source.ts`、クエリ戻り値の導出型）の両方が export する二重定義。オーケストレーターがマージ時に代入可能性を型チェックで確認済み（クエリ戻り型 → 構造型へ代入可）。**05 は `fetchQuizSource` の結果をそのまま `partitionMaterial` に渡せる**。名称統一は不要と判断（構造的部分型で接続。material.ts の DB 非依存を維持）。
+- `material.ts` のコロケート unit test は決定 7 のファイル一覧（test なしと明示）に準拠して未作成。`partitionMaterial` の直接検証は 05 の UseCase テストで担保される想定。
+- `tests/setup/seeded-rng.ts` に mulberry32 の `seededRng(seed)` を追加（unit test 用の決定的 PRNG）。

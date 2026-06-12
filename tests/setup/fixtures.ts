@@ -76,6 +76,51 @@ export async function createOccurrenceRow(
   return occurrence;
 }
 
+/**
+ * quiz 系テスト用の単語 fixture。
+ *
+ * - 番号付き単語: `{ occurrence: { id, occurrenceNumber: 1 } }`
+ * - 番号なし単語: `{ occurrence: { id, occurrenceNumber: null } }`
+ * - 意味なし単語: `{ meanings: [] }`（Meaning 自体なし）または `{ meanings: [{ texts: [] }] }`（MeaningText 0 件）
+ */
+export async function createQuizWordRow(
+  ownerId: string,
+  headword: string,
+  options: {
+    meanings?: { texts: string[] }[];
+    occurrence?: { id: string; occurrenceNumber: number | null };
+  } = {},
+) {
+  const word = await prisma.word.create({
+    data: { ownerId, headword },
+    select: { id: true },
+  });
+  const meanings = options.meanings ?? [{ texts: [`${headword}の意味`] }];
+  for (const [i, meaning] of meanings.entries()) {
+    await prisma.meaning.create({
+      data: {
+        wordId: word.id,
+        ownerId,
+        sortOrder: i,
+        texts: {
+          create: meaning.texts.map((text, j) => ({ ownerId, text, sortOrder: j })),
+        },
+      },
+    });
+  }
+  if (options.occurrence) {
+    await prisma.wordOccurrence.create({
+      data: {
+        wordId: word.id,
+        occurrenceId: options.occurrence.id,
+        ownerId,
+        occurrenceNumber: options.occurrence.occurrenceNumber,
+      },
+    });
+  }
+  return word;
+}
+
 export async function getSystemOccurrence(location: string) {
   const row = await prisma.occurrence.findUnique({
     where: { ownerId_location: { ownerId: SYSTEM_USER_ID, location } },

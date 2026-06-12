@@ -1,6 +1,6 @@
 # 02. schema
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -123,4 +123,6 @@ model DrillWord {
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- マイグレーション `20260612152405_add_quiz_tables` を一括 1 回生成（CREATE TYPE / CREATE TABLE / CREATE INDEX / ADD FOREIGN KEY のみ、既存テーブルへの ALTER なし）。ローカル DB dejaword（migrate dev）・dejaword_test（migrate deploy）の両方へ適用済み。
+- スキーマ定義はチケット記載どおり。チケット内コメントのチケット間参照表記（「(03 で3形式に拡張)」等）はスキーマコメントから省いた（定義内容は同一）。
+- `tests/setup/tx-mock.ts` に quizAnswer / drill / drillWord の 3 delegate を既存 `delegate()` ファクトリパターンで追加。

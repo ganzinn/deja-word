@@ -1,6 +1,6 @@
 # 05. quiz-usecases
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -72,4 +72,8 @@ type QuizPreview = {
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- Occurrence 可視性確認は UseCase 冒頭で重複実装せず、`fetchQuizSource` 内蔵の確認（04 実装、`OccurrenceNotFoundError`）に委ねた。プレビュー・生成とも不在時はこのエラーが伝播する。**06 の error-map は `OccurrenceNotFoundError`（`@/lib/occurrences-update`）と `QuizGenerationError`（`@/lib/quiz/generation/dummy-pool`）の両方をマップ対象にすること**。
+- `QuizRangeInput` は `quiz-preview.ts` で定義・export し `quiz-generate.ts` が import（**06 の zod スキーマもここから参照可**）。`AnswerInput` は `quiz/handlers/quiz-answer-handler.ts` で定義・export。
+- tx-mock の `DelegateMock` に `findMany` がなく `word` delegate も存在しないため、handler の unit test 内でローカルに `word.findMany` モックを補った（「tx-mock.ts は 02 のみが触る」制約を守り共有ファイルは未変更）。**09 の drill-round-handler のテストでも同様の補い方が必要になる可能性あり**。
+- `savedCount` は `createMany` の戻り値 `count` を採用（saveable 配列長ではなく DB 報告値）。
+- `QuizPreview.targetCount` は `partitionMaterial` 後の `targets.length`。04 申し送りのとおり除外内訳は独立カウントのため「対象件数＋除外内訳＝総数」の恒等式は成り立たない（**08 の UI 実装時に注意**）。

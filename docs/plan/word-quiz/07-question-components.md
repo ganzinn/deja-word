@@ -1,6 +1,6 @@
 # 07. question-components
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -72,4 +72,9 @@ export type QuestionOutcome = {
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- `QuestionOutcome` の `QuizResult` import はチケット記載の `@prisma/client` ではなく `@/generated/prisma/enums`（type import）。チケット注記「既存の enum import 形に合わせる」に従い、03 の `next-remaining.ts` / `build-quiz.ts` と同形。
+- 多義語選択は未選択（0 件）のまま「回答する」を押せないよう disabled（計画に未記載の細部。空集合回答は「わからない」と意味が重複するため）。GAVE_UP は「わからない」ボタンのみから発生。
+- 多義語選択のトグルは選択中をチェックアイコン＋primary ハイライトで表示し、フィードバック時もチェックを残すため「正解（緑）だが選び損ねた選択肢」が判別可能。
+- **08 への申し送り**: export 名は `QuestionChoice` / `QuestionSelfJudge` / `QuestionMultiMeaning`（named export）、props はすべて `{ question, onComplete }`。
+- 自己判定の品詞表示は `commonPartOfSpeechFullLabel`（`@/lib/mock/parts-of-speech`）で単語詳細と同じラベル変換を適用。
+- ブラウザ実機での動作確認は未実施（計画どおり 08 の手動確認でカバー）。

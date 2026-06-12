@@ -1,0 +1,220 @@
+"use client";
+
+import { CircleCheckIcon, CircleHelpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
+import { useState } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
+
+import { WordDetailDialog } from "./word-detail-dialog";
+
+/** 結果一覧の 1 行分。quiz-flow が問題ごとの解答結果（QuestionOutcome）を収集して組み立てる。 */
+export type ResultRow = {
+  wordId: string;
+  headword: string;
+  /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
+  correctDisplay: string;
+  result: QuizResult;
+  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP は null）。 */
+  answerDisplay: string | null;
+};
+
+/**
+ * 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。
+ * success は TEST（`submitQuizAnswers`）、drill-success は DRILL（`submitDrillRound`）の成功。
+ * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない。
+ */
+export type SubmitState =
+  | { status: "sending" }
+  | { status: "success"; skippedWordIds: string[] }
+  | {
+      status: "drill-success";
+      remaining: { wordId: string; remaining: number }[];
+      completed: boolean;
+    }
+  | { status: "error"; message: string };
+
+type Props = {
+  mode: QuizMode;
+  rows: ResultRow[];
+  submitState: SubmitState;
+  onResend: () => void;
+  /** TEST: 「開始画面に戻る」／DRILL: 「終了」（確定済み残数は保持される）。 */
+  onBackToStart: () => void;
+  /** TEST: 「定着モードをはじめる」。履歴送信成功後のみ有効。 */
+  onStartDrill: () => void;
+  /** DRILL: 「次のラウンドへ」。ラウンド送信成功後のみ有効。 */
+  onNextRound: () => void;
+};
+
+export function ResultList({
+  mode,
+  rows,
+  submitState,
+  onResend,
+  onBackToStart,
+  onStartDrill,
+  onNextRound,
+}: Props) {
+  const [dialogWordId, setDialogWordId] = useState<string | null>(null);
+
+  const total = rows.length;
+  const correctCount = rows.filter((r) => r.result === "CORRECT").length;
+  const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
+  const skippedWordIds =
+    submitState.status === "success" ? new Set(submitState.skippedWordIds) : null;
+  // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）
+  const remainingByWordId =
+    submitState.status === "drill-success"
+      ? new Map(submitState.remaining.map((r) => [r.wordId, r.remaining]))
+      : null;
+  const drillCompleted = submitState.status === "drill-success" && submitState.completed;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {submitState.status === "error" ? (
+        <div
+          role="alert"
+          className="border-destructive/50 bg-destructive/10 flex items-center gap-2 rounded-lg border p-3"
+        >
+          <TriangleAlertIcon className="text-destructive size-4 shrink-0" />
+          <p className="text-destructive flex-1 text-sm">
+            結果の送信に失敗しました。{submitState.message}
+          </p>
+          <Button variant="outline" size="sm" onClick={onResend}>
+            再送
+          </Button>
+        </div>
+      ) : submitState.status === "sending" ? (
+        <p className="text-muted-foreground text-sm">結果を送信中…</p>
+      ) : null}
+
+      <p className="text-lg font-semibold">
+        正解 {correctCount} / {total} 問
+        <span className="text-muted-foreground ml-2 text-sm font-normal">（正答率 {rate}%）</span>
+      </p>
+
+      <ul className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <li key={row.wordId}>
+            <button
+              type="button"
+              onClick={() => setDialogWordId(row.wordId)}
+              className="border-border bg-card/50 hover:bg-muted/60 flex w-full flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
+            >
+              <div className="flex w-full flex-wrap items-center gap-2">
+                <ResultIcon result={row.result} />
+                <span className="text-sm font-semibold break-words">{row.headword}</span>
+                {skippedWordIds?.has(row.wordId) ? (
+                  <Badge variant="secondary" className="ml-auto">
+                    削除済み
+                  </Badge>
+                ) : null}
+                {remainingByWordId !== null ? (
+                  <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                ) : null}
+              </div>
+              <p className="text-sm whitespace-pre-wrap">
+                <span className="text-muted-foreground">正解: </span>
+                {row.correctDisplay}
+              </p>
+              {row.answerDisplay !== null ? (
+                <p className="text-sm whitespace-pre-wrap">
+                  <span className="text-muted-foreground">自分の回答: </span>
+                  {row.answerDisplay}
+                </p>
+              ) : row.result === "GAVE_UP" ? (
+                <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
+              ) : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-col gap-2 pt-2">
+        {mode === "TEST" ? (
+          <>
+            {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効 */}
+            <Button size="lg" disabled={submitState.status !== "success"} onClick={onStartDrill}>
+              定着モードをはじめる
+            </Button>
+            <Button size="lg" variant="outline" onClick={onBackToStart}>
+              開始画面に戻る
+            </Button>
+          </>
+        ) : (
+          <>
+            {drillCompleted ? (
+              <p className="text-center text-base font-semibold" role="status">
+                すべての単語を卒業しました！定着モード完了です。
+              </p>
+            ) : (
+              // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
+              <Button
+                size="lg"
+                disabled={submitState.status !== "drill-success"}
+                onClick={onNextRound}
+              >
+                次のラウンドへ
+              </Button>
+            )}
+            <Button size="lg" variant="outline" onClick={onBackToStart}>
+              終了
+            </Button>
+          </>
+        )}
+      </div>
+
+      <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
+    </div>
+  );
+}
+
+/**
+ * DRILL の残数バッジ。確定残数に行が無い単語はラウンド中に削除されたもの
+ * （DrillWord は Cascade 削除済み）として「削除済み」を表示する。
+ */
+function DrillRemainingBadge({ remaining }: { remaining: number | undefined }) {
+  if (remaining === undefined) {
+    return (
+      <Badge variant="secondary" className="ml-auto">
+        削除済み
+      </Badge>
+    );
+  }
+  if (remaining === 0) {
+    return <Badge className="ml-auto">卒業</Badge>;
+  }
+  return (
+    <Badge variant="secondary" className="ml-auto">
+      あと{remaining}回
+    </Badge>
+  );
+}
+
+function ResultIcon({ result }: { result: QuizResult }) {
+  switch (result) {
+    case "CORRECT":
+      return (
+        <CircleCheckIcon
+          aria-label="正解"
+          className="size-4 shrink-0 text-green-600 dark:text-green-400"
+        />
+      );
+    case "INCORRECT":
+      return (
+        <CircleXIcon
+          aria-label="不正解"
+          className="size-4 shrink-0 text-red-600 dark:text-red-400"
+        />
+      );
+    case "GAVE_UP":
+      return (
+        <CircleHelpIcon
+          aria-label="わからなかった"
+          className="text-muted-foreground size-4 shrink-0"
+        />
+      );
+  }
+}

@@ -1,6 +1,6 @@
 # 08. quiz-flow-ui
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -94,4 +94,9 @@ server component。Occurrence 一覧（各項目の単語数つき）を取得�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **結果一覧の「正解」表示（多義語選択）**: 設計は「最初の Meaning の『; 』連結」だが、MULTI_MEANING の payload には Meaning 構造がなく、正解集合（全 Meaning 横断）と最初の Meaning は一致しない。payload の正解選択肢（`isCorrect`）を「; 」連結して表示する解釈で実装（四択・自己判定は最初の Meaning 連結と一致）。
+- ブラウザバックのガードは「確認なしで押し戻す（ダミー履歴エントリの積み直し）」で実装。確認ダイアログはリロード・タブ閉じ（beforeunload）のみ。独自テキストは近年のブラウザでは表示されない（ブラウザ標準文言になる）。
+- **10 への申し送り**: DRILL 分岐の器は quiz-flow の `mode` state（`submitAnswers` 内に `mode !== "TEST"` の分岐点コメント）と result-list の無効ボタン「定着モードをはじめる」（コメントあり）。`OccurrenceOption` / `ResultRow` / `SubmitState` 型は start-form / result-list から export 済み。
+- **既知の小穴**: 結果画面の単語詳細ダイアログ内で関連語リンク（`WordDetailView` 内の `/words/[id]` Link）を踏むとクライアント遷移して結果画面の状態が失われる（離脱ガードは popstate / beforeunload のみで in-app Link は対象外）。設計上「編集導線なし」は満たすが、関連語リンクの扱いは設計に記載がないため現状のまま。
+- プレビュー取得は debounce 300ms＋単調増加トークンで応答順逆転を破棄。lint の新 react-hooks ルール（`set-state-in-effect` / `refs`）対応で「応答＋key を保持し render 側で鮮度判定」する形。
+- 手動確認（3 形式の一連フロー／リロード確認ダイアログ・離脱後履歴なし／送信失敗→再送）は未実施。

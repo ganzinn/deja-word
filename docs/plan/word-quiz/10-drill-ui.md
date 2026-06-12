@@ -1,6 +1,6 @@
 # 10. drill-ui
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -84,4 +84,10 @@ mode 差分を追加。DRILL 時: `submitDrillRound` で送信（single-flight�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 09 申し送りの判断: `EmptyDrillResultsError` は error-map に追加した（`not_found`、「定着モードの対象になる単語が見つかりません。」）。削除レースでユーザー到達可能なため、`unknown` フォールバック（console.error ログ付き）を避けた。
+- `QuizErrorCode` に `conflict` を追加（`DrillRoundConflictError` 用。UI 上は既存の送信失敗アラート＋再送で扱い、専用ハンドリングは設けず「終了」で離脱可能）。
+- drill 開始/再開/次ラウンドの取得失敗はテスト開始と同じ Countdown のエラー表示（メッセージ＋開始画面に戻る）に乗せた（設計のカウントダウン仕様を mode 共通で再利用）。
+- 開始画面へ戻る際（`resetToStart`）に `router.refresh()` を追加し、進行中一覧の鮮度（新規生成・完了・残数進行・削除）をサーバー再取得で担保。
+- DRILL 結果画面で確定残数に行がない単語（ラウンド中削除）は「削除済み」バッジ表示（TEST の skippedWordIds 表示と同形）。
+- 結果画面の見出しは TEST「テスト結果」/ DRILL「ラウンド結果」。
+- 手動確認（テスト→結果→定着モード→全卒業の完了表示／進行中一覧から再開・削除／ダッシュボードの「単語テスト」ボタン）は未実施。

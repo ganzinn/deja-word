@@ -1,6 +1,6 @@
 # 04. quiz-source
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-06-13）**　PR: https://github.com/ganzinn/deja-word/pull/13
 
 ## 目的
 
@@ -62,4 +62,7 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- `countQuizSourceExclusions` の `noNumber` と `noMeaning` は**独立カウント**（番号なし かつ 意味未登録の単語は両方に数えられる）。設計・チケットに重複時の扱いの規定がないため最も字義どおりの解釈を採用し、integration test で挙動を固定済み。**05 のプレビュー表示で「対象件数＋除外内訳＝総数」の恒等式を期待する場合は合わないので注意**。
+- NotFound エラーは新設せず既存 `OccurrenceNotFoundError`（`@/lib/occurrences-update`）を再利用（`occurrences-delete.ts` に同パターンの前例あり）。**06 の error-map はこのクラスをマップ対象にすること**。
+- `fetchQuizSource` は `QuizSourceRow` 型（行の素の select 結果型）も export 済み。03 の `partitionMaterial` 入力に利用可。
+- fixture は `createQuizWordRow`（番号付き／番号なし／意味なし単語を作れる）を `tests/setup/fixtures.ts` に追加。

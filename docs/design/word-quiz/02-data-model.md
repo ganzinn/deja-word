@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **未着手**
+状態: **確定**（2026-06-12）
 
 ## 前提（確定事項の再掲）
 
@@ -8,23 +8,114 @@
 
 - 機能名は quiz。
 - 既存テーブル（Word / Meaning / Occurrence 等）は変更せず、side table 加算で対応する（`docs/refactor/word-registration.md` の将来方針）。
-- 既存スキーマでは Word は `ownerId` + `headword` で unique、システム共通行は `ownerId = SYSTEM_USER_ID` のユーザーオーバーライド方式（`prisma/schema.prisma`）。
-- 単語ごとの解答履歴（正誤・日時・出題形式）を永続化する。保存はテスト終了時に一括送信（01 確定）。
-- 復習スケジュール属性（SRS の easeFactor / nextReviewAt 等）は MVP 不要。ただし将来の復習期限ベース出題への拡張を阻まないこと（01 確定）。
-- StudySet（任意セット編成）はスコープ外。出題対象は Occurrence＋掲載番号の範囲指定で決まるため、quiz 用のグルーピングテーブルは不要（01 確定）。
-- 中断したテストは破棄し、解答済み分も履歴に残さない（01 確定）。
-- 定着モード（drill）で間違えた問題中心の再テストを行う。**06 の「02 より先に確定する論点」（履歴の区別・永続化の要否・定着判定の記録）を確定させてから本トピックを設計すること**（ハブの想定順序参照）。
+- 既存スキーマの規約: cuid() ID / snake_case `@map` / 全行 `ownerId` / FK に `@@index` / `onDelete: Cascade` / enum は大文字（`prisma/schema.prisma` で確認済み）。
+- 単語ごとの解答履歴（正誤・日時・出題形式）を永続化する。通常テストは終了時、drill は各ラウンド終了時に一括送信（01・06 確定）。
+- drill は日をまたいで再開可能。単語ごとの残数（卒業までの残連続正解数）を永続化する（06 確定）。
+- drill の解答は mode 区分で通常テストと区別する（06 確定）。
+- 復習スケジュール属性（SRS の easeFactor / nextReviewAt 等）は MVP 不要。ただし将来拡張を阻まないこと（01 確定）。
+- StudySet（任意セット編成）はスコープ外（01 確定）。
+- 中断したテスト／ラウンドは破棄し、解答済み分も履歴に残さない（01・06 確定）。
+- 結果画面の「自分の回答」表示は直後のみで、履歴に選択内容は残さない（01 確定）。
 
 ## 検討事項リスト
 
-- [ ] 解答履歴テーブルの粒度（テストセッション（1回のテスト実施）の概念をテーブルとして持つか、解答行のみか）
-- [ ] 解答行の属性設計（正誤・日時・出題形式のほかに何を持つか。「わからない」選択の扱い、四択の誤答内容を残すか）
-- [ ] drill 由来の解答を通常テストと区別するか（06 の設計と相互依存）
-- [ ] 履歴の紐づけ先（Word か Meaning か。システム共通行（SYSTEM_USER_ID）の単語に対する履歴の owner の扱い）
-- [ ] Word 削除時の履歴の扱い（cascade / 残す）
-- [ ] 出題形式の表現（enum 追加か文字列か。将来形式4・5の追加に耐えること）
-- [ ] マイグレーション方針（一括か段階か）
+- [x] 解答履歴テーブルの粒度 → 1解答=1行。テストセッションテーブルは持たない
+- [x] 解答行の属性設計 → mode / format / result / createdAt。「わからない」は GAVE_UP として区別
+- [x] drill 由来の解答の区別 → mode 列（TEST / DRILL）
+- [x] 履歴の紐づけ先 → Word（owner は解答したユーザー）
+- [x] Word 削除時の履歴の扱い → Cascade で削除
+- [x] 出題形式の表現 → Prisma enum（将来形式は値追加）
+- [x] マイグレーション方針 → 一括1回
 
 ## 議論・決定
 
-（未着手。採用理由と却下した代替案もここに残す。）
+### 追加スキーマ（確定 2026-06-12）
+
+既存テーブルは無変更。以下を side table として加算する。マイグレーションは一括1回。
+
+```prisma
+enum QuizFormat {
+  CHOICE        // 形式1: 四択
+  SELF_JUDGE    // 形式2: 自己判定
+  MULTI_MEANING // 形式3: 多義語選択
+  // 将来: SPELLING(形式4), SELF_JUDGE_JA_EN(形式5) を値追加で対応
+}
+
+enum QuizResult {
+  CORRECT
+  INCORRECT
+  GAVE_UP // 四択の「わからない」。drill の残数計算上は INCORRECT と同じ扱い
+}
+
+enum QuizMode {
+  TEST  // 通常テスト
+  DRILL // 定着モード
+}
+
+// 解答履歴: 1解答=1行。通常テストも drill も同形で保存
+model QuizAnswer {
+  id        String     @id @default(cuid())
+  ownerId   String     @map("owner_id")
+  wordId    String     @map("word_id")
+  mode      QuizMode
+  format    QuizFormat
+  result    QuizResult
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, wordId])
+  @@index([wordId])
+  @@map("quiz_answer")
+}
+
+// 定着待ちプール: 元テスト1回から生成、複数並存可
+model Drill {
+  id           String    @id @default(cuid())
+  ownerId      String    @map("owner_id")
+  occurrenceId String    @map("occurrence_id")
+  rangeFrom    Int       @map("range_from")
+  rangeTo      Int       @map("range_to")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  completedAt  DateTime? @map("completed_at") // 全単語卒業時に設定。進行中一覧は completedAt IS NULL
+
+  owner      User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  words      DrillWord[]
+
+  @@index([ownerId])
+  @@index([occurrenceId])
+  @@map("drill")
+}
+
+// drill 内の単語ごとの残数
+model DrillWord {
+  drillId   String   @map("drill_id")
+  wordId    String   @map("word_id")
+  remaining Int      // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)
+  word  Word  @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([drillId, wordId])
+  @@index([wordId])
+  @@map("drill_word")
+}
+```
+
+※ User / Word / Occurrence 側には対応するリレーションフィールド（`quizAnswers` / `drills` / `drillWords`）を追加する（リレーション定義のみで列は増えない＝「既存テーブル無変更」の方針に抵触しない）。
+
+### 設計判断と理由
+
+- **テストセッション（1回のテスト実施）テーブルは持たない**。過去テストの結果一覧を見る要求がないため。単語単位の履歴（いつ・何回・どの形式で・正誤）は QuizAnswer の `(ownerId, wordId)` インデックスで追える。必要になれば加算で対応。
+- **履歴の紐づけ先は Word**（Meaning ではない）。出題・正誤の単位が単語のため。`ownerId` は解答したユーザー（システム共通の Word に対する解答でも履歴はユーザー自身の行）。
+- **Word 削除時は履歴・DrillWord とも Cascade で削除**。単語が消えれば履歴・drill 残数も意味を失うため。drill 進行中に単語が消えた場合は出題対象が自然に減る。
+- **mode 列（TEST / DRILL）で drill の解答を区別**。単語ごとの履歴で drill の繰り返し分を見分けるため。Drill 行への FK は持たない（Drill 行が消えても区別が失われないように）。
+- **「わからない」は GAVE_UP として誤答と区別して記録**。情報量が増えコストはほぼゼロ。表示で使うかは 04 で判断。
+- **日時はサーバー受領時刻（createdAt）**。一括送信のため1回のテスト／ラウンド内の解答は同じタイムスタンプになる（1問ごとの解答時刻は残らない）。「単語をいつテストしたか」の粒度としては十分。
+- **形式・結果・mode は Prisma enum**。型安全を優先。将来形式（SPELLING 等）は enum 値追加のマイグレーションで対応。
+- **Drill に元テストの出題形式は持たせない**。「drill のラウンドが元テストの形式を引き継ぐか」が 06 の後続論点のため。引き継ぐと決まれば nullable 列を加算（追加コストは小）。
+- **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。

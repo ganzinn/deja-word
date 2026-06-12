@@ -27,6 +27,8 @@ model User {
   wordOccurrences          WordOccurrence[]
   occurrenceDetails        OccurrenceDetail[]
   occurrencePresetSettings OccurrencePresetSetting[]
+  quizAnswers              QuizAnswer[]
+  drills                   Drill[]
 
   @@unique([email])
   @@map("user")
@@ -107,6 +109,8 @@ model Word {
   linkedFromRelatedWords RelatedWord[]    @relation("RelatedWordLinkedWord")
   memos                  Memo[]
   wordOccurrences        WordOccurrence[]
+  quizAnswers            QuizAnswer[]
+  drillWords             DrillWord[]
 
   @@unique([ownerId, headword])
   @@index([ownerId])
@@ -213,6 +217,7 @@ model Occurrence {
   owner          User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   wordLinks      WordOccurrence[]
   presetSettings OccurrencePresetSetting[]
+  drills         Drill[]
 
   @@unique([ownerId, location])
   @@index([ownerId])
@@ -266,4 +271,77 @@ model OccurrenceDetail {
   @@index([wordOccurrenceId])
   @@index([ownerId])
   @@map("occurrence_detail")
+}
+
+enum QuizFormat {
+  CHOICE // 形式1: 四択
+  SELF_JUDGE // 形式2: 自己判定
+  MULTI_MEANING // 形式3: 多義語選択
+  // 将来: SPELLING(形式4), SELF_JUDGE_JA_EN(形式5) を値追加で対応
+}
+
+enum QuizResult {
+  CORRECT
+  INCORRECT
+  GAVE_UP // 四択・多義語選択の「わからない」、自己判定の「思い浮かばなかった」。drill の残数計算上は INCORRECT と同じ扱い
+}
+
+enum QuizMode {
+  TEST // 通常テスト
+  DRILL // 定着モード
+}
+
+// 解答履歴: 1解答=1行。通常テストも drill も同形で保存
+model QuizAnswer {
+  id        String     @id @default(cuid())
+  ownerId   String     @map("owner_id")
+  wordId    String     @map("word_id")
+  mode      QuizMode
+  format    QuizFormat
+  result    QuizResult
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, wordId])
+  @@index([wordId])
+  @@map("quiz_answer")
+}
+
+// 定着待ちプール: 元テスト1回から生成、複数並存可
+model Drill {
+  id           String     @id @default(cuid())
+  ownerId      String     @map("owner_id")
+  occurrenceId String     @map("occurrence_id")
+  rangeFrom    Int        @map("range_from")
+  rangeTo      Int        @map("range_to")
+  format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
+  roundCount   Int        @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  completedAt  DateTime?  @map("completed_at") // 全単語卒業時に設定。進行中一覧は completedAt IS NULL
+
+  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  occurrence Occurrence  @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  words      DrillWord[]
+
+  @@index([ownerId])
+  @@index([occurrenceId])
+  @@map("drill")
+}
+
+// drill 内の単語ごとの残数
+model DrillWord {
+  drillId   String   @map("drill_id")
+  wordId    String   @map("word_id")
+  remaining Int // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)
+  word  Word  @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([drillId, wordId])
+  @@index([wordId])
+  @@map("drill_word")
 }

@@ -16,8 +16,8 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-word-detail-view.md](01-word-detail-view.md) | `/words/[id]` の表示部を `src/components/word-detail-view.tsx` に抽出（表示は不変のリファクタ） | なし | 未着手 | - |
-| [02-schema.md](02-schema.md) | QuizAnswer / Drill / DrillWord ＋ enum 3 つのマイグレーション一括 1 回、tx-mock delegate 追加 | なし | 未着手 | - |
+| [01-word-detail-view.md](01-word-detail-view.md) | `/words/[id]` の表示部を `src/components/word-detail-view.tsx` に抽出（表示は不変のリファクタ） | なし | 実装中 | - |
+| [02-schema.md](02-schema.md) | QuizAnswer / Drill / DrillWord ＋ enum 3 つのマイグレーション一括 1 回、tx-mock delegate 追加 | なし | 実装中 | - |
 | [03-generation.md](03-generation.md) | RNG 注入の問題生成純関数群＋`payload.ts`＋シード付き PRNG ヘルパ（unit test 込み） | 02 | 未着手 | - |
 | [04-quiz-source.md](04-quiz-source.md) | 素材取得クエリ `fetchQuizSource`＋fixture 追加（integration test 込み） | 02 | 未着手 | - |
 | [05-quiz-usecases.md](05-quiz-usecases.md) | quiz 系 UseCase 3 本＋quiz-answer-handler・handlers/shared（unit＋integration） | 03, 04 | 未着手 | - |

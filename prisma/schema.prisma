@@ -29,6 +29,7 @@ model User {
   occurrencePresetSettings OccurrencePresetSetting[]
   quizAnswers              QuizAnswer[]
   drills                   Drill[]
+  quizDefaultSetting       QuizDefaultSetting?
 
   @@unique([email])
   @@map("user")
@@ -214,10 +215,11 @@ model Occurrence {
   location  String
   sortOrder Int    @default(0) @map("sort_order")
 
-  owner          User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  wordLinks      WordOccurrence[]
-  presetSettings OccurrencePresetSetting[]
-  drills         Drill[]
+  owner               User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  wordLinks           WordOccurrence[]
+  presetSettings      OccurrencePresetSetting[]
+  drills              Drill[]
+  quizDefaultSettings QuizDefaultSetting[]
 
   @@unique([ownerId, location])
   @@index([ownerId])
@@ -284,6 +286,7 @@ enum QuizResult {
   CORRECT
   INCORRECT
   GAVE_UP // 四択・多義語選択の「わからない」、自己判定の「思い浮かばなかった」。drill の残数計算上は INCORRECT と同じ扱い
+  TIMEOUT // 制限時間切れ。drill の残数計算上は INCORRECT と同じ扱い
 }
 
 enum QuizMode {
@@ -309,18 +312,38 @@ model QuizAnswer {
   @@map("quiz_answer")
 }
 
+// テスト開始画面のデフォルト設定: ユーザーごと 1 行。全項目任意（部分的なデフォルトを許す）
+model QuizDefaultSetting {
+  userId         String      @id @map("user_id")
+  occurrenceId   String?     @map("occurrence_id")
+  rangeFrom      Int?        @map("range_from")
+  rangeTo        Int?        @map("range_to")
+  format         QuizFormat?
+  timeoutSeconds Int?        @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし
+  showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Occurrence 削除時は掲載箇所だけ未設定へ戻す（range / format のデフォルトは残す）
+  occurrence Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+
+  @@index([occurrenceId])
+  @@map("quiz_default_setting")
+}
+
 // 定着待ちプール: 元テスト1回から生成、複数並存可
 model Drill {
-  id           String     @id @default(cuid())
-  ownerId      String     @map("owner_id")
-  occurrenceId String     @map("occurrence_id")
-  rangeFrom    Int        @map("range_from")
-  rangeTo      Int        @map("range_to")
-  format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
-  roundCount   Int        @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-  completedAt  DateTime?  @map("completed_at") // 全単語卒業時に設定。進行中一覧は completedAt IS NULL
+  id             String     @id @default(cuid())
+  ownerId        String     @map("owner_id")
+  occurrenceId   String     @map("occurrence_id")
+  rangeFrom      Int        @map("range_from")
+  rangeTo        Int        @map("range_to")
+  format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
+  timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
+  roundCount     Int        @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  completedAt    DateTime?  @map("completed_at") // 全単語定着時に設定。進行中一覧は completedAt IS NULL
 
   owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   occurrence Occurrence  @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
@@ -335,7 +358,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
+  remaining Int // 定着までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

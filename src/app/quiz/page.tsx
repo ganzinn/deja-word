@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { listActiveDrillsForUser } from "@/lib/drill-list";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
+import { getQuizDefaultsForUser } from "@/lib/quiz-default-settings";
 import { getCurrentSession } from "@/lib/session";
 
 import { QuizFlow } from "./_components/quiz-flow";
@@ -10,15 +11,27 @@ import { QuizFlow } from "./_components/quiz-flow";
  * 単語テストの開始画面（テストフロー一式の入口）。
  * カウントダウン → 出題 → 結果はクライアント状態遷移で URL 遷移しない。
  * 進行中の定着モード一覧（再開・削除）もここで取得して開始画面下部に表示する。
+ * 開始フォームの初期値はデフォルト設定（/settings/quiz-defaults）から読み込む。
  */
 export default async function QuizPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/sign-in?redirect=/quiz");
 
-  const [occurrences, activeDrills] = await Promise.all([
+  const [occurrences, activeDrills, defaults] = await Promise.all([
     listOccurrencesForUser(session.user.id),
     listActiveDrillsForUser(session.user.id),
+    getQuizDefaultsForUser(session.user.id),
   ]);
+
+  // デフォルトの掲載箇所が選択肢にない場合（lib 層の可視判定との二重防御）は未選択に落とす
+  const defaultOccurrenceId =
+    defaults !== null && occurrences.some((o) => o.id === defaults.occurrenceId)
+      ? defaults.occurrenceId
+      : null;
+
+  // カウントダウン表示は設定画面のみで変更する挙動設定（開始フォームの初期値ではない）。
+  // 未設定（null）はデフォルトで非表示。
+  const showCountdown = defaults?.showCountdown ?? false;
 
   return (
     <QuizFlow
@@ -28,6 +41,8 @@ export default async function QuizPage() {
         wordCount: o.wordLinkCount,
       }))}
       activeDrills={activeDrills}
+      defaults={defaults === null ? null : { ...defaults, occurrenceId: defaultOccurrenceId }}
+      showCountdown={showCountdown}
     />
   );
 }

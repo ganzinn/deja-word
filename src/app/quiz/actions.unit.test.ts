@@ -167,7 +167,7 @@ describe("getQuizPreview (Server Action)", () => {
 });
 
 describe("startQuiz (Server Action)", () => {
-  const input = { occurrenceId: "occ_1", format: "CHOICE" as const };
+  const input = { occurrenceId: "occ_1", format: "CHOICE" as const, timeoutSeconds: null };
 
   test("unauthorized: no session", async () => {
     mockedGetSession.mockResolvedValue(null);
@@ -181,6 +181,7 @@ describe("startQuiz (Server Action)", () => {
     const res = await startQuiz({
       occurrenceId: "occ_1",
       format: "BOGUS",
+      timeoutSeconds: null,
     } as unknown as Parameters<typeof startQuiz>[0]);
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
     expect(mockedGenerate).not.toHaveBeenCalled();
@@ -208,6 +209,7 @@ describe("startQuiz (Server Action)", () => {
     mockedGetSession.mockResolvedValue(SESSION);
     const quiz = {
       format: "CHOICE" as const,
+      timeoutSeconds: null,
       questions: [
         {
           wordId: "w_1",
@@ -316,6 +318,7 @@ describe("startDrill (Server Action)", () => {
   const input = {
     occurrenceId: "occ_1",
     format: "CHOICE" as const,
+    timeoutSeconds: null,
     results: [
       { wordId: "w_1", correct: true },
       { wordId: "w_2", correct: false },
@@ -331,7 +334,12 @@ describe("startDrill (Server Action)", () => {
 
   test("invalid: schema rejects empty results", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
-    const res = await startDrill({ occurrenceId: "occ_1", format: "CHOICE", results: [] });
+    const res = await startDrill({
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      timeoutSeconds: null,
+      results: [],
+    });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
     expect(mockedDrillCreate).not.toHaveBeenCalled();
   });
@@ -410,6 +418,7 @@ describe("startDrillRound (Server Action)", () => {
     mockedGetSession.mockResolvedValue(SESSION);
     const quiz = {
       format: "CHOICE" as const,
+      timeoutSeconds: null,
       questions: [
         {
           wordId: "w_1",

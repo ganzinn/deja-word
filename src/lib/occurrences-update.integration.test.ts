@@ -1,10 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { DuplicateOccurrenceLocationError } from "@/lib/occurrences-create";
-import {
-  OccurrenceNotFoundError,
-  updateOccurrenceForUser,
-} from "@/lib/occurrences-update";
+import { OccurrenceNotFoundError, updateOccurrenceForUser } from "@/lib/occurrences-update";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 

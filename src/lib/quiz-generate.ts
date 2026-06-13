@@ -18,7 +18,7 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
  */
 export async function generateQuizForUser(
   userId: string,
-  input: QuizRangeInput & { format: QuizFormat },
+  input: QuizRangeInput & { format: QuizFormat; timeoutSeconds: number | null },
 ): Promise<QuizPayload> {
   const rows = await fetchQuizSource(userId, input.occurrenceId);
   const material = partitionMaterial(rows, { from: input.rangeFrom, to: input.rangeTo });
@@ -28,5 +28,8 @@ export async function generateQuizForUser(
     throw new QuizGenerationError(availability.reason);
   }
 
-  return buildQuiz(input.format, material, Math.random);
+  return {
+    ...buildQuiz(input.format, material, Math.random),
+    timeoutSeconds: input.timeoutSeconds,
+  };
 }

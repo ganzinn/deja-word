@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,9 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
+import {
+  DEFAULT_TIMEOUT_SECONDS,
+  TIMEOUT_MAX_SECONDS,
+  TIMEOUT_MIN_SECONDS,
+} from "@/lib/quiz/timeout-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
+import type { QuizDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPreview } from "@/lib/quiz-preview";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
@@ -45,6 +53,13 @@ type Props = {
   occurrences: OccurrenceOption[];
   /** 進行中（未完了）の drill 一覧（page.tsx が server 取得して渡す）。 */
   activeDrills: ActiveDrill[];
+  /**
+   * フォームの初期値（デフォルト設定。未保存なら null）。occurrenceId は
+   * page.tsx が occurrences に存在するものだけに絞って渡す。初期 format が
+   * プレビューで不成立でも自動解除しない（ユーザー選択と同じ扱い）。
+   * showCountdown は初期値ではなく挙動設定のため、ここには渡さない。
+   */
+  defaults: Omit<QuizDefaults, "showCountdown"> | null;
   onStart: (input: StartQuizInput) => void;
   /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */
   onResumeDrill: (drillId: string) => void;
@@ -67,12 +82,6 @@ function previewKeyOf(occurrenceId: string, rangeFrom?: number, rangeTo?: number
 
 const PREVIEW_DEBOUNCE_MS = 300;
 
-const FORMAT_OPTIONS: { value: QuizFormat; label: string; description: string }[] = [
-  { value: "CHOICE", label: "四択", description: "4 つの選択肢から正しい意味を選ぶ" },
-  { value: "SELF_JUDGE", label: "自己判定", description: "解答を見て自分で正誤を判定する" },
-  { value: "MULTI_MEANING", label: "多義語選択", description: "正しい意味をすべて選ぶ" },
-];
-
 /** 空欄は undefined（制限なし）。0 以下・非整数はサーバー側 zod が invalid として弾く。 */
 function parseRangeValue(text: string): number | undefined {
   const trimmed = text.trim();
@@ -81,11 +90,13 @@ function parseRangeValue(text: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-export function StartForm({ occurrences, activeDrills, onStart, onResumeDrill }: Props) {
-  const [occurrenceId, setOccurrenceId] = useState<string | null>(null);
-  const [rangeFromText, setRangeFromText] = useState("");
-  const [rangeToText, setRangeToText] = useState("");
-  const [format, setFormat] = useState<QuizFormat | null>(null);
+export function StartForm({ occurrences, activeDrills, defaults, onStart, onResumeDrill }: Props) {
+  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
+  const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
+  const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
+  const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
+  const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
+  const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
   const [previewResponse, setPreviewResponse] = useState<PreviewResponse | null>(null);
   // 応答順逆転対策の単調増加トークン（クライアント内で完結。Action の入出力には含めない）
   const previewTokenRef = useRef(0);
@@ -129,16 +140,19 @@ export function StartForm({ occurrences, activeDrills, onStart, onResumeDrill }:
   }
 
   const selectedFormatInfo = format !== null ? formatInfoOf(format) : null;
+  // ON かつ未入力・数値でない場合は開始をゲートする（範囲外は min/max とサーバー zod が弾く）
+  const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
   const canStart =
     occurrenceId !== null &&
     format !== null &&
     preview !== null &&
     preview.targetCount > 0 &&
-    selectedFormatInfo?.available === true;
+    selectedFormatInfo?.available === true &&
+    (!timeoutEnabled || timeoutSeconds !== undefined);
 
   function handleStart() {
     if (!canStart || occurrenceId === null || format === null) return;
-    onStart({ occurrenceId, rangeFrom, rangeTo, format });
+    onStart({ occurrenceId, rangeFrom, rangeTo, format, timeoutSeconds: timeoutSeconds ?? null });
   }
 
   const selectItems = occurrences.map((o) => ({
@@ -196,37 +210,84 @@ export function StartForm({ occurrences, activeDrills, onStart, onResumeDrill }:
       <section className="flex flex-col gap-2">
         <Label>出題形式</Label>
         <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
-          {FORMAT_OPTIONS.map((option) => {
-            const info = formatInfoOf(option.value);
-            // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択自体は許す
-            const unavailable = info !== null && !info.available;
-            const selected = format === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                disabled={unavailable}
-                onClick={() => {
-                  if (!unavailable) setFormat(option.value);
-                }}
-                className={cn(
-                  "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
-                  !unavailable && "hover:bg-muted/60",
-                  selected && "border-primary bg-primary/10",
-                  unavailable && !selected && "opacity-50",
-                )}
-              >
-                <span className="text-sm font-semibold">{option.label}</span>
-                <span className="text-muted-foreground text-xs">{option.description}</span>
-                {unavailable ? (
-                  <span className="text-destructive text-xs">選択できません: {info.reason}</span>
-                ) : null}
-              </button>
-            );
-          })}
+          {FORMAT_GROUPS.map((group) => (
+            <div key={group.category} className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs font-medium">{group.category}</p>
+              {group.options.map((option) => {
+                const info = formatInfoOf(option.value);
+                // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択自体は許す
+                const unavailable = info !== null && !info.available;
+                const selected = format === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={unavailable}
+                    onClick={() => {
+                      if (!unavailable) setFormat(option.value);
+                    }}
+                    className={cn(
+                      "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
+                      !unavailable && "hover:bg-muted/60",
+                      selected && "border-primary bg-primary/10",
+                      unavailable && !selected && "opacity-50",
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="text-muted-foreground text-xs">{option.description}</span>
+                    {unavailable ? (
+                      <span className="text-destructive text-xs">
+                        選択できません: {info.reason}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>制限時間</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-timeout-enabled"
+            checked={timeoutEnabled}
+            onCheckedChange={(checked) => {
+              setTimeoutEnabled(checked === true);
+              if (checked === true && timeoutText.trim().length === 0) {
+                setTimeoutText(String(DEFAULT_TIMEOUT_SECONDS));
+              }
+            }}
+          />
+          <Label htmlFor="quiz-timeout-enabled" className="font-normal">
+            1 問ごとに制限時間を設定する
+          </Label>
+        </div>
+        {timeoutEnabled ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={TIMEOUT_MIN_SECONDS}
+                max={TIMEOUT_MAX_SECONDS}
+                inputMode="numeric"
+                value={timeoutText}
+                onChange={(e) => setTimeoutText(e.target.value)}
+                aria-label="制限時間（秒）"
+                className="w-24"
+              />
+              <span className="text-muted-foreground shrink-0 text-sm">秒</span>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {TIMEOUT_MIN_SECONDS}〜{TIMEOUT_MAX_SECONDS}{" "}
+              秒。時間切れの解答は不正解として記録されます。
+            </p>
+          </>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-1" aria-live="polite">

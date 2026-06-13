@@ -23,6 +23,7 @@ describe("createDrillForUser", () => {
     const { drillId } = await createDrillForUser(user.id, {
       occurrenceId: occurrence.id,
       format: "CHOICE",
+      timeoutSeconds: 5,
       results: [
         { wordId: w1.id, correct: false },
         { wordId: w2.id, correct: true },
@@ -40,6 +41,7 @@ describe("createDrillForUser", () => {
       rangeFrom: 5,
       rangeTo: 30,
       format: "CHOICE",
+      timeoutSeconds: 5,
       roundCount: 0,
       completedAt: null,
     });
@@ -59,6 +61,7 @@ describe("createDrillForUser", () => {
       createDrillForUser(user.id, {
         occurrenceId: foreign.id,
         format: "SELF_JUDGE",
+        timeoutSeconds: null,
         results: [{ wordId: word.id, correct: false }],
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
@@ -78,6 +81,7 @@ describe("createDrillForUser", () => {
     const { drillId } = await createDrillForUser(user.id, {
       occurrenceId: occurrence.id,
       format: "CHOICE",
+      timeoutSeconds: null,
       results: [
         { wordId: alive.id, correct: false },
         { wordId: deleted.id, correct: false },
@@ -90,6 +94,7 @@ describe("createDrillForUser", () => {
     });
     expect(drill.rangeFrom).toBe(10);
     expect(drill.rangeTo).toBe(10);
+    expect(drill.timeoutSeconds).toBeNull();
     expect(drill.words).toHaveLength(1);
     expect(drill.words[0]).toMatchObject({ wordId: alive.id, remaining: 3 });
   });
@@ -105,6 +110,7 @@ describe("createDrillForUser", () => {
       createDrillForUser(user.id, {
         occurrenceId: occurrence.id,
         format: "CHOICE",
+        timeoutSeconds: null,
         results: [{ wordId: unnumbered.id, correct: false }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);

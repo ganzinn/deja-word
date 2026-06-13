@@ -57,6 +57,22 @@ describe("submitQuizAnswersForUser", () => {
     expect(rows.map((r) => r.format)).toEqual(["SELF_JUDGE", "SELF_JUDGE"]);
   });
 
+  test("saves a TIMEOUT answer as-is", async () => {
+    const user = await createTestUser();
+    const word = await createQuizWordRow(user.id, "slow-word");
+
+    const result = await submitQuizAnswersForUser(user.id, {
+      format: "CHOICE",
+      answers: [{ wordId: word.id, result: "TIMEOUT" }],
+    });
+
+    expect(result).toEqual({ savedCount: 1, skippedWordIds: [] });
+
+    const rows = await prisma.quizAnswer.findMany({ where: { ownerId: user.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ wordId: word.id, mode: "TEST", result: "TIMEOUT" });
+  });
+
   test("another user's word is treated as non-existent and skipped", async () => {
     const user = await createTestUser();
     const stranger = await createTestUser();

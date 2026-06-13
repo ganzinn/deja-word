@@ -21,7 +21,15 @@ export type SelfJudgeQuestion = QuestionBase & {
   answer: { partOfSpeech: string | null; texts: string[] }[]; // 全 Meaning の表示用データ
 };
 
-export type QuizPayload =
+/** 形式別の問題一式（`buildQuiz` の戻り値）。 */
+export type QuizQuestionsPayload =
   | { format: "CHOICE"; questions: ChoiceQuestion[] }
   | { format: "SELF_JUDGE"; questions: SelfJudgeQuestion[] }
   | { format: "MULTI_MEANING"; questions: MultiMeaningQuestion[] };
+
+/**
+ * クライアントへ渡す問題データ一式。timeoutSeconds（null = 制限なし）は
+ * TEST=開始入力のエコーバック、DRILL=`Drill.timeoutSeconds` 由来で、
+ * play フェーズはモードを区別せずこの値だけを見る。
+ */
+export type QuizPayload = QuizQuestionsPayload & { timeoutSeconds: number | null };

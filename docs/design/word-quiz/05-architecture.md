@@ -85,10 +85,10 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | 用途 | Action（`src/app/quiz/actions.ts`） | 入出力 |
 | --- | --- | --- |
 | プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）・形式ごとの成立可否 |
-| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat }` → `{ quiz: QuizPayload }` |
+| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
-| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, results: { wordId, correct }[] }` → `{ drillId }`（format は `Drill.format` に保存） |
-| drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式は `Drill.format` から導出） |
+| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds は `Drill` に保存。timeoutSeconds は 2026-06-13 加算） |
+| drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出） |
 | drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
 | drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |
 | 単語詳細ダイアログ | `getWordDetailForDialog` | `wordId` → 既存 `getWordDetailForUser` の結果（薄いラッパ） |
@@ -98,6 +98,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 - drill 生成の入力はクライアントから結果（`{ wordId, correct }[]`）を送る。QuizAnswer にはテストセッション ID がなく、サーバー側で「今回のテストの結果」を特定する確実な手段がないため（createdAt の時間窓は複数タブ・連続テストで誤集計し得る）。改ざんは可能だがカンニング許容の方針（03）と整合。
 - `startDrill` に範囲（rangeFrom / rangeTo）は含めない。Drill の rangeFrom / rangeTo は results の単語の occurrenceNumber から実効範囲（min / max）をサーバーで計算して保存する（02 の注記どおり）。ユーザー指定の範囲を受け取ると実効値との二重定義になるため。
 - drill 生成を「生成＋ラウンド1返却」の 1 Action にしない理由: ラウンド生成を初回／再開で単一経路（`startDrillRound`）にし、結果画面→カウントダウンの画面フロー（04）と一致させるため。
+- **制限時間は payload に一本化する**（2026-06-13 加算）: `QuizPayload` に `timeoutSeconds: number | null` を持たせ、TEST は `startQuiz` 入力のエコーバック、DRILL は `Drill.timeoutSeconds` から導出して載せる。play フェーズ（quiz-flow）はモードを区別せず payload の値だけを見る（「TEST と DRILL は同じ状態機械を再利用」の 06 決定 8 と整合）。drill への引き継ぎは `startDrill` 入力 →`Drill.timeoutSeconds` 保存 → ラウンド生成時にサーバーが payload へ載せる（サーバーが権威）。値の検証は zod（1〜60 秒・整数・nullable。定数は `src/lib/quiz/timeout-options.ts` で UI と共有）。
 - 実装メモ: debounce プレビューは応答順逆転に備え、クライアント側でリクエストトークンを比較し古い応答を捨てる。
 - 却下案（問題生成・プレビューを GET Route Handler）: キャッシュも URL 共有も不要（毎回ランダム生成）。Action の型推論・既存 actions テストパターンを失うだけ。
 
@@ -113,7 +114,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 Drill に `roundCount Int @default(0)` を加算する（**02 改訂済み**）。`submitDrillRoundForUser` のフロー（全体が 1 tx）:
 
 1. `tx.drill.updateMany({ where: { id: drillId, ownerId: userId, roundCount: expectedRoundCount }, data: { roundCount: { increment: 1 } } })`
-2. `count === 1`（通常経路）: `insertQuizAnswers`（mode=DRILL）→ 残数更新（純関数 `nextRemaining(current, result)`: 正解 −1、誤答／GAVE_UP は 3 にリセット）→ 全 remaining=0 なら `completedAt` 設定 → 確定残数を返す。単語削除耐性は決定 3 と同じ存在確認フィルタを適用し、ラウンド中に削除された単語は履歴 insert・残数更新とも skip する（DrillWord は Cascade で削除済み。完了判定は残っている DrillWord 行だけで行う）。
+2. `count === 1`（通常経路）: `insertQuizAnswers`（mode=DRILL）→ 残数更新（純関数 `nextRemaining(current, result)`: 正解 −1、誤答／GAVE_UP／TIMEOUT は 3 にリセット）→ 全 remaining=0 なら `completedAt` 設定 → 確定残数を返す。単語削除耐性は決定 3 と同じ存在確認フィルタを適用し、ラウンド中に削除された単語は履歴 insert・残数更新とも skip する（DrillWord は Cascade で削除済み。完了判定は残っている DrillWord 行だけで行う）。
 3. `count === 0`: drill を再読込。`roundCount === expectedRoundCount + 1` なら適用済みと判断し、現在の DrillWord を読み直して `alreadyApplied: true` で成功応答する。自分の再送だけでなく、**別タブが同一ラウンドを先行送信した場合もここに含まれる**（同一ラウンドは一度だけ適用され、後着には確定残数を返す。残数バッジは 04 確定どおりこの確定値を表示）。roundCount がそれ以外の値（2 ラウンド以上進んでいる古いタブ等）は `DrillRoundConflictError`。
 
 `expectedRoundCount` は `startDrillRound` の応答でクライアントへ渡す。二重クリックは single-flight が一次防御、CAS が最終防御。`roundCount` は「何周したか」の表示にも将来使える。
@@ -140,10 +141,12 @@ export type MultiMeaningQuestion = QuestionBase & { options: { text: string; isC
 export type SelfJudgeQuestion = QuestionBase & {
   answer: { partOfSpeech: string | null; texts: string[] }[]; // 全 Meaning の表示用データ
 };
-export type QuizPayload =
+export type QuizQuestionsPayload = // buildQuiz の戻り値（形式別の問題一式）
   | { format: "CHOICE"; questions: ChoiceQuestion[] }
   | { format: "SELF_JUDGE"; questions: SelfJudgeQuestion[] }
   | { format: "MULTI_MEANING"; questions: MultiMeaningQuestion[] };
+// timeoutSeconds（null = 制限なし）は UseCase 側で合成する（決定 2 の「payload 一本化」。2026-06-13 加算）
+export type QuizPayload = QuizQuestionsPayload & { timeoutSeconds: number | null };
 ```
 
 素材型 `QuizSourceMaterial`（対象単語の headword＋全 Meaning/MeaningText＋音源 URL、ダミープール）は日→英 2 形式（綴り＝headword、日→英自己判定＝Meaning を問題文に）も既に賄えるため、クエリ・素材型は将来形式でも無変更で済む見込み。投機的フィールドは足さない。

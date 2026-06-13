@@ -5,11 +5,7 @@ import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-import {
-  createOccurrenceRow,
-  createTestUser,
-  createWordRow,
-} from "../../tests/setup/fixtures";
+import { createOccurrenceRow, createTestUser, createWordRow } from "../../tests/setup/fixtures";
 
 describe("deleteOccurrenceForUser", () => {
   test("cascades WordOccurrence and OccurrenceDetail and PresetSetting, leaves Word intact", async () => {

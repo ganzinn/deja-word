@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -45,6 +45,7 @@ enum QuizResult {
   CORRECT
   INCORRECT
   GAVE_UP // 四択・多義語選択の「わからない」、自己判定の「思い浮かばなかった」。drill の残数計算上は INCORRECT と同じ扱い（03 で3形式に拡張）
+  TIMEOUT // 制限時間切れ（2026-06-13 加算改訂）。drill の残数計算上は INCORRECT と同じ扱い
 }
 
 enum QuizMode {
@@ -78,6 +79,7 @@ model Drill {
   rangeFrom    Int       @map("range_from")
   rangeTo      Int       @map("range_to")
   format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ（06 確定）
+  timeoutSeconds Int?    @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし（2026-06-13 加算改訂）
   roundCount   Int       @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う（05 確定）
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -123,3 +125,49 @@ model DrillWord {
 - **rangeFrom / rangeTo は drill 生成時の実効範囲を保存する（05 で明確化）**。開始画面の範囲指定は「空欄＝制限なし」があり得るため、drill 生成時は実際に出題された単語の occurrenceNumber の min / max を保存する。列定義の変更はなし（非 null のまま）。
 - **Drill.format（06 起因の加算改訂）**。drill は元テストの出題形式を全ラウンドで引き継ぐ（[06](06-drill-mode.md) の決定 4）。drill 生成時にクライアントから 1 回だけ受け取って保存し、以降のラウンド生成・QuizAnswer.format の付与はサーバーがこの列から導出する。全 drill が生成時に形式を持つため非 null。QuizAnswer.format は重複して見えるが、QuizAnswer は Drill への FK を持たず Drill 削除後も履歴単独で形式が分かる必要があるため両方持つ。
 - **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。
+
+### 開始画面デフォルト設定（2026-06-13 加算改訂）
+
+開始画面の設定 3 項目（掲載箇所・掲載番号範囲・出題形式）をユーザーごとのデフォルトとして保存する（設定画面は [04](04-ui.md)）。
+
+```prisma
+// テスト開始画面のデフォルト設定: ユーザーごと 1 行。全項目任意（部分的なデフォルトを許す）
+model QuizDefaultSetting {
+  userId       String      @id @map("user_id")
+  occurrenceId String?     @map("occurrence_id")
+  rangeFrom    Int?        @map("range_from")
+  rangeTo      Int?        @map("range_to")
+  format       QuizFormat?
+  timeoutSeconds Int?      @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし（2026-06-13 加算改訂）
+  showCountdown  Boolean?  @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（2026-06-13 加算改訂）
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+
+  @@index([occurrenceId])
+  @@map("quiz_default_setting")
+}
+```
+
+- **ユーザーごと 1 行（userId が PK）**。デフォルトは 1 セットで十分なため。複数プリセットの要求が出たら別途検討。
+- **occurrence の onDelete は SetNull**（既存規約の Cascade からの意図的な逸脱）。Occurrence 削除時は掲載箇所だけ未設定へ戻し、range / format のデフォルトは道連れにしない。`OccurrencePresetSetting` は「occurrence に従属する設定」なので Cascade が正しいが、本モデルは「ユーザーの設定の一部が occurrence を参照」する構図で従属関係が逆。
+- **全項目 nullable（部分的なデフォルトを許す）**。SetNull により「format だけ残る」状態が DB 上必ず生じるため、その状態をフォームでも表現・再保存できるように揃える。「出題形式だけいつも四択」のような使い方も自然。
+
+### 制限時間（タイムアウト）（2026-06-13 加算改訂）
+
+1 問あたりの制限時間を任意設定できる（要件は [01](01-requirements.md)、UI は [04](04-ui.md)）。スキーマへの影響は次の 3 点（上のスニペットに反映済み）。
+
+- **`QuizResult` に `TIMEOUT` を値追加**。時間切れの解答を誤答と区別して記録する（GAVE_UP と同じ動機）。集計・drill の残数計算上は INCORRECT と同じ扱い（`nextRemaining` で 3 にリセット）。
+- **`QuizDefaultSetting.timeoutSeconds Int?`**。デフォルト設定の 4 項目目。既存の全項目 nullable 方針に従い null = 未設定（制限なし）。
+- **`Drill.timeoutSeconds Int?`**。元テスト開始時の制限時間を drill 生成時に 1 回だけ受け取って保存し、全ラウンドで引き継ぐ（`format` と同じパターン。[06](06-drill-mode.md) の決定 4 と同形）。null = 制限なし。
+- 値の範囲（1〜60 秒・整数）は zod スキーマ（`src/lib/schema/quiz.ts`）で検証し、DB には制約を置かない（既存の rangeFrom / rangeTo と同方針）。
+- 保存時に occurrence の可視性（`scopedOwnerIds`）を検証し、読み出し時も可視範囲外なら occurrenceId を null に落とす（二重防御）。
+- User / Occurrence 側にはリレーションフィールド（`quizDefaultSetting` / `quizDefaultSettings`）のみ追加（列は増えない＝「既存テーブル無変更」の方針に抵触しない）。
+
+### カウントダウン表示（2026-06-13 加算改訂）
+
+開始時のカウントダウン演出（3・2・1）の表示有無を設定できる（UI は [04](04-ui.md)）。
+
+- **`QuizDefaultSetting.showCountdown Boolean?`**。デフォルト設定の 5 項目目。既存の全項目 nullable 方針に従い null = 未設定。デフォルト（未設定）は非表示とする。設定画面の「クリア」（行削除）でも非表示に戻る。
+- 開始フォームの「初期値」ではなくテストの「挙動設定」のため、開始画面には設定 UI を出さない（変更は設定画面のみ）。

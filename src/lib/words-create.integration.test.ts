@@ -182,17 +182,13 @@ describe("createWordForUser", () => {
     await createWordForUser(
       userA.id,
       emptyForm("shared", {
-        meanings: [
-          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], note: "" },
-        ],
+        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], note: "" }],
       }),
     );
     await createWordForUser(
       userB.id,
       emptyForm("shared", {
-        meanings: [
-          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], note: "" },
-        ],
+        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], note: "" }],
       }),
     );
 
@@ -227,9 +223,9 @@ describe("createWordForUser", () => {
       select: { id: true },
     });
 
-    await expect(
-      createWordForUser(SYSTEM_USER_ID, emptyForm("dup")),
-    ).rejects.toBeInstanceOf(DuplicateHeadwordError);
+    await expect(createWordForUser(SYSTEM_USER_ID, emptyForm("dup"))).rejects.toBeInstanceOf(
+      DuplicateHeadwordError,
+    );
 
     const aStill = await prisma.word.findUnique({ where: { id: aWord.id } });
     expect(aStill).not.toBeNull();

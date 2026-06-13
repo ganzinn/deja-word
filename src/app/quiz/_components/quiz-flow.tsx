@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { QuizMode } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
+import type { QuizDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
@@ -31,6 +32,10 @@ import { StartForm, type OccurrenceOption } from "./start-form";
 type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
+  /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
+  defaults: Omit<QuizDefaults, "showCountdown"> | null;
+  /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
+  showCountdown: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -98,28 +103,45 @@ function QuestionView({
   index: number;
   onComplete: (outcome: QuestionOutcome) => void;
 }) {
-  // key=wordId で問題ごとに解答 UI の内部状態をリセットする
+  // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
     case "CHOICE": {
       const question = quiz.questions[index];
-      return <QuestionChoice key={question.wordId} question={question} onComplete={onComplete} />;
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
+      );
     }
     case "SELF_JUDGE": {
       const question = quiz.questions[index];
       return (
-        <QuestionSelfJudge key={question.wordId} question={question} onComplete={onComplete} />
+        <QuestionSelfJudge
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
       );
     }
     case "MULTI_MEANING": {
       const question = quiz.questions[index];
       return (
-        <QuestionMultiMeaning key={question.wordId} question={question} onComplete={onComplete} />
+        <QuestionMultiMeaning
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
       );
     }
   }
 }
 
-export function QuizFlow({ occurrences, activeDrills }: Props) {
+export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
   const [mode, setMode] = useState<QuizMode>("TEST");
@@ -184,6 +206,8 @@ export function QuizFlow({ occurrences, activeDrills }: Props) {
     const input = {
       occurrenceId: startInput.occurrenceId,
       format: quiz.format,
+      // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
+      timeoutSeconds: quiz.timeoutSeconds,
       results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
     };
     const runId = ++runIdRef.current;
@@ -342,6 +366,7 @@ export function QuizFlow({ occurrences, activeDrills }: Props) {
   if (phase.name === "countdown") {
     return (
       <Countdown
+        enabled={showCountdown}
         status={loadError !== null ? "error" : quiz !== null ? "ready" : "loading"}
         errorMessage={loadError}
         onFinished={() => setPhase({ name: "play", index: 0 })}
@@ -420,6 +445,7 @@ export function QuizFlow({ occurrences, activeDrills }: Props) {
         <StartForm
           occurrences={occurrences}
           activeDrills={activeDrills}
+          defaults={defaults}
           onStart={handleStart}
           onResumeDrill={handleResumeDrill}
         />

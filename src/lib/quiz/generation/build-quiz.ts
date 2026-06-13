@@ -13,14 +13,18 @@ import {
 import { buildMultiMeaningQuestions } from "@/lib/quiz/generation/multi-meaning";
 import { buildSelfJudgeQuestions } from "@/lib/quiz/generation/self-judge";
 import type { Rng } from "@/lib/quiz/generation/shuffle";
-import type { QuizPayload } from "@/lib/quiz/payload";
+import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected quiz format: ${String(value)}`);
 }
 
 /** 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成する。 */
-export function buildQuiz(format: QuizFormat, material: QuizSourceMaterial, rng: Rng): QuizPayload {
+export function buildQuiz(
+  format: QuizFormat,
+  material: QuizSourceMaterial,
+  rng: Rng,
+): QuizQuestionsPayload {
   switch (format) {
     case "CHOICE":
       return { format: "CHOICE", questions: buildChoiceQuestions(material, rng) };

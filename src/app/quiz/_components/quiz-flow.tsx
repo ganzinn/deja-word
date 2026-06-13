@@ -173,6 +173,8 @@ export function QuizFlow({
   // テスト開始時の入力（drill 生成の occurrenceId に使う）
   const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
   const [drill, setDrill] = useState<DrillState | null>(null);
+  // 結果一覧で開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
+  const [dialogWordId, setDialogWordId] = useState<string | null>(null);
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
   const runIdRef = useRef(0);
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -274,6 +276,7 @@ export function QuizFlow({
     setMode("TEST");
     setDrill(null);
     setStartInput(null);
+    setDialogWordId(null);
     resetRunState();
     setPhase({ name: "start" });
     // 進行中の定着モード一覧（server 取得）を最新化する（完了・残数進行・新規生成を反映）
@@ -368,32 +371,66 @@ export function QuizFlow({
     submitAnswers(quiz.format, rows);
   }
 
-  // 離脱ガード: カウントダウン開始〜結果の履歴送信完了前（TEST・DRILL とも適用）
+  // beforeunload ガード: リロード・タブ閉じで途中結果が失われる局面（送信完了前）のみ警告する
   const submitted = submitState?.status === "success" || submitState?.status === "drill-success";
-  const guardActive =
+  const dataLossActive =
     phase.name === "countdown" || phase.name === "play" || (phase.name === "result" && !submitted);
 
   useEffect(() => {
-    if (!guardActive) return;
+    if (!dataLossActive) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // リロード・タブ閉じはブラウザの確認ダイアログ（独自テキストは近年のブラウザでは表示されない）
+      // 独自テキストは近年のブラウザでは表示されないが、確認ダイアログ自体は出る
       e.preventDefault();
       e.returnValue = "途中の結果は破棄されます";
     };
-    // ブラウザバックのガード: ダミーの履歴エントリを積み、back されたら積み直して押し戻す
-    window.history.pushState({ quizGuard: true }, "");
-    const handlePopState = () => {
-      window.history.pushState({ quizGuard: true }, "");
-    };
     window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dataLossActive]);
+
+  // ブラウザバックのガード（LIFO・単一オーナー）: /quiz 内で開いている層を上から 1 つずつ閉じる。
+  // 層 = 進行中テスト（phase ≠ start）＋単語詳細ダイアログ（dialogWordId ≠ null。result の最上段）。
+  // ダミー履歴エントリを常に 1 つ保持し、back で消費されたら最上段の層を閉じて積み直す。
+  const backGuardActive = phase.name !== "start" || dialogWordId !== null;
+  // popstate ハンドラは backGuardActive の間ずっと同じものを使う（buffer の二重 push を避ける）ため、
+  // 最新の phase / dialog / resetToStart は latest-ref 経由で読む（render 中ではなく effect で同期）。
+  const phaseRef = useRef(phase);
+  const dialogWordIdRef = useRef(dialogWordId);
+  const resetToStartRef = useRef(resetToStart);
+  useEffect(() => {
+    phaseRef.current = phase;
+    dialogWordIdRef.current = dialogWordId;
+    resetToStartRef.current = resetToStart;
+  });
+
+  useEffect(() => {
+    if (!backGuardActive) return;
+    const armBuffer = () => window.history.pushState({ quizGuard: true }, "");
+    armBuffer();
+    const handlePopState = () => {
+      // 最上段: ダイアログが開いていれば確認なしで閉じる。下の層（テスト）は残るので積み直す
+      if (dialogWordIdRef.current !== null) {
+        setDialogWordId(null);
+        armBuffer();
+        return;
+      }
+      // テスト層: phase に応じた文言で中断確認。キャンセルは留まる（積み直す）
+      const message =
+        phaseRef.current.name === "result"
+          ? "結果画面を離れますか？（定着モードには入れなくなります）"
+          : "テストを中断して開始画面に戻りますか？";
+      if (!window.confirm(message)) {
+        armBuffer();
+        return;
+      }
+      resetToStartRef.current();
+    };
     window.addEventListener("popstate", handlePopState);
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("popstate", handlePopState);
-      // ガード解除時は積んだダミーエントリを取り除く
+      // 画面内操作で層を閉じた場合に残るダミーを取り除く（back 由来なら既に消費済みで quizGuard が無い）
       if (window.history.state?.quizGuard) window.history.back();
     };
-  }, [guardActive]);
+  }, [backGuardActive]);
 
   // 出題画面の表示時: 発音音源の自動再生＋次問のプリロード（即時フィードバック表示中も保持される）
   const playIndex = phase.name === "play" ? phase.index : null;
@@ -478,6 +515,9 @@ export function QuizFlow({
           onBackToStart={resetToStart}
           onStartDrill={handleStartDrill}
           onNextRound={handleNextRound}
+          dialogWordId={dialogWordId}
+          onOpenDialog={setDialogWordId}
+          onCloseDialog={() => setDialogWordId(null)}
         />
       </main>
     );

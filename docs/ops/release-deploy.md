@@ -1,6 +1,6 @@
 # Release Deploy（リリースタグ運用）
 
-production への反映は **「Create Release」ワークフローの手動実行** が単一エントリポイント。実行すると `vYYYYMMDDHHmm` 形式のタグで GitHub Release を作成し、続けて production にデプロイする。`main` へのマージ自体ではデプロイされない。
+production への反映は **「Create Release」ワークフローの手動実行** が単一エントリポイント。実行すると `rel-YYYYMMDDHHmm` 形式のタグで GitHub Release を作成し、続けて production にデプロイする。`main` へのマージ自体ではデプロイされない。
 
 ## 背景
 
@@ -15,7 +15,7 @@ Vercel の Git Integration は **ブランチベース** で、git タグや Git
 
 | ファイル | 役割 |
 |---|---|
-| `.github/workflows/create-release.yml` | **エントリポイント**。手動実行で `vYYYYMMDDHHmm` タグの Release を作成し、deploy を呼び出す |
+| `.github/workflows/create-release.yml` | **エントリポイント**。手動実行で `rel-YYYYMMDDHHmm` タグの Release を作成し、deploy を呼び出す |
 | `.github/workflows/release-deploy.yml` | デプロイ本体（reusable）。`create-release` からの呼び出し、または手動 UI の Release Publish で起動 |
 
 > `GITHUB_TOKEN` で作成した Release は `release: published` を**再発火しない**（GitHub の無限ループ防止仕様）。そのため `create-release.yml` は `release-deploy.yml` を `workflow_call` で直接呼び出してデプロイをつなぐ。
@@ -47,7 +47,7 @@ cat .vercel/repo.json          # orgId / projects[].id を確認
    - Branch: `main`（既定）
    - リリースノート（任意）を入力
    - **Run workflow**
-3. `create-release` が `vYYYYMMDDHHmm`（JST）タグの Release を作成 → `deploy` が lint / typecheck / test:unit → `vercel deploy --prod` で production 反映
+3. `create-release` が `rel-YYYYMMDDHHmm`（JST）タグの Release を作成 → `deploy` が lint / typecheck / test:unit → `vercel deploy --prod` で production 反映
 4. Actions のログとデプロイ URL で反映を確認
 
 タグはタイムスタンプなので辞書順 = 時系列順。タイムゾーンは JST 固定（`create-release.yml` の `TZ=Asia/Tokyo`）。

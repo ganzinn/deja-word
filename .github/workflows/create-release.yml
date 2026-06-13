@@ -2,7 +2,7 @@ name: Create Release
 
 # production デプロイの単一エントリポイント。
 # このワークフローを手動実行（Run workflow）するだけで:
-#   1. vYYYYMMDDHHmm 形式のタグで GitHub Release を作成し
+#   1. rel-YYYYMMDDHHmm 形式のタグで GitHub Release を作成し
 #   2. 続けて Release Deploy（reusable workflow）を呼び出して production にデプロイする。
 #
 # 実行ブランチ（既定 main）の HEAD commit が対象になる。
@@ -28,7 +28,7 @@ jobs:
       - name: タイムスタンプタグを生成 (JST)
         id: tag
         run: |
-          TAG="v$(TZ=Asia/Tokyo date +%Y%m%d%H%M)"
+          TAG="rel-$(TZ=Asia/Tokyo date +%Y%m%d%H%M)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "生成タグ: $TAG"
 

@@ -1,0 +1,49 @@
+name: Create Release
+
+# production デプロイの単一エントリポイント。
+# このワークフローを手動実行（Run workflow）するだけで:
+#   1. vYYYYMMDDHHmm 形式のタグで GitHub Release を作成し
+#   2. 続けて Release Deploy（reusable workflow）を呼び出して production にデプロイする。
+#
+# 実行ブランチ（既定 main）の HEAD commit が対象になる。
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "リリースノート（任意・Markdown 可）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write # タグと Release の作成に必要
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: タイムスタンプタグを生成 (JST)
+        id: tag
+        run: |
+          TAG="v$(TZ=Asia/Tokyo date +%Y%m%d%H%M)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "生成タグ: $TAG"
+
+      - name: GitHub Release を作成
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --notes "${{ inputs.notes }}"
+
+  # GITHUB_TOKEN で作成した Release は release:published を再発火しないため、
+  # ここで Release Deploy を直接呼び出して deploy をつなぐ。
+  deploy:
+    needs: create-release
+    uses: ./.github/workflows/release-deploy.yml
+    secrets: inherit

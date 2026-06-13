@@ -433,7 +433,7 @@ export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }:
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
       <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
         <Link
-          href="/dashboard"
+          href="/menu"
           aria-label="戻る"
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
         >

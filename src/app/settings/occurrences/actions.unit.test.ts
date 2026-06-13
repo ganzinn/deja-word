@@ -17,17 +17,14 @@ vi.mock("next/cache", () => ({
 }));
 
 const { getCurrentSession } = await import("@/lib/session");
-const { setPresetForUser, PresetOccurrenceNotInScopeError } = await import(
-  "@/lib/occurrence-preset-settings"
-);
+const { setPresetForUser, PresetOccurrenceNotInScopeError } =
+  await import("@/lib/occurrence-preset-settings");
 const { togglePresetSetting } = await import("@/app/settings/occurrences/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedSet = vi.mocked(setPresetForUser);
 
-const SESSION = { user: { id: "u_1" } } as unknown as Awaited<
-  ReturnType<typeof getCurrentSession>
->;
+const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 beforeEach(() => {
   mockedGetSession.mockReset();

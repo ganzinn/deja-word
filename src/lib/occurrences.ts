@@ -5,9 +5,7 @@ import { scopedOwnerIds } from "@/lib/system-user";
 
 export type OccurrencePreset = { id: string; ownerId: string; location: string };
 
-export async function getOccurrencePresetsForUser(
-  userId: string,
-): Promise<OccurrencePreset[]> {
+export async function getOccurrencePresetsForUser(userId: string): Promise<OccurrencePreset[]> {
   const rows = await prisma.occurrencePresetSetting.findMany({
     where: {
       userId,

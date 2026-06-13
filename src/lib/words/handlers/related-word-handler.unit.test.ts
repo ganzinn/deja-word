@@ -87,7 +87,12 @@ describe("upsertRelatedWords", () => {
 
     expect(tx.relatedWord.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ wordId: "w1", ownerId: "u1", term: "ghost", linkedWordId: null }),
+        data: expect.objectContaining({
+          wordId: "w1",
+          ownerId: "u1",
+          term: "ghost",
+          linkedWordId: null,
+        }),
       }),
     );
     expect(tx.relatedWord.update).not.toHaveBeenCalled();

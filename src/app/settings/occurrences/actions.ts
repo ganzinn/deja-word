@@ -8,10 +8,7 @@ import {
 } from "@/lib/occurrence-preset-settings";
 import { getCurrentSession } from "@/lib/session";
 
-export type TogglePresetSettingError =
-  | "unauthorized"
-  | "forbidden"
-  | "unknown";
+export type TogglePresetSettingError = "unauthorized" | "forbidden" | "unknown";
 
 export type TogglePresetSettingResult =
   | { ok: true }

@@ -78,9 +78,9 @@ describe("assertHeadwordChangeAllowed", () => {
 
 describe("assertRowsAllowed", () => {
   test("rejects a form row referencing an unknown id", () => {
-    expect(() => assertRowsAllowed("meaning", editor, [{ id: "ghost", ownerId: "u1" }], [])).toThrow(
-      /unknown id ghost/,
-    );
+    expect(() =>
+      assertRowsAllowed("meaning", editor, [{ id: "ghost", ownerId: "u1" }], []),
+    ).toThrow(/unknown id ghost/);
   });
 
   test("rejects an owner mismatch on an existing id", () => {
@@ -174,7 +174,10 @@ describe("assertWordUpdateAllowed", () => {
       assertWordUpdateAllowed(
         editor,
         { ownerId: "u1", headword: "x" },
-        makeValues({ headword: "x", meanings: [{ id: "m1", ownerId: "u1", texts: [{ text: "a" }] }] }),
+        makeValues({
+          headword: "x",
+          meanings: [{ id: "m1", ownerId: "u1", texts: [{ text: "a" }] }],
+        }),
         makeLoaded({ meanings: [{ id: "m1", ownerId: "u1" }] }),
       ),
     ).not.toThrow();

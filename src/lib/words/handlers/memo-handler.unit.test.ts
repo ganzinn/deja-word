@@ -10,12 +10,9 @@ const editor = { userId: "u1", isSystem: false };
 describe("upsertMemos", () => {
   test("pass-through: system row gets a sortOrder-only update", async () => {
     const tx = makeTxMock();
-    await upsertMemos(
-      asTx(tx),
-      editor,
-      [{ id: "m1", ownerId: SYSTEM_USER_ID, text: "共通メモ" }],
-      { wordId: "w1" },
-    );
+    await upsertMemos(asTx(tx), editor, [{ id: "m1", ownerId: SYSTEM_USER_ID, text: "共通メモ" }], {
+      wordId: "w1",
+    });
 
     expect(tx.memo.update).toHaveBeenCalledWith({
       where: { id: "m1" },
@@ -27,12 +24,9 @@ describe("upsertMemos", () => {
 
   test("own row: text and sortOrder are updated (text trimmed)", async () => {
     const tx = makeTxMock();
-    await upsertMemos(
-      asTx(tx),
-      editor,
-      [{ id: "m1", ownerId: "u1", text: " memo " }],
-      { wordId: "w1" },
-    );
+    await upsertMemos(asTx(tx), editor, [{ id: "m1", ownerId: "u1", text: " memo " }], {
+      wordId: "w1",
+    });
 
     expect(tx.memo.update).toHaveBeenCalledWith({
       where: { id: "m1" },

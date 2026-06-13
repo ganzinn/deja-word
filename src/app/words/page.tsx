@@ -45,7 +45,7 @@ export default async function WordsPage({ searchParams }: PageProps) {
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
       <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
         <Link
-          href="/dashboard"
+          href="/menu"
           aria-label="戻る"
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
         >
@@ -127,9 +127,7 @@ function WordRow({ item }: { item: WordListItem }) {
           {item.meaningTexts.length > 0 ? (
             <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-wrap">
               <span className="text-red-600">{item.meaningTexts[0]}</span>
-              {item.meaningTexts.length > 1
-                ? `; ${item.meaningTexts.slice(1).join("; ")}`
-                : null}
+              {item.meaningTexts.length > 1 ? `; ${item.meaningTexts.slice(1).join("; ")}` : null}
             </p>
           ) : null}
         </div>

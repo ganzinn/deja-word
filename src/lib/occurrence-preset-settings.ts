@@ -3,9 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 
-export async function seedOccurrencePresetSettingsForUser(
-  userId: string,
-): Promise<number> {
+export async function seedOccurrencePresetSettingsForUser(userId: string): Promise<number> {
   const systemOccurrences = await prisma.occurrence.findMany({
     where: { ownerId: SYSTEM_USER_ID },
     select: { id: true },

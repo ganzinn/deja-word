@@ -13,9 +13,7 @@ export type OccurrenceListItem = {
   wordLinkCount: number;
 };
 
-export async function listOccurrencesForUser(
-  userId: string,
-): Promise<OccurrenceListItem[]> {
+export async function listOccurrencesForUser(userId: string): Promise<OccurrenceListItem[]> {
   const allowed = scopedOwnerIds(userId);
   const rows = await prisma.occurrence.findMany({
     where: { ownerId: { in: allowed } },

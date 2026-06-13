@@ -13,7 +13,16 @@ describe("upsertExamples", () => {
     await upsertExamples(
       asTx(tx),
       editor,
-      [{ id: "e1", ownerId: SYSTEM_USER_ID, kind: "SENTENCE", text: "It is.", meaning: "", note: "" }],
+      [
+        {
+          id: "e1",
+          ownerId: SYSTEM_USER_ID,
+          kind: "SENTENCE",
+          text: "It is.",
+          meaning: "",
+          note: "",
+        },
+      ],
       { wordId: "w1" },
     );
 

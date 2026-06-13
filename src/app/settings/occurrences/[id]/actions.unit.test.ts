@@ -16,9 +16,7 @@ const { deleteOccurrence } = await import("@/app/settings/occurrences/[id]/actio
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedDelete = vi.mocked(deleteOccurrenceForUser);
 
-const SESSION = { user: { id: "u_1" } } as unknown as Awaited<
-  ReturnType<typeof getCurrentSession>
->;
+const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 beforeEach(() => {
   mockedGetSession.mockReset();

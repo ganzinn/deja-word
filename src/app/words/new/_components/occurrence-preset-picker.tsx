@@ -1,10 +1,6 @@
 "use client";
 
-import type {
-  FieldArrayWithId,
-  UseFieldArrayAppend,
-  UseFieldArrayRemove,
-} from "react-hook-form";
+import type { FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from "react-hook-form";
 
 import { Toggle } from "@/components/ui/toggle";
 

@@ -1,7 +1,4 @@
-import {
-  DuplicateHeadwordError,
-  DuplicateOccurrenceNumberError,
-} from "@/lib/words-create";
+import { DuplicateHeadwordError, DuplicateOccurrenceNumberError } from "@/lib/words-create";
 import { ForbiddenUpdateError, WordNotFoundError } from "@/lib/words-update";
 
 export type WordWriteErrorCode =

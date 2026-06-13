@@ -58,7 +58,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ### 検証の分担
 
-- **worktree 内（サブエージェント）**: `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全）
+- **worktree 内（サブエージェント）**: `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全。整形差分は実装コミットに含める）
 - **`pnpm test:integration` は worktree で実行禁止**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できず、`.env.test` は gitignore 済みで worktree に存在しない。メインがマージ後の統合ブランチ（PR モードではメインの checkout）で**直列**実行する
 - integration テストの有無は**サブエージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
 
@@ -77,7 +77,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 2. **wave ループ**: ready 集合から並行度上限まで選び、チケットごとに統合ブランチ起点で worktree を作成（ブランチ名 `feature/<機能名>-NN-<チケット名>`）→ `pnpm install` → **メインが統合ブランチ上で**、選んだチケットをまとめて「実装中」に更新し **1 コミット**（チケットに紐づかない運用コミット）→ サブエージェントを並行起動（worktree は状態更新コミットの前に分岐するが、worktree 側は `docs/plan/` を編集しないため squash マージで衝突しない）
 3. 報告を受けたら**チケット番号順に**統合ブランチへ取り込む:
    - `git merge --squash <worktreeブランチ>`（ステージのみでコミットは作られない）→ ハブとチケット冒頭の状態行を「完了＋日付」に編集・実装メモを転記 → まとめて 1 コミット。メッセージ `<機能名>: NN <チケット名>`（PR タイトル規約と同形。**実装差分は 1 チケット = 1 コミット**を保つ。手順 2 のステータス運用コミットはこれとは別勘定）
-   - マージ後検証: `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`。報告に integration テストが含まれていれば `pnpm test:integration` を直列実行
+   - マージ後検証: `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`。報告に integration テストが含まれていれば `pnpm test:integration` を直列実行
    - 成功したら worktree とブランチを削除する
    - コンフリクトはハブの「共有物・競合点」を根拠にメインが解決する（ticket-split が同一ファイル競合を直列依存化済みのため原則小さい）。判断できなければ当該チケットをマージ保留にしてエスカレーションする
 4. チケット間の整合調整が必要な場合は追加コミット可。メッセージ `<機能名>: 調整 — <内容>`（どのチケット間の整合かを本文に書く）

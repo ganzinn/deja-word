@@ -107,9 +107,9 @@ function SignInFormInner({ showSignUpLink }: { showSignUpLink: boolean }) {
 }
 
 function safeRedirect(value: string | null): string {
-  if (!value) return "/dashboard";
-  if (!value.startsWith("/")) return "/dashboard";
-  if (value.startsWith("//")) return "/dashboard";
+  if (!value) return "/menu";
+  if (!value.startsWith("/")) return "/menu";
+  if (value.startsWith("//")) return "/menu";
   return value;
 }
 

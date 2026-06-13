@@ -104,7 +104,13 @@ describe("upsertWordOccurrences", () => {
       select: { id: true, ownerId: true },
     });
     expect(tx.wordOccurrence.create).toHaveBeenCalledWith({
-      data: { wordId: "w1", occurrenceId: "occ1", ownerId: "u1", sortOrder: 0, occurrenceNumber: 5 },
+      data: {
+        wordId: "w1",
+        occurrenceId: "occ1",
+        ownerId: "u1",
+        sortOrder: 0,
+        occurrenceNumber: 5,
+      },
       select: { id: true },
     });
   });

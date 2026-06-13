@@ -45,7 +45,7 @@ cat .vercel/repo.json          # orgId / projects[].id を確認
 1. 変更を `main` に merge する（この時点ではデプロイされない）
 2. GitHub → **Actions** → 左の **Create Release** → **Run workflow**
    - Branch: `main`（既定）
-   - リリースノート（任意）を入力
+   - 補足ノート（任意）を入力 ※ リリースノートは UI の「Generate release notes」と同じ内容が自動生成される（`--generate-notes`）。補足を入力した場合はその先頭に追記される
    - **Run workflow**
 3. `create-release` が `rel-YYYYMMDDHHmm`（JST）タグの Release を作成 → `deploy` が lint / typecheck / test:unit → `vercel deploy --prod` で production 反映
 4. Actions のログとデプロイ URL で反映を確認

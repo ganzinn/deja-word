@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       notes:
-        description: "リリースノート（任意・Markdown 可）"
+        description: "補足ノート（任意）。自動生成ノートの先頭に追記される"
         required: false
         default: ""
 
@@ -32,14 +32,21 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "生成タグ: $TAG"
 
-      - name: GitHub Release を作成
+      # --generate-notes で UI の「Generate release notes」と同じ自動生成ノートを付与する。
+      # 補足ノート（inputs.notes）が入力された場合は自動生成ノートの先頭に追記される。
+      # inputs は env 経由で渡す（run スクリプトへ直接展開しないインジェクション対策）。
+      - name: GitHub Release を作成（ノート自動生成）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          SHA: ${{ github.sha }}
+          NOTES: ${{ inputs.notes }}
         run: |
-          gh release create "${{ steps.tag.outputs.tag }}" \
-            --target "${{ github.sha }}" \
-            --title "${{ steps.tag.outputs.tag }}" \
-            --notes "${{ inputs.notes }}"
+          if [ -n "$NOTES" ]; then
+            gh release create "$TAG" --target "$SHA" --title "$TAG" --generate-notes --notes "$NOTES"
+          else
+            gh release create "$TAG" --target "$SHA" --title "$TAG" --generate-notes
+          fi
 
   # GITHUB_TOKEN で作成した Release は release:published を再発火しないため、
   # ここで Release Deploy を直接呼び出して deploy をつなぐ。

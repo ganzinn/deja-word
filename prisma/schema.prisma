@@ -30,6 +30,7 @@ model User {
   quizAnswers              QuizAnswer[]
   drills                   Drill[]
   quizDefaultSetting       QuizDefaultSetting?
+  quizDefaultTimeouts      QuizDefaultTimeout[]
 
   @@unique([email])
   @@map("user")
@@ -319,7 +320,6 @@ model QuizDefaultSetting {
   rangeFrom      Int?        @map("range_from")
   rangeTo        Int?        @map("range_to")
   format         QuizFormat?
-  timeoutSeconds Int?        @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし
   showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -329,6 +329,22 @@ model QuizDefaultSetting {
 
   @@index([occurrenceId])
   @@map("quiz_default_setting")
+}
+
+// 出題形式ごとのデフォルト制限時間: ユーザー × 形式で 1 行。行が無い形式 = 制限なし。
+// 形式追加は QuizFormat の値追加だけで対応（カラム増設・マイグレーション不要）。
+// 制限時間は occurrence に従属しないため occurrence リレーションは持たない（SetNull と独立）。
+model QuizDefaultTimeout {
+  userId         String     @map("user_id")
+  format         QuizFormat
+  timeoutSeconds Int        @map("timeout_seconds") // 1問あたりの制限時間（秒）。1..60
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, format])
+  @@index([userId])
+  @@map("quiz_default_timeout")
 }
 
 // 定着待ちプール: 元テスト1回から生成、複数並存可

@@ -3,8 +3,10 @@ import { z } from "zod/v3";
 import type { DrillResultInput } from "@/lib/drill-create";
 import type { AnswerInput } from "@/lib/quiz/handlers/quiz-answer-handler";
 import type { DrillRoundInput } from "@/lib/quiz/handlers/drill-round-handler";
+import { ALL_QUIZ_FORMATS } from "@/lib/quiz/format-options";
 import { TIMEOUT_MAX_SECONDS, TIMEOUT_MIN_SECONDS } from "@/lib/quiz/timeout-options";
 import type { QuizRangeInput } from "@/lib/quiz-preview";
+import type { QuizFormat } from "@/generated/prisma/enums";
 
 /**
  * テスト範囲の入力（05-architecture.md 決定 2）。
@@ -26,6 +28,15 @@ export const quizTimeoutSecondsSchema = z
   .int()
   .min(TIMEOUT_MIN_SECONDS)
   .max(TIMEOUT_MAX_SECONDS);
+
+/**
+ * 出題形式ごとの制限時間（デフォルト設定）。全形式キーを必須で持つ map で、
+ * 各値は 1..60 整数 または null（その形式は制限なし）。形式リストは
+ * ALL_QUIZ_FORMATS（FORMAT_GROUPS 由来）を単一の出どころとする。
+ */
+export const quizTimeoutByFormatSchema = z.object(
+  Object.fromEntries(ALL_QUIZ_FORMATS.map((f) => [f, quizTimeoutSecondsSchema.nullable()])),
+) as unknown as z.ZodType<Record<QuizFormat, number | null>>;
 
 /** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
 export const answerInputSchema = z.object({
@@ -64,7 +75,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   rangeFrom: z.number().int().positive().nullable(),
   rangeTo: z.number().int().positive().nullable(),
   format: quizFormatSchema.nullable(),
-  timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
+  timeoutByFormat: quizTimeoutByFormatSchema,
   showCountdown: z.boolean().nullable(),
 });
 

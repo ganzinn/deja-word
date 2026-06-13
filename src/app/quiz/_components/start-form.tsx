@@ -94,9 +94,21 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
   const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
   const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
-  const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
-  const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
-  const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
+  const initialFormat = defaults?.format ?? null;
+  // 初期選択形式があれば、その形式の保存済み制限時間を初期値に（未選択なら制限なし）
+  const initialTimeout =
+    initialFormat !== null ? (defaults?.timeoutByFormat[initialFormat] ?? null) : null;
+  const [format, setFormat] = useState<QuizFormat | null>(initialFormat);
+  const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
+  const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
+
+  /** 形式を選択し、その形式の保存済み制限時間を制限時間入力へ自動反映する。 */
+  function selectFormat(value: QuizFormat) {
+    setFormat(value);
+    const saved = defaults?.timeoutByFormat[value] ?? null;
+    setTimeoutEnabled(saved !== null);
+    setTimeoutText(saved?.toString() ?? "");
+  }
   const [previewResponse, setPreviewResponse] = useState<PreviewResponse | null>(null);
   // 応答順逆転対策の単調増加トークン（クライアント内で完結。Action の入出力には含めない）
   const previewTokenRef = useRef(0);
@@ -226,7 +238,7 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
                     aria-checked={selected}
                     disabled={unavailable}
                     onClick={() => {
-                      if (!unavailable) setFormat(option.value);
+                      if (!unavailable) selectFormat(option.value);
                     }}
                     className={cn(
                       "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",

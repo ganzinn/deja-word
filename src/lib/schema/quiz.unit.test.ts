@@ -171,13 +171,22 @@ describe("submitQuizAnswersInputSchema", () => {
 });
 
 describe("saveQuizDefaultsInputSchema", () => {
+  // 全形式キーを持つ制限時間 map（指定分だけ秒数、残りは null）。
+  const timeoutMap = (partial: Record<string, number>) => ({
+    CHOICE: null,
+    SELF_JUDGE: null,
+    MULTI_MEANING: null,
+    ...partial,
+  });
+  const ALL_NULL = timeoutMap({});
+
   test("accepts all-null (no defaults)", () => {
     const r = saveQuizDefaultsInputSchema.safeParse({
       occurrenceId: null,
       rangeFrom: null,
       rangeTo: null,
       format: null,
-      timeoutSeconds: null,
+      timeoutByFormat: ALL_NULL,
       showCountdown: null,
     });
     expect(r.success).toBe(true);
@@ -190,7 +199,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeFrom: null,
         rangeTo: null,
         format: "CHOICE",
-        timeoutSeconds: null,
+        timeoutByFormat: ALL_NULL,
         showCountdown: null,
       }).success,
     ).toBe(true);
@@ -200,25 +209,25 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeFrom: null,
         rangeTo: null,
         format: null,
-        timeoutSeconds: null,
+        timeoutByFormat: ALL_NULL,
         showCountdown: null,
       }).success,
     ).toBe(true);
   });
 
-  test("accepts fully specified defaults", () => {
+  test("accepts fully specified defaults (per-format timeouts)", () => {
     const r = saveQuizDefaultsInputSchema.safeParse({
       occurrenceId: "occ_1",
       rangeFrom: 1,
       rangeTo: 100,
       format: "SELF_JUDGE",
-      timeoutSeconds: 5,
+      timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: 30 }),
       showCountdown: false,
     });
     expect(r.success).toBe(true);
   });
 
-  test("timeoutSeconds accepts null and 1..60 integers, rejects out-of-range / non-integer", () => {
+  test("timeoutByFormat: each format accepts null and 1..60 integers, rejects out-of-range / non-integer", () => {
     const base = {
       occurrenceId: null,
       rangeFrom: null,
@@ -226,14 +235,38 @@ describe("saveQuizDefaultsInputSchema", () => {
       format: null,
       showCountdown: null,
     };
-    for (const timeoutSeconds of [null, 1, 60]) {
-      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(true);
+    for (const v of [null, 1, 60]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({
+          ...base,
+          timeoutByFormat: timeoutMap(v === null ? {} : { CHOICE: v }),
+        }).success,
+      ).toBe(true);
     }
-    for (const timeoutSeconds of [0, 61, 2.5]) {
-      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(
-        false,
-      );
+    for (const v of [0, 61, 2.5]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({
+          ...base,
+          timeoutByFormat: timeoutMap({ CHOICE: v }),
+        }).success,
+      ).toBe(false);
     }
+  });
+
+  test("timeoutByFormat requires all format keys (rejects a missing key)", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      showCountdown: null,
+    };
+    // SELF_JUDGE / MULTI_MEANING を欠いた map は不正
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({ ...base, timeoutByFormat: { CHOICE: 5 } }).success,
+    ).toBe(false);
+    // timeoutByFormat 自体の欠落も不正
+    expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
 
   test("rejects empty occurrenceId (null is the way to unset)", () => {
@@ -243,7 +276,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeFrom: null,
         rangeTo: null,
         format: null,
-        timeoutSeconds: null,
+        timeoutByFormat: ALL_NULL,
         showCountdown: null,
       }).success,
     ).toBe(false);
@@ -257,7 +290,7 @@ describe("saveQuizDefaultsInputSchema", () => {
           rangeFrom,
           rangeTo: null,
           format: null,
-          timeoutSeconds: null,
+          timeoutByFormat: ALL_NULL,
           showCountdown: null,
         }).success,
       ).toBe(false);
@@ -271,7 +304,8 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeFrom: null,
         rangeTo: null,
         format: "BOGUS",
-        timeoutSeconds: null,
+        timeoutByFormat: ALL_NULL,
+        showCountdown: null,
       }).success,
     ).toBe(false);
   });
@@ -282,7 +316,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
-      timeoutSeconds: null,
+      timeoutByFormat: ALL_NULL,
     };
     for (const showCountdown of [true, false, null]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, showCountdown }).success).toBe(true);
@@ -299,7 +333,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeFrom: 20,
       rangeTo: 10,
       format: null,
-      timeoutSeconds: null,
+      timeoutByFormat: ALL_NULL,
       showCountdown: null,
     });
     expect(r.success).toBe(true);

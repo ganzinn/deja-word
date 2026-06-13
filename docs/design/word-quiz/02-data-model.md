@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止）
 
 ## 前提（確定事項の再掲）
 
@@ -138,7 +138,6 @@ model QuizDefaultSetting {
   rangeFrom    Int?        @map("range_from")
   rangeTo      Int?        @map("range_to")
   format       QuizFormat?
-  timeoutSeconds Int?      @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし（2026-06-13 加算改訂）
   showCountdown  Boolean?  @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（2026-06-13 加算改訂）
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
@@ -148,22 +147,39 @@ model QuizDefaultSetting {
   @@index([occurrenceId])
   @@map("quiz_default_setting")
 }
+
+// 出題形式ごとのデフォルト制限時間: ユーザー × 形式で 1 行。行が無い形式 = 制限なし（2026-06-13 改訂で形式別化）
+model QuizDefaultTimeout {
+  userId         String     @map("user_id")
+  format         QuizFormat
+  timeoutSeconds Int        @map("timeout_seconds") // 1問あたりの制限時間（秒）。1..60
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, format])
+  @@index([userId])
+  @@map("quiz_default_timeout")
+}
 ```
 
 - **ユーザーごと 1 行（userId が PK）**。デフォルトは 1 セットで十分なため。複数プリセットの要求が出たら別途検討。
 - **occurrence の onDelete は SetNull**（既存規約の Cascade からの意図的な逸脱）。Occurrence 削除時は掲載箇所だけ未設定へ戻し、range / format のデフォルトは道連れにしない。`OccurrencePresetSetting` は「occurrence に従属する設定」なので Cascade が正しいが、本モデルは「ユーザーの設定の一部が occurrence を参照」する構図で従属関係が逆。
 - **全項目 nullable（部分的なデフォルトを許す）**。SetNull により「format だけ残る」状態が DB 上必ず生じるため、その状態をフォームでも表現・再保存できるように揃える。「出題形式だけいつも四択」のような使い方も自然。
 
-### 制限時間（タイムアウト）（2026-06-13 加算改訂）
+### 制限時間（タイムアウト）（2026-06-13 加算改訂。デフォルトの形式別化を後続改訂で追加）
 
-1 問あたりの制限時間を任意設定できる（要件は [01](01-requirements.md)、UI は [04](04-ui.md)）。スキーマへの影響は次の 3 点（上のスニペットに反映済み）。
+1 問あたりの制限時間を任意設定できる（要件は [01](01-requirements.md)、UI は [04](04-ui.md)）。スキーマへの影響は次のとおり（上のスニペットに反映済み）。
 
 - **`QuizResult` に `TIMEOUT` を値追加**。時間切れの解答を誤答と区別して記録する（GAVE_UP と同じ動機）。集計・drill の残数計算上は INCORRECT と同じ扱い（`nextRemaining` で 3 にリセット）。
-- **`QuizDefaultSetting.timeoutSeconds Int?`**。デフォルト設定の 4 項目目。既存の全項目 nullable 方針に従い null = 未設定（制限なし）。
-- **`Drill.timeoutSeconds Int?`**。元テスト開始時の制限時間を drill 生成時に 1 回だけ受け取って保存し、全ラウンドで引き継ぐ（`format` と同じパターン。[06](06-drill-mode.md) の決定 4 と同形）。null = 制限なし。
-- 値の範囲（1〜60 秒・整数）は zod スキーマ（`src/lib/schema/quiz.ts`）で検証し、DB には制約を置かない（既存の rangeFrom / rangeTo と同方針）。
-- 保存時に occurrence の可視性（`scopedOwnerIds`）を検証し、読み出し時も可視範囲外なら occurrenceId を null に落とす（二重防御）。
-- User / Occurrence 側にはリレーションフィールド（`quizDefaultSetting` / `quizDefaultSettings`）のみ追加（列は増えない＝「既存テーブル無変更」の方針に抵触しない）。
+- **デフォルト設定の制限時間は出題形式ごとに保持する（後続改訂）**。当初は `QuizDefaultSetting.timeoutSeconds Int?`（単一値）だったが、形式によって必要な回答時間が異なるため、形式別の子テーブル **`QuizDefaultTimeout(userId, format, timeoutSeconds)`** に置き換えた。`QuizDefaultSetting.timeoutSeconds` は廃止。
+  - **PK は `(userId, format)`**（`OccurrencePresetSetting` と同じ複合 PK 様式）。**「制限なし」= 行が存在しない**で表現するため `timeoutSeconds` は非 null。`getQuizDefaultsForUser` は全形式キーを持つ `Record<QuizFormat, number | null>` に組み立てて返す（行なしの形式は null）。
+  - **形式追加は `QuizFormat` の値追加だけで対応**（カラム増設・マイグレーション不要）。形式リストは `ALL_QUIZ_FORMATS`（`src/lib/quiz/format-options.ts`）を単一の出どころとする。
+  - **occurrence リレーションを持たない**。制限時間は occurrence に従属しないため、`QuizDefaultSetting` の occurrence `SetNull` と完全に独立（occurrence 削除が制限時間に影響しない）。
+- **`Drill.timeoutSeconds Int?`**。元テスト開始時の制限時間（選択された 1 形式分の単一値）を drill 生成時に 1 回だけ受け取って保存し、全ラウンドで引き継ぐ（`format` と同じパターン。[06](06-drill-mode.md) の決定 4 と同形）。null = 制限なし。クイズは 1 回 1 形式のため、実行時に流れる制限時間は形式別化後も単一値のまま（→ [05](05-architecture.md)）。
+- 値の範囲（1〜60 秒・整数）は zod スキーマ（`src/lib/schema/quiz.ts`）で検証し、DB には制約を置かない（既存の rangeFrom / rangeTo と同方針）。デフォルト設定の保存入力は全形式キーを必須に持つ map（`quizTimeoutByFormatSchema`）。
+- 保存時に occurrence の可視性（`scopedOwnerIds`）を検証し、読み出し時も可視範囲外なら occurrenceId を null に落とす（二重防御）。`QuizDefaultSetting` と `QuizDefaultTimeout` の書き込みは 1 トランザクションで同期する。
+- User 側にはリレーションフィールド（`quizDefaultSetting` / `quizDefaultTimeouts`）のみ追加（列は増えない＝「既存テーブル無変更」の方針に抵触しない）。
 
 ### カウントダウン表示（2026-06-13 加算改訂）
 

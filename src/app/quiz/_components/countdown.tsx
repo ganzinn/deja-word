@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
+  /** false ならカウント演出をスキップし、データ取得完了しだい即 onFinished（準備中…のみ表示）。 */
+  enabled: boolean;
   /** 問題データの取得状況（取得は quiz-flow がカウントダウンの裏で行う）。 */
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
@@ -15,8 +17,8 @@ type Props = {
 };
 
 /** 全画面オーバーレイの「3・2・1」カウントダウン。 */
-export function Countdown({ status, errorMessage, onFinished, onBackToStart }: Props) {
-  const [count, setCount] = useState(3);
+export function Countdown({ enabled, status, errorMessage, onFinished, onBackToStart }: Props) {
+  const [count, setCount] = useState(enabled ? 3 : 0);
 
   useEffect(() => {
     if (count <= 0) return;

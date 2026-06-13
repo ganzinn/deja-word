@@ -57,8 +57,9 @@ type Props = {
    * フォームの初期値（デフォルト設定。未保存なら null）。occurrenceId は
    * page.tsx が occurrences に存在するものだけに絞って渡す。初期 format が
    * プレビューで不成立でも自動解除しない（ユーザー選択と同じ扱い）。
+   * showCountdown は初期値ではなく挙動設定のため、ここには渡さない。
    */
-  defaults: QuizDefaults | null;
+  defaults: Omit<QuizDefaults, "showCountdown"> | null;
   onStart: (input: StartQuizInput) => void;
   /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */
   onResumeDrill: (drillId: string) => void;

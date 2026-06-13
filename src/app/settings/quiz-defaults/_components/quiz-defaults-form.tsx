@@ -61,6 +61,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
   const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
   const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
+  const [showCountdown, setShowCountdown] = useState(defaults?.showCountdown ?? false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -71,6 +72,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         rangeTo: parseRangeValue(rangeToText),
         format,
         timeoutSeconds: timeoutEnabled ? parseRangeValue(timeoutText) : null,
+        showCountdown,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -90,6 +92,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         setFormat(null);
         setTimeoutEnabled(false);
         setTimeoutText("");
+        setShowCountdown(false);
         toast.success("クリアしました");
         return;
       }
@@ -105,7 +108,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm">
-        テスト開始画面の初期値を設定します。すべて任意です。
+        テスト開始画面の初期値と、テストの動作を設定します。すべて任意です。
       </p>
 
       <section className="flex flex-col gap-2">
@@ -227,6 +230,23 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             </p>
           </>
         ) : null}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>カウントダウン</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-show-countdown"
+            checked={showCountdown}
+            onCheckedChange={(checked) => setShowCountdown(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-show-countdown" className="font-normal">
+            テスト開始時にカウントダウン（3・2・1）を表示する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オフにすると、問題の準備が完了しだいすぐにテストが始まります。
+        </p>
       </section>
 
       <div className="flex flex-col gap-2">

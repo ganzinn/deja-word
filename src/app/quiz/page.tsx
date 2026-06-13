@@ -29,6 +29,10 @@ export default async function QuizPage() {
       ? defaults.occurrenceId
       : null;
 
+  // カウントダウン表示は設定画面のみで変更する挙動設定（開始フォームの初期値ではない）。
+  // 未設定（null）はデフォルトで非表示。
+  const showCountdown = defaults?.showCountdown ?? false;
+
   return (
     <QuizFlow
       occurrences={occurrences.map((o) => ({
@@ -38,6 +42,7 @@ export default async function QuizPage() {
       }))}
       activeDrills={activeDrills}
       defaults={defaults === null ? null : { ...defaults, occurrenceId: defaultOccurrenceId }}
+      showCountdown={showCountdown}
     />
   );
 }

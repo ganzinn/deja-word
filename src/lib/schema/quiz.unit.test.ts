@@ -178,6 +178,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: null,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     });
     expect(r.success).toBe(true);
   });
@@ -190,6 +191,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeTo: null,
         format: "CHOICE",
         timeoutSeconds: null,
+        showCountdown: null,
       }).success,
     ).toBe(true);
     expect(
@@ -199,6 +201,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeTo: null,
         format: null,
         timeoutSeconds: null,
+        showCountdown: null,
       }).success,
     ).toBe(true);
   });
@@ -210,12 +213,19 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: 100,
       format: "SELF_JUDGE",
       timeoutSeconds: 5,
+      showCountdown: false,
     });
     expect(r.success).toBe(true);
   });
 
   test("timeoutSeconds accepts null and 1..60 integers, rejects out-of-range / non-integer", () => {
-    const base = { occurrenceId: null, rangeFrom: null, rangeTo: null, format: null };
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      showCountdown: null,
+    };
     for (const timeoutSeconds of [null, 1, 60]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(true);
     }
@@ -234,6 +244,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         rangeTo: null,
         format: null,
         timeoutSeconds: null,
+        showCountdown: null,
       }).success,
     ).toBe(false);
   });
@@ -247,6 +258,7 @@ describe("saveQuizDefaultsInputSchema", () => {
           rangeTo: null,
           format: null,
           timeoutSeconds: null,
+          showCountdown: null,
         }).success,
       ).toBe(false);
     }
@@ -264,6 +276,23 @@ describe("saveQuizDefaultsInputSchema", () => {
     ).toBe(false);
   });
 
+  test("showCountdown accepts true / false / null, rejects non-boolean / missing", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutSeconds: null,
+    };
+    for (const showCountdown of [true, false, null]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, showCountdown }).success).toBe(true);
+    }
+    expect(saveQuizDefaultsInputSchema.safeParse({ ...base, showCountdown: "true" }).success).toBe(
+      false,
+    );
+    expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
+  });
+
   test("rangeFrom > rangeTo is accepted by the schema (treated as 0 targets downstream)", () => {
     const r = saveQuizDefaultsInputSchema.safeParse({
       occurrenceId: null,
@@ -271,6 +300,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: 10,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     });
     expect(r.success).toBe(true);
   });

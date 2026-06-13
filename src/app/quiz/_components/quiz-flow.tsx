@@ -33,7 +33,9 @@ type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
-  defaults: QuizDefaults | null;
+  defaults: Omit<QuizDefaults, "showCountdown"> | null;
+  /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
+  showCountdown: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -139,7 +141,7 @@ function QuestionView({
   }
 }
 
-export function QuizFlow({ occurrences, activeDrills, defaults }: Props) {
+export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
   const [mode, setMode] = useState<QuizMode>("TEST");
@@ -364,6 +366,7 @@ export function QuizFlow({ occurrences, activeDrills, defaults }: Props) {
   if (phase.name === "countdown") {
     return (
       <Countdown
+        enabled={showCountdown}
         status={loadError !== null ? "error" : quiz !== null ? "ready" : "loading"}
         errorMessage={loadError}
         onFinished={() => setPhase({ name: "play", index: 0 })}

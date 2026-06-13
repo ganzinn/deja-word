@@ -11,6 +11,7 @@ export type QuizDefaults = {
   rangeTo: number | null;
   format: QuizFormat | null;
   timeoutSeconds: number | null;
+  showCountdown: boolean | null;
 };
 
 export class DefaultOccurrenceNotInScopeError extends Error {
@@ -40,6 +41,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     rangeTo: setting.rangeTo,
     format: setting.format,
     timeoutSeconds: setting.timeoutSeconds,
+    showCountdown: setting.showCountdown,
   };
 }
 

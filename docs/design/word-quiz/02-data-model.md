@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -139,6 +139,7 @@ model QuizDefaultSetting {
   rangeTo      Int?        @map("range_to")
   format       QuizFormat?
   timeoutSeconds Int?      @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし（2026-06-13 加算改訂）
+  showCountdown  Boolean?  @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（2026-06-13 加算改訂）
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -163,3 +164,10 @@ model QuizDefaultSetting {
 - 値の範囲（1〜60 秒・整数）は zod スキーマ（`src/lib/schema/quiz.ts`）で検証し、DB には制約を置かない（既存の rangeFrom / rangeTo と同方針）。
 - 保存時に occurrence の可視性（`scopedOwnerIds`）を検証し、読み出し時も可視範囲外なら occurrenceId を null に落とす（二重防御）。
 - User / Occurrence 側にはリレーションフィールド（`quizDefaultSetting` / `quizDefaultSettings`）のみ追加（列は増えない＝「既存テーブル無変更」の方針に抵触しない）。
+
+### カウントダウン表示（2026-06-13 加算改訂）
+
+開始時のカウントダウン演出（3・2・1）の表示有無を設定できる（UI は [04](04-ui.md)）。
+
+- **`QuizDefaultSetting.showCountdown Boolean?`**。デフォルト設定の 5 項目目。既存の全項目 nullable 方針に従い null = 未設定。デフォルト（未設定）は非表示とする。設定画面の「クリア」（行削除）でも非表示に戻る。
+- 開始フォームの「初期値」ではなくテストの「挙動設定」のため、開始画面には設定 UI を出さない（変更は設定画面のみ）。

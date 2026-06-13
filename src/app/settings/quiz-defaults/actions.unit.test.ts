@@ -39,6 +39,7 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   rangeTo: 100,
   format: "CHOICE",
   timeoutSeconds: 5,
+  showCountdown: true,
 };
 
 beforeEach(() => {
@@ -103,6 +104,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       rangeTo: null,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });

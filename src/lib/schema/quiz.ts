@@ -65,6 +65,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   rangeTo: z.number().int().positive().nullable(),
   format: quizFormatSchema.nullable(),
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
+  showCountdown: z.boolean().nullable(),
 });
 
 // ---- drill 系 Server Action の入力スキーマ ----

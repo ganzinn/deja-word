@@ -320,6 +320,7 @@ model QuizDefaultSetting {
   rangeTo        Int?        @map("range_to")
   format         QuizFormat?
   timeoutSeconds Int?        @map("timeout_seconds") // 1問あたりの制限時間（秒）。null = 制限なし
+  showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)

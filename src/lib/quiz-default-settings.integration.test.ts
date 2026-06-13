@@ -22,6 +22,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: 100,
       format: "CHOICE",
       timeoutSeconds: 5,
+      showCountdown: true,
     });
     await saveQuizDefaultsForUser(user.id, {
       occurrenceId: occ.id,
@@ -29,6 +30,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: 50,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
+      showCountdown: false,
     });
 
     const rows = await prisma.quizDefaultSetting.findMany({ where: { userId: user.id } });
@@ -39,6 +41,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: 50,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
+      showCountdown: false,
     });
   });
 
@@ -50,6 +53,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: null,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults).toEqual({
@@ -58,6 +62,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: null,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     });
   });
 
@@ -72,6 +77,7 @@ describe("saveQuizDefaultsForUser", () => {
         rangeTo: null,
         format: null,
         timeoutSeconds: null,
+        showCountdown: null,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });
@@ -85,6 +91,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: null,
       format: null,
       timeoutSeconds: null,
+      showCountdown: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults?.occurrenceId).toBe(sysOcc.id);
@@ -106,6 +113,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeTo: 20,
       format: "MULTI_MEANING",
       timeoutSeconds: 30,
+      showCountdown: false,
     });
     expect(await getQuizDefaultsForUser(user.id)).toEqual({
       occurrenceId: occ.id,
@@ -113,6 +121,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeTo: 20,
       format: "MULTI_MEANING",
       timeoutSeconds: 30,
+      showCountdown: false,
     });
   });
 
@@ -125,6 +134,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeTo: 30,
       format: "CHOICE",
       timeoutSeconds: 5,
+      showCountdown: false,
     });
 
     await prisma.occurrence.delete({ where: { id: occ.id } });
@@ -135,6 +145,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeTo: 30,
       format: "CHOICE",
       timeoutSeconds: 5,
+      showCountdown: false,
     });
   });
 });
@@ -149,6 +160,7 @@ describe("clearQuizDefaultsForUser", () => {
       rangeTo: null,
       format: "CHOICE",
       timeoutSeconds: 10,
+      showCountdown: false,
     });
 
     await clearQuizDefaultsForUser(user.id);

@@ -58,12 +58,34 @@ export function AuthNav({ userName }: { userName: string }) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-40 gap-1 p-1.5">
             <Link
-              href="/menu"
+              href="/words/new"
               onClick={() => setMenuOpen(false)}
               className="rounded-md px-3 py-2 text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
-              メニュー
+              単語登録
             </Link>
+            <Link
+              href="/words"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-md px-3 py-2 text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              単語一覧
+            </Link>
+            <Link
+              href="/quiz"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-md px-3 py-2 text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              単語テスト
+            </Link>
+            <Link
+              href="/settings"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-md px-3 py-2 text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              設定
+            </Link>
+            <hr className="my-1 border-zinc-200 dark:border-zinc-700" />
             <button
               type="button"
               disabled={isPending}

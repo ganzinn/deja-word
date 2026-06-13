@@ -9,9 +9,7 @@ import { makeTxMock } from "../../../../tests/setup/tx-mock";
 // word.findMany だけローカルに補う（tx-mock.ts は 02 のみが触る共有物のため変更しない）。
 function makeTx(existingWordIds: string[]) {
   const mock = makeTxMock();
-  const wordFindMany = vi
-    .fn()
-    .mockResolvedValue(existingWordIds.map((id) => ({ id })));
+  const wordFindMany = vi.fn().mockResolvedValue(existingWordIds.map((id) => ({ id })));
   const tx = { ...mock, word: { findMany: wordFindMany } } as unknown as Tx;
   return { tx, mock, wordFindMany };
 }

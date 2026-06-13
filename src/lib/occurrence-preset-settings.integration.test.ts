@@ -8,7 +8,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-import { SYSTEM_OCCURRENCE_LOCATIONS, createOccurrenceRow, createTestUser } from "../../tests/setup/fixtures";
+import {
+  SYSTEM_OCCURRENCE_LOCATIONS,
+  createOccurrenceRow,
+  createTestUser,
+} from "../../tests/setup/fixtures";
 
 describe("seedOccurrencePresetSettingsForUser", () => {
   test("is idempotent: repeated calls don't duplicate records", async () => {

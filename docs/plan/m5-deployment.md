@@ -6,6 +6,8 @@
 
 本計画はプランニングセッション（2026-04-20〜21）で Manual Connection + Terraform 方針で詳細化し、**2026-04-22 の Phase 1 着手時に方針転換**して Vercel-Managed Integration + `vercel.ts` 方針に差し替えた。
 
+> **後日の運用変更（2026-06）**: 本計画では production を「`main` への merge で Vercel 自動デプロイ」としていたが、その後 **リリースタグ（GitHub Release の Publish）でのデプロイ運用に移行**した。`vercel.ts` の `git.deploymentEnabled` は `main: true` を外して全ブランチ false 化し、production デプロイは GitHub Actions（`.github/workflows/release-deploy.yml`）が Vercel CLI で実行する。以降、本ドキュメント内の「main merge で自動デプロイ」という記述は移行前の経緯として読むこと。手順は [`docs/ops/release-deploy.md`](../ops/release-deploy.md) を参照。
+
 ### 方針転換の経緯（2026-04-22）
 
 当初は「Neon は Dashboard 手動、Vercel のみ Terraform 化」で進める予定だったが、Neon 新規アカウントが **Vercel 連携組織に自動紐付けされ、Neon Console からの直接 Project 作成が不可**（メッセージ: "To create a new project, use the Neon Postgres integration in Vercel"）だったため、以下を検討:

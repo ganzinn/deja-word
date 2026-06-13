@@ -1,0 +1,36 @@
+name: Release Deploy
+
+# GitHub Release を Publish したときだけ production にデプロイする。
+# Vercel の Git Integration はブランチベースで tag/Release をトリガにできないため、
+# ここで Vercel CLI(`vercel deploy --prod`) を使って production デプロイを行う。
+# checkout はリリースのタグ commit を取得する。
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      # リリース commit を再ゲート（タグが main 以外の commit に付く事故への保険。ci.yml と同一チェック）
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - run: pnpm test:unit
+
+      # `--prebuilt` は付けない＝ソースをアップロードして Vercel 側でビルドする（リモートビルド）。
+      # これにより Sensitive な BETTER_AUTH_SECRET や Neon Integration の env が Vercel 側で揃い、
+      # `vercel-build`(prisma migrate deploy && next build) が現行の main-merge デプロイと同一に走る。
+      - name: Deploy to Vercel (production)
+        run: pnpm dlx vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

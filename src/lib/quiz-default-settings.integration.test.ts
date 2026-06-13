@@ -35,6 +35,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: "CHOICE",
       timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 20 }),
       showCountdown: true,
+      enableSound: true,
     });
     await saveQuizDefaultsForUser(user.id, {
       occurrenceId: occ.id,
@@ -43,6 +44,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: "SELF_JUDGE",
       timeoutByFormat: timeoutMap({ SELF_JUDGE: 30 }),
       showCountdown: false,
+      enableSound: false,
     });
 
     const rows = await prisma.quizDefaultSetting.findMany({ where: { userId: user.id } });
@@ -53,6 +55,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeTo: 50,
       format: "SELF_JUDGE",
       showCountdown: false,
+      enableSound: false,
     });
   });
 
@@ -66,6 +69,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: 30 }),
       showCountdown: null,
+      enableSound: null,
     });
     expect(await prisma.quizDefaultTimeout.count({ where: { userId: user.id } })).toBe(3);
 
@@ -77,6 +81,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({ CHOICE: 10, SELF_JUDGE: 20 }),
       showCountdown: null,
+      enableSound: null,
     });
 
     const defaults = await getQuizDefaultsForUser(user.id);
@@ -97,6 +102,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({}),
       showCountdown: null,
+      enableSound: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults).toEqual({
@@ -106,6 +112,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({}),
       showCountdown: null,
+      enableSound: null,
     });
     // QuizDefaultSetting 行は作られるが timeout 行はゼロ
     expect(await prisma.quizDefaultTimeout.count({ where: { userId: user.id } })).toBe(0);
@@ -123,6 +130,7 @@ describe("saveQuizDefaultsForUser", () => {
         format: null,
         timeoutByFormat: timeoutMap({}),
         showCountdown: null,
+        enableSound: null,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });
@@ -137,6 +145,7 @@ describe("saveQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({}),
       showCountdown: null,
+      enableSound: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults?.occurrenceId).toBe(sysOcc.id);
@@ -159,6 +168,7 @@ describe("getQuizDefaultsForUser", () => {
       format: "MULTI_MEANING",
       timeoutByFormat: timeoutMap({ MULTI_MEANING: 30 }),
       showCountdown: false,
+      enableSound: false,
     });
     expect(await getQuizDefaultsForUser(user.id)).toEqual({
       occurrenceId: occ.id,
@@ -167,6 +177,7 @@ describe("getQuizDefaultsForUser", () => {
       format: "MULTI_MEANING",
       timeoutByFormat: timeoutMap({ MULTI_MEANING: 30 }),
       showCountdown: false,
+      enableSound: false,
     });
   });
 
@@ -183,6 +194,7 @@ describe("getQuizDefaultsForUser", () => {
       format: null,
       timeoutByFormat: timeoutMap({ CHOICE: 7 }),
       showCountdown: null,
+      enableSound: null,
     });
   });
 
@@ -196,6 +208,7 @@ describe("getQuizDefaultsForUser", () => {
       format: "CHOICE",
       timeoutByFormat: timeoutMap({ CHOICE: 5 }),
       showCountdown: false,
+      enableSound: false,
     });
 
     await prisma.occurrence.delete({ where: { id: occ.id } });
@@ -207,6 +220,7 @@ describe("getQuizDefaultsForUser", () => {
       format: "CHOICE",
       timeoutByFormat: timeoutMap({ CHOICE: 5 }),
       showCountdown: false,
+      enableSound: false,
     });
   });
 });
@@ -222,6 +236,7 @@ describe("clearQuizDefaultsForUser", () => {
       format: "CHOICE",
       timeoutByFormat: timeoutMap({ CHOICE: 10, SELF_JUDGE: 15 }),
       showCountdown: false,
+      enableSound: false,
     });
 
     await clearQuizDefaultsForUser(user.id);

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
 import type { SelfJudgeQuestion } from "@/lib/quiz/payload";
+import type { QuizResult } from "@/generated/prisma/enums";
 
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
@@ -19,14 +20,17 @@ type Props = {
    */
   timeoutSeconds: number | null;
   onComplete: (outcome: QuestionOutcome) => void;
+  /** 正誤が確定した瞬間（判定ボタン／時間切れ）に 1 回だけ呼ばれる。 */
+  onReveal: (result: QuizResult) => void;
 };
 
 // 解答表示の状態。byTimeout: 時間切れによる自動表示（判定ボタンは出さず「次へ」のみ）
 type Revealed = { byTimeout: boolean };
 
-export function QuestionSelfJudge({ question, timeoutSeconds, onComplete }: Props) {
+export function QuestionSelfJudge({ question, timeoutSeconds, onComplete, onReveal }: Props) {
   const [revealed, setRevealed] = useState<Revealed | null>(null);
   const [completed, setCompleted] = useState(false);
+  const revealedRef = useRef(false);
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: revealed !== null,
@@ -34,9 +38,24 @@ export function QuestionSelfJudge({ question, timeoutSeconds, onComplete }: Prop
     onTimeout: () => setRevealed((prev) => prev ?? { byTimeout: true }),
   });
 
+  // 時間切れで自動表示された瞬間に × フラッシュ＋効果音を要求（TIMEOUT は×と同じ扱い）。
+  // 手動の「解答を表示」（byTimeout=false）は正誤未確定なのでここでは発火しない。
+  useEffect(() => {
+    if (revealed?.byTimeout && !revealedRef.current) {
+      revealedRef.current = true;
+      onReveal("TIMEOUT");
+    }
+  }, [revealed, onReveal]);
+
   function handleJudge(result: QuestionOutcome["result"]) {
     if (completed) return; // onComplete は 1 回だけ（3 ボタンの連打ガード）
     setCompleted(true);
+    // 自己申告は判定ボタンを押したこの瞬間に確定。時間切れ後の「次へ」は
+    // 上の effect で onReveal 済みのため、ここでは二重発火させない。
+    if (!revealedRef.current) {
+      revealedRef.current = true;
+      onReveal(result);
+    }
     onComplete({ result, answerDisplay: null });
   }
 

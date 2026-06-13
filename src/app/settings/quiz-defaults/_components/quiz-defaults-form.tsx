@@ -85,6 +85,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     () => initTimeoutState(defaults?.timeoutByFormat),
   );
   const [showCountdown, setShowCountdown] = useState(defaults?.showCountdown ?? false);
+  // 未設定（null）は有効が既定。明示的に false を保存したときだけ OFF にする
+  const [enableSound, setEnableSound] = useState(defaults?.enableSound ?? true);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -102,6 +104,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         format,
         timeoutByFormat: timeoutByFormatInput,
         showCountdown,
+        enableSound,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -121,6 +124,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         setFormat(null);
         setTimeoutByFormat(clearedTimeoutState());
         setShowCountdown(false);
+        // 未設定（クリア）後は既定の有効（true）に戻す
+        setEnableSound(true);
         toast.success("クリアしました");
         return;
       }
@@ -290,6 +295,23 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         </div>
         <p className="text-muted-foreground text-xs">
           オフにすると、問題の準備が完了しだいすぐにテストが始まります。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>サウンド</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-enable-sound"
+            checked={enableSound}
+            onCheckedChange={(checked) => setEnableSound(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-enable-sound" className="font-normal">
+            発音の自動再生および効果音
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オフにすると、出題時の発音の自動再生と、正解・不正解の効果音をどちらも無効にします。
         </p>
       </section>
 

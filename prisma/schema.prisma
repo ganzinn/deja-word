@@ -321,6 +321,7 @@ model QuizDefaultSetting {
   rangeTo        Int?        @map("range_to")
   format         QuizFormat?
   showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
+  enableSound    Boolean?    @map("enable_sound")   // 発音の自動再生＋正誤効果音。null = 有効（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)

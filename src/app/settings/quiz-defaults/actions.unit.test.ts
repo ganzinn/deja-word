@@ -40,6 +40,7 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   format: "CHOICE",
   timeoutByFormat: { CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: null },
   showCountdown: true,
+  enableSound: true,
 };
 
 beforeEach(() => {
@@ -105,6 +106,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       format: null,
       timeoutByFormat: { CHOICE: null, SELF_JUDGE: null, MULTI_MEANING: null },
       showCountdown: null,
+      enableSound: null,
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });

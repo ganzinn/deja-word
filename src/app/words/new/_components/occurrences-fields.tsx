@@ -28,12 +28,7 @@ export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <OccurrencePresetPicker
-        presets={presets}
-        fields={fields}
-        append={append}
-        remove={remove}
-      />
+      <OccurrencePresetPicker presets={presets} fields={fields} append={append} remove={remove} />
 
       {fields.length === 0 ? (
         <p className="text-muted-foreground text-xs">

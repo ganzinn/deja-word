@@ -20,10 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  occurrenceFormSchema,
-  type OccurrenceFormValues,
-} from "@/lib/schema/occurrence-form";
+import { occurrenceFormSchema, type OccurrenceFormValues } from "@/lib/schema/occurrence-form";
 import { cn } from "@/lib/utils";
 
 import { createOccurrence } from "../new/actions";

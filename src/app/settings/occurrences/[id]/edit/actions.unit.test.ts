@@ -13,20 +13,15 @@ vi.mock("@/lib/occurrences-update", async (importOriginal) => {
 });
 
 const { getCurrentSession } = await import("@/lib/session");
-const { updateOccurrenceForUser, OccurrenceNotFoundError } = await import(
-  "@/lib/occurrences-update"
-);
+const { updateOccurrenceForUser, OccurrenceNotFoundError } =
+  await import("@/lib/occurrences-update");
 const { DuplicateOccurrenceLocationError } = await import("@/lib/occurrences-create");
-const { updateOccurrence } = await import(
-  "@/app/settings/occurrences/[id]/edit/actions"
-);
+const { updateOccurrence } = await import("@/app/settings/occurrences/[id]/edit/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedUpdate = vi.mocked(updateOccurrenceForUser);
 
-const SESSION = { user: { id: "u_1" } } as unknown as Awaited<
-  ReturnType<typeof getCurrentSession>
->;
+const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 beforeEach(() => {
   mockedGetSession.mockReset();

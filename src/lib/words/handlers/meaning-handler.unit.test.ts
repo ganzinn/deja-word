@@ -20,10 +20,7 @@ describe("upsertMeanings", () => {
           partOfSpeech: "n",
           pronunciation: "p",
           note: "note",
-          texts: [
-            { id: "t1", ownerId: SYSTEM_USER_ID, text: "共通" },
-            { text: "自分の追記" },
-          ],
+          texts: [{ id: "t1", ownerId: SYSTEM_USER_ID, text: "共通" }, { text: "自分の追記" }],
         },
       ],
       { wordId: "w1" },

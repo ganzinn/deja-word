@@ -64,11 +64,7 @@ function MemoRow({ index, onRemove }: { index: number; onRemove: () => void }) {
       {isSystemOwned ? (
         <SystemBadge className="mt-2" />
       ) : (
-        <ArrayRemoveButton
-          ariaLabel="このメモを削除"
-          className="mt-1"
-          onClick={onRemove}
-        />
+        <ArrayRemoveButton ariaLabel="このメモを削除" className="mt-1" onClick={onRemove} />
       )}
     </div>
   );

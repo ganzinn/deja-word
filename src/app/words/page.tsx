@@ -127,9 +127,7 @@ function WordRow({ item }: { item: WordListItem }) {
           {item.meaningTexts.length > 0 ? (
             <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-wrap">
               <span className="text-red-600">{item.meaningTexts[0]}</span>
-              {item.meaningTexts.length > 1
-                ? `; ${item.meaningTexts.slice(1).join("; ")}`
-                : null}
+              {item.meaningTexts.length > 1 ? `; ${item.meaningTexts.slice(1).join("; ")}` : null}
             </p>
           ) : null}
         </div>

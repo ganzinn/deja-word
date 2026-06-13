@@ -1,15 +1,9 @@
 "use server";
 
-import {
-  occurrenceFormSchema,
-  type OccurrenceFormValues,
-} from "@/lib/schema/occurrence-form";
+import { occurrenceFormSchema, type OccurrenceFormValues } from "@/lib/schema/occurrence-form";
 import { getCurrentSession } from "@/lib/session";
 import { DuplicateOccurrenceLocationError } from "@/lib/occurrences-create";
-import {
-  OccurrenceNotFoundError,
-  updateOccurrenceForUser,
-} from "@/lib/occurrences-update";
+import { OccurrenceNotFoundError, updateOccurrenceForUser } from "@/lib/occurrences-update";
 
 export type UpdateOccurrenceError =
   | "unauthorized"

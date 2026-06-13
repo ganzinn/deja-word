@@ -62,9 +62,7 @@ async function main() {
       data: settings,
       skipDuplicates: true,
     });
-    console.log(
-      `Seeded ${result.count} occurrence preset setting(s) (skipped existing)`,
-    );
+    console.log(`Seeded ${result.count} occurrence preset setting(s) (skipped existing)`);
   }
 
   await seedSystemWord({

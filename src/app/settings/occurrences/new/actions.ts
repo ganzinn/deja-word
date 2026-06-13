@@ -1,20 +1,13 @@
 "use server";
 
-import {
-  occurrenceFormSchema,
-  type OccurrenceFormValues,
-} from "@/lib/schema/occurrence-form";
+import { occurrenceFormSchema, type OccurrenceFormValues } from "@/lib/schema/occurrence-form";
 import { getCurrentSession } from "@/lib/session";
 import {
   DuplicateOccurrenceLocationError,
   createOccurrenceForUser,
 } from "@/lib/occurrences-create";
 
-export type CreateOccurrenceError =
-  | "unauthorized"
-  | "invalid"
-  | "duplicate"
-  | "unknown";
+export type CreateOccurrenceError = "unauthorized" | "invalid" | "duplicate" | "unknown";
 
 export type CreateOccurrenceResult =
   | { ok: true; occurrenceId: string }

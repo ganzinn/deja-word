@@ -3,10 +3,7 @@
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { createWordForUser } from "@/lib/words-create";
-import {
-  mapWordWriteErrorToResult,
-  type WordWriteErrorCode,
-} from "@/lib/words/error-map";
+import { mapWordWriteErrorToResult, type WordWriteErrorCode } from "@/lib/words/error-map";
 
 export type CreateWordError = "unauthorized" | "invalid" | WordWriteErrorCode;
 

@@ -10,9 +10,7 @@ export type DeleteOccurrenceResult =
   | { ok: true }
   | { ok: false; error: DeleteOccurrenceError; message: string };
 
-export async function deleteOccurrence(
-  occurrenceId: string,
-): Promise<DeleteOccurrenceResult> {
+export async function deleteOccurrence(occurrenceId: string): Promise<DeleteOccurrenceResult> {
   const session = await getCurrentSession();
   if (!session) {
     return {

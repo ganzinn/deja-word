@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { getCurrentSession } from "@/lib/session";
 import { signUpDisabled } from "@/lib/signup-policy";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getCurrentSession();
+  if (session) redirect("/menu");
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-zinc-900 dark:text-zinc-50">
       <div className="flex w-full max-w-xl flex-col items-center gap-6 text-center">

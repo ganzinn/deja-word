@@ -21,13 +21,13 @@ afterEach(() => {
 describe("proxy", () => {
   test("redirects to /sign-in with redirect query when no session cookie", () => {
     mockedGetSessionCookie.mockReturnValue(null);
-    const res = proxy(makeRequest("/dashboard"));
+    const res = proxy(makeRequest("/menu"));
     expect(res.status).toBe(307);
     const location = res.headers.get("location");
     expect(location).not.toBeNull();
     const url = new URL(location!);
     expect(url.pathname).toBe("/sign-in");
-    expect(url.searchParams.get("redirect")).toBe("/dashboard");
+    expect(url.searchParams.get("redirect")).toBe("/menu");
   });
 
   test("preserves the original pathname AND query string in the redirect param", () => {
@@ -40,13 +40,13 @@ describe("proxy", () => {
 
   test("passes through (NextResponse.next) when a session cookie is present", () => {
     mockedGetSessionCookie.mockReturnValue("any-non-empty-cookie");
-    const res = proxy(makeRequest("/dashboard"));
+    const res = proxy(makeRequest("/menu"));
     // NextResponse.next() yields a response with x-middleware-next: 1
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(res.status).toBe(200);
   });
 
-  test("config.matcher protects /dashboard/:path* and /words/:path*", () => {
-    expect(config.matcher).toEqual(["/dashboard/:path*", "/words/:path*"]);
+  test("config.matcher protects /menu/:path* and /words/:path*", () => {
+    expect(config.matcher).toEqual(["/menu/:path*", "/words/:path*"]);
   });
 });

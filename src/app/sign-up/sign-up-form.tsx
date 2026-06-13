@@ -24,7 +24,7 @@ export function SignUpForm() {
         setErrorMessage(error.message ?? "登録に失敗しました");
         return;
       }
-      router.push("/dashboard");
+      router.push("/menu");
       router.refresh();
     } finally {
       setIsPending(false);

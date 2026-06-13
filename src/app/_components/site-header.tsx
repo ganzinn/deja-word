@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentSession } from "@/lib/session";
 import { signUpDisabled } from "@/lib/signup-policy";
 
-import { SignOutButton } from "./sign-out-button";
+import { AuthNav } from "./auth-nav";
 
 export async function SiteHeader() {
   const session = await getCurrentSession();
@@ -19,16 +19,7 @@ export async function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {session ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
-              >
-                Dashboard
-              </Link>
-              <span className="text-zinc-500 dark:text-zinc-400">{session.user.name}</span>
-              <SignOutButton />
-            </>
+            <AuthNav userName={session.user.name} />
           ) : (
             <>
               <Link

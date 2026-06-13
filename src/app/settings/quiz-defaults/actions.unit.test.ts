@@ -38,7 +38,7 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   rangeFrom: 1,
   rangeTo: 100,
   format: "CHOICE",
-  timeoutSeconds: 5,
+  timeoutByFormat: { CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: null },
   showCountdown: true,
 };
 
@@ -103,7 +103,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
-      timeoutSeconds: null,
+      timeoutByFormat: { CHOICE: null, SELF_JUDGE: null, MULTI_MEANING: null },
       showCountdown: null,
     };
     const res = await saveQuizDefaults(input);

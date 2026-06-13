@@ -19,3 +19,12 @@ export const FORMAT_GROUPS: {
   },
   // 将来: { category: "日本語→英語", options: [SPELLING, SELF_JUDGE_JA_EN] }
 ];
+
+/**
+ * 全出題形式の平坦リスト（FORMAT_GROUPS から導出）。形式リストの単一の出どころ。
+ * lib・zod・フォームが「全形式を走査する」処理で共有し、形式追加が enum 値＋
+ * FORMAT_GROUPS への追記だけで波及するようにする。
+ */
+export const ALL_QUIZ_FORMATS: QuizFormat[] = FORMAT_GROUPS.flatMap((g) =>
+  g.options.map((o) => o.value),
+);

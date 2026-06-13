@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
+import { ALL_QUIZ_FORMATS, FORMAT_GROUPS } from "@/lib/quiz/format-options";
 import {
   DEFAULT_TIMEOUT_SECONDS,
   TIMEOUT_MAX_SECONDS,
@@ -47,6 +47,28 @@ function parseRangeValue(text: string): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+/** 形式 1 つ分の制限時間入力状態（チェック ON/OFF と秒数テキスト）。 */
+type TimeoutFieldState = { enabled: boolean; text: string };
+
+/** 保存済み timeoutByFormat（全形式キー）からフォーム状態を組み立てる。 */
+function initTimeoutState(
+  timeoutByFormat: Record<QuizFormat, number | null> | undefined,
+): Record<QuizFormat, TimeoutFieldState> {
+  return Object.fromEntries(
+    ALL_QUIZ_FORMATS.map((f) => {
+      const seconds = timeoutByFormat?.[f] ?? null;
+      return [f, { enabled: seconds !== null, text: seconds?.toString() ?? "" }];
+    }),
+  ) as Record<QuizFormat, TimeoutFieldState>;
+}
+
+/** 全形式を「制限なし（未設定）」に戻したフォーム状態。 */
+function clearedTimeoutState(): Record<QuizFormat, TimeoutFieldState> {
+  return Object.fromEntries(
+    ALL_QUIZ_FORMATS.map((f) => [f, { enabled: false, text: "" }]),
+  ) as Record<QuizFormat, TimeoutFieldState>;
+}
+
 /**
  * 開始画面（start-form）と同構成の入力 UI を持つ保存フォーム。
  * 関心が違う（保存 vs 開始ゲート）ため UI は共通化せず複製し、
@@ -59,19 +81,26 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
   const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
-  const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
-  const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
+  const [timeoutByFormat, setTimeoutByFormat] = useState<Record<QuizFormat, TimeoutFieldState>>(
+    () => initTimeoutState(defaults?.timeoutByFormat),
+  );
   const [showCountdown, setShowCountdown] = useState(defaults?.showCountdown ?? false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
+    const timeoutByFormatInput = Object.fromEntries(
+      ALL_QUIZ_FORMATS.map((f) => {
+        const field = timeoutByFormat[f];
+        return [f, field.enabled ? parseRangeValue(field.text) : null];
+      }),
+    ) as Record<QuizFormat, number | null>;
     startTransition(async () => {
       const result = await saveQuizDefaults({
         occurrenceId,
         rangeFrom: parseRangeValue(rangeFromText),
         rangeTo: parseRangeValue(rangeToText),
         format,
-        timeoutSeconds: timeoutEnabled ? parseRangeValue(timeoutText) : null,
+        timeoutByFormat: timeoutByFormatInput,
         showCountdown,
       });
       if (result.ok) {
@@ -90,8 +119,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         setRangeFromText("");
         setRangeToText("");
         setFormat(null);
-        setTimeoutEnabled(false);
-        setTimeoutText("");
+        setTimeoutByFormat(clearedTimeoutState());
         setShowCountdown(false);
         toast.success("クリアしました");
         return;
@@ -158,78 +186,94 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
 
       <section className="flex flex-col gap-2">
         <Label>出題形式</Label>
+        <p className="text-muted-foreground text-xs">
+          カードを選ぶと開始画面の初期形式になります（もう一度押すと未設定）。各形式に 1 問あたりの
+          制限時間（{TIMEOUT_MIN_SECONDS}〜{TIMEOUT_MAX_SECONDS}{" "}
+          秒）を設定できます。時間切れの解答は不正解として記録されます。
+        </p>
         <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
           {FORMAT_GROUPS.map((group) => (
             <div key={group.category} className="flex flex-col gap-2">
               <p className="text-muted-foreground text-xs font-medium">{group.category}</p>
               {group.options.map((option) => {
                 const selected = format === option.value;
+                const field = timeoutByFormat[option.value];
+                const checkboxId = `quiz-defaults-timeout-${option.value}`;
                 return (
-                  <button
+                  <div
                     key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => {
-                      // 再クリックで選択解除（デフォルトは任意項目のため未設定へ戻せる）
-                      setFormat(selected ? null : option.value);
-                    }}
                     className={cn(
-                      "border-border bg-card/50 hover:bg-muted/60 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
+                      "border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3 transition-colors",
                       selected && "border-primary bg-primary/10",
                     )}
                   >
-                    <span className="text-sm font-semibold">{option.label}</span>
-                    <span className="text-muted-foreground text-xs">{option.description}</span>
-                  </button>
+                    {/* 上段: タップでデフォルト出題形式を選択/解除 */}
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        // 再クリックで選択解除（デフォルトは任意項目のため未設定へ戻せる）
+                        setFormat(selected ? null : option.value);
+                      }}
+                      className="hover:bg-muted/40 -m-1 flex flex-col gap-1 rounded-md p-1 text-left transition-colors"
+                    >
+                      <span className="text-sm font-semibold">{option.label}</span>
+                      <span className="text-muted-foreground text-xs">{option.description}</span>
+                    </button>
+
+                    {/* 下段: この形式の制限時間（選択状態とは独立） */}
+                    <div className="flex flex-col gap-2 border-t pt-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={checkboxId}
+                          checked={field.enabled}
+                          onCheckedChange={(checked) => {
+                            const enabled = checked === true;
+                            setTimeoutByFormat((prev) => ({
+                              ...prev,
+                              [option.value]: {
+                                enabled,
+                                // ON で空欄なら初期値を補完
+                                text:
+                                  enabled && prev[option.value].text.trim().length === 0
+                                    ? String(DEFAULT_TIMEOUT_SECONDS)
+                                    : prev[option.value].text,
+                              },
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={checkboxId} className="font-normal">
+                          制限時間を設定する
+                        </Label>
+                      </div>
+                      {field.enabled ? (
+                        <div className="flex items-center gap-2 pl-6">
+                          <Input
+                            type="number"
+                            min={TIMEOUT_MIN_SECONDS}
+                            max={TIMEOUT_MAX_SECONDS}
+                            inputMode="numeric"
+                            value={field.text}
+                            onChange={(e) =>
+                              setTimeoutByFormat((prev) => ({
+                                ...prev,
+                                [option.value]: { ...prev[option.value], text: e.target.value },
+                              }))
+                            }
+                            aria-label={`制限時間（秒）: ${option.label}`}
+                            className="w-24"
+                          />
+                          <span className="text-muted-foreground shrink-0 text-sm">秒</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 );
               })}
             </div>
           ))}
         </div>
-        <p className="text-muted-foreground text-xs">
-          選択中の形式をもう一度押すと未設定に戻ります。
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <Label>制限時間</Label>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="quiz-defaults-timeout-enabled"
-            checked={timeoutEnabled}
-            onCheckedChange={(checked) => {
-              setTimeoutEnabled(checked === true);
-              if (checked === true && timeoutText.trim().length === 0) {
-                setTimeoutText(String(DEFAULT_TIMEOUT_SECONDS));
-              }
-            }}
-          />
-          <Label htmlFor="quiz-defaults-timeout-enabled" className="font-normal">
-            1 問ごとに制限時間を設定する
-          </Label>
-        </div>
-        {timeoutEnabled ? (
-          <>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={TIMEOUT_MIN_SECONDS}
-                max={TIMEOUT_MAX_SECONDS}
-                inputMode="numeric"
-                value={timeoutText}
-                onChange={(e) => setTimeoutText(e.target.value)}
-                aria-label="制限時間（秒）"
-                className="w-24"
-              />
-              <span className="text-muted-foreground shrink-0 text-sm">秒</span>
-            </div>
-            <p className="text-muted-foreground text-xs">
-              {TIMEOUT_MIN_SECONDS}〜{TIMEOUT_MAX_SECONDS}{" "}
-              秒。時間切れの解答は不正解として記録されます。
-            </p>
-          </>
-        ) : null}
       </section>
 
       <section className="flex flex-col gap-2">

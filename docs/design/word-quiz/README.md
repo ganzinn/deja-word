@@ -38,7 +38,7 @@
 - **エントリポイントはダッシュボードの「単語テスト」ボタン → `/quiz`**。カウントダウン〜結果は `/quiz` 内のクライアント状態遷移（URL 遷移なし）。drill ラウンドも同フローを再利用。→ [04](04-ui.md)
 - **開始画面は Occurrence 選択＋番号範囲＋形式選択＋対象件数プレビュー**。除外件数（番号なし・意味未登録）を注記し、不成立の形式は選択不可＋理由表示（成立可否はサーバー判定）。→ [04](04-ui.md)
 - **開始画面の 3 項目はユーザーごとのデフォルトとして保存可**（2026-06-13 加算）。設定は設定画面（/settings/quiz-defaults）のみ・全項目任意・プレビューなし。スキーマはユーザーごと 1 行の `QuizDefaultSetting`（occurrence は onDelete: SetNull）。→ [04](04-ui.md)・[02](02-data-model.md)
-- **1 問あたりの制限時間（タイムアウト）を任意設定可**（2026-06-13 加算）。デフォルトなし・1〜60 秒（ON 初期値 5 秒）。開始画面とデフォルト設定画面（`QuizDefaultSetting.timeoutSeconds`）で設定。→ [01](01-requirements.md)・[02](02-data-model.md)・[04](04-ui.md)
+- **1 問あたりの制限時間（タイムアウト）を任意設定可**（2026-06-13 加算）。デフォルトなし・1〜60 秒（ON 初期値 5 秒）。開始画面と、デフォルト設定画面で **出題形式ごとに**設定（後続改訂）。デフォルトは形式別の子テーブル `QuizDefaultTimeout(userId, format, timeoutSeconds)`（行なし＝制限なし）に保存し、開始画面で形式を選ぶとその形式の値を自動入力する。→ [01](01-requirements.md)・[02](02-data-model.md)・[04](04-ui.md)
 - **時間切れは `QuizResult.TIMEOUT` として記録し間違い扱い**（集計・drill 残数計算は INCORRECT 同等＝3 にリセット）。出題画面に残り時間バーを表示し、時間切れで回答後と同じ状態（正解表示＋「次へ」）へ。自己判定はタイマーを「解答を表示」までに適用。→ [01](01-requirements.md)・[04](04-ui.md)
 - **制限時間は payload（`QuizPayload.timeoutSeconds`）に一本化**。TEST は `startQuiz` 入力のエコーバック、DRILL は `Drill.timeoutSeconds`（format と同じく `startDrill` で 1 回受領・全ラウンド引き継ぎ）から導出。→ [05](05-architecture.md)・[06](06-drill-mode.md)
 - **解答直後に即時正誤フィードバック**（正誤＋正解内容を表示し「次へ」で進行）。→ [04](04-ui.md)
@@ -64,9 +64,9 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定 | 要求・ユースケース・スコープ外を確定（2026-06-12。2026-06-13 制限時間（タイムアウト）を加算改訂） |
-| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12、同日 05 起因で Drill.roundCount を、06 起因で Drill.format を加算改訂。2026-06-13 QuizDefaultSetting と制限時間（QuizResult.TIMEOUT・timeoutSeconds 2 列）を加算改訂） |
+| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12、同日 05 起因で Drill.roundCount を、06 起因で Drill.format を加算改訂。2026-06-13 QuizDefaultSetting と制限時間（QuizResult.TIMEOUT・Drill.timeoutSeconds）を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル QuizDefaultTimeout に分離） |
 | [03-algorithm.md](03-algorithm.md) | 確定 | 選択肢生成・問題データ生成（サーバー生成・RNG注入）を確定（2026-06-12） |
-| [04-ui.md](04-ui.md) | 確定 | 画面遷移・各画面仕様を確定（2026-06-12、同日 06 起因で進行中 drill 一覧に削除ボタンを加算改訂。2026-06-13 開始画面デフォルト設定と制限時間（残り時間バー・時間切れ挙動）を加算改訂） |
+| [04-ui.md](04-ui.md) | 確定 | 画面遷移・各画面仕様を確定（2026-06-12、同日 06 起因で進行中 drill 一覧に削除ボタンを加算改訂。2026-06-13 開始画面デフォルト設定と制限時間（残り時間バー・時間切れ挙動）を加算改訂。後続改訂でデフォルト制限時間を形式別化＝開始画面は形式選択で自動入力・設定画面は形式ごとに独立設定） |
 | [05-architecture.md](05-architecture.md) | 確定 | モジュール配置・Server Action 統一・冪等性（roundCount CAS）・認可・形式拡張点・テスト戦略を確定（2026-06-12、同日 06 起因で format 引数の整理・deleteDrill 追加を改訂。2026-06-13 制限時間の payload 一本化を加算改訂） |
 | [06-drill-mode.md](06-drill-mode.md) | 確定 | 残数モデル・形式継承・終了条件・削除導線・共有範囲を確定（2026-06-12。2026-06-13 制限時間の引き継ぎ（Drill.timeoutSeconds）を加算改訂） |
 

@@ -387,50 +387,78 @@ export function QuizFlow({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dataLossActive]);
 
-  // ブラウザバックのガード（LIFO・単一オーナー）: /quiz 内で開いている層を上から 1 つずつ閉じる。
-  // 層 = 進行中テスト（phase ≠ start）＋単語詳細ダイアログ（dialogWordId ≠ null。result の最上段）。
-  // ダミー履歴エントリを常に 1 つ保持し、back で消費されたら最上段の層を閉じて積み直す。
-  const backGuardActive = phase.name !== "start" || dialogWordId !== null;
-  // popstate ハンドラは backGuardActive の間ずっと同じものを使う（buffer の二重 push を避ける）ため、
-  // 最新の phase / dialog / resetToStart は latest-ref 経由で読む（render 中ではなく effect で同期）。
+  // ブラウザバックのガード（LIFO・単一オーナー）。/quiz 内で開いている「層」の数だけ
+  // ダミー履歴エントリを積み、ブラウザバック 1 回で最上段の層を 1 つだけ閉じる。
+  //   層 = 進行中テスト（phase ≠ start）＋ 単語詳細ダイアログ（dialogWordId ≠ null。result の最上段）。
+  // 重要: ダミーの新規 push は必ず "コミット phase の effect"（reconcile）で行う。Next 16 は popstate を
+  // 監視して router を restore する（app-router.js）ため、popstate ハンドラの "中で" pushState すると
+  // その同一イベントの restore に巻き込まれてエントリが確定せず、履歴が壊れる（実機で観測済み）。
+  // 一方、back で消費したダミーは forward 側に残るので、「留まる」時はハンドラ内で history.forward() を
+  // 使い、既存エントリへ戻して再武装する（pushState のような新規生成をしないため Next と競合しない）。
+  const guardDepth = (phase.name !== "start" ? 1 : 0) + (dialogWordId !== null ? 1 : 0);
+  // ハンドラからは最新値を latest-ref 経由で読む（render 中に ref を書かず、dep 無し effect で同期）。
   const phaseRef = useRef(phase);
   const dialogWordIdRef = useRef(dialogWordId);
   const resetToStartRef = useRef(resetToStart);
+  const guardDepthRef = useRef(guardDepth);
+  // armedRef: 現在積んでいるダミー数。pendingSelfBackRef: 自前 back/forward 由来で無視する popstate 数。
+  const armedRef = useRef(0);
+  const pendingSelfBackRef = useRef(0);
   useEffect(() => {
     phaseRef.current = phase;
     dialogWordIdRef.current = dialogWordId;
     resetToStartRef.current = resetToStart;
+    guardDepthRef.current = guardDepth;
   });
 
+  // reconcile: 積んでいるダミー数を guardDepth に一致させる（push も取り消しもコミット phase で実行）。
   useEffect(() => {
-    if (!backGuardActive) return;
-    const armBuffer = () => window.history.pushState({ quizGuard: true }, "");
-    armBuffer();
+    while (armedRef.current < guardDepth) {
+      window.history.pushState({ quizGuard: true }, "");
+      armedRef.current += 1;
+    }
+    while (armedRef.current > guardDepth) {
+      // 画面内操作（× ボタン・Escape・「開始画面に戻る」・「終了」）で余ったダミーを自前 back で取り消す。
+      pendingSelfBackRef.current += 1;
+      armedRef.current -= 1;
+      window.history.back();
+    }
+  }, [guardDepth]);
+
+  // popstate（ユーザーのブラウザバック）: 履歴は触らず、最上段の層を 1 つ閉じる state 更新のみ。
+  // 自前 history.back() の反射を確実に消費するため、リスナはコンポーネント生存中ずっと mount する。
+  useEffect(() => {
     const handlePopState = () => {
-      // 最上段: ダイアログが開いていれば確認なしで閉じる。下の層（テスト）は残るので積み直す
-      if (dialogWordIdRef.current !== null) {
-        setDialogWordId(null);
-        armBuffer();
+      if (pendingSelfBackRef.current > 0) {
+        pendingSelfBackRef.current -= 1; // 自前 history.back() / forward() の反射。無視する
         return;
       }
-      // テスト層: phase に応じた文言で中断確認。キャンセルは留まる（積み直す）
+      if (guardDepthRef.current === 0) return; // ガード対象の層が無い（開始画面など）
+      // ユーザー back: ダミーを 1 つ消費した
+      armedRef.current = Math.max(0, armedRef.current - 1);
+      // 最上段: ダイアログが開いていれば確認なしで閉じる（reconcile が depth 減で整合）
+      if (dialogWordIdRef.current !== null) {
+        setDialogWordId(null);
+        return;
+      }
+      // テスト層: phase に応じた文言で中断確認
       const message =
         phaseRef.current.name === "result"
           ? "結果画面を離れますか？（定着モードには入れなくなります）"
           : "テストを中断して開始画面に戻りますか？";
-      if (!window.confirm(message)) {
-        armBuffer();
-        return;
+      if (window.confirm(message)) {
+        resetToStartRef.current(); // reconcile が depth 0 へ整合（残ダミーを取り消す）
+      } else {
+        // 留まる: back で消費したダミーは forward 側に残っているので forward() で取り戻す。
+        // pushState で積み直すと Next の同一 popstate restore に巻き込まれ履歴が壊れる（観測済み）。
+        armedRef.current += 1;
+        pendingSelfBackRef.current += 1;
+        window.history.forward();
       }
-      resetToStartRef.current();
     };
     window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      // 画面内操作で層を閉じた場合に残るダミーを取り除く（back 由来なら既に消費済みで quizGuard が無い）
-      if (window.history.state?.quizGuard) window.history.back();
-    };
-  }, [backGuardActive]);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // 出題画面の表示時: 発音音源の自動再生＋次問のプリロード（即時フィードバック表示中も保持される）
   const playIndex = phase.name === "play" ? phase.index : null;

@@ -7,7 +7,6 @@ import {
   ClockIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +51,10 @@ type Props = {
   onStartDrill: () => void;
   /** DRILL: 「次のラウンドへ」。ラウンド送信成功後のみ有効。 */
   onNextRound: () => void;
+  /** 単語詳細ダイアログの状態は親（QuizFlow）が持ち、back ガードの最上段の層として一元管理する。 */
+  dialogWordId: string | null;
+  onOpenDialog: (wordId: string) => void;
+  onCloseDialog: () => void;
 };
 
 export function ResultList({
@@ -62,9 +65,10 @@ export function ResultList({
   onBackToStart,
   onStartDrill,
   onNextRound,
+  dialogWordId,
+  onOpenDialog,
+  onCloseDialog,
 }: Props) {
-  const [dialogWordId, setDialogWordId] = useState<string | null>(null);
-
   const total = rows.length;
   const correctCount = rows.filter((r) => r.result === "CORRECT").length;
   const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
@@ -106,7 +110,7 @@ export function ResultList({
           <li key={row.wordId}>
             <button
               type="button"
-              onClick={() => setDialogWordId(row.wordId)}
+              onClick={() => onOpenDialog(row.wordId)}
               className="border-border bg-card/50 hover:bg-muted/60 flex w-full flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
             >
               <div className="flex w-full flex-wrap items-center gap-2">
@@ -174,7 +178,7 @@ export function ResultList({
         )}
       </div>
 
-      <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
+      <WordDetailDialog wordId={dialogWordId} onClose={onCloseDialog} />
     </div>
   );
 }

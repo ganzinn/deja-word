@@ -34,7 +34,7 @@ function SignInFormInner({ showSignUpLink }: { showSignUpLink: boolean }) {
         setErrorMessage(error.message ?? "ログインに失敗しました");
         return;
       }
-      router.push(redirectTarget);
+      router.replace(redirectTarget);
       router.refresh();
     } finally {
       setIsPending(false);

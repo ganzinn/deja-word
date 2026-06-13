@@ -46,7 +46,12 @@ describe("proxy", () => {
     expect(res.status).toBe(200);
   });
 
-  test("config.matcher protects /menu/:path* and /words/:path*", () => {
-    expect(config.matcher).toEqual(["/menu/:path*", "/words/:path*"]);
+  test("config.matcher protects /menu, /words, /quiz and /settings subtrees", () => {
+    expect(config.matcher).toEqual([
+      "/menu/:path*",
+      "/words/:path*",
+      "/quiz/:path*",
+      "/settings/:path*",
+    ]);
   });
 });

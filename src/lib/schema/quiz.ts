@@ -3,6 +3,7 @@ import { z } from "zod/v3";
 import type { DrillResultInput } from "@/lib/drill-create";
 import type { AnswerInput } from "@/lib/quiz/handlers/quiz-answer-handler";
 import type { DrillRoundInput } from "@/lib/quiz/handlers/drill-round-handler";
+import { TIMEOUT_MAX_SECONDS, TIMEOUT_MIN_SECONDS } from "@/lib/quiz/timeout-options";
 import type { QuizRangeInput } from "@/lib/quiz-preview";
 
 /**
@@ -19,10 +20,17 @@ export const quizRangeInputSchema = z.object({
 
 export const quizFormatSchema = z.enum(["CHOICE", "SELF_JUDGE", "MULTI_MEANING"]);
 
+/** 1 問あたりの制限時間（秒）。null = 制限なしは各入力スキーマ側で .nullable() を付けて表現する。 */
+export const quizTimeoutSecondsSchema = z
+  .number()
+  .int()
+  .min(TIMEOUT_MIN_SECONDS)
+  .max(TIMEOUT_MAX_SECONDS);
+
 /** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
 export const answerInputSchema = z.object({
   wordId: z.string().min(1),
-  result: z.enum(["CORRECT", "INCORRECT", "GAVE_UP"]),
+  result: z.enum(["CORRECT", "INCORRECT", "GAVE_UP", "TIMEOUT"]),
 }) satisfies z.ZodType<AnswerInput>;
 
 // ---- 各 Server Action の入力スキーマ ----
@@ -33,6 +41,7 @@ export const getQuizPreviewInputSchema = quizRangeInputSchema;
 /** `startQuiz` の入力。 */
 export const startQuizInputSchema = quizRangeInputSchema.extend({
   format: quizFormatSchema,
+  timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
 });
 
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
@@ -55,6 +64,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   rangeFrom: z.number().int().positive().nullable(),
   rangeTo: z.number().int().positive().nullable(),
   format: quizFormatSchema.nullable(),
+  timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
 });
 
 // ---- drill 系 Server Action の入力スキーマ ----
@@ -66,12 +76,14 @@ export const drillResultInputSchema = z.object({
 }) satisfies z.ZodType<DrillResultInput>;
 
 /**
- * `startDrill` の入力。format はここで 1 回だけ受け取り `Drill.format` に保存する
- * （06-drill-mode.md 決定 4）。テストは常に 1 問以上のため空の results は不正とする。
+ * `startDrill` の入力。format / timeoutSeconds はここで 1 回だけ受け取り
+ * `Drill` に保存して全ラウンドで引き継ぐ（06-drill-mode.md 決定 4）。
+ * テストは常に 1 問以上のため空の results は不正とする。
  */
 export const startDrillInputSchema = z.object({
   occurrenceId: z.string().min(1),
   format: quizFormatSchema,
+  timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   results: z.array(drillResultInputSchema).min(1),
 });
 

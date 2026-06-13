@@ -21,12 +21,14 @@ describe("saveQuizDefaultsForUser", () => {
       rangeFrom: 1,
       rangeTo: 100,
       format: "CHOICE",
+      timeoutSeconds: 5,
     });
     await saveQuizDefaultsForUser(user.id, {
       occurrenceId: occ.id,
       rangeFrom: null,
       rangeTo: 50,
       format: "SELF_JUDGE",
+      timeoutSeconds: null,
     });
 
     const rows = await prisma.quizDefaultSetting.findMany({ where: { userId: user.id } });
@@ -36,6 +38,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeFrom: null,
       rangeTo: 50,
       format: "SELF_JUDGE",
+      timeoutSeconds: null,
     });
   });
 
@@ -46,6 +49,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
+      timeoutSeconds: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults).toEqual({
@@ -53,6 +57,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
+      timeoutSeconds: null,
     });
   });
 
@@ -66,6 +71,7 @@ describe("saveQuizDefaultsForUser", () => {
         rangeFrom: null,
         rangeTo: null,
         format: null,
+        timeoutSeconds: null,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });
@@ -78,6 +84,7 @@ describe("saveQuizDefaultsForUser", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
+      timeoutSeconds: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults?.occurrenceId).toBe(sysOcc.id);
@@ -98,12 +105,14 @@ describe("getQuizDefaultsForUser", () => {
       rangeFrom: 10,
       rangeTo: 20,
       format: "MULTI_MEANING",
+      timeoutSeconds: 30,
     });
     expect(await getQuizDefaultsForUser(user.id)).toEqual({
       occurrenceId: occ.id,
       rangeFrom: 10,
       rangeTo: 20,
       format: "MULTI_MEANING",
+      timeoutSeconds: 30,
     });
   });
 
@@ -115,6 +124,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeFrom: 1,
       rangeTo: 30,
       format: "CHOICE",
+      timeoutSeconds: 5,
     });
 
     await prisma.occurrence.delete({ where: { id: occ.id } });
@@ -124,6 +134,7 @@ describe("getQuizDefaultsForUser", () => {
       rangeFrom: 1,
       rangeTo: 30,
       format: "CHOICE",
+      timeoutSeconds: 5,
     });
   });
 });
@@ -137,6 +148,7 @@ describe("clearQuizDefaultsForUser", () => {
       rangeFrom: null,
       rangeTo: null,
       format: "CHOICE",
+      timeoutSeconds: 10,
     });
 
     await clearQuizDefaultsForUser(user.id);

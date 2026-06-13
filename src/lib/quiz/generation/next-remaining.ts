@@ -5,13 +5,14 @@ import type { QuizResult } from "@/generated/prisma/enums";
 /** 定着までの残連続正解数の上限（間違い時のリセット値）。 */
 export const DRILL_RESET_REMAINING = 3;
 
-/** 正解で −1（下限 0）、間違い（GAVE_UP 含む）で 3 にリセット。0 で定着。 */
+/** 正解で −1（下限 0）、間違い（GAVE_UP / TIMEOUT 含む）で 3 にリセット。0 で定着。 */
 export function nextRemaining(current: number, result: QuizResult): number {
   switch (result) {
     case "CORRECT":
       return Math.max(0, current - 1);
     case "INCORRECT":
     case "GAVE_UP":
+    case "TIMEOUT":
       return DRILL_RESET_REMAINING;
     default: {
       const exhaustive: never = result;

@@ -24,4 +24,10 @@ describe("nextRemaining", () => {
     expect(nextRemaining(2, "GAVE_UP")).toBe(3);
     expect(nextRemaining(3, "GAVE_UP")).toBe(3);
   });
+
+  test("TIMEOUT resets to 3 like INCORRECT (boundaries 0 and 3 included)", () => {
+    expect(nextRemaining(0, "TIMEOUT")).toBe(3);
+    expect(nextRemaining(2, "TIMEOUT")).toBe(3);
+    expect(nextRemaining(3, "TIMEOUT")).toBe(3);
+  });
 });

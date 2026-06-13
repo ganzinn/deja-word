@@ -25,6 +25,7 @@ async function setupDrill(words: { headword: string; number: number; correct: bo
   const { drillId } = await createDrillForUser(user.id, {
     occurrenceId: occurrence.id,
     format: "SELF_JUDGE",
+    timeoutSeconds: null,
     results: words.map((w, i) => ({ wordId: created[i].id, correct: w.correct })),
   });
   return { user, occurrence, drillId, wordIds: created.map((w) => w.id) };
@@ -88,6 +89,24 @@ describe("submitDrillRoundForUser", () => {
         { wordId: c, remaining: 2 },
       ]),
     );
+  });
+
+  test("TIMEOUT resets remaining to 3 and is saved as result=TIMEOUT", async () => {
+    const { user, drillId, wordIds } = await setupDrill([
+      { headword: "alpha", number: 1, correct: true }, // remaining 1
+    ]);
+
+    const result = await submitDrillRoundForUser(user.id, {
+      drillId,
+      expectedRoundCount: 0,
+      answers: [{ wordId: wordIds[0], result: "TIMEOUT" }],
+    });
+
+    expect(result.remaining).toEqual([{ wordId: wordIds[0], remaining: 3 }]);
+
+    const answers = await prisma.quizAnswer.findMany({ where: { ownerId: user.id } });
+    expect(answers).toHaveLength(1);
+    expect(answers[0].result).toBe("TIMEOUT");
   });
 
   test("sets completedAt when all words graduate", async () => {
@@ -189,9 +208,7 @@ describe("submitDrillRoundForUser", () => {
   });
 
   test("missing drill or another user's drill throws DrillNotFoundError", async () => {
-    const { user, drillId } = await setupDrill([
-      { headword: "alpha", number: 1, correct: false },
-    ]);
+    const { user, drillId } = await setupDrill([{ headword: "alpha", number: 1, correct: false }]);
     const stranger = await createTestUser();
 
     await expect(

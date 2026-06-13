@@ -8,19 +8,29 @@ import { cn } from "@/lib/utils";
 import type { MultiMeaningQuestion } from "@/lib/quiz/payload";
 
 import type { QuestionOutcome } from "./question-outcome";
+import { QuestionTimerBar } from "./question-timer-bar";
+import { useQuestionTimer } from "./use-question-timer";
 
 type Props = {
   question: MultiMeaningQuestion;
+  /** 1 問あたりの制限時間（秒）。null = 制限なし。 */
+  timeoutSeconds: number | null;
   onComplete: (outcome: QuestionOutcome) => void;
 };
 
-// 解答確定状態。selectedIndexes: 選んだ選択肢の index 集合、null =「わからない」
-type Answered = { selectedIndexes: ReadonlySet<number> | null };
+// 解答確定状態。selectedIndexes: 選んだ選択肢の index 集合、null =「わからない」または時間切れ
+type Answered = { selectedIndexes: ReadonlySet<number> | null; timedOut: boolean };
 
-export function QuestionMultiMeaning({ question, onComplete }: Props) {
+export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete }: Props) {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
+  const timer = useQuestionTimer({
+    timeoutSeconds,
+    stopped: answered !== null,
+    // 「回答する」前の未確定選択は採点せず時間切れ扱い。確定済みなら上書きしない
+    onTimeout: () => setAnswered((prev) => prev ?? { selectedIndexes: null, timedOut: true }),
+  });
 
   function handleToggle(index: number) {
     if (answered) return; // 確定後の連打ガード
@@ -37,18 +47,22 @@ export function QuestionMultiMeaning({ question, onComplete }: Props) {
 
   function handleSubmit() {
     if (answered) return; // 確定後の連打ガード
-    setAnswered({ selectedIndexes: selected });
+    setAnswered({ selectedIndexes: selected, timedOut: false });
   }
 
   function handleGiveUp() {
     if (answered) return; // 確定後の連打ガード
-    setAnswered({ selectedIndexes: null });
+    setAnswered({ selectedIndexes: null, timedOut: false });
   }
 
   function handleNext() {
     if (!answered || completed) return; // onComplete は 1 回だけ
     setCompleted(true);
-    const { selectedIndexes } = answered;
+    const { selectedIndexes, timedOut } = answered;
+    if (timedOut) {
+      onComplete({ result: "TIMEOUT", answerDisplay: null });
+      return;
+    }
     if (selectedIndexes === null) {
       onComplete({ result: "GAVE_UP", answerDisplay: null });
       return;
@@ -68,6 +82,9 @@ export function QuestionMultiMeaning({ question, onComplete }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {timer !== null ? (
+        <QuestionTimerBar state={timer} timedOut={answered?.timedOut === true} />
+      ) : null}
       <div className="flex flex-col gap-2">
         {question.options.map((option, index) => {
           const isSelected =

@@ -20,30 +20,25 @@ vi.mock("next/cache", () => ({
 }));
 
 const { getCurrentSession } = await import("@/lib/session");
-const {
-  saveQuizDefaultsForUser,
-  clearQuizDefaultsForUser,
-  DefaultOccurrenceNotInScopeError,
-} = await import("@/lib/quiz-default-settings");
+const { saveQuizDefaultsForUser, clearQuizDefaultsForUser, DefaultOccurrenceNotInScopeError } =
+  await import("@/lib/quiz-default-settings");
 const { revalidatePath } = await import("next/cache");
-const { saveQuizDefaults, clearQuizDefaults } = await import(
-  "@/app/settings/quiz-defaults/actions"
-);
+const { saveQuizDefaults, clearQuizDefaults } =
+  await import("@/app/settings/quiz-defaults/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedSave = vi.mocked(saveQuizDefaultsForUser);
 const mockedClear = vi.mocked(clearQuizDefaultsForUser);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
-const SESSION = { user: { id: "u_1" } } as unknown as Awaited<
-  ReturnType<typeof getCurrentSession>
->;
+const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 const VALID_INPUT: SaveQuizDefaultsInput = {
   occurrenceId: "occ_1",
   rangeFrom: 1,
   rangeTo: 100,
   format: "CHOICE",
+  timeoutSeconds: 5,
 };
 
 beforeEach(() => {
@@ -107,6 +102,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
+      timeoutSeconds: null,
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });

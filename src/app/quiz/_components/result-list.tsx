@@ -1,6 +1,12 @@
 "use client";
 
-import { CircleCheckIcon, CircleHelpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CircleCheckIcon,
+  CircleHelpIcon,
+  CircleXIcon,
+  ClockIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +22,7 @@ export type ResultRow = {
   /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
   correctDisplay: string;
   result: QuizResult;
-  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP は null）。 */
+  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT は null）。 */
   answerDisplay: string | null;
 };
 
@@ -126,6 +132,8 @@ export function ResultList({
                 </p>
               ) : row.result === "GAVE_UP" ? (
                 <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
+              ) : row.result === "TIMEOUT" ? (
+                <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
               ) : null}
             </button>
           </li>
@@ -214,6 +222,13 @@ function ResultIcon({ result }: { result: QuizResult }) {
         <CircleHelpIcon
           aria-label="わからなかった"
           className="text-muted-foreground size-4 shrink-0"
+        />
+      );
+    case "TIMEOUT":
+      return (
+        <ClockIcon
+          aria-label="時間切れ"
+          className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
         />
       );
   }

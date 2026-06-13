@@ -10,6 +10,7 @@ export type QuizDefaults = {
   rangeFrom: number | null;
   rangeTo: number | null;
   format: QuizFormat | null;
+  timeoutSeconds: number | null;
 };
 
 export class DefaultOccurrenceNotInScopeError extends Error {
@@ -38,14 +39,12 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     rangeFrom: setting.rangeFrom,
     rangeTo: setting.rangeTo,
     format: setting.format,
+    timeoutSeconds: setting.timeoutSeconds,
   };
 }
 
 /** デフォルトを upsert する（ユーザーごと 1 行）。 */
-export async function saveQuizDefaultsForUser(
-  userId: string,
-  input: QuizDefaults,
-): Promise<void> {
+export async function saveQuizDefaultsForUser(userId: string, input: QuizDefaults): Promise<void> {
   if (input.occurrenceId !== null) {
     const occurrence = await prisma.occurrence.findFirst({
       where: { id: input.occurrenceId, ownerId: { in: scopedOwnerIds(userId) } },

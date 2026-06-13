@@ -101,22 +101,39 @@ function QuestionView({
   index: number;
   onComplete: (outcome: QuestionOutcome) => void;
 }) {
-  // key=wordId で問題ごとに解答 UI の内部状態をリセットする
+  // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
     case "CHOICE": {
       const question = quiz.questions[index];
-      return <QuestionChoice key={question.wordId} question={question} onComplete={onComplete} />;
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
+      );
     }
     case "SELF_JUDGE": {
       const question = quiz.questions[index];
       return (
-        <QuestionSelfJudge key={question.wordId} question={question} onComplete={onComplete} />
+        <QuestionSelfJudge
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
       );
     }
     case "MULTI_MEANING": {
       const question = quiz.questions[index];
       return (
-        <QuestionMultiMeaning key={question.wordId} question={question} onComplete={onComplete} />
+        <QuestionMultiMeaning
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+        />
       );
     }
   }
@@ -187,6 +204,8 @@ export function QuizFlow({ occurrences, activeDrills, defaults }: Props) {
     const input = {
       occurrenceId: startInput.occurrenceId,
       format: quiz.format,
+      // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
+      timeoutSeconds: quiz.timeoutSeconds,
       results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
     };
     const runId = ++runIdRef.current;

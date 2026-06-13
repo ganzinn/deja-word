@@ -36,7 +36,12 @@ const INITIAL_REMAINING_CORRECT = 1;
  */
 export async function createDrillForUser(
   userId: string,
-  input: { occurrenceId: string; format: QuizFormat; results: DrillResultInput[] },
+  input: {
+    occurrenceId: string;
+    format: QuizFormat;
+    timeoutSeconds: number | null;
+    results: DrillResultInput[];
+  },
 ): Promise<{ drillId: string }> {
   const allowed = scopedOwnerIds(userId);
   const occurrence = await prisma.occurrence.findFirst({
@@ -63,9 +68,7 @@ export async function createDrillForUser(
       },
       select: { occurrenceNumber: true },
     });
-    const numbers = links
-      .map((l) => l.occurrenceNumber)
-      .filter((n): n is number => n !== null);
+    const numbers = links.map((l) => l.occurrenceNumber).filter((n): n is number => n !== null);
     if (numbers.length === 0) throw new EmptyDrillResultsError();
 
     const drill = await tx.drill.create({
@@ -75,6 +78,7 @@ export async function createDrillForUser(
         rangeFrom: Math.min(...numbers),
         rangeTo: Math.max(...numbers),
         format: input.format,
+        timeoutSeconds: input.timeoutSeconds,
         words: {
           createMany: {
             data: results.map((r) => ({

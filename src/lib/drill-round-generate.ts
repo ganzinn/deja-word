@@ -31,6 +31,7 @@ export async function generateDrillRoundForUser(
     select: {
       occurrenceId: true,
       format: true,
+      timeoutSeconds: true,
       rangeFrom: true,
       rangeTo: true,
       roundCount: true,
@@ -57,7 +58,10 @@ export async function generateDrillRoundForUser(
   };
 
   return {
-    quiz: buildQuiz(drill.format, material, Math.random),
+    quiz: {
+      ...buildQuiz(drill.format, material, Math.random),
+      timeoutSeconds: drill.timeoutSeconds,
+    },
     roundCount: drill.roundCount,
   };
 }

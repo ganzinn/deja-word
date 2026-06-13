@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
+import {
+  DEFAULT_TIMEOUT_SECONDS,
+  TIMEOUT_MAX_SECONDS,
+  TIMEOUT_MIN_SECONDS,
+} from "@/lib/quiz/timeout-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
@@ -88,6 +94,8 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
   const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
   const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
+  const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
+  const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
   const [previewResponse, setPreviewResponse] = useState<PreviewResponse | null>(null);
   // 応答順逆転対策の単調増加トークン（クライアント内で完結。Action の入出力には含めない）
   const previewTokenRef = useRef(0);
@@ -131,16 +139,19 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
   }
 
   const selectedFormatInfo = format !== null ? formatInfoOf(format) : null;
+  // ON かつ未入力・数値でない場合は開始をゲートする（範囲外は min/max とサーバー zod が弾く）
+  const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
   const canStart =
     occurrenceId !== null &&
     format !== null &&
     preview !== null &&
     preview.targetCount > 0 &&
-    selectedFormatInfo?.available === true;
+    selectedFormatInfo?.available === true &&
+    (!timeoutEnabled || timeoutSeconds !== undefined);
 
   function handleStart() {
     if (!canStart || occurrenceId === null || format === null) return;
-    onStart({ occurrenceId, rangeFrom, rangeTo, format });
+    onStart({ occurrenceId, rangeFrom, rangeTo, format, timeoutSeconds: timeoutSeconds ?? null });
   }
 
   const selectItems = occurrences.map((o) => ({
@@ -226,7 +237,9 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
                     <span className="text-sm font-semibold">{option.label}</span>
                     <span className="text-muted-foreground text-xs">{option.description}</span>
                     {unavailable ? (
-                      <span className="text-destructive text-xs">選択できません: {info.reason}</span>
+                      <span className="text-destructive text-xs">
+                        選択できません: {info.reason}
+                      </span>
                     ) : null}
                   </button>
                 );
@@ -234,6 +247,46 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>制限時間</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-timeout-enabled"
+            checked={timeoutEnabled}
+            onCheckedChange={(checked) => {
+              setTimeoutEnabled(checked === true);
+              if (checked === true && timeoutText.trim().length === 0) {
+                setTimeoutText(String(DEFAULT_TIMEOUT_SECONDS));
+              }
+            }}
+          />
+          <Label htmlFor="quiz-timeout-enabled" className="font-normal">
+            1 問ごとに制限時間を設定する
+          </Label>
+        </div>
+        {timeoutEnabled ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={TIMEOUT_MIN_SECONDS}
+                max={TIMEOUT_MAX_SECONDS}
+                inputMode="numeric"
+                value={timeoutText}
+                onChange={(e) => setTimeoutText(e.target.value)}
+                aria-label="制限時間（秒）"
+                className="w-24"
+              />
+              <span className="text-muted-foreground shrink-0 text-sm">秒</span>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {TIMEOUT_MIN_SECONDS}〜{TIMEOUT_MAX_SECONDS}{" "}
+              秒。時間切れの解答は不正解として記録されます。
+            </p>
+          </>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-1" aria-live="polite">

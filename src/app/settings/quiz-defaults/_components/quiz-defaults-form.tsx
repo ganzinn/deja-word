@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
+import {
+  DEFAULT_TIMEOUT_SECONDS,
+  TIMEOUT_MAX_SECONDS,
+  TIMEOUT_MIN_SECONDS,
+} from "@/lib/quiz/timeout-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
@@ -49,12 +55,12 @@ function parseRangeValue(text: string): number | null {
  * 変わるため、開始画面のプレビューが毎回再検証して開始をゲートする。
  */
 export function QuizDefaultsForm({ occurrences, defaults }: Props) {
-  const [occurrenceId, setOccurrenceId] = useState<string | null>(
-    defaults?.occurrenceId ?? null,
-  );
+  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
   const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
   const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
+  const [timeoutEnabled, setTimeoutEnabled] = useState((defaults?.timeoutSeconds ?? null) !== null);
+  const [timeoutText, setTimeoutText] = useState(defaults?.timeoutSeconds?.toString() ?? "");
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -64,6 +70,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         rangeFrom: parseRangeValue(rangeFromText),
         rangeTo: parseRangeValue(rangeToText),
         format,
+        timeoutSeconds: timeoutEnabled ? parseRangeValue(timeoutText) : null,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -81,6 +88,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         setRangeFromText("");
         setRangeToText("");
         setFormat(null);
+        setTimeoutEnabled(false);
+        setTimeoutText("");
         toast.success("クリアしました");
         return;
       }
@@ -178,6 +187,46 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         <p className="text-muted-foreground text-xs">
           選択中の形式をもう一度押すと未設定に戻ります。
         </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>制限時間</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-timeout-enabled"
+            checked={timeoutEnabled}
+            onCheckedChange={(checked) => {
+              setTimeoutEnabled(checked === true);
+              if (checked === true && timeoutText.trim().length === 0) {
+                setTimeoutText(String(DEFAULT_TIMEOUT_SECONDS));
+              }
+            }}
+          />
+          <Label htmlFor="quiz-defaults-timeout-enabled" className="font-normal">
+            1 問ごとに制限時間を設定する
+          </Label>
+        </div>
+        {timeoutEnabled ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={TIMEOUT_MIN_SECONDS}
+                max={TIMEOUT_MAX_SECONDS}
+                inputMode="numeric"
+                value={timeoutText}
+                onChange={(e) => setTimeoutText(e.target.value)}
+                aria-label="制限時間（秒）"
+                className="w-24"
+              />
+              <span className="text-muted-foreground shrink-0 text-sm">秒</span>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {TIMEOUT_MIN_SECONDS}〜{TIMEOUT_MAX_SECONDS}{" "}
+              秒。時間切れの解答は不正解として記録されます。
+            </p>
+          </>
+        ) : null}
       </section>
 
       <div className="flex flex-col gap-2">

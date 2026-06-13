@@ -86,7 +86,10 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   );
   const [showCountdown, setShowCountdown] = useState(defaults?.showCountdown ?? false);
   // 未設定（null）は有効が既定。明示的に false を保存したときだけ OFF にする
-  const [enableSound, setEnableSound] = useState(defaults?.enableSound ?? true);
+  const [autoplayPronunciation, setAutoplayPronunciation] = useState(
+    defaults?.autoplayPronunciation ?? true,
+  );
+  const [enableAnswerSound, setEnableAnswerSound] = useState(defaults?.enableAnswerSound ?? true);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -104,7 +107,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         format,
         timeoutByFormat: timeoutByFormatInput,
         showCountdown,
-        enableSound,
+        autoplayPronunciation,
+        enableAnswerSound,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -125,7 +129,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         setTimeoutByFormat(clearedTimeoutState());
         setShowCountdown(false);
         // 未設定（クリア）後は既定の有効（true）に戻す
-        setEnableSound(true);
+        setAutoplayPronunciation(true);
+        setEnableAnswerSound(true);
         toast.success("クリアしました");
         return;
       }
@@ -302,16 +307,29 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         <Label>サウンド</Label>
         <div className="flex items-center gap-2">
           <Checkbox
-            id="quiz-defaults-enable-sound"
-            checked={enableSound}
-            onCheckedChange={(checked) => setEnableSound(checked === true)}
+            id="quiz-defaults-autoplay-pronunciation"
+            checked={autoplayPronunciation}
+            onCheckedChange={(checked) => setAutoplayPronunciation(checked === true)}
           />
-          <Label htmlFor="quiz-defaults-enable-sound" className="font-normal">
-            発音の自動再生および効果音
+          <Label htmlFor="quiz-defaults-autoplay-pronunciation" className="font-normal">
+            発音の自動再生
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オフにすると、出題時の発音の自動再生と、正解・不正解の効果音をどちらも無効にします。
+          オフにすると、出題時に発音を自動再生しません（手動の再生ボタンは使えます）。
+        </p>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-enable-answer-sound"
+            checked={enableAnswerSound}
+            onCheckedChange={(checked) => setEnableAnswerSound(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-enable-answer-sound" className="font-normal">
+            正誤の効果音
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オフにすると、正解・不正解の効果音を鳴らしません。
         </p>
       </section>
 

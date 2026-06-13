@@ -39,11 +39,16 @@ type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
-  defaults: Omit<QuizDefaults, "showCountdown" | "enableSound"> | null;
+  defaults: Omit<
+    QuizDefaults,
+    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound"
+  > | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
-  /** 発音の自動再生＋正誤効果音（設定画面のみで変更）。false で両方を無効化する。 */
-  enableSound: boolean;
+  /** 発音の自動再生（設定画面のみで変更）。false で出題時の自動再生を無効化する。 */
+  autoplayPronunciation: boolean;
+  /** 正誤の効果音（設定画面のみで変更）。false で正解・不正解の効果音を無効化する。 */
+  enableAnswerSound: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -160,7 +165,8 @@ export function QuizFlow({
   activeDrills,
   defaults,
   showCountdown,
-  enableSound,
+  autoplayPronunciation,
+  enableAnswerSound,
 }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
@@ -330,7 +336,7 @@ export function QuizFlow({
     if (kind === null) return;
     feedbackKeyRef.current += 1;
     setFeedback({ kind, key: feedbackKeyRef.current });
-    if (enableSound) playAnswerSound(kind);
+    if (enableAnswerSound) playAnswerSound(kind);
     if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => setFeedback(null), 800);
   }
@@ -468,13 +474,13 @@ export function QuizFlow({
     preloadAudio(cache, quiz.questions[playIndex + 1]?.pronunciationAudioUrl ?? null);
     const audio = preloadAudio(cache, quiz.questions[playIndex]?.pronunciationAudioUrl ?? null);
     if (!audio) return;
-    // サウンド設定 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
-    if (!enableSound) return;
+    // 発音の自動再生 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
+    if (!autoplayPronunciation) return;
     audio.currentTime = 0;
     // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
     void audio.play().catch(() => {});
     return () => audio.pause();
-  }, [playIndex, quiz, enableSound]);
+  }, [playIndex, quiz, autoplayPronunciation]);
 
   if (phase.name === "countdown") {
     return (

@@ -188,7 +188,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       format: null,
       timeoutByFormat: ALL_NULL,
       showCountdown: null,
-      enableSound: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
     });
     expect(r.success).toBe(true);
   });
@@ -202,7 +203,8 @@ describe("saveQuizDefaultsInputSchema", () => {
         format: "CHOICE",
         timeoutByFormat: ALL_NULL,
         showCountdown: null,
-        enableSound: null,
+        autoplayPronunciation: null,
+        enableAnswerSound: null,
       }).success,
     ).toBe(true);
     expect(
@@ -213,7 +215,8 @@ describe("saveQuizDefaultsInputSchema", () => {
         format: null,
         timeoutByFormat: ALL_NULL,
         showCountdown: null,
-        enableSound: null,
+        autoplayPronunciation: null,
+        enableAnswerSound: null,
       }).success,
     ).toBe(true);
   });
@@ -226,7 +229,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       format: "SELF_JUDGE",
       timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: 30 }),
       showCountdown: false,
-      enableSound: true,
+      autoplayPronunciation: true,
+      enableAnswerSound: true,
     });
     expect(r.success).toBe(true);
   });
@@ -238,7 +242,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: null,
       format: null,
       showCountdown: null,
-      enableSound: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
     };
     for (const v of [null, 1, 60]) {
       expect(
@@ -265,7 +270,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: null,
       format: null,
       showCountdown: null,
-      enableSound: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
     };
     // SELF_JUDGE / MULTI_MEANING を欠いた map は不正
     expect(
@@ -284,7 +290,8 @@ describe("saveQuizDefaultsInputSchema", () => {
         format: null,
         timeoutByFormat: ALL_NULL,
         showCountdown: null,
-        enableSound: null,
+        autoplayPronunciation: null,
+        enableAnswerSound: null,
       }).success,
     ).toBe(false);
   });
@@ -299,7 +306,8 @@ describe("saveQuizDefaultsInputSchema", () => {
           format: null,
           timeoutByFormat: ALL_NULL,
           showCountdown: null,
-          enableSound: null,
+          autoplayPronunciation: null,
+          enableAnswerSound: null,
         }).success,
       ).toBe(false);
     }
@@ -314,7 +322,8 @@ describe("saveQuizDefaultsInputSchema", () => {
         format: "BOGUS",
         timeoutByFormat: ALL_NULL,
         showCountdown: null,
-        enableSound: null,
+        autoplayPronunciation: null,
+        enableAnswerSound: null,
       }).success,
     ).toBe(false);
   });
@@ -326,7 +335,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       rangeTo: null,
       format: null,
       timeoutByFormat: ALL_NULL,
-      enableSound: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
     };
     for (const showCountdown of [true, false, null]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, showCountdown }).success).toBe(true);
@@ -337,7 +347,7 @@ describe("saveQuizDefaultsInputSchema", () => {
     expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
 
-  test("enableSound accepts true / false / null, rejects non-boolean / missing", () => {
+  test("autoplayPronunciation accepts true / false / null, rejects non-boolean / missing", () => {
     const base = {
       occurrenceId: null,
       rangeFrom: null,
@@ -345,13 +355,37 @@ describe("saveQuizDefaultsInputSchema", () => {
       format: null,
       timeoutByFormat: ALL_NULL,
       showCountdown: null,
+      enableAnswerSound: null,
     };
-    for (const enableSound of [true, false, null]) {
-      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, enableSound }).success).toBe(true);
+    for (const autoplayPronunciation of [true, false, null]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({ ...base, autoplayPronunciation }).success,
+      ).toBe(true);
     }
-    expect(saveQuizDefaultsInputSchema.safeParse({ ...base, enableSound: "true" }).success).toBe(
-      false,
-    );
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({ ...base, autoplayPronunciation: "true" }).success,
+    ).toBe(false);
+    expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
+  });
+
+  test("enableAnswerSound accepts true / false / null, rejects non-boolean / missing", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+    };
+    for (const enableAnswerSound of [true, false, null]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, enableAnswerSound }).success).toBe(
+        true,
+      );
+    }
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({ ...base, enableAnswerSound: "true" }).success,
+    ).toBe(false);
     expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
 
@@ -363,7 +397,8 @@ describe("saveQuizDefaultsInputSchema", () => {
       format: null,
       timeoutByFormat: ALL_NULL,
       showCountdown: null,
-      enableSound: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
     });
     expect(r.success).toBe(true);
   });

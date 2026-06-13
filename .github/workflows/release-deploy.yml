@@ -1,0 +1,43 @@
+name: Release Deploy
+
+# production デプロイ本体。2 経路から起動する:
+#   1. GitHub Release を手動 UI で Publish したとき（release: published）
+#   2. Create Release ワークフローからの呼び出し（workflow_call）
+#      ※ GITHUB_TOKEN で作成した Release は release:published を再発火しないため、
+#        Create Release 側はこの workflow_call で deploy を直接呼ぶ。
+#
+# Vercel の Git Integration はブランチベースで tag/Release をトリガにできないため、
+# ここで Vercel CLI(`vercel deploy --prod`) を使って production デプロイを行う。
+on:
+  release:
+    types: [published]
+  workflow_call:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # release: published はタグ commit、workflow_call は呼び出し元の commit（= タグと同一）を取得する
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      # リリース commit を再ゲート（タグが main 以外の commit に付く事故への保険。ci.yml と同一チェック）
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - run: pnpm test:unit
+
+      # `--prebuilt` は付けない＝ソースをアップロードして Vercel 側でビルドする（リモートビルド）。
+      # これにより Sensitive な BETTER_AUTH_SECRET や Neon Integration の env が Vercel 側で揃い、
+      # `vercel-build`(prisma migrate deploy && next build) が現行の main-merge デプロイと同一に走る。
+      # vercel は devDependencies に固定済みのため pnpm exec で lockfile 固定版を使う。
+      - name: Deploy to Vercel (production)
+        run: pnpm exec vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

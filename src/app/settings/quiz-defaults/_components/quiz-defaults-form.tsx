@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_OPTIONS } from "@/lib/quiz/format-options";
+import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
@@ -44,7 +44,7 @@ function parseRangeValue(text: string): number | null {
 /**
  * 開始画面（start-form）と同構成の入力 UI を持つ保存フォーム。
  * 関心が違う（保存 vs 開始ゲート）ため UI は共通化せず複製し、
- * 文言データ（FORMAT_OPTIONS）のみ共有する。プレビュー（対象件数・
+ * 文言データ（FORMAT_GROUPS）のみ共有する。プレビュー（対象件数・
  * 形式成立可否）は出さない: 成立可否はデータ変化で保存後いつでも
  * 変わるため、開始画面のプレビューが毎回再検証して開始をゲートする。
  */
@@ -147,28 +147,33 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
       <section className="flex flex-col gap-2">
         <Label>出題形式</Label>
         <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
-          {FORMAT_OPTIONS.map((option) => {
-            const selected = format === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => {
-                  // 再クリックで選択解除（デフォルトは任意項目のため未設定へ戻せる）
-                  setFormat(selected ? null : option.value);
-                }}
-                className={cn(
-                  "border-border bg-card/50 hover:bg-muted/60 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
-                  selected && "border-primary bg-primary/10",
-                )}
-              >
-                <span className="text-sm font-semibold">{option.label}</span>
-                <span className="text-muted-foreground text-xs">{option.description}</span>
-              </button>
-            );
-          })}
+          {FORMAT_GROUPS.map((group) => (
+            <div key={group.category} className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs font-medium">{group.category}</p>
+              {group.options.map((option) => {
+                const selected = format === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => {
+                      // 再クリックで選択解除（デフォルトは任意項目のため未設定へ戻せる）
+                      setFormat(selected ? null : option.value);
+                    }}
+                    className={cn(
+                      "border-border bg-card/50 hover:bg-muted/60 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
+                      selected && "border-primary bg-primary/10",
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="text-muted-foreground text-xs">{option.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
         <p className="text-muted-foreground text-xs">
           選択中の形式をもう一度押すと未設定に戻ります。

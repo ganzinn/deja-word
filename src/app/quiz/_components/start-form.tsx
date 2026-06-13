@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_OPTIONS } from "@/lib/quiz/format-options";
+import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
@@ -198,36 +198,41 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
       <section className="flex flex-col gap-2">
         <Label>出題形式</Label>
         <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
-          {FORMAT_OPTIONS.map((option) => {
-            const info = formatInfoOf(option.value);
-            // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択自体は許す
-            const unavailable = info !== null && !info.available;
-            const selected = format === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                disabled={unavailable}
-                onClick={() => {
-                  if (!unavailable) setFormat(option.value);
-                }}
-                className={cn(
-                  "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
-                  !unavailable && "hover:bg-muted/60",
-                  selected && "border-primary bg-primary/10",
-                  unavailable && !selected && "opacity-50",
-                )}
-              >
-                <span className="text-sm font-semibold">{option.label}</span>
-                <span className="text-muted-foreground text-xs">{option.description}</span>
-                {unavailable ? (
-                  <span className="text-destructive text-xs">選択できません: {info.reason}</span>
-                ) : null}
-              </button>
-            );
-          })}
+          {FORMAT_GROUPS.map((group) => (
+            <div key={group.category} className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs font-medium">{group.category}</p>
+              {group.options.map((option) => {
+                const info = formatInfoOf(option.value);
+                // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択自体は許す
+                const unavailable = info !== null && !info.available;
+                const selected = format === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={unavailable}
+                    onClick={() => {
+                      if (!unavailable) setFormat(option.value);
+                    }}
+                    className={cn(
+                      "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
+                      !unavailable && "hover:bg-muted/60",
+                      selected && "border-primary bg-primary/10",
+                      unavailable && !selected && "opacity-50",
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="text-muted-foreground text-xs">{option.description}</span>
+                    {unavailable ? (
+                      <span className="text-destructive text-xs">選択できません: {info.reason}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </section>
 

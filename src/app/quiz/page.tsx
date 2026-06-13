@@ -32,6 +32,8 @@ export default async function QuizPage() {
   // カウントダウン表示は設定画面のみで変更する挙動設定（開始フォームの初期値ではない）。
   // 未設定（null）はデフォルトで非表示。
   const showCountdown = defaults?.showCountdown ?? false;
+  // 発音の自動再生＋正誤効果音。未設定（null）はデフォルトで有効。
+  const enableSound = defaults?.enableSound ?? true;
 
   return (
     <QuizFlow
@@ -43,6 +45,7 @@ export default async function QuizPage() {
       activeDrills={activeDrills}
       defaults={defaults === null ? null : { ...defaults, occurrenceId: defaultOccurrenceId }}
       showCountdown={showCountdown}
+      enableSound={enableSound}
     />
   );
 }

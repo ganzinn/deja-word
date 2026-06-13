@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { QuizMode } from "@/generated/prisma/enums";
+import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPayload } from "@/lib/quiz/payload";
@@ -21,6 +21,12 @@ import {
   submitDrillRound,
   submitQuizAnswers,
 } from "../actions";
+import {
+  AnswerFeedbackOverlay,
+  feedbackKindForResult,
+  type Feedback,
+} from "./answer-feedback-overlay";
+import { playAnswerSound } from "./answer-sound";
 import { Countdown } from "./countdown";
 import { QuestionChoice } from "./question-choice";
 import { QuestionMultiMeaning } from "./question-multi-meaning";
@@ -33,9 +39,11 @@ type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
-  defaults: Omit<QuizDefaults, "showCountdown"> | null;
+  defaults: Omit<QuizDefaults, "showCountdown" | "enableSound"> | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
+  /** 発音の自動再生＋正誤効果音（設定画面のみで変更）。false で両方を無効化する。 */
+  enableSound: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -98,10 +106,13 @@ function QuestionView({
   quiz,
   index,
   onComplete,
+  onReveal,
 }: {
   quiz: QuizPayload;
   index: number;
   onComplete: (outcome: QuestionOutcome) => void;
+  /** 正誤が確定した瞬間に 1 回だけ呼ばれる（フラッシュ＋効果音は QuizFlow が集中処理）。 */
+  onReveal: (result: QuizResult) => void;
 }) {
   // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
@@ -113,6 +124,7 @@ function QuestionView({
           question={question}
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
+          onReveal={onReveal}
         />
       );
     }
@@ -124,6 +136,7 @@ function QuestionView({
           question={question}
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
+          onReveal={onReveal}
         />
       );
     }
@@ -135,13 +148,20 @@ function QuestionView({
           question={question}
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
+          onReveal={onReveal}
         />
       );
     }
   }
 }
 
-export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }: Props) {
+export function QuizFlow({
+  occurrences,
+  activeDrills,
+  defaults,
+  showCountdown,
+  enableSound,
+}: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
   const [mode, setMode] = useState<QuizMode>("TEST");
@@ -156,6 +176,10 @@ export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }:
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
   const runIdRef = useRef(0);
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // 正誤フラッシュ（中央オーバーレイ）。null = 非表示
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const feedbackKeyRef = useRef(0);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** countdown へ遷移する前の共通リセット（payload・結果・送信状態を破棄）。 */
   function resetRunState() {
@@ -293,6 +317,28 @@ export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }:
     });
   }
 
+  /**
+   * 正誤が確定した瞬間（onReveal）に中央フラッシュ＋効果音を出す。集中処理にすることで
+   * 自己判定の即時 onComplete（次問へ遷移）でもオーバーレイが生き残る。
+   * GAVE_UP（わからない・思い浮かばなかった）は kind=null で表示も音もなし。
+   */
+  function handleReveal(result: QuizResult) {
+    const kind = feedbackKindForResult(result);
+    if (kind === null) return;
+    feedbackKeyRef.current += 1;
+    setFeedback({ kind, key: feedbackKeyRef.current });
+    if (enableSound) playAnswerSound(kind);
+    if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => setFeedback(null), 800);
+  }
+
+  // アンマウント時に保留中のフラッシュ消去タイマーを解放する
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
+
   function handleQuestionComplete(outcome: QuestionOutcome) {
     if (phase.name !== "play" || quiz === null) return;
     const index = phase.index;
@@ -357,11 +403,13 @@ export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }:
     preloadAudio(cache, quiz.questions[playIndex + 1]?.pronunciationAudioUrl ?? null);
     const audio = preloadAudio(cache, quiz.questions[playIndex]?.pronunciationAudioUrl ?? null);
     if (!audio) return;
+    // サウンド設定 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
+    if (!enableSound) return;
     audio.currentTime = 0;
     // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
     void audio.play().catch(() => {});
     return () => audio.pause();
-  }, [playIndex, quiz]);
+  }, [playIndex, quiz, enableSound]);
 
   if (phase.name === "countdown") {
     return (
@@ -405,7 +453,13 @@ export function QuizFlow({ occurrences, activeDrills, defaults, showCountdown }:
           <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
         </div>
 
-        <QuestionView quiz={quiz} index={phase.index} onComplete={handleQuestionComplete} />
+        <QuestionView
+          quiz={quiz}
+          index={phase.index}
+          onComplete={handleQuestionComplete}
+          onReveal={handleReveal}
+        />
+        <AnswerFeedbackOverlay feedback={feedback} />
       </main>
     );
   }

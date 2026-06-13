@@ -14,6 +14,8 @@ export type QuizDefaults = {
   /** 出題形式ごとの制限時間（秒）。全形式キーを持ち、null = その形式は制限なし（行なし）。 */
   timeoutByFormat: Record<QuizFormat, number | null>;
   showCountdown: boolean | null;
+  /** 発音の自動再生＋正誤効果音。null = 有効（デフォルト）。OFF（false）で両方を無効化する。 */
+  enableSound: boolean | null;
 };
 
 export class DefaultOccurrenceNotInScopeError extends Error {
@@ -62,6 +64,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       format: null,
       timeoutByFormat,
       showCountdown: null,
+      enableSound: null,
     };
   }
 
@@ -74,6 +77,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     format: setting.format,
     timeoutByFormat,
     showCountdown: setting.showCountdown,
+    enableSound: setting.enableSound,
   };
 }
 

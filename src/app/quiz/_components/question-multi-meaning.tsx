@@ -1,11 +1,12 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { MultiMeaningQuestion } from "@/lib/quiz/payload";
+import type { QuizResult } from "@/generated/prisma/enums";
 
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
@@ -16,21 +17,49 @@ type Props = {
   /** 1 問あたりの制限時間（秒）。null = 制限なし。 */
   timeoutSeconds: number | null;
   onComplete: (outcome: QuestionOutcome) => void;
+  /** 正誤が確定した瞬間（回答／わからない／時間切れ）に 1 回だけ呼ばれる。 */
+  onReveal: (result: QuizResult) => void;
 };
 
 // 解答確定状態。selectedIndexes: 選んだ選択肢の index 集合、null =「わからない」または時間切れ
 type Answered = { selectedIndexes: ReadonlySet<number> | null; timedOut: boolean };
 
-export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete }: Props) {
+/** 確定状態から結果＋表示文字列を導出する（onReveal / onComplete で共用）。 */
+function outcomeFor(question: MultiMeaningQuestion, answered: Answered): QuestionOutcome {
+  const { selectedIndexes, timedOut } = answered;
+  if (timedOut) return { result: "TIMEOUT", answerDisplay: null };
+  if (selectedIndexes === null) return { result: "GAVE_UP", answerDisplay: null };
+  // 選択集合が正解集合と完全一致（全部選び、かつ余計に選ばない）で CORRECT
+  const isExactMatch = question.options.every(
+    (option, index) => option.isCorrect === selectedIndexes.has(index),
+  );
+  return {
+    result: isExactMatch ? "CORRECT" : "INCORRECT",
+    answerDisplay: question.options
+      .filter((_, index) => selectedIndexes.has(index))
+      .map((option) => option.text)
+      .join("; "),
+  };
+}
+
+export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete, onReveal }: Props) {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
+  const revealedRef = useRef(false);
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: answered !== null,
     // 「回答する」前の未確定選択は採点せず時間切れ扱い。確定済みなら上書きしない
     onTimeout: () => setAnswered((prev) => prev ?? { selectedIndexes: null, timedOut: true }),
   });
+
+  // 解答が確定した瞬間に正誤フラッシュ＋効果音を 1 回だけ要求する
+  useEffect(() => {
+    if (answered === null || revealedRef.current) return;
+    revealedRef.current = true;
+    onReveal(outcomeFor(question, answered).result);
+  }, [answered, question, onReveal]);
 
   function handleToggle(index: number) {
     if (answered) return; // 確定後の連打ガード
@@ -58,26 +87,7 @@ export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete }: P
   function handleNext() {
     if (!answered || completed) return; // onComplete は 1 回だけ
     setCompleted(true);
-    const { selectedIndexes, timedOut } = answered;
-    if (timedOut) {
-      onComplete({ result: "TIMEOUT", answerDisplay: null });
-      return;
-    }
-    if (selectedIndexes === null) {
-      onComplete({ result: "GAVE_UP", answerDisplay: null });
-      return;
-    }
-    // 選択集合が正解集合と完全一致（全部選び、かつ余計に選ばない）で CORRECT
-    const isExactMatch = question.options.every(
-      (option, index) => option.isCorrect === selectedIndexes.has(index),
-    );
-    onComplete({
-      result: isExactMatch ? "CORRECT" : "INCORRECT",
-      answerDisplay: question.options
-        .filter((_, index) => selectedIndexes.has(index))
-        .map((option) => option.text)
-        .join("; "),
-    });
+    onComplete(outcomeFor(question, answered));
   }
 
   return (

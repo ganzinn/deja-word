@@ -1,7 +1,7 @@
 import "server-only";
 
 import { defaultBlobClient, type BlobClient } from "@/lib/blob-client";
-import { bestEffortDeleteAudioUrls } from "@/lib/meaning-audio";
+import { bestEffortDeleteAudioUrls } from "@/lib/pronunciation-audio";
 import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
@@ -104,15 +104,28 @@ export async function updateWordForUser(
       });
 
       const meaningIdsArray = Array.from(meaningIdsInForm);
-      const orphanedMeanings = await tx.meaning.findMany({
-        where: {
-          wordId,
-          ownerId: userId,
-          ...(meaningIdsArray.length > 0 ? { id: { notIn: meaningIdsArray } } : {}),
-        },
-        select: { pronunciationAudioUrl: true },
-      });
-      orphanedAudioUrls = orphanedMeanings.map((m) => m.pronunciationAudioUrl);
+      const relatedIdsArray = Array.from(relatedIdsInForm);
+      const [orphanedMeanings, orphanedRelated] = await Promise.all([
+        tx.meaning.findMany({
+          where: {
+            wordId,
+            ownerId: userId,
+            ...(meaningIdsArray.length > 0 ? { id: { notIn: meaningIdsArray } } : {}),
+          },
+          select: { pronunciationAudioUrl: true },
+        }),
+        tx.relatedWord.findMany({
+          where: {
+            wordId,
+            ownerId: userId,
+            ...(relatedIdsArray.length > 0 ? { id: { notIn: relatedIdsArray } } : {}),
+          },
+          select: { pronunciationAudioUrl: true },
+        }),
+      ]);
+      orphanedAudioUrls = [...orphanedMeanings, ...orphanedRelated].map(
+        (row) => row.pronunciationAudioUrl,
+      );
 
       await Promise.all([
         deleteOrphanedEditorOwned(tx, "meaning", wordId, userId, meaningIdsInForm),

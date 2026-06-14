@@ -41,6 +41,9 @@ const relatedWordSchema = z.object({
   meaning: z.string().trim().optional().or(z.literal("")),
   note: z.string().trim().optional().or(z.literal("")),
   linkedWordId: z.string().cuid().optional(),
+  // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
+  // 単語本体の書き込み handler が無視する（編集 UI の表示状態の初期値にのみ使う）。
+  pronunciationAudioUrl: z.string().nullable().optional(),
 });
 
 const memoSchema = z.object({
@@ -177,6 +180,7 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
       meaning: r.meaning ?? "",
       note: r.note ?? "",
       linkedWordId: r.linkedWordId ?? undefined,
+      pronunciationAudioUrl: r.pronunciationAudioUrl,
     })),
     memos: word.memos.map((m) => ({ id: m.id, ownerId: m.ownerId, text: m.text })),
     occurrences: word.wordOccurrences.map((wo) => ({

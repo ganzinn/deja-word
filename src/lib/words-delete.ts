@@ -1,7 +1,7 @@
 import "server-only";
 
 import { defaultBlobClient, type BlobClient } from "@/lib/blob-client";
-import { bestEffortDeleteAudioUrls } from "@/lib/meaning-audio";
+import { bestEffortDeleteAudioUrls } from "@/lib/pronunciation-audio";
 import { prisma } from "@/lib/prisma";
 import { WordNotFoundError } from "@/lib/words-update";
 
@@ -20,17 +20,17 @@ export async function deleteWordForUser(
   });
   if (!existing) throw new WordNotFoundError();
 
-  // onDelete: Cascade は Blob に効かないため、削除前に配下 Meaning の音源 URL を収集する。
-  const meanings = await prisma.meaning.findMany({
-    where: { wordId },
-    select: { pronunciationAudioUrl: true },
-  });
+  // onDelete: Cascade は Blob に効かないため、削除前に配下の音源 URL（Meaning / 関連語）を収集する。
+  const [meanings, relatedWords] = await Promise.all([
+    prisma.meaning.findMany({ where: { wordId }, select: { pronunciationAudioUrl: true } }),
+    prisma.relatedWord.findMany({ where: { wordId }, select: { pronunciationAudioUrl: true } }),
+  ]);
 
   await prisma.word.delete({ where: { id: wordId } });
 
   // DB を真実とし、delete 成功後にベストエフォートで Blob を消す。
   await bestEffortDeleteAudioUrls(
-    meanings.map((m) => m.pronunciationAudioUrl),
+    [...meanings, ...relatedWords].map((row) => row.pronunciationAudioUrl),
     blob,
   );
 }

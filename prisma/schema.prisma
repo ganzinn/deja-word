@@ -183,6 +183,7 @@ model RelatedWord {
   note          String?
   sortOrder     Int          @default(0) @map("sort_order")
   linkedWordId  String?      @map("linked_word_id")
+  pronunciationAudioUrl String? @map("pronunciation_audio_url") // 関連語の発音音源
 
   word       Word  @relation("RelatedWordOnWord", fields: [wordId], references: [id], onDelete: Cascade)
   owner      User  @relation(fields: [ownerId], references: [id], onDelete: Cascade)

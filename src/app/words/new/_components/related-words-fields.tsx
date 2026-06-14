@@ -1,11 +1,14 @@
 "use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { PronunciationAudioManager } from "@/components/pronunciation-audio-manager";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
+
+import { deleteRelatedWordAudio, uploadRelatedWordAudio } from "@/app/words/[id]/edit/actions";
 
 import { relatedWordKindLabels, relatedWordKinds } from "@/lib/mock/related-word-kinds";
 import { emptyRelatedWord, type WordFormValues } from "@/lib/schema/word-form";
@@ -26,6 +29,15 @@ type RelatedWordCardProps = {
 function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`relatedWords.${index}.ownerId`);
+  const relatedWordId = useWatch({ control: form.control, name: `relatedWords.${index}.id` });
+  const pronunciation = useWatch({
+    control: form.control,
+    name: `relatedWords.${index}.pronunciation`,
+  });
+  const pronunciationAudioUrl = useWatch({
+    control: form.control,
+    name: `relatedWords.${index}.pronunciationAudioUrl`,
+  });
 
   return (
     <FieldCard
@@ -81,26 +93,45 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
         )}
       />
 
-      <CollapsibleField label="発音記号">
-        <FormField
-          control={form.control}
-          name={`relatedWords.${index}.pronunciation`}
-          render={({ field: f }) => (
+      <CollapsibleField label="発音" defaultOpen={!!pronunciation || !!pronunciationAudioUrl}>
+        <div className="border-border/60 flex flex-col gap-3 rounded-md border border-dashed p-3">
+          <span className="text-muted-foreground text-xs font-medium">発音</span>
+          <FormField
+            control={form.control}
+            name={`relatedWords.${index}.pronunciation`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel>記号</FormLabel>
+                <FormControl>
+                  <Input
+                    inputMode="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="例: /ˈfliːtɪŋ/"
+                    disabled={isSystemOwned}
+                    {...f}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {!isSystemOwned ? (
             <FormItem>
-              <FormLabel>発音記号</FormLabel>
-              <FormControl>
-                <Input
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  disabled={isSystemOwned}
-                  {...f}
+              <FormLabel>音源</FormLabel>
+              {relatedWordId ? (
+                <PronunciationAudioManager
+                  value={pronunciationAudioUrl}
+                  onUpload={(fd) => uploadRelatedWordAudio(relatedWordId, fd)}
+                  onDelete={() => deleteRelatedWordAudio(relatedWordId)}
                 />
-              </FormControl>
-              <FormMessage />
+              ) : (
+                <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
+              )}
             </FormItem>
-          )}
-        />
+          ) : null}
+        </div>
       </CollapsibleField>
 
       <FormField

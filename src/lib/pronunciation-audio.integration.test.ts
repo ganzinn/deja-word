@@ -4,8 +4,10 @@ import type { BlobClient } from "@/lib/blob-client";
 import {
   ForbiddenUpdateError,
   deletePronunciationAudioForUser,
+  deleteRelatedWordAudioForUser,
   uploadPronunciationAudioForUser,
-} from "@/lib/meaning-audio";
+  uploadRelatedWordAudioForUser,
+} from "@/lib/pronunciation-audio";
 import { prisma } from "@/lib/prisma";
 import type { WordFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
@@ -49,6 +51,16 @@ async function firstMeaningId(wordId: string): Promise<string> {
   const m = await prisma.meaning.findFirst({ where: { wordId }, select: { id: true } });
   if (!m) throw new Error("meaning not found");
   return m.id;
+}
+
+async function firstRelatedWordId(wordId: string): Promise<string> {
+  const r = await prisma.relatedWord.findFirst({ where: { wordId }, select: { id: true } });
+  if (!r) throw new Error("related word not found");
+  return r.id;
+}
+
+function relatedWord(term: string): WordFormValues["relatedWords"][number] {
+  return { term, partOfSpeech: "", pronunciation: "", meaning: "", note: "" };
 }
 
 function mp3(): File {
@@ -176,5 +188,116 @@ describe("meaning-audio: 認可（owner 不一致）", () => {
     expect(
       (await prisma.meaning.findUniqueOrThrow({ where: { id: meaningId } })).pronunciationAudioUrl,
     ).toBe(result.url);
+  });
+});
+
+describe("related-word-audio: upload → 差し替え → 削除", () => {
+  test("DB カラムが更新され、差し替え・削除で旧 Blob が del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("relTerm", { relatedWords: [relatedWord("synonym")] }),
+    );
+    const relatedId = await firstRelatedWordId(word.id);
+    const { blob, puts, deleted } = fakeBlob();
+
+    const first = await uploadRelatedWordAudioForUser(user.id, relatedId, mp3(), blob);
+    expect(puts[0]).toBe(`audio/related-word/${relatedId}/pronunciation.mp3`);
+    expect(
+      (await prisma.relatedWord.findUniqueOrThrow({ where: { id: relatedId } }))
+        .pronunciationAudioUrl,
+    ).toBe(first.url);
+
+    const second = await uploadRelatedWordAudioForUser(user.id, relatedId, mp3(), blob);
+    expect(
+      (await prisma.relatedWord.findUniqueOrThrow({ where: { id: relatedId } }))
+        .pronunciationAudioUrl,
+    ).toBe(second.url);
+    expect(deleted.has(first.url)).toBe(true);
+
+    await deleteRelatedWordAudioForUser(user.id, relatedId, blob);
+    expect(
+      (await prisma.relatedWord.findUniqueOrThrow({ where: { id: relatedId } }))
+        .pronunciationAudioUrl,
+    ).toBeNull();
+    expect(deleted.has(second.url)).toBe(true);
+  });
+});
+
+describe("related-word-audio: Blob クリーンアップ", () => {
+  test("Word 削除で配下 関連語の発音音源が一括 del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("relToDelete", { relatedWords: [relatedWord("syn")] }),
+    );
+    const relatedId = await firstRelatedWordId(word.id);
+    const { blob, deleted } = fakeBlob();
+
+    const pron = await uploadRelatedWordAudioForUser(user.id, relatedId, mp3(), blob);
+
+    await deleteWordForUser(user.id, word.id, blob);
+
+    expect(await prisma.word.findUnique({ where: { id: word.id } })).toBeNull();
+    expect(deleted.has(pron.url)).toBe(true);
+  });
+
+  test("編集の orphan delete で消えた 関連語の音源も del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("relEditable", { relatedWords: [relatedWord("keep"), relatedWord("drop")] }),
+    );
+    const related = await prisma.relatedWord.findMany({
+      where: { wordId: word.id },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, ownerId: true, term: true },
+    });
+    const keep = related[0];
+    const drop = related[1];
+    const { blob, deleted } = fakeBlob();
+
+    const dropped = await uploadRelatedWordAudioForUser(user.id, drop.id, mp3(), blob);
+
+    // フォームから drop を落として更新 → orphan delete → 音源も del
+    await updateWordForUser(
+      user.id,
+      word.id,
+      form("relEditable", {
+        relatedWords: [
+          {
+            id: keep.id,
+            ownerId: user.id,
+            term: keep.term,
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            note: "",
+          },
+        ],
+      }),
+      blob,
+    );
+
+    expect(await prisma.relatedWord.findUnique({ where: { id: drop.id } })).toBeNull();
+    expect(await prisma.relatedWord.findUnique({ where: { id: keep.id } })).not.toBeNull();
+    expect(deleted.has(dropped.url)).toBe(true);
+  });
+});
+
+describe("related-word-audio: 認可（owner 不一致）", () => {
+  test("他人の関連語は mutate 拒否", async () => {
+    const owner = await createTestUser();
+    const stranger = await createTestUser();
+    const word = await createWordForUser(
+      owner.id,
+      form("relOwners", { relatedWords: [relatedWord("syn")] }),
+    );
+    const relatedId = await firstRelatedWordId(word.id);
+    const { blob } = fakeBlob();
+
+    await expect(
+      uploadRelatedWordAudioForUser(stranger.id, relatedId, mp3(), blob),
+    ).rejects.toBeInstanceOf(ForbiddenUpdateError);
   });
 });

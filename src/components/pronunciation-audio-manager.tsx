@@ -6,28 +6,31 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-import { deletePronunciationAudio, uploadPronunciationAudio } from "@/app/words/[id]/edit/actions";
+import type { DeleteAudioResult, UploadAudioResult } from "@/app/words/[id]/edit/actions";
 
 import { AudioPlayButton } from "./audio-play-button";
 
 const AUDIO_MIME = "audio/mpeg";
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
-type MeaningAudioManagerProps = {
-  meaningId: string;
-  pronunciationAudioUrl: string | null | undefined;
+type PronunciationAudioManagerProps = {
+  value: string | null | undefined;
+  onUpload: (fd: FormData) => Promise<UploadAudioResult>;
+  onDelete: () => Promise<DeleteAudioResult>;
 };
 
 /**
  * 「発音」グループ内の音源（発音 mp3）アップロード/削除コントロール。post-save（id 確定済み）
- * でのみ表示する前提。upload / delete は Server Action の返り値で自身の表示状態を更新する
- * （詳細ページは動的描画なので revalidate は不要）。
+ * でのみ表示する前提。upload / delete は呼び出し元が束縛した Server Action の返り値で
+ * 自身の表示状態を更新する（詳細ページは動的描画なので revalidate は不要）。entity（意味/関連語）
+ * に依存しない汎用 UI。
  */
-export function MeaningAudioManager({
-  meaningId,
-  pronunciationAudioUrl,
-}: MeaningAudioManagerProps) {
-  const [url, setUrl] = useState<string | null>(pronunciationAudioUrl ?? null);
+export function PronunciationAudioManager({
+  value,
+  onUpload,
+  onDelete,
+}: PronunciationAudioManagerProps) {
+  const [url, setUrl] = useState<string | null>(value ?? null);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +51,7 @@ export function MeaningAudioManager({
     const fd = new FormData();
     fd.set("file", file);
     startTransition(async () => {
-      const result = await uploadPronunciationAudio(meaningId, fd);
+      const result = await onUpload(fd);
       if (result.ok) {
         setUrl(result.url);
         toast.success("音源を登録しました");
@@ -58,9 +61,9 @@ export function MeaningAudioManager({
     });
   }
 
-  function onDelete() {
+  function handleDelete() {
     startTransition(async () => {
-      const result = await deletePronunciationAudio(meaningId);
+      const result = await onDelete();
       if (result.ok) {
         setUrl(null);
         toast.success("音源を削除しました");
@@ -102,7 +105,7 @@ export function MeaningAudioManager({
             size="icon-xs"
             disabled={pending}
             aria-label="音源を削除"
-            onClick={onDelete}
+            onClick={handleDelete}
           >
             <Trash2Icon />
           </Button>

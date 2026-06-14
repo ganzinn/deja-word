@@ -132,7 +132,7 @@ function MeaningCard({
           {meaning.texts[0].text}
         </p>
       ) : meaning.texts.length > 1 ? (
-        <ul className="ml-4 list-disc text-sm marker:text-[0.625rem] marker:text-muted-foreground">
+        <ul className="ml-4 list-disc text-sm marker:text-[0.5rem] marker:text-muted-foreground">
           {meaning.texts.map((t, i) => (
             <li
               key={t.id}

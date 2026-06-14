@@ -2,7 +2,6 @@ import { ChevronLeftIcon, PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { WordDetailView } from "@/components/word-detail-view";
 import { getCurrentSession } from "@/lib/session";
@@ -41,11 +40,6 @@ export default async function WordDetailPage({ params }: PageProps) {
           <ChevronLeftIcon />
         </Link>
         <h1 className="truncate text-base font-semibold">{word.headword}</h1>
-        {word.ownerId === SYSTEM_USER_ID ? null : (
-          <Badge variant="secondary" className="ml-auto shrink-0">
-            MY
-          </Badge>
-        )}
         {canEdit || canDelete ? (
           <div className="ml-auto flex items-center gap-1">
             {canEdit ? (

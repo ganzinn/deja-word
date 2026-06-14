@@ -13,6 +13,6 @@ export function nullable(value: string | undefined): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-export function uniqueStrings(values: ReadonlyArray<string | undefined>): string[] {
+export function uniqueStrings(values: ReadonlyArray<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((v): v is string => typeof v === "string")));
 }

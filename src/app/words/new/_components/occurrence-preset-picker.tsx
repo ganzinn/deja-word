@@ -12,6 +12,7 @@ import { useIsCurrentUserSystem } from "./word-form-permissions-context";
 
 type OccurrencePresetPickerProps = {
   presets: OccurrencePreset[];
+  autoNumberByOccurrenceId?: Record<string, number>;
   fields: FieldArrayWithId<WordFormValues, "occurrences", "id">[];
   append: UseFieldArrayAppend<WordFormValues, "occurrences">;
   remove: UseFieldArrayRemove;
@@ -24,6 +25,7 @@ type OccurrencePresetPickerProps = {
  */
 export function OccurrencePresetPicker({
   presets,
+  autoNumberByOccurrenceId,
   fields,
   append,
   remove,
@@ -48,7 +50,8 @@ export function OccurrencePresetPicker({
             pressed={pressed}
             disabled={systemLocked}
             onPressedChange={() => {
-              if (action.kind === "add") append(createPresetOccurrence(preset));
+              if (action.kind === "add")
+                append(createPresetOccurrence(preset, autoNumberByOccurrenceId?.[preset.id] ?? null));
               else if (action.kind === "remove") remove(action.index);
             }}
           >

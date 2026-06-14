@@ -35,28 +35,44 @@ afterEach(() => {
 describe("updateOccurrence (Server Action)", () => {
   test("unauthorized", async () => {
     mockedGetSession.mockResolvedValue(null);
-    const res = await updateOccurrence("occ_1", { location: "x", isPreset: true });
+    const res = await updateOccurrence("occ_1", {
+      location: "x",
+      isPreset: true,
+      autoNumbering: false,
+    });
     expect(res.ok).toBe(false);
     expect(res).toMatchObject({ error: "unauthorized" });
   });
 
   test("invalid", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
-    const res = await updateOccurrence("occ_1", { location: " ", isPreset: true });
+    const res = await updateOccurrence("occ_1", {
+      location: " ",
+      isPreset: true,
+      autoNumbering: false,
+    });
     expect(res).toMatchObject({ ok: false, error: "invalid" });
   });
 
   test("not_found", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     mockedUpdate.mockRejectedValue(new OccurrenceNotFoundError());
-    const res = await updateOccurrence("occ_1", { location: "x", isPreset: false });
+    const res = await updateOccurrence("occ_1", {
+      location: "x",
+      isPreset: false,
+      autoNumbering: false,
+    });
     expect(res).toMatchObject({ ok: false, error: "not_found" });
   });
 
   test("duplicate", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     mockedUpdate.mockRejectedValue(new DuplicateOccurrenceLocationError());
-    const res = await updateOccurrence("occ_1", { location: "dup", isPreset: false });
+    const res = await updateOccurrence("occ_1", {
+      location: "dup",
+      isPreset: false,
+      autoNumbering: false,
+    });
     expect(res).toMatchObject({ ok: false, error: "duplicate" });
   });
 
@@ -64,18 +80,27 @@ describe("updateOccurrence (Server Action)", () => {
     mockedGetSession.mockResolvedValue(SESSION);
     vi.spyOn(console, "error").mockImplementation(() => {});
     mockedUpdate.mockRejectedValue(new Error("boom"));
-    const res = await updateOccurrence("occ_1", { location: "x", isPreset: false });
+    const res = await updateOccurrence("occ_1", {
+      location: "x",
+      isPreset: false,
+      autoNumbering: false,
+    });
     expect(res).toMatchObject({ ok: false, error: "unknown" });
   });
 
   test("ok", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     mockedUpdate.mockResolvedValue();
-    const res = await updateOccurrence("occ_1", { location: "x", isPreset: true });
+    const res = await updateOccurrence("occ_1", {
+      location: "x",
+      isPreset: true,
+      autoNumbering: true,
+    });
     expect(res).toEqual({ ok: true });
     expect(mockedUpdate).toHaveBeenCalledWith("u_1", "occ_1", {
       location: "x",
       isPreset: true,
+      autoNumbering: true,
     });
   });
 });

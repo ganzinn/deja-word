@@ -8,6 +8,7 @@ import { scopedOwnerIds } from "@/lib/system-user";
 export type OccurrenceUpdateInput = {
   location: string;
   isPreset: boolean;
+  autoNumbering: boolean;
 };
 
 export class OccurrenceNotFoundError extends Error {
@@ -43,7 +44,8 @@ export async function updateOccurrenceForUser(
     await prisma.$transaction(async (tx) => {
       await tx.occurrence.update({
         where: { id: occurrenceId },
-        data: { location },
+        // 自動採番はプリセット ON が前提（プリセットを外すと自動採番も落ちる）
+        data: { location, autoNumbering: input.isPreset && input.autoNumbering },
       });
       if (input.isPreset) {
         await tx.occurrencePresetSetting.upsert({

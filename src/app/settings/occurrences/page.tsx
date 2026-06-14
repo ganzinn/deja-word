@@ -9,6 +9,7 @@ import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { cn } from "@/lib/utils";
 
+import { AutoNumberToggle } from "./_components/auto-number-toggle";
 import { PresetToggle } from "./_components/preset-toggle";
 
 export default async function OccurrencesPage() {
@@ -96,7 +97,14 @@ function OwnRow({ item }: { item: OccurrenceListItem }) {
           <span className="text-muted-foreground text-xs">{item.wordLinkCount} 件の単語</span>
         ) : null}
       </div>
-      <PresetToggle occurrenceId={item.id} initialIsPreset={item.isPreset} />
+      <div className="flex flex-col gap-1.5">
+        <PresetToggle occurrenceId={item.id} initialIsPreset={item.isPreset} />
+        <AutoNumberToggle
+          occurrenceId={item.id}
+          initialAutoNumbering={item.autoNumbering}
+          disabled={!item.isPreset}
+        />
+      </div>
       <Link
         href={`/settings/occurrences/${item.id}/edit`}
         aria-label="編集"

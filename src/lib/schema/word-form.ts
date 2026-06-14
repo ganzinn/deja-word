@@ -138,17 +138,20 @@ export const emptyOccurrence: OccurrenceValue = {
   details: [{ detail: "" }],
 };
 
-export function createPresetOccurrence(preset: {
-  id: string;
-  ownerId: string;
-  location: string;
-}): OccurrenceValue {
+export function createPresetOccurrence(
+  preset: {
+    id: string;
+    ownerId: string;
+    location: string;
+  },
+  occurrenceNumber: number | null = null,
+): OccurrenceValue {
   return {
     occurrenceId: preset.id,
     ownerId: "",
     occurrenceOwnerId: preset.ownerId,
     location: preset.location,
-    occurrenceNumber: null,
+    occurrenceNumber,
     details: [{ detail: "" }],
   };
 }

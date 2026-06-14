@@ -7,6 +7,7 @@ import { scopedOwnerIds } from "@/lib/system-user";
 export type OccurrenceCreateInput = {
   location: string;
   isPreset: boolean;
+  autoNumbering: boolean;
 };
 
 export class DuplicateOccurrenceLocationError extends Error {
@@ -29,7 +30,8 @@ export async function createOccurrenceForUser(
   try {
     return await prisma.$transaction(async (tx) => {
       const occ = await tx.occurrence.create({
-        data: { ownerId: userId, location },
+        // 自動採番はプリセット ON が前提（プリセットなしでは保持しない）
+        data: { ownerId: userId, location, autoNumbering: input.isPreset && input.autoNumbering },
         select: { id: true },
       });
       if (input.isPreset) {

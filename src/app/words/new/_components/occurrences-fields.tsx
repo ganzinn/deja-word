@@ -17,9 +17,10 @@ import { useRowOwnership } from "./shared/use-row-ownership";
 
 type OccurrencesFieldsProps = {
   presets: OccurrencePreset[];
+  autoNumberByOccurrenceId?: Record<string, number>;
 };
 
-export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
+export function OccurrencesFields({ presets, autoNumberByOccurrenceId }: OccurrencesFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -28,7 +29,13 @@ export function OccurrencesFields({ presets }: OccurrencesFieldsProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <OccurrencePresetPicker presets={presets} fields={fields} append={append} remove={remove} />
+      <OccurrencePresetPicker
+        presets={presets}
+        autoNumberByOccurrenceId={autoNumberByOccurrenceId}
+        fields={fields}
+        append={append}
+        remove={remove}
+      />
 
       {fields.length === 0 ? (
         <p className="text-muted-foreground text-xs">

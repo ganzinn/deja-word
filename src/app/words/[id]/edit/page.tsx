@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { getAutoNumberMapForUser } from "@/lib/occurrences-auto-number";
 import { getOccurrencePresetsForUser } from "@/lib/occurrences";
 import { wordDetailToFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
@@ -22,7 +23,11 @@ export default async function EditWordPage({ params }: PageProps) {
   if (!word) notFound();
   if (word.ownerId !== session.user.id && word.ownerId !== SYSTEM_USER_ID) notFound();
 
-  const occurrencePresets = await getOccurrencePresetsForUser(session.user.id);
+  const [occurrencePresets, autoNumberByOccurrenceId] = await Promise.all([
+    getOccurrencePresetsForUser(session.user.id),
+    getAutoNumberMapForUser(session.user.id),
+  ]);
+  // 編集では初期自動展開はしない（既存データのまま）。プリセット再選択時の自動入力のみ map を渡す。
   const defaultValues = wordDetailToFormValues(word);
   const linkedHeadwords = Object.fromEntries(
     word.relatedWords
@@ -39,6 +44,7 @@ export default async function EditWordPage({ params }: PageProps) {
       defaultValues={defaultValues}
       linkedHeadwords={linkedHeadwords}
       occurrencePresets={occurrencePresets}
+      autoNumberByOccurrenceId={autoNumberByOccurrenceId}
     />
   );
 }

@@ -12,6 +12,14 @@ vi.mock("@/lib/occurrence-preset-settings", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/occurrence-auto-number-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/occurrence-auto-number-settings")>();
+  return {
+    ...actual,
+    disableAutoNumberingForUser: vi.fn(),
+  };
+});
+
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
@@ -19,16 +27,19 @@ vi.mock("next/cache", () => ({
 const { getCurrentSession } = await import("@/lib/session");
 const { setPresetForUser, PresetOccurrenceNotInScopeError } =
   await import("@/lib/occurrence-preset-settings");
+const { disableAutoNumberingForUser } = await import("@/lib/occurrence-auto-number-settings");
 const { togglePresetSetting } = await import("@/app/settings/occurrences/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedSet = vi.mocked(setPresetForUser);
+const mockedDisableAutoNumber = vi.mocked(disableAutoNumberingForUser);
 
 const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 beforeEach(() => {
   mockedGetSession.mockReset();
   mockedSet.mockReset();
+  mockedDisableAutoNumber.mockReset();
 });
 
 afterEach(() => {
@@ -58,11 +69,22 @@ describe("togglePresetSetting (Server Action)", () => {
     expect(res).toMatchObject({ ok: false, error: "unknown" });
   });
 
-  test("ok and forwards to setPresetForUser", async () => {
+  test("ok and forwards to setPresetForUser; clears autoNumbering when isPreset=false", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     mockedSet.mockResolvedValue();
+    mockedDisableAutoNumber.mockResolvedValue();
     const res = await togglePresetSetting("occ_1", false);
     expect(res).toEqual({ ok: true });
     expect(mockedSet).toHaveBeenCalledWith("u_1", "occ_1", false);
+    expect(mockedDisableAutoNumber).toHaveBeenCalledWith("u_1", "occ_1");
+  });
+
+  test("ok with isPreset=true does not clear autoNumbering", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedSet.mockResolvedValue();
+    const res = await togglePresetSetting("occ_1", true);
+    expect(res).toEqual({ ok: true });
+    expect(mockedSet).toHaveBeenCalledWith("u_1", "occ_1", true);
+    expect(mockedDisableAutoNumber).not.toHaveBeenCalled();
   });
 });

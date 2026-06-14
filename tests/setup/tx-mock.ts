@@ -31,8 +31,11 @@ function delegate(): DelegateMock {
 export type TxMock = {
   meaning: DelegateMock;
   meaningText: DelegateMock;
+  meaningNote: DelegateMock;
   example: DelegateMock;
+  exampleNote: DelegateMock;
   relatedWord: DelegateMock;
+  relatedWordNote: DelegateMock;
   memo: DelegateMock;
   occurrence: DelegateMock;
   wordOccurrence: DelegateMock;
@@ -46,8 +49,11 @@ export function makeTxMock(): TxMock {
   return {
     meaning: delegate(),
     meaningText: delegate(),
+    meaningNote: delegate(),
     example: delegate(),
+    exampleNote: delegate(),
     relatedWord: delegate(),
+    relatedWordNote: delegate(),
     memo: delegate(),
     occurrence: delegate(),
     wordOccurrence: delegate(),

@@ -16,6 +16,7 @@ import { PartOfSpeechPicker } from "./part-of-speech-picker";
 import { ArrayAddButton } from "./shared/array-add-button";
 import { ArrayRemoveButton } from "./shared/array-remove-button";
 import { FieldCard } from "./shared/field-card";
+import { NoteList } from "./shared/note-list";
 import { useRowOwnership } from "./shared/use-row-ownership";
 
 export function MeaningsFields() {
@@ -126,24 +127,7 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
 
       <MeaningTextList meaningIndex={index} parentSystemOwned={isSystemOwned} />
 
-      <FormField
-        control={form.control}
-        name={`meanings.${index}.note`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>補足説明</FormLabel>
-            <FormControl>
-              <Textarea
-                rows={2}
-                placeholder="文語、フォーマルな場面で使う 等"
-                disabled={isSystemOwned}
-                {...f}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <NoteList prefix={`meanings.${index}`} parentSystemOwned={isSystemOwned} />
     </FieldCard>
   );
 }

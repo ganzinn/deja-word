@@ -16,17 +16,31 @@ export async function getWordDetailForUser(userId: string, wordId: string) {
             where: { ownerId: { in: allowed } },
             orderBy: { sortOrder: "asc" },
           },
+          notes: {
+            where: { ownerId: { in: allowed } },
+            orderBy: { sortOrder: "asc" },
+          },
         },
       },
       examples: {
         where: { ownerId: { in: allowed } },
         orderBy: { sortOrder: "asc" },
+        include: {
+          notes: {
+            where: { ownerId: { in: allowed } },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
       },
       relatedWords: {
         where: { ownerId: { in: allowed } },
         orderBy: { sortOrder: "asc" },
         include: {
           linkedWord: { select: { id: true, headword: true } },
+          notes: {
+            where: { ownerId: { in: allowed } },
+            orderBy: { sortOrder: "asc" },
+          },
         },
       },
       memos: {

@@ -20,7 +20,7 @@ function form(headword: string, overrides: Partial<WordFormValues> = {}): WordFo
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "意味" }],
-        note: "",
+        notes: [],
       },
     ],
     examples: [],
@@ -37,7 +37,7 @@ describe("deleteWordForUser", () => {
     const word = await createWordForUser(
       user.id,
       form("toDelete", {
-        examples: [{ kind: "PHRASE", text: "a thing", meaning: "", note: "" }],
+        examples: [{ kind: "PHRASE", text: "a thing", meaning: "", notes: [] }],
         memos: [{ text: "memo" }],
       }),
     );
@@ -82,7 +82,7 @@ describe("countIncomingLinksForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: target.id,
           },
         ],
@@ -118,7 +118,7 @@ describe("countIncomingLinksForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: target.id,
           },
         ],

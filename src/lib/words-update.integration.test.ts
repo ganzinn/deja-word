@@ -18,7 +18,7 @@ function minimalForm(headword: string): WordFormValues {
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "意味" }],
-        note: "",
+        notes: [],
       },
     ],
     examples: [],
@@ -82,7 +82,7 @@ describe("updateWordForUser", () => {
       partOfSpeech: "",
       pronunciation: "",
       texts: [{ text: "ユーザー独自の意味" }],
-      note: "",
+      notes: [],
     });
     await updateWordForUser(user.id, sysWord.id, form);
 
@@ -95,6 +95,45 @@ describe("updateWordForUser", () => {
     expect(meanings[0].ownerId).toBe(SYSTEM_USER_ID);
     expect(meanings[1].ownerId).toBe(user.id);
     expect(meanings[1].texts[0].text).toBe("ユーザー独自の意味");
+  });
+
+  test("regular user can append their own note to a system meaning while preserving the system note", async () => {
+    const sysForm = minimalForm("with-system-note");
+    sysForm.meanings[0].notes = [{ text: "共通の補足" }];
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, sysForm);
+    const user = await createTestUser();
+
+    const detail = await getWordDetailForUser(user.id, sysWord.id);
+    const form = wordDetailToFormValues(detail!);
+    // the system note round-trips with its ownerId; the user appends their own.
+    expect(form.meanings[0].notes).toHaveLength(1);
+    expect(form.meanings[0].notes[0].ownerId).toBe(SYSTEM_USER_ID);
+    form.meanings[0].notes.push({ text: "自分の補足" });
+    await updateWordForUser(user.id, sysWord.id, form);
+
+    const meaning = await prisma.meaning.findFirstOrThrow({
+      where: { wordId: sysWord.id },
+      include: { notes: { orderBy: { sortOrder: "asc" } } },
+    });
+    expect(meaning.notes.map((n) => ({ text: n.text, ownerId: n.ownerId }))).toEqual([
+      { text: "共通の補足", ownerId: SYSTEM_USER_ID },
+      { text: "自分の補足", ownerId: user.id },
+    ]);
+  });
+
+  test("forbidden: regular user cannot drop a system-owned note during pass-through", async () => {
+    const sysForm = minimalForm("with-deletable-note");
+    sysForm.meanings[0].notes = [{ text: "消せない共通補足" }];
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, sysForm);
+    const user = await createTestUser();
+
+    const detail = await getWordDetailForUser(user.id, sysWord.id);
+    const form = wordDetailToFormValues(detail!);
+    // attempt to drop the system note
+    form.meanings[0].notes = [];
+    await expect(updateWordForUser(user.id, sysWord.id, form)).rejects.toBeInstanceOf(
+      ForbiddenUpdateError,
+    );
   });
 
   test("duplicate headword on rename throws DuplicateHeadwordError", async () => {

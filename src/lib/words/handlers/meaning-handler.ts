@@ -2,9 +2,23 @@ import "server-only";
 
 import { isPassThroughSystemRow, isSystemOwned } from "@/lib/words/policy/row-policy";
 
+import { upsertChildNotes, type ChildNoteOps } from "./note-children";
 import { nullable, type EditorContext, type Tx } from "./shared";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
+
+function meaningNoteOps(tx: Tx, meaningId: string, isPassThrough: boolean): ChildNoteOps {
+  return {
+    isPassThrough,
+    updateSortOrder: (id, sortOrder) =>
+      tx.meaningNote.update({ where: { id }, data: { sortOrder }, select: { id: true } }),
+    create: (ownerId, text, sortOrder) =>
+      tx.meaningNote.create({
+        data: { meaningId, ownerId, text, sortOrder },
+        select: { id: true },
+      }),
+  };
+}
 
 export async function upsertMeanings(
   tx: Tx,
@@ -39,6 +53,7 @@ export async function upsertMeanings(
           });
         }
       }
+      await upsertChildNotes(ctx, m.notes, meaningNoteOps(tx, m.id, true));
       continue;
     }
 
@@ -48,7 +63,6 @@ export async function upsertMeanings(
         data: {
           partOfSpeech: nullable(m.partOfSpeech),
           pronunciation: nullable(m.pronunciation),
-          note: nullable(m.note),
           sortOrder: i,
         },
         select: { id: true },
@@ -64,18 +78,18 @@ export async function upsertMeanings(
           })),
         });
       }
+      await upsertChildNotes(ctx, m.notes, meaningNoteOps(tx, m.id, false));
       continue;
     }
 
     const texts = m.texts.map((t) => t.text.trim()).filter((text) => text.length > 0);
     if (texts.length === 0) continue;
-    await tx.meaning.create({
+    const created = await tx.meaning.create({
       data: {
         wordId: opts.wordId,
         ownerId: ctx.userId,
         partOfSpeech: nullable(m.partOfSpeech),
         pronunciation: nullable(m.pronunciation),
-        note: nullable(m.note),
         sortOrder: i,
         texts: {
           createMany: {
@@ -85,5 +99,6 @@ export async function upsertMeanings(
       },
       select: { id: true },
     });
+    await upsertChildNotes(ctx, m.notes, meaningNoteOps(tx, created.id, false));
   }
 }

@@ -31,7 +31,7 @@ function validInput(): WordFormValues {
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "あちこちにある" }],
-        note: "",
+        notes: [],
       },
     ],
   };

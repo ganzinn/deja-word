@@ -22,7 +22,7 @@ describe("upsertRelatedWords", () => {
           partOfSpeech: "",
           pronunciation: "",
           meaning: "",
-          note: "",
+          notes: [{ id: "n1", ownerId: SYSTEM_USER_ID, text: "共通補足" }, { text: "自分の補足" }],
         },
       ],
       { wordId: "w1", allowedLinkedIds: new Set() },
@@ -34,6 +34,15 @@ describe("upsertRelatedWords", () => {
       select: { id: true },
     });
     expect(tx.relatedWord.create).not.toHaveBeenCalled();
+    expect(tx.relatedWordNote.update).toHaveBeenCalledWith({
+      where: { id: "n1" },
+      data: { sortOrder: 0 },
+      select: { id: true },
+    });
+    expect(tx.relatedWordNote.create).toHaveBeenCalledWith({
+      data: { relatedWordId: "r1", ownerId: "u1", text: "自分の補足", sortOrder: 1 },
+      select: { id: true },
+    });
   });
 
   test("own row: body is updated and an in-scope linkedWordId is kept", async () => {
@@ -50,7 +59,7 @@ describe("upsertRelatedWords", () => {
           partOfSpeech: "",
           pronunciation: "",
           meaning: "",
-          note: "",
+          notes: [{ text: "補足" }],
           linkedWordId: "lw1",
         },
       ],
@@ -63,6 +72,10 @@ describe("upsertRelatedWords", () => {
         data: expect.objectContaining({ term: "ant", sortOrder: 0, linkedWordId: "lw1" }),
       }),
     );
+    expect(tx.relatedWordNote.create).toHaveBeenCalledWith({
+      data: { relatedWordId: "r1", ownerId: "u1", text: "補足", sortOrder: 0 },
+      select: { id: true },
+    });
     expect(tx.relatedWord.create).not.toHaveBeenCalled();
   });
 
@@ -78,7 +91,7 @@ describe("upsertRelatedWords", () => {
           partOfSpeech: "",
           pronunciation: "",
           meaning: "",
-          note: "",
+          notes: [{ text: "新規補足" }],
           linkedWordId: "lw-out",
         },
       ],
@@ -95,6 +108,10 @@ describe("upsertRelatedWords", () => {
         }),
       }),
     );
+    expect(tx.relatedWordNote.create).toHaveBeenCalledWith({
+      data: { relatedWordId: "id", ownerId: "u1", text: "新規補足", sortOrder: 0 },
+      select: { id: true },
+    });
     expect(tx.relatedWord.update).not.toHaveBeenCalled();
   });
 });

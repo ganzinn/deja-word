@@ -72,7 +72,7 @@ async function main() {
         partOfSpeech: "adjective",
         pronunciation: "/juːˈbɪkwɪtəs/",
         texts: ["どこにでもある、遍在する", "至る所に存在する"],
-        note: "フォーマルな場面で使われる",
+        notes: ["フォーマルな場面で使われる"],
       },
     ],
     examples: [
@@ -98,13 +98,13 @@ type SystemWordSeed = {
     partOfSpeech?: string;
     pronunciation?: string;
     texts: string[];
-    note?: string;
+    notes?: string[];
   }[];
   examples: {
     kind: "PHRASE" | "SENTENCE" | "TARGET" | "MINIMAL";
     text: string;
     meaning?: string;
-    note?: string;
+    notes?: string[];
   }[];
   relatedWords: {
     kind?: "SYNONYM" | "ANTONYM" | "DERIVATIVE";
@@ -137,7 +137,6 @@ async function seedSystemWord(seed: SystemWordSeed): Promise<void> {
           ownerId: SYSTEM_USER_ID,
           partOfSpeech: m.partOfSpeech ?? null,
           pronunciation: m.pronunciation ?? null,
-          note: m.note ?? null,
           sortOrder: i,
           texts: {
             createMany: {
@@ -148,21 +147,40 @@ async function seedSystemWord(seed: SystemWordSeed): Promise<void> {
               })),
             },
           },
+          notes: {
+            createMany: {
+              data: (m.notes ?? []).map((t, j) => ({
+                ownerId: SYSTEM_USER_ID,
+                text: t,
+                sortOrder: j,
+              })),
+            },
+          },
         },
         select: { id: true },
       });
     }
-    if (seed.examples.length > 0) {
-      await tx.example.createMany({
-        data: seed.examples.map((e, i) => ({
+    for (let i = 0; i < seed.examples.length; i++) {
+      const e = seed.examples[i];
+      await tx.example.create({
+        data: {
           wordId: word.id,
           ownerId: SYSTEM_USER_ID,
           kind: e.kind,
           text: e.text,
           meaning: e.meaning ?? null,
-          note: e.note ?? null,
           sortOrder: i,
-        })),
+          notes: {
+            createMany: {
+              data: (e.notes ?? []).map((t, j) => ({
+                ownerId: SYSTEM_USER_ID,
+                text: t,
+                sortOrder: j,
+              })),
+            },
+          },
+        },
+        select: { id: true },
       });
     }
     if (seed.relatedWords.length > 0) {

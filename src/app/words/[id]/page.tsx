@@ -42,7 +42,7 @@ export default async function WordDetailPage({ params }: PageProps) {
         </Link>
         <h1 className="truncate text-base font-semibold">{word.headword}</h1>
         {word.ownerId === SYSTEM_USER_ID ? null : (
-          <Badge variant="secondary" className="shrink-0">
+          <Badge variant="secondary" className="ml-auto shrink-0">
             MY
           </Badge>
         )}

@@ -82,9 +82,9 @@ export function WordListToolbar({ initialQuery, sort }: Props) {
         <Input
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="ヘッドワードを検索"
+          placeholder="英単語を検索"
           className="pr-8 pl-8"
-          aria-label="ヘッドワードを検索"
+          aria-label="英単語を検索"
         />
         {query.length > 0 ? (
           <Button

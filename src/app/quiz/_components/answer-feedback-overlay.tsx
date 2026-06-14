@@ -48,9 +48,7 @@ export function AnswerFeedbackOverlay({ feedback }: { feedback: Feedback | null 
         className={cn(
           "size-40 drop-shadow-lg",
           "motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:fade-in motion-safe:duration-200",
-          isCorrect
-            ? "text-green-600 dark:text-green-400"
-            : "text-red-600 dark:text-red-400",
+          isCorrect ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
         )}
       />
     </div>

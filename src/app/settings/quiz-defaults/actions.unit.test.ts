@@ -19,9 +19,8 @@ vi.mock("next/cache", () => ({
 }));
 
 const { getCurrentSession } = await import("@/lib/session");
-const { saveQuizDefaultsForUser, DefaultOccurrenceNotInScopeError } = await import(
-  "@/lib/quiz-default-settings"
-);
+const { saveQuizDefaultsForUser, DefaultOccurrenceNotInScopeError } =
+  await import("@/lib/quiz-default-settings");
 const { revalidatePath } = await import("next/cache");
 const { saveQuizDefaults } = await import("@/app/settings/quiz-defaults/actions");
 

@@ -92,15 +92,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <div className="text-sm whitespace-pre-wrap">{children}</div>
-    </div>
-  );
-}
-
 function MeaningCard({
   meaning,
   isFirst,
@@ -117,7 +108,9 @@ function MeaningCard({
       {partOfSpeech || pronunciation || pronunciationAudioUrl ? (
         <div className="flex flex-wrap items-center gap-2">
           {partOfSpeech ? (
-            <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
+            <Badge variant="outline" className="text-muted-foreground">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
           ) : null}
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
@@ -126,22 +119,22 @@ function MeaningCard({
         </div>
       ) : null}
       {meaning.texts.length === 1 ? (
-        <p className={`text-sm whitespace-pre-wrap ${isFirst ? "text-red-600" : ""}`}>
+        <p className={`text-sm whitespace-pre-wrap ${isFirst ? "text-red-500" : ""}`}>
           {meaning.texts[0].text}
         </p>
       ) : meaning.texts.length > 1 ? (
-        <ul className="ml-4 list-disc text-sm">
+        <ul className="marker:text-muted-foreground ml-2 list-disc text-sm leading-normal marker:text-[0.5rem]">
           {meaning.texts.map((t, i) => (
             <li
               key={t.id}
-              className={`whitespace-pre-wrap ${isFirst && i === 0 ? "text-red-600" : ""}`}
+              className={`whitespace-pre-wrap ${isFirst && i === 0 ? "text-red-500" : ""}`}
             >
               {t.text}
             </li>
           ))}
         </ul>
       ) : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }
@@ -157,7 +150,7 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
       {meaning ? (
         <p className="text-muted-foreground text-sm whitespace-pre-wrap">{meaning}</p>
       ) : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }
@@ -175,7 +168,9 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
             <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
           ) : null}
           {partOfSpeech ? (
-            <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
+            <Badge variant="outline" className="text-muted-foreground">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
           ) : null}
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
@@ -185,18 +180,16 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
       {related.linkedWord ? (
         <Link
           href={`/words/${related.linkedWord.id}`}
-          className="text-primary inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          className="text-primary inline-flex items-center gap-1 text-base font-semibold underline-offset-4 hover:underline"
         >
           <LinkIcon className="size-3.5" />
           <span className="whitespace-pre-wrap">{related.term}</span>
         </Link>
       ) : (
-        <p className="text-sm whitespace-pre-wrap">{related.term}</p>
+        <p className="text-base font-semibold whitespace-pre-wrap">{related.term}</p>
       )}
-      {meaning ? (
-        <p className="text-muted-foreground text-sm whitespace-pre-wrap">{meaning}</p>
-      ) : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {meaning ? <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }

@@ -92,15 +92,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <div className="text-sm whitespace-pre-wrap">{children}</div>
-    </div>
-  );
-}
-
 function MeaningCard({
   meaning,
   isFirst,
@@ -143,7 +134,7 @@ function MeaningCard({
           ))}
         </ul>
       ) : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }
@@ -159,7 +150,7 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
       {meaning ? (
         <p className="text-muted-foreground text-sm whitespace-pre-wrap">{meaning}</p>
       ) : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }
@@ -198,7 +189,7 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
         <p className="text-base font-semibold whitespace-pre-wrap">{related.term}</p>
       )}
       {meaning ? <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p> : null}
-      {note ? <Field label="補足">{note}</Field> : null}
+      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );
 }

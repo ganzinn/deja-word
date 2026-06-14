@@ -6,12 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { exampleKindLabels, type ExampleKind } from "@/lib/mock/example-kinds";
 import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
 import { relatedWordKindLabels } from "@/lib/mock/related-word-kinds";
+import { SYSTEM_USER_ID } from "@/lib/system-user";
 import type { WordDetail } from "@/lib/words-detail";
 
 export function WordDetailView({ word }: { word: WordDetail }) {
   return (
     <div className="flex flex-col gap-6 px-4 pt-6">
-      <h2 className="text-2xl font-bold tracking-tight break-words">{word.headword}</h2>
+      <div className="flex items-start gap-2">
+        <h2 className="text-2xl font-bold tracking-tight break-words">{word.headword}</h2>
+        {word.ownerId === SYSTEM_USER_ID ? null : (
+          <Badge variant="secondary" className="mt-1 ml-auto shrink-0">
+            MY
+          </Badge>
+        )}
+      </div>
 
       {word.meanings.length > 0 ? (
         <Section title="意味">

@@ -111,11 +111,11 @@ function WordRow({ item }: { item: WordListItem }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold break-words">{item.headword}</span>
-        {item.isSystem ? (
+        {item.isSystem ? null : (
           <Badge variant="secondary" className="ml-auto">
-            共通
+            MY
           </Badge>
-        ) : null}
+        )}
       </div>
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (
         <div className="flex items-start gap-2">

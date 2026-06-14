@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import {
   DefaultOccurrenceNotInScopeError,
-  clearQuizDefaultsForUser,
   saveQuizDefaultsForUser,
 } from "@/lib/quiz-default-settings";
 import { saveQuizDefaultsInputSchema, type SaveQuizDefaultsInput } from "@/lib/schema/quiz";
@@ -47,19 +46,5 @@ export async function saveQuizDefaults(
     }
     console.error("[settings/quiz-defaults] saveQuizDefaults failed", e);
     return { ok: false, error: "unknown", message: "デフォルト設定の保存に失敗しました。" };
-  }
-}
-
-export async function clearQuizDefaults(): Promise<QuizDefaultsActionResult> {
-  const session = await getCurrentSession();
-  if (!session) return UNAUTHORIZED;
-
-  try {
-    await clearQuizDefaultsForUser(session.user.id);
-    revalidatePath("/settings/quiz-defaults");
-    return { ok: true };
-  } catch (e) {
-    console.error("[settings/quiz-defaults] clearQuizDefaults failed", e);
-    return { ok: false, error: "unknown", message: "デフォルト設定のクリアに失敗しました。" };
   }
 }

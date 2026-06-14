@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   DefaultOccurrenceNotInScopeError,
-  clearQuizDefaultsForUser,
   getQuizDefaultsForUser,
   saveQuizDefaultsForUser,
 } from "@/lib/quiz-default-settings";
@@ -254,28 +253,5 @@ describe("getQuizDefaultsForUser", () => {
       autoplayPronunciation: false,
       enableAnswerSound: false,
     });
-  });
-});
-
-describe("clearQuizDefaultsForUser", () => {
-  test("deletes both tables and is safe when nothing is saved (idempotent)", async () => {
-    const user = await createTestUser();
-    const occ = await createOccurrenceRow(user.id, "自前 location", 0);
-    await saveQuizDefaultsForUser(user.id, {
-      occurrenceId: occ.id,
-      rangeFrom: null,
-      rangeTo: null,
-      format: "CHOICE",
-      timeoutByFormat: timeoutMap({ CHOICE: 10, SELF_JUDGE: 15 }),
-      showCountdown: false,
-      autoplayPronunciation: false,
-      enableAnswerSound: false,
-    });
-
-    await clearQuizDefaultsForUser(user.id);
-    await clearQuizDefaultsForUser(user.id);
-
-    expect(await getQuizDefaultsForUser(user.id)).toBeNull();
-    expect(await prisma.quizDefaultTimeout.count({ where: { userId: user.id } })).toBe(0);
   });
 });

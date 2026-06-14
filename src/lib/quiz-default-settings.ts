@@ -117,11 +117,3 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
     }),
   ]);
 }
-
-/** デフォルトを削除する（両テーブルとも未保存でも安全＝冪等）。 */
-export async function clearQuizDefaultsForUser(userId: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.quizDefaultSetting.deleteMany({ where: { userId } }),
-    prisma.quizDefaultTimeout.deleteMany({ where: { userId } }),
-  ]);
-}

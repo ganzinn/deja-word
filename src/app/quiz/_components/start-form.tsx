@@ -23,7 +23,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -156,6 +158,23 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
   }
 
   const selectedFormatInfo = format !== null ? formatInfoOf(format) : null;
+  // ドロップダウンの value→label マップ。SelectValue がトリガー表示にのみ使う。
+  // 閉じた状態でもグループが分かるよう、グループ名（薄色）＋形式名で表示する。
+  const formatItems = FORMAT_GROUPS.flatMap((g) =>
+    g.options.map((o) => ({
+      value: o.value,
+      label: (
+        <span className="flex items-center gap-1.5">
+          <span className="text-muted-foreground text-xs">{g.category}</span>
+          <span>{o.label}</span>
+        </span>
+      ),
+    })),
+  );
+  const selectedOption =
+    format !== null
+      ? FORMAT_GROUPS.flatMap((g) => g.options).find((o) => o.value === format)
+      : null;
   // ON かつ未入力・数値でない場合は開始をゲートする（範囲外は min/max とサーバー zod が弾く）
   const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
   const canStart =
@@ -223,47 +242,63 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
         </p>
       </section>
 
+      <section className="flex flex-col gap-1" aria-live="polite">
+        {previewState.status === "idle" ? (
+          <p className="text-muted-foreground text-sm">掲載箇所を選択してください</p>
+        ) : previewState.status === "loading" ? (
+          <p className="text-muted-foreground text-sm">対象件数を確認中…</p>
+        ) : previewState.status === "error" ? (
+          <p className="text-destructive text-sm">{previewState.message}</p>
+        ) : (
+          <>
+            <p className="text-sm">
+              対象{" "}
+              <span className="text-base font-semibold">{previewState.preview.targetCount}</span>語
+            </p>
+            <ExcludedNote excluded={previewState.preview.excluded} />
+          </>
+        )}
+      </section>
+
       <section className="flex flex-col gap-2">
-        <Label>出題形式</Label>
-        <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
-          {FORMAT_GROUPS.map((group) => (
-            <div key={group.category} className="flex flex-col gap-2">
-              <p className="text-muted-foreground text-xs font-medium">{group.category}</p>
-              {group.options.map((option) => {
-                const info = formatInfoOf(option.value);
-                // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択自体は許す
-                const unavailable = info !== null && !info.available;
-                const selected = format === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={unavailable}
-                    onClick={() => {
-                      if (!unavailable) selectFormat(option.value);
-                    }}
-                    className={cn(
-                      "border-border bg-card/50 flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
-                      !unavailable && "hover:bg-muted/60",
-                      selected && "border-primary bg-primary/10",
-                      unavailable && !selected && "opacity-50",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{option.label}</span>
-                    <span className="text-muted-foreground text-xs">{option.description}</span>
-                    {unavailable ? (
-                      <span className="text-destructive text-xs">
-                        選択できません: {info.reason}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+        <Label htmlFor="quiz-format">出題形式</Label>
+        <Select
+          items={formatItems}
+          value={format}
+          onValueChange={(value) => {
+            if (value !== null) selectFormat(value);
+          }}
+        >
+          <SelectTrigger id="quiz-format" className="w-full">
+            <SelectValue placeholder="出題形式を選択" />
+          </SelectTrigger>
+          <SelectContent>
+            {FORMAT_GROUPS.map((group) => (
+              <SelectGroup key={group.category}>
+                <SelectLabel>{group.category}</SelectLabel>
+                {group.options.map((option) => {
+                  const info = formatInfoOf(option.value);
+                  // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択を許す
+                  const unavailable = info !== null && !info.available;
+                  return (
+                    <SelectItem key={option.value} value={option.value} disabled={unavailable}>
+                      <span>{option.label}</span>
+                      {unavailable ? (
+                        <span className="text-destructive text-xs">（{info.reason}）</span>
+                      ) : null}
+                    </SelectItem>
+                  );
+                })}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedOption ? (
+          <p className="text-muted-foreground text-xs">{selectedOption.description}</p>
+        ) : null}
+        {selectedFormatInfo !== null && !selectedFormatInfo.available ? (
+          <p className="text-destructive text-xs">選択できません: {selectedFormatInfo.reason}</p>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-2">
@@ -304,24 +339,6 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
             </p>
           </>
         ) : null}
-      </section>
-
-      <section className="flex flex-col gap-1" aria-live="polite">
-        {previewState.status === "idle" ? (
-          <p className="text-muted-foreground text-sm">掲載箇所を選択してください</p>
-        ) : previewState.status === "loading" ? (
-          <p className="text-muted-foreground text-sm">対象件数を確認中…</p>
-        ) : previewState.status === "error" ? (
-          <p className="text-destructive text-sm">{previewState.message}</p>
-        ) : (
-          <>
-            <p className="text-sm">
-              対象{" "}
-              <span className="text-base font-semibold">{previewState.preview.targetCount}</span>語
-            </p>
-            <ExcludedNote excluded={previewState.preview.excluded} />
-          </>
-        )}
       </section>
 
       <Button size="lg" disabled={!canStart} onClick={handleStart}>

@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { ALL_QUIZ_FORMATS, FORMAT_GROUPS } from "@/lib/quiz/format-options";
 import {
   DEFAULT_TIMEOUT_SECONDS,
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
 
-import { clearQuizDefaults, saveQuizDefaults } from "../actions";
+import { saveQuizDefaults } from "../actions";
 
 /** デフォルト設定画面の Occurrence 選択肢（page.tsx が単語数つきで取得して渡す）。 */
 export type OccurrenceOption = {
@@ -59,13 +60,6 @@ function initTimeoutState(
       const seconds = timeoutByFormat?.[f] ?? null;
       return [f, { enabled: seconds !== null, text: seconds?.toString() ?? "" }];
     }),
-  ) as Record<QuizFormat, TimeoutFieldState>;
-}
-
-/** 全形式を「制限なし（未設定）」に戻したフォーム状態。 */
-function clearedTimeoutState(): Record<QuizFormat, TimeoutFieldState> {
-  return Object.fromEntries(
-    ALL_QUIZ_FORMATS.map((f) => [f, { enabled: false, text: "" }]),
   ) as Record<QuizFormat, TimeoutFieldState>;
 }
 
@@ -118,24 +112,18 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     });
   }
 
-  function handleClear() {
-    startTransition(async () => {
-      const result = await clearQuizDefaults();
-      if (result.ok) {
-        setOccurrenceId(null);
-        setRangeFromText("");
-        setRangeToText("");
-        setFormat(null);
-        setTimeoutByFormat(clearedTimeoutState());
-        setShowCountdown(false);
-        // 未設定（クリア）後は既定の有効（true）に戻す
-        setAutoplayPronunciation(true);
-        setEnableAnswerSound(true);
-        toast.success("クリアしました");
-        return;
-      }
-      toast.error(result.message);
-    });
+  function handleResetToDefault() {
+    // 推奨デフォルト値をフォームに復元するだけ（保存はしない）。
+    // ユーザーが内容を確認して「保存」を押すと永続化される。
+    setOccurrenceId(DEFAULT_QUIZ_SETTINGS.occurrenceId);
+    setRangeFromText(DEFAULT_QUIZ_SETTINGS.rangeFrom?.toString() ?? "");
+    setRangeToText(DEFAULT_QUIZ_SETTINGS.rangeTo?.toString() ?? "");
+    setFormat(DEFAULT_QUIZ_SETTINGS.format);
+    setTimeoutByFormat(initTimeoutState(DEFAULT_QUIZ_SETTINGS.timeoutByFormat));
+    setShowCountdown(DEFAULT_QUIZ_SETTINGS.showCountdown ?? false);
+    setAutoplayPronunciation(DEFAULT_QUIZ_SETTINGS.autoplayPronunciation ?? true);
+    setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
+    toast.success("デフォルト設定に戻しました（「保存」で確定します）");
   }
 
   const selectItems = occurrences.map((o) => ({
@@ -337,8 +325,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         <Button size="lg" disabled={isPending} onClick={handleSave}>
           {isPending ? "保存中…" : "保存"}
         </Button>
-        <Button variant="outline" disabled={isPending} onClick={handleClear}>
-          クリア（すべて未設定に戻す）
+        <Button variant="outline" disabled={isPending} onClick={handleResetToDefault}>
+          デフォルト設定に戻す
         </Button>
       </div>
     </div>

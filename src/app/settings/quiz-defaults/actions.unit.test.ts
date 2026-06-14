@@ -11,7 +11,6 @@ vi.mock("@/lib/quiz-default-settings", async (importOriginal) => {
   return {
     ...actual,
     saveQuizDefaultsForUser: vi.fn(),
-    clearQuizDefaultsForUser: vi.fn(),
   };
 });
 
@@ -20,15 +19,14 @@ vi.mock("next/cache", () => ({
 }));
 
 const { getCurrentSession } = await import("@/lib/session");
-const { saveQuizDefaultsForUser, clearQuizDefaultsForUser, DefaultOccurrenceNotInScopeError } =
-  await import("@/lib/quiz-default-settings");
+const { saveQuizDefaultsForUser, DefaultOccurrenceNotInScopeError } = await import(
+  "@/lib/quiz-default-settings"
+);
 const { revalidatePath } = await import("next/cache");
-const { saveQuizDefaults, clearQuizDefaults } =
-  await import("@/app/settings/quiz-defaults/actions");
+const { saveQuizDefaults } = await import("@/app/settings/quiz-defaults/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedSave = vi.mocked(saveQuizDefaultsForUser);
-const mockedClear = vi.mocked(clearQuizDefaultsForUser);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
@@ -47,7 +45,6 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
 beforeEach(() => {
   mockedGetSession.mockReset();
   mockedSave.mockReset();
-  mockedClear.mockReset();
   mockedRevalidatePath.mockReset();
 });
 
@@ -113,31 +110,5 @@ describe("saveQuizDefaults (Server Action)", () => {
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });
     expect(mockedSave).toHaveBeenCalledWith("u_1", input);
-  });
-});
-
-describe("clearQuizDefaults (Server Action)", () => {
-  test("unauthorized", async () => {
-    mockedGetSession.mockResolvedValue(null);
-    const res = await clearQuizDefaults();
-    expect(res).toMatchObject({ ok: false, error: "unauthorized" });
-    expect(mockedClear).not.toHaveBeenCalled();
-  });
-
-  test("unknown for generic errors", async () => {
-    mockedGetSession.mockResolvedValue(SESSION);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mockedClear.mockRejectedValue(new Error("boom"));
-    const res = await clearQuizDefaults();
-    expect(res).toMatchObject({ ok: false, error: "unknown" });
-  });
-
-  test("ok: forwards to clearQuizDefaultsForUser and revalidates", async () => {
-    mockedGetSession.mockResolvedValue(SESSION);
-    mockedClear.mockResolvedValue();
-    const res = await clearQuizDefaults();
-    expect(res).toEqual({ ok: true });
-    expect(mockedClear).toHaveBeenCalledWith("u_1");
-    expect(mockedRevalidatePath).toHaveBeenCalledWith("/settings/quiz-defaults");
   });
 });

@@ -126,7 +126,7 @@ function MeaningCard({
         </div>
       ) : null}
       {meaning.texts.length === 1 ? (
-        <p className={`text-sm whitespace-pre-wrap ${isFirst ? "text-red-600" : ""}`}>
+        <p className={`text-sm whitespace-pre-wrap ${isFirst ? "text-red-500" : ""}`}>
           {meaning.texts[0].text}
         </p>
       ) : meaning.texts.length > 1 ? (
@@ -134,7 +134,7 @@ function MeaningCard({
           {meaning.texts.map((t, i) => (
             <li
               key={t.id}
-              className={`whitespace-pre-wrap ${isFirst && i === 0 ? "text-red-600" : ""}`}
+              className={`whitespace-pre-wrap ${isFirst && i === 0 ? "text-red-500" : ""}`}
             >
               {t.text}
             </li>

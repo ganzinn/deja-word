@@ -2,10 +2,12 @@
 
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
-import { MeaningAudioManager } from "@/components/meaning-audio-manager";
+import { PronunciationAudioManager } from "@/components/pronunciation-audio-manager";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+import { deletePronunciationAudio, uploadPronunciationAudio } from "@/app/words/[id]/edit/actions";
 
 import { emptyMeaning, type WordFormValues } from "@/lib/schema/word-form";
 
@@ -109,9 +111,10 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
             <FormItem>
               <FormLabel>音源</FormLabel>
               {meaningId ? (
-                <MeaningAudioManager
-                  meaningId={meaningId}
-                  pronunciationAudioUrl={pronunciationAudioUrl}
+                <PronunciationAudioManager
+                  value={pronunciationAudioUrl}
+                  onUpload={(fd) => uploadPronunciationAudio(meaningId, fd)}
+                  onDelete={() => deletePronunciationAudio(meaningId)}
                 />
               ) : (
                 <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>

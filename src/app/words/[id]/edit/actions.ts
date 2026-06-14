@@ -3,9 +3,12 @@
 import {
   InvalidAudioError,
   MeaningNotFoundError,
+  RelatedWordNotFoundError,
   deletePronunciationAudioForUser,
+  deleteRelatedWordAudioForUser,
   uploadPronunciationAudioForUser,
-} from "@/lib/meaning-audio";
+  uploadRelatedWordAudioForUser,
+} from "@/lib/pronunciation-audio";
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { ForbiddenUpdateError, updateWordForUser } from "@/lib/words-update";
@@ -55,12 +58,12 @@ function mapAudioError(e: unknown): { error: AudioActionError; message: string }
     return { error: "invalid", message: "mp3（音声）ファイルを 4MB 以下で選択してください。" };
   }
   if (e instanceof ForbiddenUpdateError) {
-    return { error: "forbidden", message: "この意味の音源を操作する権限がありません。" };
+    return { error: "forbidden", message: "音源を操作する権限がありません。" };
   }
-  if (e instanceof MeaningNotFoundError) {
-    return { error: "not_found", message: "対象の意味が見つかりません。" };
+  if (e instanceof MeaningNotFoundError || e instanceof RelatedWordNotFoundError) {
+    return { error: "not_found", message: "対象が見つかりません。" };
   }
-  console.error("[meaning-audio] action failed", e);
+  console.error("[pronunciation-audio] action failed", e);
   return {
     error: "unknown",
     message: "処理に失敗しました。しばらくしてから再度お試しください。",
@@ -121,4 +124,15 @@ export async function uploadPronunciationAudio(
 
 export async function deletePronunciationAudio(meaningId: string): Promise<DeleteAudioResult> {
   return runDelete(meaningId, deletePronunciationAudioForUser);
+}
+
+export async function uploadRelatedWordAudio(
+  relatedWordId: string,
+  fd: FormData,
+): Promise<UploadAudioResult> {
+  return runUpload(relatedWordId, fd, uploadRelatedWordAudioForUser);
+}
+
+export async function deleteRelatedWordAudio(relatedWordId: string): Promise<DeleteAudioResult> {
+  return runDelete(relatedWordId, deleteRelatedWordAudioForUser);
 }

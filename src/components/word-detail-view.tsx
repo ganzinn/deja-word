@@ -158,11 +158,12 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
 function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][number] }) {
   const partOfSpeech = nonEmpty(related.partOfSpeech);
   const pronunciation = nonEmpty(related.pronunciation);
+  const pronunciationAudioUrl = nonEmpty(related.pronunciationAudioUrl);
   const meaning = nonEmpty(related.meaning);
   const note = nonEmpty(related.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {related.kind || partOfSpeech || pronunciation ? (
+      {related.kind || partOfSpeech || pronunciation || pronunciationAudioUrl ? (
         <div className="flex flex-wrap items-center gap-2">
           {related.kind ? (
             <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
@@ -175,6 +176,7 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
           ) : null}
+          <AudioPlayButton src={pronunciationAudioUrl} label="発音" />
         </div>
       ) : null}
       {related.linkedWord ? (

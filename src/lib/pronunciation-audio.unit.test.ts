@@ -8,6 +8,10 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    relatedWord: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }));
 
@@ -18,12 +22,17 @@ const {
   ForbiddenUpdateError,
   InvalidAudioError,
   MeaningNotFoundError,
+  RelatedWordNotFoundError,
   deletePronunciationAudioForUser,
+  deleteRelatedWordAudioForUser,
   uploadPronunciationAudioForUser,
-} = await import("@/lib/meaning-audio");
+  uploadRelatedWordAudioForUser,
+} = await import("@/lib/pronunciation-audio");
 
 const findUnique = vi.mocked(prisma.meaning.findUnique);
 const update = vi.mocked(prisma.meaning.update);
+const relatedFindUnique = vi.mocked(prisma.relatedWord.findUnique);
+const relatedUpdate = vi.mocked(prisma.relatedWord.update);
 
 /** put → update → del の呼び出し順を記録するためのイベントログ。 */
 let events: string[];
@@ -66,7 +75,25 @@ beforeEach(() => {
     events.push("update");
     return { id: "m1" };
   }) as never);
+  relatedUpdate.mockImplementation((async () => {
+    events.push("update");
+    return { id: "r1" };
+  }) as never);
 });
+
+function relatedRow(
+  over: Partial<{
+    ownerId: string;
+    pronunciationAudioUrl: string | null;
+  }> = {},
+) {
+  return {
+    id: "r1",
+    ownerId: "u1",
+    pronunciationAudioUrl: null,
+    ...over,
+  };
+}
 
 describe("uploadPronunciationAudioForUser — 認可", () => {
   test("owner 本人は許可され put→update の順で書き込み newUrl を返す", async () => {
@@ -196,5 +223,58 @@ describe("deletePronunciationAudioForUser", () => {
       ForbiddenUpdateError,
     );
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("関連語の音源 — entity ディスクリプタの差し込み", () => {
+  test("upload は related-word の Blob パスへ書き、URL を relatedWord.update に保存する", async () => {
+    relatedFindUnique.mockResolvedValue(relatedRow() as never);
+    const blob = makeBlob();
+
+    const result = await uploadRelatedWordAudioForUser("u1", "r1", mp3(), blob);
+
+    expect(result.url).toContain("audio/related-word/r1/pronunciation.mp3");
+    expect(relatedUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "r1" },
+        data: { pronunciationAudioUrl: result.url },
+      }),
+    );
+    expect(events).toEqual(["put:audio/related-word/r1/pronunciation.mp3", "update"]);
+  });
+
+  test("他人の関連語は ForbiddenUpdateError（書き込みなし）", async () => {
+    relatedFindUnique.mockResolvedValue(relatedRow({ ownerId: "owner" }) as never);
+    const blob = makeBlob();
+
+    await expect(uploadRelatedWordAudioForUser("u1", "r1", mp3(), blob)).rejects.toBeInstanceOf(
+      ForbiddenUpdateError,
+    );
+    expect(blob.put).not.toHaveBeenCalled();
+    expect(relatedUpdate).not.toHaveBeenCalled();
+  });
+
+  test("関連語が存在しなければ RelatedWordNotFoundError", async () => {
+    relatedFindUnique.mockResolvedValue(null as never);
+    const blob = makeBlob();
+
+    await expect(uploadRelatedWordAudioForUser("u1", "r1", mp3(), blob)).rejects.toBeInstanceOf(
+      RelatedWordNotFoundError,
+    );
+  });
+
+  test("delete は owner 本人でカラムを null 化し旧 Blob を del", async () => {
+    relatedFindUnique.mockResolvedValue(
+      relatedRow({ pronunciationAudioUrl: "https://blob.example/cur" }) as never,
+    );
+    const blob = makeBlob();
+
+    await deleteRelatedWordAudioForUser("u1", "r1", blob);
+
+    expect(relatedUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { pronunciationAudioUrl: null } }),
+    );
+    expect(blob.del).toHaveBeenCalledWith("https://blob.example/cur");
+    expect(events).toEqual(["update", "del"]);
   });
 });

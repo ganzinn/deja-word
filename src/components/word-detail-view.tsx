@@ -163,15 +163,10 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
   const note = nonEmpty(related.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {related.kind || partOfSpeech || pronunciation || pronunciationAudioUrl ? (
+      {related.kind || pronunciation || pronunciationAudioUrl ? (
         <div className="flex flex-wrap items-center gap-2">
           {related.kind ? (
             <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
-          ) : null}
-          {partOfSpeech ? (
-            <Badge variant="outline" className="text-muted-foreground">
-              {commonPartOfSpeechFullLabel(partOfSpeech)}
-            </Badge>
           ) : null}
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
@@ -190,7 +185,18 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
       ) : (
         <p className="text-base font-semibold whitespace-pre-wrap">{related.term}</p>
       )}
-      {meaning ? <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p> : null}
+      {partOfSpeech || meaning ? (
+        <div className="flex items-start gap-2">
+          {partOfSpeech ? (
+            <Badge variant="outline" className="text-muted-foreground shrink-0">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
+          ) : null}
+          {meaning ? (
+            <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p>
+          ) : null}
+        </div>
+      ) : null}
       {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
     </div>
   );

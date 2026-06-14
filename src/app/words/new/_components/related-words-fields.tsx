@@ -75,24 +75,6 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name={`relatedWords.${index}.partOfSpeech`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>品詞</FormLabel>
-            <FormControl>
-              <PartOfSpeechPicker
-                value={f.value ?? ""}
-                onChange={f.onChange}
-                disabled={isSystemOwned}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <CollapsibleField label="発音" defaultOpen={!!pronunciation || !!pronunciationAudioUrl}>
         <div className="border-border/60 flex flex-col gap-3 rounded-md border border-dashed p-3">
           <span className="text-muted-foreground text-xs font-medium">発音</span>
@@ -176,6 +158,24 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
             </FormItem>
           );
         }}
+      />
+
+      <FormField
+        control={form.control}
+        name={`relatedWords.${index}.partOfSpeech`}
+        render={({ field: f }) => (
+          <FormItem>
+            <FormLabel>品詞</FormLabel>
+            <FormControl>
+              <PartOfSpeechPicker
+                value={f.value ?? ""}
+                onChange={f.onChange}
+                disabled={isSystemOwned}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
       />
 
       <FormField

@@ -223,6 +223,24 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
         </p>
       </section>
 
+      <section className="flex flex-col gap-1" aria-live="polite">
+        {previewState.status === "idle" ? (
+          <p className="text-muted-foreground text-sm">掲載箇所を選択してください</p>
+        ) : previewState.status === "loading" ? (
+          <p className="text-muted-foreground text-sm">対象件数を確認中…</p>
+        ) : previewState.status === "error" ? (
+          <p className="text-destructive text-sm">{previewState.message}</p>
+        ) : (
+          <>
+            <p className="text-sm">
+              対象{" "}
+              <span className="text-base font-semibold">{previewState.preview.targetCount}</span>語
+            </p>
+            <ExcludedNote excluded={previewState.preview.excluded} />
+          </>
+        )}
+      </section>
+
       <section className="flex flex-col gap-2">
         <Label>出題形式</Label>
         <div role="radiogroup" aria-label="出題形式" className="flex flex-col gap-2">
@@ -304,24 +322,6 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
             </p>
           </>
         ) : null}
-      </section>
-
-      <section className="flex flex-col gap-1" aria-live="polite">
-        {previewState.status === "idle" ? (
-          <p className="text-muted-foreground text-sm">掲載箇所を選択してください</p>
-        ) : previewState.status === "loading" ? (
-          <p className="text-muted-foreground text-sm">対象件数を確認中…</p>
-        ) : previewState.status === "error" ? (
-          <p className="text-destructive text-sm">{previewState.message}</p>
-        ) : (
-          <>
-            <p className="text-sm">
-              対象{" "}
-              <span className="text-base font-semibold">{previewState.preview.targetCount}</span>語
-            </p>
-            <ExcludedNote excluded={previewState.preview.excluded} />
-          </>
-        )}
       </section>
 
       <Button size="lg" disabled={!canStart} onClick={handleStart}>

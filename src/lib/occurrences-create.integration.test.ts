@@ -15,6 +15,7 @@ describe("createOccurrenceForUser", () => {
     const { id } = await createOccurrenceForUser(user.id, {
       location: "新規",
       isPreset: true,
+      autoNumbering: false,
     });
     const occ = await prisma.occurrence.findUnique({
       where: { id },
@@ -27,11 +28,40 @@ describe("createOccurrenceForUser", () => {
     expect(setting).not.toBeNull();
   });
 
+  test("persists autoNumbering flag when isPreset=true", async () => {
+    const user = await createTestUser();
+    const { id } = await createOccurrenceForUser(user.id, {
+      location: "自動採番",
+      isPreset: true,
+      autoNumbering: true,
+    });
+    const occ = await prisma.occurrence.findUnique({
+      where: { id },
+      select: { autoNumbering: true },
+    });
+    expect(occ?.autoNumbering).toBe(true);
+  });
+
+  test("forces autoNumbering false when isPreset=false (preset is prerequisite)", async () => {
+    const user = await createTestUser();
+    const { id } = await createOccurrenceForUser(user.id, {
+      location: "プリセットなし自動採番",
+      isPreset: false,
+      autoNumbering: true,
+    });
+    const occ = await prisma.occurrence.findUnique({
+      where: { id },
+      select: { autoNumbering: true },
+    });
+    expect(occ?.autoNumbering).toBe(false);
+  });
+
   test("does not create preset record when isPreset=false", async () => {
     const user = await createTestUser();
     const { id } = await createOccurrenceForUser(user.id, {
       location: "ON しない",
       isPreset: false,
+      autoNumbering: false,
     });
     const setting = await prisma.occurrencePresetSetting.findUnique({
       where: { userId_occurrenceId: { userId: user.id, occurrenceId: id } },
@@ -44,6 +74,7 @@ describe("createOccurrenceForUser", () => {
     const { id } = await createOccurrenceForUser(user.id, {
       location: "  trim me  ",
       isPreset: false,
+      autoNumbering: false,
     });
     const occ = await prisma.occurrence.findUnique({ where: { id }, select: { location: true } });
     expect(occ?.location).toBe("trim me");
@@ -57,6 +88,7 @@ describe("createOccurrenceForUser", () => {
     const { id } = await createOccurrenceForUser(SYSTEM_USER_ID, {
       location: "system 新規",
       isPreset: true,
+      autoNumbering: false,
     });
     const afterOther = await prisma.occurrencePresetSetting.count({
       where: { userId: otherUser.id },
@@ -74,25 +106,37 @@ describe("createOccurrenceForUser", () => {
 
   test("rejects duplicate location for the same owner", async () => {
     const user = await createTestUser();
-    await createOccurrenceForUser(user.id, { location: "dup", isPreset: false });
+    await createOccurrenceForUser(user.id, {
+      location: "dup",
+      isPreset: false,
+      autoNumbering: false,
+    });
     await expect(
-      createOccurrenceForUser(user.id, { location: "dup", isPreset: false }),
+      createOccurrenceForUser(user.id, { location: "dup", isPreset: false, autoNumbering: false }),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
   });
 
   test("allows the same location across different owners", async () => {
     const a = await createTestUser();
     const b = await createTestUser();
-    await createOccurrenceForUser(a.id, { location: "shared", isPreset: false });
+    await createOccurrenceForUser(a.id, {
+      location: "shared",
+      isPreset: false,
+      autoNumbering: false,
+    });
     await expect(
-      createOccurrenceForUser(b.id, { location: "shared", isPreset: false }),
+      createOccurrenceForUser(b.id, { location: "shared", isPreset: false, autoNumbering: false }),
     ).resolves.toMatchObject({ id: expect.any(String) });
   });
 
   test("rejects duplicate when system user already owns the location", async () => {
     const user = await createTestUser();
     await expect(
-      createOccurrenceForUser(user.id, { location: "ターゲット1900", isPreset: false }),
+      createOccurrenceForUser(user.id, {
+        location: "ターゲット1900",
+        isPreset: false,
+        autoNumbering: false,
+      }),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
     const own = await prisma.occurrence.findFirst({
       where: { ownerId: user.id, location: "ターゲット1900" },

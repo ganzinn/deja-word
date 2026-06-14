@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -42,6 +42,8 @@ export function OccurrenceForm(props: OccurrenceFormProps) {
     defaultValues: props.defaultValues,
     mode: "onSubmit",
   });
+
+  const isPreset = useWatch({ control: form.control, name: "isPreset" });
 
   const title = props.mode === "edit" ? "掲載箇所を編集" : "掲載箇所を追加";
   const submitLabel = props.mode === "edit" ? "更新する" : "登録する";
@@ -115,13 +117,42 @@ export function OccurrenceForm(props: OccurrenceFormProps) {
                 <FormControl>
                   <Checkbox
                     checked={field.value}
-                    onCheckedChange={(v) => field.onChange(v === true)}
+                    onCheckedChange={(v) => {
+                      const checked = v === true;
+                      field.onChange(checked);
+                      // 自動採番はプリセットのサブ設定。プリセットを外したら自動採番も外す。
+                      if (!checked) form.setValue("autoNumbering", false);
+                    }}
                   />
                 </FormControl>
                 <div className="flex flex-col gap-1">
                   <FormLabel className="cursor-pointer">プリセットとして表示する</FormLabel>
                   <FormDescription>
                     単語登録画面のトグル候補としてこの掲載箇所を表示します。
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="autoNumbering"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    disabled={!isPreset}
+                    onCheckedChange={(v) => field.onChange(v === true)}
+                  />
+                </FormControl>
+                <div className={cn("flex flex-col gap-1", !isPreset && "opacity-40")}>
+                  <FormLabel className={cn(isPreset && "cursor-pointer")}>
+                    掲載番号を自動採番する
+                  </FormLabel>
+                  <FormDescription>
+                    ON にすると、単語の新規登録時にこの掲載箇所が展開され、掲載番号に最新の番号（最大値＋1）が自動入力されます。プリセット ON のときのみ設定できます。
                   </FormDescription>
                 </div>
               </FormItem>

@@ -32,6 +32,7 @@ type WordFormProps = {
   mode: "create" | "edit";
   defaultValues: WordFormValues;
   occurrencePresets: OccurrencePreset[];
+  autoNumberByOccurrenceId?: Record<string, number>;
   wordId?: string;
   wordOwnerId?: string;
   isCurrentUserSystem?: boolean;
@@ -42,6 +43,7 @@ export function WordForm({
   mode,
   defaultValues,
   occurrencePresets,
+  autoNumberByOccurrenceId,
   wordId,
   wordOwnerId,
   isCurrentUserSystem = false,
@@ -125,7 +127,10 @@ export function WordForm({
                   <MemosFields />
                 </FormSection>
                 <FormSection value="occurrences" title="掲載箇所" count={occurrences?.length ?? 0}>
-                  <OccurrencesFields presets={occurrencePresets} />
+                  <OccurrencesFields
+                    presets={occurrencePresets}
+                    autoNumberByOccurrenceId={autoNumberByOccurrenceId}
+                  />
                 </FormSection>
               </Accordion>
 

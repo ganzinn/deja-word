@@ -8,22 +8,44 @@ import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createOccurrenceRow, createTestUser } from "../../tests/setup/fixtures";
 
 describe("updateOccurrenceForUser", () => {
-  test("updates location and isPreset for own occurrence", async () => {
+  test("updates location, isPreset and autoNumbering for own occurrence", async () => {
     const user = await createTestUser();
     const occ = await createOccurrenceRow(user.id, "before", 0, [user.id]);
     await updateOccurrenceForUser(user.id, occ.id, {
       location: "after",
-      isPreset: false,
+      isPreset: true,
+      autoNumbering: true,
     });
     const row = await prisma.occurrence.findUniqueOrThrow({
       where: { id: occ.id },
-      select: { location: true },
+      select: { location: true, autoNumbering: true },
     });
     expect(row.location).toBe("after");
+    expect(row.autoNumbering).toBe(true);
     const setting = await prisma.occurrencePresetSetting.findUnique({
       where: { userId_occurrenceId: { userId: user.id, occurrenceId: occ.id } },
     });
-    expect(setting).toBeNull();
+    expect(setting).not.toBeNull();
+  });
+
+  test("dropping isPreset also clears autoNumbering (preset is prerequisite)", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "linked", 0, [user.id]);
+    await updateOccurrenceForUser(user.id, occ.id, {
+      location: "linked",
+      isPreset: true,
+      autoNumbering: true,
+    });
+    await updateOccurrenceForUser(user.id, occ.id, {
+      location: "linked",
+      isPreset: false,
+      autoNumbering: true,
+    });
+    const row = await prisma.occurrence.findUniqueOrThrow({
+      where: { id: occ.id },
+      select: { autoNumbering: true },
+    });
+    expect(row.autoNumbering).toBe(false);
   });
 
   test("rejects updating a system-owned occurrence from a regular user (not_found)", async () => {
@@ -36,6 +58,7 @@ describe("updateOccurrenceForUser", () => {
       updateOccurrenceForUser(user.id, sysOcc.id, {
         location: "hack",
         isPreset: true,
+        autoNumbering: false,
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
   });
@@ -45,6 +68,7 @@ describe("updateOccurrenceForUser", () => {
     await updateOccurrenceForUser(SYSTEM_USER_ID, occ.id, {
       location: "sys-renamed",
       isPreset: false,
+      autoNumbering: false,
     });
     const row = await prisma.occurrence.findUniqueOrThrow({
       where: { id: occ.id },
@@ -61,6 +85,7 @@ describe("updateOccurrenceForUser", () => {
       updateOccurrenceForUser(user.id, second.id, {
         location: "first",
         isPreset: false,
+        autoNumbering: false,
       }),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
   });
@@ -72,6 +97,7 @@ describe("updateOccurrenceForUser", () => {
       updateOccurrenceForUser(user.id, own.id, {
         location: "ターゲット1900",
         isPreset: false,
+        autoNumbering: false,
       }),
     ).rejects.toBeInstanceOf(DuplicateOccurrenceLocationError);
     const after = await prisma.occurrence.findUniqueOrThrow({

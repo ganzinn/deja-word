@@ -158,6 +158,16 @@ describe("createPresetOccurrence", () => {
     });
     expect(preset.occurrenceOwnerId).toBe("user_xyz");
   });
+
+  test("defaults occurrenceNumber to null when not provided", () => {
+    const preset = createPresetOccurrence({ id: "occ_3", ownerId: "u", location: "L" });
+    expect(preset.occurrenceNumber).toBeNull();
+  });
+
+  test("uses the given occurrenceNumber (auto-numbering)", () => {
+    const preset = createPresetOccurrence({ id: "occ_4", ownerId: "u", location: "L" }, 5);
+    expect(preset.occurrenceNumber).toBe(5);
+  });
 });
 
 describe("defaultWordFormValues", () => {

@@ -8,6 +8,7 @@ export type OccurrenceListItem = {
   ownerId: string;
   location: string;
   sortOrder: number;
+  autoNumbering: boolean;
   isSystem: boolean;
   isPreset: boolean;
   wordLinkCount: number;
@@ -22,6 +23,7 @@ export async function listOccurrencesForUser(userId: string): Promise<Occurrence
       ownerId: true,
       location: true,
       sortOrder: true,
+      autoNumbering: true,
       presetSettings: {
         where: { userId },
         select: { userId: true },
@@ -39,6 +41,7 @@ export async function listOccurrencesForUser(userId: string): Promise<Occurrence
     ownerId: row.ownerId,
     location: row.location,
     sortOrder: row.sortOrder,
+    autoNumbering: row.autoNumbering,
     isSystem: row.ownerId === SYSTEM_USER_ID,
     isPreset: row.presetSettings.length > 0,
     wordLinkCount: row._count.wordLinks,

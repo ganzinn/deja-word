@@ -11,7 +11,8 @@ let sharedContext: AudioContext | null = null;
 function getContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const Ctor =
-    window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
   if (sharedContext === null) sharedContext = new Ctor();
   // タブ復帰などで suspended のままだと鳴らないため、ユーザー操作の延長で resume を試みる

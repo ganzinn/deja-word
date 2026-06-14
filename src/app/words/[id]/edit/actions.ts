@@ -4,9 +4,7 @@ import {
   InvalidAudioError,
   MeaningNotFoundError,
   deletePronunciationAudioForUser,
-  deleteTranslationAudioForUser,
   uploadPronunciationAudioForUser,
-  uploadTranslationAudioForUser,
 } from "@/lib/meaning-audio";
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
@@ -123,15 +121,4 @@ export async function uploadPronunciationAudio(
 
 export async function deletePronunciationAudio(meaningId: string): Promise<DeleteAudioResult> {
   return runDelete(meaningId, deletePronunciationAudioForUser);
-}
-
-export async function uploadTranslationAudio(
-  meaningId: string,
-  fd: FormData,
-): Promise<UploadAudioResult> {
-  return runUpload(meaningId, fd, uploadTranslationAudioForUser);
-}
-
-export async function deleteTranslationAudio(meaningId: string): Promise<DeleteAudioResult> {
-  return runDelete(meaningId, deleteTranslationAudioForUser);
 }

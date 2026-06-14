@@ -110,12 +110,9 @@ export async function updateWordForUser(
           ownerId: userId,
           ...(meaningIdsArray.length > 0 ? { id: { notIn: meaningIdsArray } } : {}),
         },
-        select: { pronunciationAudioUrl: true, translationAudioUrl: true },
+        select: { pronunciationAudioUrl: true },
       });
-      orphanedAudioUrls = orphanedMeanings.flatMap((m) => [
-        m.pronunciationAudioUrl,
-        m.translationAudioUrl,
-      ]);
+      orphanedAudioUrls = orphanedMeanings.map((m) => m.pronunciationAudioUrl);
 
       await Promise.all([
         deleteOrphanedEditorOwned(tx, "meaning", wordId, userId, meaningIdsInForm),

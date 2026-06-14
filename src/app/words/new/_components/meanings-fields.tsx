@@ -47,13 +47,13 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`meanings.${index}.ownerId`);
   const meaningId = useWatch({ control: form.control, name: `meanings.${index}.id` });
+  const pronunciation = useWatch({
+    control: form.control,
+    name: `meanings.${index}.pronunciation`,
+  });
   const pronunciationAudioUrl = useWatch({
     control: form.control,
     name: `meanings.${index}.pronunciationAudioUrl`,
-  });
-  const translationAudioUrl = useWatch({
-    control: form.control,
-    name: `meanings.${index}.translationAudioUrl`,
   });
 
   return (
@@ -81,27 +81,44 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
         )}
       />
 
-      <CollapsibleField label="発音記号">
-        <FormField
-          control={form.control}
-          name={`meanings.${index}.pronunciation`}
-          render={({ field: f }) => (
+      <CollapsibleField label="発音" defaultOpen={!!pronunciation || !!pronunciationAudioUrl}>
+        <div className="border-border/60 flex flex-col gap-3 rounded-md border border-dashed p-3">
+          <span className="text-muted-foreground text-xs font-medium">発音</span>
+          <FormField
+            control={form.control}
+            name={`meanings.${index}.pronunciation`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel>記号</FormLabel>
+                <FormControl>
+                  <Input
+                    inputMode="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="例: /ɪˈfemərəl/"
+                    disabled={isSystemOwned}
+                    {...f}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {!isSystemOwned ? (
             <FormItem>
-              <FormLabel>発音記号</FormLabel>
-              <FormControl>
-                <Input
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  placeholder="例: /ɪˈfemərəl/"
-                  disabled={isSystemOwned}
-                  {...f}
+              <FormLabel>音源</FormLabel>
+              {meaningId ? (
+                <MeaningAudioManager
+                  meaningId={meaningId}
+                  pronunciationAudioUrl={pronunciationAudioUrl}
                 />
-              </FormControl>
-              <FormMessage />
+              ) : (
+                <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
+              )}
             </FormItem>
-          )}
-        />
+          ) : null}
+        </div>
       </CollapsibleField>
 
       <MeaningTextList meaningIndex={index} parentSystemOwned={isSystemOwned} />
@@ -124,18 +141,6 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
           </FormItem>
         )}
       />
-
-      {!isSystemOwned ? (
-        meaningId ? (
-          <MeaningAudioManager
-            meaningId={meaningId}
-            pronunciationAudioUrl={pronunciationAudioUrl}
-            translationAudioUrl={translationAudioUrl}
-          />
-        ) : (
-          <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
-        )
-      ) : null}
     </FieldCard>
   );
 }

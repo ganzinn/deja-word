@@ -128,7 +128,6 @@ model Meaning {
   note                  String?
   sortOrder             Int     @default(0) @map("sort_order")
   pronunciationAudioUrl String? @map("pronunciation_audio_url") // 英単語の発音音源
-  translationAudioUrl   String? @map("translation_audio_url") // 日本語訳の読み上げ（別用途）
 
   word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
   owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)

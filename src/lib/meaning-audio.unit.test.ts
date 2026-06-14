@@ -20,7 +20,6 @@ const {
   MeaningNotFoundError,
   deletePronunciationAudioForUser,
   uploadPronunciationAudioForUser,
-  uploadTranslationAudioForUser,
 } = await import("@/lib/meaning-audio");
 
 const findUnique = vi.mocked(prisma.meaning.findUnique);
@@ -49,14 +48,12 @@ function meaningRow(
   over: Partial<{
     ownerId: string;
     pronunciationAudioUrl: string | null;
-    translationAudioUrl: string | null;
   }> = {},
 ) {
   return {
     id: "m1",
     ownerId: "u1",
     pronunciationAudioUrl: null,
-    translationAudioUrl: null,
     ...over,
   };
 }
@@ -163,20 +160,6 @@ describe("uploadPronunciationAudioForUser — 入力検証", () => {
     const blob = makeBlob();
     await expect(uploadPronunciationAudioForUser("u1", "m1", mp3(0), blob)).rejects.toBeInstanceOf(
       InvalidAudioError,
-    );
-  });
-});
-
-describe("uploadTranslationAudioForUser", () => {
-  test("意味スロットは translationAudioUrl カラムへ書き込む", async () => {
-    findUnique.mockResolvedValue(meaningRow() as never);
-    const blob = makeBlob();
-
-    const result = await uploadTranslationAudioForUser("u1", "m1", mp3(), blob);
-
-    expect(result.url).toContain("audio/meaning/m1/translation.mp3");
-    expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { translationAudioUrl: result.url } }),
     );
   });
 });

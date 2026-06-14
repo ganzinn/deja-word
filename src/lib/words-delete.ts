@@ -23,14 +23,14 @@ export async function deleteWordForUser(
   // onDelete: Cascade は Blob に効かないため、削除前に配下 Meaning の音源 URL を収集する。
   const meanings = await prisma.meaning.findMany({
     where: { wordId },
-    select: { pronunciationAudioUrl: true, translationAudioUrl: true },
+    select: { pronunciationAudioUrl: true },
   });
 
   await prisma.word.delete({ where: { id: wordId } });
 
   // DB を真実とし、delete 成功後にベストエフォートで Blob を消す。
   await bestEffortDeleteAudioUrls(
-    meanings.flatMap((m) => [m.pronunciationAudioUrl, m.translationAudioUrl]),
+    meanings.map((m) => m.pronunciationAudioUrl),
     blob,
   );
 }

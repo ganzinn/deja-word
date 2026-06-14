@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
+import { commonPartOfSpeechShortLabel } from "@/lib/mock/parts-of-speech";
 import { getCurrentSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { listWordsForUser, type WordListItem, type WordListSort } from "@/lib/words-list";
@@ -120,13 +120,13 @@ function WordRow({ item }: { item: WordListItem }) {
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (
         <div className="flex items-start gap-2">
           {item.partOfSpeech ? (
-            <Badge variant="outline" className="shrink-0">
-              {commonPartOfSpeechFullLabel(item.partOfSpeech)}
+            <Badge variant="outline" className="text-muted-foreground shrink-0">
+              {commonPartOfSpeechShortLabel(item.partOfSpeech)}
             </Badge>
           ) : null}
           {item.meaningTexts.length > 0 ? (
-            <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-wrap">
-              <span className="text-red-600">{item.meaningTexts[0]}</span>
+            <p className="text-foreground line-clamp-2 text-sm whitespace-pre-wrap">
+              <span className="text-red-500">{item.meaningTexts[0]}</span>
               {item.meaningTexts.length > 1 ? `; ${item.meaningTexts.slice(1).join("; ")}` : null}
             </p>
           ) : null}

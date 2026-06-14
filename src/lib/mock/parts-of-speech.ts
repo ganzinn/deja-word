@@ -26,3 +26,7 @@ export function isCommonPartOfSpeech(value: string): boolean {
 export function commonPartOfSpeechFullLabel(value: string): string {
   return commonPartsOfSpeech.find((p) => p.value === value)?.fullLabel ?? value;
 }
+
+export function commonPartOfSpeechShortLabel(value: string): string {
+  return commonPartsOfSpeech.find((p) => p.value === value)?.label ?? value;
+}

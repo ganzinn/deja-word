@@ -117,7 +117,9 @@ function MeaningCard({
       {partOfSpeech || pronunciation || pronunciationAudioUrl ? (
         <div className="flex flex-wrap items-center gap-2">
           {partOfSpeech ? (
-            <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
+            <Badge variant="outline" className="text-muted-foreground">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
           ) : null}
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
@@ -175,7 +177,9 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
             <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
           ) : null}
           {partOfSpeech ? (
-            <Badge variant="outline">{commonPartOfSpeechFullLabel(partOfSpeech)}</Badge>
+            <Badge variant="outline" className="text-muted-foreground">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
           ) : null}
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>

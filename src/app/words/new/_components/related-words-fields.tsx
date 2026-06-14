@@ -19,6 +19,7 @@ import { LinkedWordPicker } from "./linked-word-picker";
 import { PartOfSpeechPicker } from "./part-of-speech-picker";
 import { ArrayAddButton } from "./shared/array-add-button";
 import { FieldCard } from "./shared/field-card";
+import { NoteList } from "./shared/note-list";
 import { useRowOwnership } from "./shared/use-row-ownership";
 
 type RelatedWordCardProps = {
@@ -192,19 +193,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name={`relatedWords.${index}.note`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>補足説明</FormLabel>
-            <FormControl>
-              <Textarea rows={2} disabled={isSystemOwned} {...f} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <NoteList prefix={`relatedWords.${index}`} parentSystemOwned={isSystemOwned} />
     </FieldCard>
   );
 }

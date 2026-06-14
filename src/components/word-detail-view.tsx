@@ -102,7 +102,6 @@ function MeaningCard({
   const partOfSpeech = nonEmpty(meaning.partOfSpeech);
   const pronunciation = nonEmpty(meaning.pronunciation);
   const pronunciationAudioUrl = nonEmpty(meaning.pronunciationAudioUrl);
-  const note = nonEmpty(meaning.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
       {partOfSpeech || pronunciation || pronunciationAudioUrl ? (
@@ -134,7 +133,7 @@ function MeaningCard({
           ))}
         </ul>
       ) : null}
-      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
+      <NotesView notes={meaning.notes} />
     </div>
   );
 }
@@ -143,14 +142,13 @@ const exampleSectionOrder: ExampleKind[] = ["TARGET", "PHRASE", "MINIMAL", "SENT
 
 function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   const meaning = nonEmpty(example.meaning);
-  const note = nonEmpty(example.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
       <p className="text-sm whitespace-pre-wrap">{example.text}</p>
       {meaning ? (
         <p className="text-muted-foreground text-sm whitespace-pre-wrap">{meaning}</p>
       ) : null}
-      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
+      <NotesView notes={example.notes} />
     </div>
   );
 }
@@ -160,7 +158,6 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
   const pronunciation = nonEmpty(related.pronunciation);
   const pronunciationAudioUrl = nonEmpty(related.pronunciationAudioUrl);
   const meaning = nonEmpty(related.meaning);
-  const note = nonEmpty(related.note);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
       {related.kind || pronunciation || pronunciationAudioUrl ? (
@@ -197,7 +194,7 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
           ) : null}
         </div>
       ) : null}
-      {note ? <p className="text-muted-foreground text-sm whitespace-pre-wrap">{note}</p> : null}
+      <NotesView notes={related.notes} />
     </div>
   );
 }
@@ -232,6 +229,25 @@ function OccurrenceCard({
       ) : null}
     </div>
   );
+}
+
+// 補足説明（複数可）の表示。意味テキストと同様、1 件は段落・2 件以上は箇条書きにする。
+function NotesView({ notes }: { notes: ReadonlyArray<{ id: string; text: string }> }) {
+  if (notes.length === 1) {
+    return <p className="text-muted-foreground text-sm whitespace-pre-wrap">{notes[0].text}</p>;
+  }
+  if (notes.length > 1) {
+    return (
+      <ul className="text-muted-foreground marker:text-muted-foreground ml-4 list-disc text-sm leading-normal marker:text-[0.5rem]">
+        {notes.map((n) => (
+          <li key={n.id} className="whitespace-pre-wrap">
+            {n.text}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return null;
 }
 
 function nonEmpty(value: string | null | undefined): string | null {

@@ -10,13 +10,21 @@ const meaningTextSchema = z.object({
   text: z.string().trim().min(1, "意味を入力してください"),
 });
 
+// 補足説明（任意項目）。空行は書き込み handler が除外するため空文字を許可する
+// （掲載箇所の詳細 occurrenceDetailSchema と同様、初期表示の空 1 行をそのまま保存しても無害）。
+const noteSchema = z.object({
+  id: z.string().cuid().optional(),
+  ownerId: z.string().optional(),
+  text: z.string().trim(),
+});
+
 const meaningSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
   pronunciation: z.string().trim().optional().or(z.literal("")),
   texts: z.array(meaningTextSchema).min(1, "意味を 1 件以上入力してください"),
-  note: z.string().trim().optional().or(z.literal("")),
+  notes: z.array(noteSchema),
   // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
   // 単語本体の書き込み handler が無視する（編集 UI の表示状態の初期値にのみ使う）。
   pronunciationAudioUrl: z.string().nullable().optional(),
@@ -28,7 +36,7 @@ const exampleSchema = z.object({
   kind: z.enum(exampleKinds),
   text: z.string().trim().min(1, "例文を入力してください"),
   meaning: z.string().trim().optional().or(z.literal("")),
-  note: z.string().trim().optional().or(z.literal("")),
+  notes: z.array(noteSchema),
 });
 
 const relatedWordSchema = z.object({
@@ -42,7 +50,7 @@ const relatedWordSchema = z.object({
   partOfSpeech: z.string().trim().optional().or(z.literal("")),
   pronunciation: z.string().trim().optional().or(z.literal("")),
   meaning: z.string().trim().optional().or(z.literal("")),
-  note: z.string().trim().optional().or(z.literal("")),
+  notes: z.array(noteSchema),
   // 同上の理由でリンク解除も null を使う（undefined だと初期 cuid に戻る）。
   linkedWordId: z.string().cuid().nullish(),
   // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
@@ -88,24 +96,27 @@ export const wordFormSchema = z.object({
 export type WordFormValues = z.infer<typeof wordFormSchema>;
 export type MeaningValue = z.infer<typeof meaningSchema>;
 export type MeaningTextValue = z.infer<typeof meaningTextSchema>;
+export type NoteValue = z.infer<typeof noteSchema>;
 export type ExampleValue = z.infer<typeof exampleSchema>;
 export type RelatedWordValue = z.infer<typeof relatedWordSchema>;
 export type MemoValue = z.infer<typeof memoSchema>;
 export type OccurrenceValue = z.infer<typeof occurrenceSchema>;
 export type OccurrenceDetailValue = z.infer<typeof occurrenceDetailSchema>;
 
+export const emptyNote: NoteValue = { text: "" };
+
 export const emptyMeaning: MeaningValue = {
   partOfSpeech: "",
   pronunciation: "",
   texts: [{ text: "" }],
-  note: "",
+  notes: [{ text: "" }],
 };
 
 export const emptyExample: ExampleValue = {
   kind: "SENTENCE",
   text: "",
   meaning: "",
-  note: "",
+  notes: [{ text: "" }],
 };
 
 export const emptyRelatedWord: RelatedWordValue = {
@@ -114,7 +125,7 @@ export const emptyRelatedWord: RelatedWordValue = {
   partOfSpeech: "",
   pronunciation: "",
   meaning: "",
-  note: "",
+  notes: [{ text: "" }],
   linkedWordId: null,
 };
 
@@ -163,7 +174,10 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
         m.texts.length > 0
           ? m.texts.map((t) => ({ id: t.id, ownerId: t.ownerId, text: t.text }))
           : [{ text: "" }],
-      note: m.note ?? "",
+      notes:
+        m.notes.length > 0
+          ? m.notes.map((n) => ({ id: n.id, ownerId: n.ownerId, text: n.text }))
+          : [{ text: "" }],
       pronunciationAudioUrl: m.pronunciationAudioUrl,
     })),
     examples: word.examples.map((e) => ({
@@ -172,7 +186,10 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
       kind: e.kind,
       text: e.text,
       meaning: e.meaning ?? "",
-      note: e.note ?? "",
+      notes:
+        e.notes.length > 0
+          ? e.notes.map((n) => ({ id: n.id, ownerId: n.ownerId, text: n.text }))
+          : [{ text: "" }],
     })),
     relatedWords: word.relatedWords.map((r) => ({
       id: r.id,
@@ -182,7 +199,10 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
       partOfSpeech: r.partOfSpeech ?? "",
       pronunciation: r.pronunciation ?? "",
       meaning: r.meaning ?? "",
-      note: r.note ?? "",
+      notes:
+        r.notes.length > 0
+          ? r.notes.map((n) => ({ id: n.id, ownerId: n.ownerId, text: n.text }))
+          : [{ text: "" }],
       linkedWordId: r.linkedWordId ?? null,
       pronunciationAudioUrl: r.pronunciationAudioUrl,
     })),

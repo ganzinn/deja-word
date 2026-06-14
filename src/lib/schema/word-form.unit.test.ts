@@ -17,7 +17,7 @@ function validWordFormValues(overrides: Partial<WordFormValues> = {}): WordFormV
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "あちこちに存在する" }],
-        note: "",
+        notes: [],
       },
     ],
     examples: [],
@@ -44,7 +44,7 @@ describe("wordFormSchema", () => {
 
   test("rejects a meaning with zero texts", () => {
     const values = validWordFormValues({
-      meanings: [{ partOfSpeech: "", pronunciation: "", texts: [], note: "" }],
+      meanings: [{ partOfSpeech: "", pronunciation: "", texts: [], notes: [] }],
     });
     const r = wordFormSchema.safeParse(values);
     expect(r.success).toBe(false);
@@ -52,10 +52,38 @@ describe("wordFormSchema", () => {
 
   test("rejects a meaning text that is empty after trim", () => {
     const values = validWordFormValues({
-      meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "   " }], note: "" }],
+      meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "   " }], notes: [] }],
     });
     const r = wordFormSchema.safeParse(values);
     expect(r.success).toBe(false);
+  });
+
+  test("accepts a meaning with multiple notes", () => {
+    const values = validWordFormValues({
+      meanings: [
+        {
+          partOfSpeech: "",
+          pronunciation: "",
+          texts: [{ text: "あちこちに存在する" }],
+          notes: [{ text: "フォーマル" }, { text: "文語" }],
+        },
+      ],
+    });
+    expect(wordFormSchema.safeParse(values).success).toBe(true);
+  });
+
+  test("accepts an empty note (optional — initial blank row is dropped on save)", () => {
+    const values = validWordFormValues({
+      meanings: [
+        {
+          partOfSpeech: "",
+          pronunciation: "",
+          texts: [{ text: "あちこちに存在する" }],
+          notes: [{ text: "   " }],
+        },
+      ],
+    });
+    expect(wordFormSchema.safeParse(values).success).toBe(true);
   });
 
   test("accepts an empty meanings array (top-level array has no min)", () => {

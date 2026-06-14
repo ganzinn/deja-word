@@ -24,7 +24,7 @@ function emptyForm(headword: string, overrides: Partial<WordFormValues> = {}): W
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "意味" }],
-        note: "",
+        notes: [],
       },
     ],
     examples: [],
@@ -48,10 +48,10 @@ describe("createWordForUser", () => {
             partOfSpeech: "adj",
             pronunciation: "",
             texts: [{ text: "あちこちにある" }, { text: "遍在する" }],
-            note: "",
+            notes: [],
           },
         ],
-        examples: [{ kind: "SENTENCE", text: "It is ubiquitous.", meaning: "", note: "" }],
+        examples: [{ kind: "SENTENCE", text: "It is ubiquitous.", meaning: "", notes: [] }],
         relatedWords: [
           {
             kind: "SYNONYM",
@@ -59,7 +59,7 @@ describe("createWordForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: linkable.id,
           },
         ],
@@ -87,6 +87,48 @@ describe("createWordForUser", () => {
     expect(word!.examples[0].ownerId).toBe(user.id);
     expect(word!.relatedWords[0].linkedWordId).toBe(linkable.id);
     expect(word!.memos[0].ownerId).toBe(user.id);
+  });
+
+  test("creates multiple notes per meaning/example/related word in sortOrder", async () => {
+    const user = await createTestUser();
+    const created = await createWordForUser(
+      user.id,
+      emptyForm("annotated", {
+        meanings: [
+          {
+            partOfSpeech: "",
+            pronunciation: "",
+            texts: [{ text: "意味" }],
+            notes: [{ text: "補足1" }, { text: "補足2" }],
+          },
+        ],
+        examples: [{ kind: "SENTENCE", text: "ex", meaning: "", notes: [{ text: "例文補足" }] }],
+        relatedWords: [
+          {
+            kind: "SYNONYM",
+            term: "syn",
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            notes: [{ text: "関連語補足A" }, { text: "関連語補足B" }],
+            linkedWordId: null,
+          },
+        ],
+      }),
+    );
+
+    const word = await prisma.word.findUnique({
+      where: { id: created.id },
+      include: {
+        meanings: { include: { notes: { orderBy: { sortOrder: "asc" } } } },
+        examples: { include: { notes: { orderBy: { sortOrder: "asc" } } } },
+        relatedWords: { include: { notes: { orderBy: { sortOrder: "asc" } } } },
+      },
+    });
+    expect(word!.meanings[0].notes.map((n) => n.text)).toEqual(["補足1", "補足2"]);
+    expect(word!.meanings[0].notes.every((n) => n.ownerId === user.id)).toBe(true);
+    expect(word!.examples[0].notes.map((n) => n.text)).toEqual(["例文補足"]);
+    expect(word!.relatedWords[0].notes.map((n) => n.text)).toEqual(["関連語補足A", "関連語補足B"]);
   });
 
   test("trims whitespace from headword on insert", async () => {
@@ -132,10 +174,10 @@ describe("createWordForUser", () => {
             partOfSpeech: "n",
             pronunciation: "",
             texts: [{ text: "りんご (A)" }],
-            note: "",
+            notes: [],
           },
         ],
-        examples: [{ kind: "SENTENCE", text: "I ate an apple.", meaning: "", note: "" }],
+        examples: [{ kind: "SENTENCE", text: "I ate an apple.", meaning: "", notes: [] }],
       }),
     );
 
@@ -147,7 +189,7 @@ describe("createWordForUser", () => {
             partOfSpeech: "n",
             pronunciation: "",
             texts: [{ text: "りんご (system)" }],
-            note: "",
+            notes: [],
           },
         ],
       }),
@@ -182,13 +224,13 @@ describe("createWordForUser", () => {
     await createWordForUser(
       userA.id,
       emptyForm("shared", {
-        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], note: "" }],
+        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], notes: [] }],
       }),
     );
     await createWordForUser(
       userB.id,
       emptyForm("shared", {
-        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], note: "" }],
+        meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], notes: [] }],
       }),
     );
 
@@ -196,7 +238,7 @@ describe("createWordForUser", () => {
       SYSTEM_USER_ID,
       emptyForm("shared", {
         meanings: [
-          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 system" }], note: "" },
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 system" }], notes: [] },
         ],
       }),
     );
@@ -300,7 +342,7 @@ describe("createWordForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: aApple.id,
           },
         ],
@@ -316,7 +358,7 @@ describe("createWordForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: bApple.id,
           },
         ],
@@ -476,7 +518,7 @@ describe("createWordForUser", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
             linkedWordId: strangerWord.id,
           },
         ],

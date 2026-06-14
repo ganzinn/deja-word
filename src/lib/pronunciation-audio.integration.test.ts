@@ -38,7 +38,7 @@ function fakeBlob() {
 function form(headword: string, overrides: Partial<WordFormValues> = {}): WordFormValues {
   return {
     headword,
-    meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味" }], note: "" }],
+    meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味" }], notes: [] }],
     examples: [],
     relatedWords: [],
     memos: [],
@@ -60,7 +60,7 @@ async function firstRelatedWordId(wordId: string): Promise<string> {
 }
 
 function relatedWord(term: string): WordFormValues["relatedWords"][number] {
-  return { term, partOfSpeech: "", pronunciation: "", meaning: "", note: "" };
+  return { term, partOfSpeech: "", pronunciation: "", meaning: "", notes: [] };
 }
 
 function mp3(): File {
@@ -114,8 +114,8 @@ describe("meaning-audio: Blob クリーンアップ", () => {
       user.id,
       form("editable", {
         meanings: [
-          { partOfSpeech: "", pronunciation: "", texts: [{ text: "残す" }], note: "" },
-          { partOfSpeech: "", pronunciation: "", texts: [{ text: "消す" }], note: "" },
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "残す" }], notes: [] },
+          { partOfSpeech: "", pronunciation: "", texts: [{ text: "消す" }], notes: [] },
         ],
       }),
     );
@@ -142,7 +142,7 @@ describe("meaning-audio: Blob クリーンアップ", () => {
             partOfSpeech: "",
             pronunciation: "",
             texts: [{ id: keep.texts[0].id, ownerId: user.id, text: keep.texts[0].text }],
-            note: "",
+            notes: [],
           },
         ],
       }),
@@ -272,7 +272,7 @@ describe("related-word-audio: Blob クリーンアップ", () => {
             partOfSpeech: "",
             pronunciation: "",
             meaning: "",
-            note: "",
+            notes: [],
           },
         ],
       }),

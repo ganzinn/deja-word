@@ -27,6 +27,9 @@ function makeLoaded(overrides: Partial<WordUpdateLoadedRows> = {}): WordUpdateLo
     memos: [],
     wordOccurrences: [],
     meaningTexts: [],
+    meaningNotes: [],
+    exampleNotes: [],
+    relatedWordNotes: [],
     occurrenceDetails: [],
     ...overrides,
   };
@@ -176,7 +179,7 @@ describe("assertWordUpdateAllowed", () => {
         { ownerId: "u1", headword: "x" },
         makeValues({
           headword: "x",
-          meanings: [{ id: "m1", ownerId: "u1", texts: [{ text: "a" }] }],
+          meanings: [{ id: "m1", ownerId: "u1", texts: [{ text: "a" }], notes: [] }],
         }),
         makeLoaded({ meanings: [{ id: "m1", ownerId: "u1" }] }),
       ),
@@ -190,7 +193,7 @@ describe("assertWordUpdateAllowed", () => {
         { ownerId: SYSTEM_USER_ID, headword: "x" },
         makeValues({
           headword: "x",
-          meanings: [{ id: "m1", ownerId: SYSTEM_USER_ID, texts: [{ text: "mine" }] }],
+          meanings: [{ id: "m1", ownerId: SYSTEM_USER_ID, texts: [{ text: "mine" }], notes: [] }],
         }),
         makeLoaded({
           meanings: [{ id: "m1", ownerId: SYSTEM_USER_ID }],
@@ -198,6 +201,52 @@ describe("assertWordUpdateAllowed", () => {
         }),
       ),
     ).toThrow(/meaningText: system row t1 cannot be deleted/);
+  });
+
+  test("blocks a non-system editor dropping a system meaningNote during pass-through", () => {
+    expect(() =>
+      assertWordUpdateAllowed(
+        editor,
+        { ownerId: SYSTEM_USER_ID, headword: "x" },
+        makeValues({
+          headword: "x",
+          meanings: [{ id: "m1", ownerId: SYSTEM_USER_ID, texts: [{ text: "keep" }], notes: [] }],
+        }),
+        makeLoaded({
+          meanings: [{ id: "m1", ownerId: SYSTEM_USER_ID }],
+          meaningNotes: [{ id: "n1", ownerId: SYSTEM_USER_ID, meaningId: "m1" }],
+        }),
+      ),
+    ).toThrow(/meaningNote: system row n1 cannot be deleted/);
+  });
+
+  test("allows a non-system editor appending their own note to a system related word", () => {
+    expect(() =>
+      assertWordUpdateAllowed(
+        editor,
+        { ownerId: SYSTEM_USER_ID, headword: "x" },
+        makeValues({
+          headword: "x",
+          relatedWords: [
+            {
+              id: "r1",
+              ownerId: SYSTEM_USER_ID,
+              kind: null,
+              term: "syn",
+              partOfSpeech: "",
+              pronunciation: "",
+              meaning: "",
+              notes: [{ id: "n1", ownerId: SYSTEM_USER_ID, text: "共通" }, { text: "自分の補足" }],
+              linkedWordId: null,
+            },
+          ],
+        }),
+        makeLoaded({
+          relatedWords: [{ id: "r1", ownerId: SYSTEM_USER_ID }],
+          relatedWordNotes: [{ id: "n1", ownerId: SYSTEM_USER_ID, relatedWordId: "r1" }],
+        }),
+      ),
+    ).not.toThrow();
   });
 
   test("blocks a non-system editor dropping a system occurrenceDetail during pass-through", () => {

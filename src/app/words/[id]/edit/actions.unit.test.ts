@@ -33,7 +33,7 @@ function validInput(): WordFormValues {
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "新しい意味" }],
-        note: "",
+        notes: [],
       },
     ],
   };

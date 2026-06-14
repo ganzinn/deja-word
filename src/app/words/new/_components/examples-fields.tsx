@@ -11,6 +11,7 @@ import { emptyExample, type WordFormValues } from "@/lib/schema/word-form";
 
 import { ArrayAddButton } from "./shared/array-add-button";
 import { FieldCard } from "./shared/field-card";
+import { NoteList } from "./shared/note-list";
 import { useRowOwnership } from "./shared/use-row-ownership";
 
 type ExampleCardProps = {
@@ -93,19 +94,7 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name={`examples.${index}.note`}
-        render={({ field: f }) => (
-          <FormItem>
-            <FormLabel>補足説明</FormLabel>
-            <FormControl>
-              <Textarea rows={2} disabled={isSystemOwned} {...f} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <NoteList prefix={`examples.${index}`} parentSystemOwned={isSystemOwned} />
     </FieldCard>
   );
 }

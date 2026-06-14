@@ -15,7 +15,7 @@ function form(headword: string): WordFormValues {
         partOfSpeech: "",
         pronunciation: "",
         texts: [{ text: "意味" }],
-        note: "",
+        notes: [],
       },
     ],
     examples: [],

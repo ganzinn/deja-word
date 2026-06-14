@@ -63,6 +63,20 @@ export async function updateWordForUser(
     where: { wordOccurrence: { wordId } },
     select: { id: true, ownerId: true, wordOccurrenceId: true },
   });
+  const [existingMeaningNotes, existingExampleNotes, existingRelatedWordNotes] = await Promise.all([
+    prisma.meaningNote.findMany({
+      where: { meaning: { wordId } },
+      select: { id: true, ownerId: true, meaningId: true },
+    }),
+    prisma.exampleNote.findMany({
+      where: { example: { wordId } },
+      select: { id: true, ownerId: true, exampleId: true },
+    }),
+    prisma.relatedWordNote.findMany({
+      where: { relatedWord: { wordId } },
+      select: { id: true, ownerId: true, relatedWordId: true },
+    }),
+  ]);
 
   assertWordUpdateAllowed(ctx, existing, values, {
     meanings: existingMeanings,
@@ -71,6 +85,9 @@ export async function updateWordForUser(
     memos: existingMemos,
     wordOccurrences: existingWordOccurrences,
     meaningTexts: existingMeaningTexts,
+    meaningNotes: existingMeaningNotes,
+    exampleNotes: existingExampleNotes,
+    relatedWordNotes: existingRelatedWordNotes,
     occurrenceDetails: existingOccurrenceDetails,
   });
 
@@ -101,6 +118,15 @@ export async function updateWordForUser(
       });
       await tx.occurrenceDetail.deleteMany({
         where: { wordOccurrence: { wordId }, ownerId: userId },
+      });
+      await tx.meaningNote.deleteMany({
+        where: { meaning: { wordId }, ownerId: userId },
+      });
+      await tx.exampleNote.deleteMany({
+        where: { example: { wordId }, ownerId: userId },
+      });
+      await tx.relatedWordNote.deleteMany({
+        where: { relatedWord: { wordId }, ownerId: userId },
       });
 
       const meaningIdsArray = Array.from(meaningIdsInForm);

@@ -20,8 +20,11 @@ model User {
   words                    Word[]
   meanings                 Meaning[]
   meaningTexts             MeaningText[]
+  meaningNotes             MeaningNote[]
   examples                 Example[]
+  exampleNotes             ExampleNote[]
   relatedWords             RelatedWord[]
+  relatedWordNotes         RelatedWordNote[]
   memos                    Memo[]
   occurrences              Occurrence[]
   wordOccurrences          WordOccurrence[]
@@ -125,13 +128,13 @@ model Meaning {
   ownerId               String  @map("owner_id")
   partOfSpeech          String? @map("part_of_speech")
   pronunciation         String?
-  note                  String?
   sortOrder             Int     @default(0) @map("sort_order")
   pronunciationAudioUrl String? @map("pronunciation_audio_url") // 英単語の発音音源
 
   word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
   owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   texts MeaningText[]
+  notes MeaningNote[]
 
   @@index([wordId])
   @@index([ownerId])
@@ -153,6 +156,21 @@ model MeaningText {
   @@map("meaning_text")
 }
 
+model MeaningNote {
+  id        String @id @default(cuid())
+  meaningId String @map("meaning_id")
+  ownerId   String @map("owner_id")
+  text      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  meaning Meaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+  owner   User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([meaningId])
+  @@index([ownerId])
+  @@map("meaning_note")
+}
+
 model Example {
   id        String      @id @default(cuid())
   wordId    String      @map("word_id")
@@ -160,15 +178,30 @@ model Example {
   kind      ExampleKind
   text      String
   meaning   String?
-  note      String?
   sortOrder Int         @default(0) @map("sort_order")
 
-  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  notes ExampleNote[]
 
   @@index([wordId])
   @@index([ownerId])
   @@map("example")
+}
+
+model ExampleNote {
+  id        String @id @default(cuid())
+  exampleId String @map("example_id")
+  ownerId   String @map("owner_id")
+  text      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  example Example @relation(fields: [exampleId], references: [id], onDelete: Cascade)
+  owner   User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([exampleId])
+  @@index([ownerId])
+  @@map("example_note")
 }
 
 model RelatedWord {
@@ -180,19 +213,34 @@ model RelatedWord {
   partOfSpeech  String?      @map("part_of_speech")
   pronunciation String?
   meaning       String?
-  note          String?
   sortOrder     Int          @default(0) @map("sort_order")
   linkedWordId  String?      @map("linked_word_id")
   pronunciationAudioUrl String? @map("pronunciation_audio_url") // 関連語の発音音源
 
-  word       Word  @relation("RelatedWordOnWord", fields: [wordId], references: [id], onDelete: Cascade)
-  owner      User  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  linkedWord Word? @relation("RelatedWordLinkedWord", fields: [linkedWordId], references: [id], onDelete: SetNull)
+  word       Word              @relation("RelatedWordOnWord", fields: [wordId], references: [id], onDelete: Cascade)
+  owner      User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  linkedWord Word?             @relation("RelatedWordLinkedWord", fields: [linkedWordId], references: [id], onDelete: SetNull)
+  notes      RelatedWordNote[]
 
   @@index([wordId])
   @@index([ownerId])
   @@index([linkedWordId])
   @@map("related_word")
+}
+
+model RelatedWordNote {
+  id            String @id @default(cuid())
+  relatedWordId String @map("related_word_id")
+  ownerId       String @map("owner_id")
+  text          String
+  sortOrder     Int    @default(0) @map("sort_order")
+
+  relatedWord RelatedWord @relation(fields: [relatedWordId], references: [id], onDelete: Cascade)
+  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([relatedWordId])
+  @@index([ownerId])
+  @@map("related_word_note")
 }
 
 model Memo {

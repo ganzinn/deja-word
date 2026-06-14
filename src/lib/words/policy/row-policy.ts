@@ -88,6 +88,9 @@ export type WordUpdateLoadedRows = {
   memos: { id: string; ownerId: string }[];
   wordOccurrences: { id: string; ownerId: string }[];
   meaningTexts: { id: string; ownerId: string; meaningId: string }[];
+  meaningNotes: { id: string; ownerId: string; meaningId: string }[];
+  exampleNotes: { id: string; ownerId: string; exampleId: string }[];
+  relatedWordNotes: { id: string; ownerId: string; relatedWordId: string }[];
   occurrenceDetails: { id: string; ownerId: string; wordOccurrenceId: string }[];
 };
 
@@ -126,6 +129,18 @@ export function assertWordUpdateAllowed(
     if (!m.id) continue;
     const texts = loadedRows.meaningTexts.filter((t) => t.meaningId === m.id);
     assertRowsAllowed("meaningText", ctx, m.texts, texts);
+    const notes = loadedRows.meaningNotes.filter((n) => n.meaningId === m.id);
+    assertRowsAllowed("meaningNote", ctx, m.notes, notes);
+  }
+  for (const e of values.examples) {
+    if (!e.id) continue;
+    const notes = loadedRows.exampleNotes.filter((n) => n.exampleId === e.id);
+    assertRowsAllowed("exampleNote", ctx, e.notes, notes);
+  }
+  for (const r of values.relatedWords) {
+    if (!r.id) continue;
+    const notes = loadedRows.relatedWordNotes.filter((n) => n.relatedWordId === r.id);
+    assertRowsAllowed("relatedWordNote", ctx, r.notes, notes);
   }
   for (const oc of values.occurrences) {
     if (!oc.id) continue;
@@ -148,6 +163,30 @@ export function assertWordUpdateAllowed(
     (d) => d.wordOccurrenceId,
     collectFormIds(values.occurrences),
     (id) => `wordOccurrence ${id} has attached non-editor details; cannot delete`,
+  );
+  assertNoOrphanedDeletion(
+    ctx.userId,
+    loadedRows.meanings,
+    loadedRows.meaningNotes,
+    (n) => n.meaningId,
+    collectFormIds(values.meanings),
+    (id) => `meaning ${id} has attached non-editor notes; cannot delete`,
+  );
+  assertNoOrphanedDeletion(
+    ctx.userId,
+    loadedRows.examples,
+    loadedRows.exampleNotes,
+    (n) => n.exampleId,
+    collectFormIds(values.examples),
+    (id) => `example ${id} has attached non-editor notes; cannot delete`,
+  );
+  assertNoOrphanedDeletion(
+    ctx.userId,
+    loadedRows.relatedWords,
+    loadedRows.relatedWordNotes,
+    (n) => n.relatedWordId,
+    collectFormIds(values.relatedWords),
+    (id) => `relatedWord ${id} has attached non-editor notes; cannot delete`,
   );
 }
 

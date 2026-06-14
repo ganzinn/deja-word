@@ -5,7 +5,6 @@ import {
   ForbiddenUpdateError,
   deletePronunciationAudioForUser,
   uploadPronunciationAudioForUser,
-  uploadTranslationAudioForUser,
 } from "@/lib/meaning-audio";
 import { prisma } from "@/lib/prisma";
 import type { WordFormValues } from "@/lib/schema/word-form";
@@ -83,20 +82,18 @@ describe("meaning-audio: upload → 差し替え → 削除", () => {
 });
 
 describe("meaning-audio: Blob クリーンアップ", () => {
-  test("Word 削除で配下 Meaning の発音・意味音源が一括 del される", async () => {
+  test("Word 削除で配下 Meaning の発音音源が一括 del される", async () => {
     const user = await createTestUser();
     const word = await createWordForUser(user.id, form("toDelete"));
     const meaningId = await firstMeaningId(word.id);
     const { blob, deleted } = fakeBlob();
 
     const pron = await uploadPronunciationAudioForUser(user.id, meaningId, mp3(), blob);
-    const trans = await uploadTranslationAudioForUser(user.id, meaningId, mp3(), blob);
 
     await deleteWordForUser(user.id, word.id, blob);
 
     expect(await prisma.word.findUnique({ where: { id: word.id } })).toBeNull();
     expect(deleted.has(pron.url)).toBe(true);
-    expect(deleted.has(trans.url)).toBe(true);
   });
 
   test("編集の orphan delete で消えた Meaning の音源も del される", async () => {

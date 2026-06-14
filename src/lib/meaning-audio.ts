@@ -24,12 +24,7 @@ export class MeaningNotFoundError extends Error {
   }
 }
 
-type AudioSlot = "pronunciation" | "translation";
-
-const FILENAME: Record<AudioSlot, string> = {
-  pronunciation: "pronunciation.mp3",
-  translation: "translation.mp3",
-};
+const PRONUNCIATION_FILENAME = "pronunciation.mp3";
 
 function validateAudioFile(file: File): void {
   if (file.type !== AUDIO_MIME) {
@@ -55,7 +50,6 @@ async function loadOwnedMeaning(userId: string, meaningId: string) {
       id: true,
       ownerId: true,
       pronunciationAudioUrl: true,
-      translationAudioUrl: true,
     },
   });
   if (!meaning) throw new MeaningNotFoundError();
@@ -65,17 +59,10 @@ async function loadOwnedMeaning(userId: string, meaningId: string) {
   return meaning;
 }
 
-function currentUrl(
-  meaning: { pronunciationAudioUrl: string | null; translationAudioUrl: string | null },
-  slot: AudioSlot,
-): string | null {
-  return slot === "pronunciation" ? meaning.pronunciationAudioUrl : meaning.translationAudioUrl;
-}
-
-async function writeUrl(meaningId: string, slot: AudioSlot, url: string | null): Promise<void> {
+async function writeUrl(meaningId: string, url: string | null): Promise<void> {
   await prisma.meaning.update({
     where: { id: meaningId },
-    data: slot === "pronunciation" ? { pronunciationAudioUrl: url } : { translationAudioUrl: url },
+    data: { pronunciationAudioUrl: url },
     select: { id: true },
   });
 }
@@ -94,69 +81,33 @@ async function bestEffortDel(blob: BlobClient, url: string | string[]): Promise<
  * 原理的に起きない。put 失敗時は完全無変更、update 失敗時も新 Blob が orphan として
  * 残るだけ（後追い del で回収可）。
  */
-async function uploadAudio(
+export async function uploadPronunciationAudioForUser(
   userId: string,
   meaningId: string,
-  slot: AudioSlot,
   file: File,
-  blob: BlobClient,
+  blob: BlobClient = defaultBlobClient,
 ): Promise<{ url: string }> {
   validateAudioFile(file);
   const meaning = await loadOwnedMeaning(userId, meaningId);
-  const oldUrl = currentUrl(meaning, slot);
+  const oldUrl = meaning.pronunciationAudioUrl;
 
-  const { url } = await blob.put(`audio/meaning/${meaningId}/${FILENAME[slot]}`, file);
-  await writeUrl(meaningId, slot, url);
+  const { url } = await blob.put(`audio/meaning/${meaningId}/${PRONUNCIATION_FILENAME}`, file);
+  await writeUrl(meaningId, url);
   if (oldUrl) await bestEffortDel(blob, oldUrl);
 
   return { url };
 }
 
-async function deleteAudio(
+export async function deletePronunciationAudioForUser(
   userId: string,
   meaningId: string,
-  slot: AudioSlot,
-  blob: BlobClient,
+  blob: BlobClient = defaultBlobClient,
 ): Promise<void> {
   const meaning = await loadOwnedMeaning(userId, meaningId);
-  const oldUrl = currentUrl(meaning, slot);
+  const oldUrl = meaning.pronunciationAudioUrl;
 
-  await writeUrl(meaningId, slot, null);
+  await writeUrl(meaningId, null);
   if (oldUrl) await bestEffortDel(blob, oldUrl);
-}
-
-export function uploadPronunciationAudioForUser(
-  userId: string,
-  meaningId: string,
-  file: File,
-  blob: BlobClient = defaultBlobClient,
-): Promise<{ url: string }> {
-  return uploadAudio(userId, meaningId, "pronunciation", file, blob);
-}
-
-export function deletePronunciationAudioForUser(
-  userId: string,
-  meaningId: string,
-  blob: BlobClient = defaultBlobClient,
-): Promise<void> {
-  return deleteAudio(userId, meaningId, "pronunciation", blob);
-}
-
-export function uploadTranslationAudioForUser(
-  userId: string,
-  meaningId: string,
-  file: File,
-  blob: BlobClient = defaultBlobClient,
-): Promise<{ url: string }> {
-  return uploadAudio(userId, meaningId, "translation", file, blob);
-}
-
-export function deleteTranslationAudioForUser(
-  userId: string,
-  meaningId: string,
-  blob: BlobClient = defaultBlobClient,
-): Promise<void> {
-  return deleteAudio(userId, meaningId, "translation", blob);
 }
 
 /**

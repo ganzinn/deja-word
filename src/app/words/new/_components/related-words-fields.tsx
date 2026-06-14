@@ -62,7 +62,7 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
                     pressed={f.value === k}
                     disabled={isSystemOwned}
                     onPressedChange={(pressed) => {
-                      f.onChange(pressed ? k : undefined);
+                      f.onChange(pressed ? k : null);
                     }}
                   >
                     {relatedWordKindLabels[k]}
@@ -166,9 +166,9 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
               <FormControl>
                 <LinkedWordPickerForRow
                   term={term ?? ""}
-                  linkedWordId={f.value}
+                  linkedWordId={f.value ?? undefined}
                   onLink={(id) => f.onChange(id)}
-                  onUnlink={() => f.onChange(undefined)}
+                  onUnlink={() => f.onChange(null)}
                   disabled={isSystemOwned}
                 />
               </FormControl>

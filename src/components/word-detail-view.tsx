@@ -189,17 +189,15 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
       {related.linkedWord ? (
         <Link
           href={`/words/${related.linkedWord.id}`}
-          className="text-primary inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          className="text-primary inline-flex items-center gap-1 text-base font-semibold underline-offset-4 hover:underline"
         >
           <LinkIcon className="size-3.5" />
           <span className="whitespace-pre-wrap">{related.term}</span>
         </Link>
       ) : (
-        <p className="text-sm whitespace-pre-wrap">{related.term}</p>
+        <p className="text-base font-semibold whitespace-pre-wrap">{related.term}</p>
       )}
-      {meaning ? (
-        <p className="text-muted-foreground text-sm whitespace-pre-wrap">{meaning}</p>
-      ) : null}
+      {meaning ? <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p> : null}
       {note ? <Field label="補足">{note}</Field> : null}
     </div>
   );

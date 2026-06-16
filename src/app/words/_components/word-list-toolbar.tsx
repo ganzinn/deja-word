@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import type { WordListSort } from "@/lib/words-list";
+import type { WordListSort, WordMatchMode } from "@/lib/words-list";
 
 type Props = {
   initialQuery: string;
   sort: WordListSort;
+  match: WordMatchMode;
 };
 
-export function WordListToolbar({ initialQuery, sort }: Props) {
+export function WordListToolbar({ initialQuery, sort, match }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,7 +31,7 @@ export function WordListToolbar({ initialQuery, sort }: Props) {
     setQuery(initialQuery);
   }
 
-  function buildHref(next: { q?: string; sort?: WordListSort }) {
+  function buildHref(next: { q?: string; sort?: WordListSort; match?: WordMatchMode }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.q !== undefined) {
       const trimmed = next.q.trim();
@@ -40,6 +41,10 @@ export function WordListToolbar({ initialQuery, sort }: Props) {
     if (next.sort !== undefined) {
       if (next.sort === "recent") params.delete("sort");
       else params.set("sort", next.sort);
+    }
+    if (next.match !== undefined) {
+      if (next.match === "prefix") params.delete("match");
+      else params.set("match", next.match);
     }
     params.delete("page");
     const qs = params.toString();
@@ -75,6 +80,16 @@ export function WordListToolbar({ initialQuery, sort }: Props) {
     });
   }
 
+  function handleMatchChange(values: string[]) {
+    const next = values[0];
+    if (next !== "prefix" && next !== "contains" && next !== "suffix") return;
+    if (next === match) return;
+    const href = buildHref({ match: next });
+    startTransition(() => {
+      router.replace(href, { scroll: false });
+    });
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="relative">
@@ -99,6 +114,18 @@ export function WordListToolbar({ initialQuery, sort }: Props) {
           </Button>
         ) : null}
       </div>
+
+      <ToggleGroup
+        value={[match]}
+        onValueChange={handleMatchChange}
+        aria-label="検索方法"
+        variant="outline"
+        size="sm"
+      >
+        <ToggleGroupItem value="prefix">から始まる</ToggleGroupItem>
+        <ToggleGroupItem value="contains">を含む</ToggleGroupItem>
+        <ToggleGroupItem value="suffix">で終わる</ToggleGroupItem>
+      </ToggleGroup>
 
       <ToggleGroup
         value={[sort]}

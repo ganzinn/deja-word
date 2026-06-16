@@ -7,14 +7,19 @@ import { buttonVariants } from "@/components/ui/button";
 import { commonPartOfSpeechShortLabel } from "@/lib/mock/parts-of-speech";
 import { getCurrentSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { listWordsForUser, type WordListItem, type WordListSort } from "@/lib/words-list";
+import {
+  listWordsForUser,
+  type WordListItem,
+  type WordListSort,
+  type WordMatchMode,
+} from "@/lib/words-list";
 
 import { WordListToolbar } from "./_components/word-list-toolbar";
 
 const PAGE_SIZE = 20;
 
 type PageProps = {
-  searchParams: Promise<{ q?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; match?: string; page?: string }>;
 };
 
 export default async function WordsPage({ searchParams }: PageProps) {
@@ -24,11 +29,14 @@ export default async function WordsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const q = (params.q ?? "").trim();
   const sort: WordListSort = params.sort === "headword" ? "headword" : "recent";
+  const match: WordMatchMode =
+    params.match === "contains" ? "contains" : params.match === "suffix" ? "suffix" : "prefix";
   const page = parsePage(params.page);
 
   const { items, total } = await listWordsForUser(session.user.id, {
     q: q.length > 0 ? q : undefined,
     sort,
+    match,
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
@@ -36,7 +44,7 @@ export default async function WordsPage({ searchParams }: PageProps) {
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
 
   if (page > totalPages && total > 0) {
-    redirect(buildPageHref(totalPages, q, sort));
+    redirect(buildPageHref(totalPages, q, sort, match));
   }
 
   const currentPage = Math.min(page, totalPages);
@@ -62,7 +70,7 @@ export default async function WordsPage({ searchParams }: PageProps) {
       </header>
 
       <div className="flex flex-col gap-4 px-4 pt-4">
-        <WordListToolbar initialQuery={q} sort={sort} />
+        <WordListToolbar initialQuery={q} sort={sort} match={match} />
 
         <p className="text-muted-foreground text-sm">
           {q.length > 0 ? (
@@ -89,7 +97,13 @@ export default async function WordsPage({ searchParams }: PageProps) {
         )}
 
         {totalPages > 1 ? (
-          <Pagination currentPage={currentPage} totalPages={totalPages} q={q} sort={sort} />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            q={q}
+            sort={sort}
+            match={match}
+          />
         ) : null}
       </div>
     </main>
@@ -155,16 +169,18 @@ function Pagination({
   totalPages,
   q,
   sort,
+  match,
 }: {
   currentPage: number;
   totalPages: number;
   q: string;
   sort: WordListSort;
+  match: WordMatchMode;
 }) {
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
-  const prevHref = buildPageHref(currentPage - 1, q, sort);
-  const nextHref = buildPageHref(currentPage + 1, q, sort);
+  const prevHref = buildPageHref(currentPage - 1, q, sort, match);
+  const nextHref = buildPageHref(currentPage + 1, q, sort, match);
 
   return (
     <nav aria-label="ページ送り" className="flex items-center justify-between gap-2 pt-2">
@@ -209,10 +225,16 @@ function Pagination({
   );
 }
 
-function buildPageHref(page: number, q: string, sort: WordListSort): string {
+function buildPageHref(
+  page: number,
+  q: string,
+  sort: WordListSort,
+  match: WordMatchMode,
+): string {
   const params = new URLSearchParams();
   if (q.length > 0) params.set("q", q);
   if (sort !== "recent") params.set("sort", sort);
+  if (match !== "prefix") params.set("match", match);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs.length > 0 ? `/words?${qs}` : "/words";

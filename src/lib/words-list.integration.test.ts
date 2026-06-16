@@ -33,6 +33,7 @@ describe("listWordsForUser", () => {
 
     const result = await listWordsForUser(user.id, {
       sort: "headword",
+      match: "contains",
       skip: 0,
       take: 50,
     });
@@ -48,7 +49,12 @@ describe("listWordsForUser", () => {
     await createWordForUser(stranger.id, form("secret"));
     await createWordForUser(user.id, form("public"));
 
-    const result = await listWordsForUser(user.id, { sort: "headword", skip: 0, take: 50 });
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
     expect(result.items.map((i) => i.headword)).toEqual(["public"]);
   });
 
@@ -58,8 +64,9 @@ describe("listWordsForUser", () => {
     await createWordForUser(user.id, form("rare"));
 
     const result = await listWordsForUser(user.id, {
-      q: "ubi",
+      q: "uito",
       sort: "headword",
+      match: "contains",
       skip: 0,
       take: 50,
     });
@@ -75,19 +82,78 @@ describe("listWordsForUser", () => {
 
     const byHeadword = await listWordsForUser(user.id, {
       sort: "headword",
+      match: "contains",
       skip: 0,
       take: 50,
     });
     expect(byHeadword.items.map((i) => i.headword)).toEqual(["apple", "banana", "cherry"]);
 
-    const byRecent = await listWordsForUser(user.id, { sort: "recent", skip: 0, take: 50 });
+    const byRecent = await listWordsForUser(user.id, {
+      sort: "recent",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
     expect(byRecent.items.map((i) => i.id)).toEqual([cId, bId, aId]);
+  });
+
+  test("match mode: prefix / contains / suffix filter headword accordingly", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("apple"));
+    await createWordForUser(user.id, form("pineapple"));
+    await createWordForUser(user.id, form("grape"));
+
+    const prefix = await listWordsForUser(user.id, {
+      q: "apple",
+      sort: "headword",
+      match: "prefix",
+      skip: 0,
+      take: 50,
+    });
+    expect(prefix.items.map((i) => i.headword)).toEqual(["apple"]);
+
+    const contains = await listWordsForUser(user.id, {
+      q: "apple",
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    expect(contains.items.map((i) => i.headword)).toEqual(["apple", "pineapple"]);
+
+    const suffix = await listWordsForUser(user.id, {
+      q: "apple",
+      sort: "headword",
+      match: "suffix",
+      skip: 0,
+      take: 50,
+    });
+    expect(suffix.items.map((i) => i.headword)).toEqual(["apple", "pineapple"]);
+  });
+
+  test("match=prefix is case-insensitive", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("Ubiquitous"));
+
+    const result = await listWordsForUser(user.id, {
+      q: "ubi",
+      sort: "headword",
+      match: "prefix",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["Ubiquitous"]);
   });
 
   test("returns meaningTexts from all texts of the first meaning", async () => {
     const user = await createTestUser();
     const w = await createWordForUser(user.id, form("hello"));
-    const result = await listWordsForUser(user.id, { sort: "headword", skip: 0, take: 50 });
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.meaningTexts).toEqual(["意味:hello"]);
     expect(item?.partOfSpeech).toBe("n");

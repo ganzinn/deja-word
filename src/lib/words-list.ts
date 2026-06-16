@@ -5,6 +5,8 @@ import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 
 export type WordListSort = "recent" | "headword";
 
+export type WordMatchMode = "prefix" | "contains" | "suffix";
+
 export type WordListItem = {
   id: string;
   headword: string;
@@ -17,6 +19,7 @@ export type WordListItem = {
 export type WordListParams = {
   q?: string;
   sort: WordListSort;
+  match: WordMatchMode;
   skip: number;
   take: number;
 };
@@ -31,9 +34,13 @@ export async function listWordsForUser(
   params: WordListParams,
 ): Promise<WordListResult> {
   const q = params.q?.trim() ?? "";
+  const matchFilterKey =
+    params.match === "prefix" ? "startsWith" : params.match === "suffix" ? "endsWith" : "contains";
   const where = {
     ownerId: { in: scopedOwnerIds(userId) },
-    ...(q.length > 0 ? { headword: { contains: q, mode: "insensitive" as const } } : {}),
+    ...(q.length > 0
+      ? { headword: { [matchFilterKey]: q, mode: "insensitive" as const } }
+      : {}),
   };
 
   const orderBy =

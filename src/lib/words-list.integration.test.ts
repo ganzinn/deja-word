@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vitest";
 
+import { prisma } from "@/lib/prisma";
 import type { WordFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createWordForUser } from "@/lib/words-create";
-import { listWordsForUser } from "@/lib/words-list";
+import { listWordsByOccurrence, listWordsForUser } from "@/lib/words-list";
 
 import { createTestUser } from "../../tests/setup/fixtures";
 
@@ -23,6 +24,27 @@ function form(headword: string): WordFormValues {
     memos: [],
     occurrences: [],
   };
+}
+
+/** location の掲載箇所に occurrenceNumber 付きで登録する単語フォーム。 */
+function formWithOccurrence(
+  headword: string,
+  location: string,
+  occurrenceNumber: number | null,
+): WordFormValues {
+  return {
+    ...form(headword),
+    occurrences: [{ ownerId: "", location, occurrenceNumber, details: [] }],
+  };
+}
+
+/** create 時に find-or-create された掲載箇所の id を取得する。 */
+async function occurrenceIdOf(userId: string, location: string): Promise<string> {
+  const occ = await prisma.occurrence.findFirstOrThrow({
+    where: { ownerId: userId, location },
+    select: { id: true },
+  });
+  return occ.id;
 }
 
 describe("listWordsForUser", () => {
@@ -157,5 +179,118 @@ describe("listWordsForUser", () => {
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.meaningTexts).toEqual(["意味:hello"]);
     expect(item?.partOfSpeech).toBe("n");
+  });
+});
+
+describe("listWordsByOccurrence", () => {
+  const LOC = "Book";
+
+  async function seed(userId: string) {
+    await createWordForUser(userId, formWithOccurrence("alpha", LOC, 1));
+    await createWordForUser(userId, formWithOccurrence("bravo", LOC, 5));
+    await createWordForUser(userId, formWithOccurrence("charlie", LOC, 10));
+    await createWordForUser(userId, formWithOccurrence("delta", LOC, null));
+    return occurrenceIdOf(userId, LOC);
+  }
+
+  test("range excludes out-of-range numbers and null", async () => {
+    const user = await createTestUser();
+    const occurrenceId = await seed(user.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      from: 2,
+      to: 8,
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.total).toBe(1);
+    expect(result.items.map((i) => i.headword)).toEqual(["bravo"]);
+    expect(result.items[0].occurrenceNumber).toBe(5);
+  });
+
+  test("one-sided range (from only) keeps numbers >= from, excludes null", async () => {
+    const user = await createTestUser();
+    const occurrenceId = await seed(user.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      from: 5,
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["bravo", "charlie"]);
+  });
+
+  test("no range: numbers ascending, null last", async () => {
+    const user = await createTestUser();
+    const occurrenceId = await seed(user.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.total).toBe(4);
+    expect(result.items.map((i) => i.headword)).toEqual(["alpha", "bravo", "charlie", "delta"]);
+    expect(result.items.at(-1)?.occurrenceNumber).toBeNull();
+  });
+
+  test("order desc: numbers descending, null still last", async () => {
+    const user = await createTestUser();
+    const occurrenceId = await seed(user.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "desc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["charlie", "bravo", "alpha", "delta"]);
+  });
+
+  test("keyword (prefix) filters within the occurrence", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, formWithOccurrence("apple", LOC, 1));
+    await createWordForUser(user.id, formWithOccurrence("apricot", LOC, 2));
+    await createWordForUser(user.id, formWithOccurrence("banana", LOC, 3));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      q: "ap",
+      match: "prefix",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["apple", "apricot"]);
+  });
+
+  test("scoped to the given occurrence only (other occurrence / other user excluded)", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const occurrenceId = await seed(user.id);
+
+    // 別の掲載箇所の単語
+    await createWordForUser(user.id, formWithOccurrence("otherloc", "Magazine", 1));
+    // 他ユーザーが同名 location（別 owner = 別 occurrence）に登録
+    await createWordForUser(stranger.id, formWithOccurrence("stranger", LOC, 1));
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["alpha", "bravo", "charlie", "delta"]);
   });
 });

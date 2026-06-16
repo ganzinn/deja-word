@@ -1,14 +1,14 @@
 "use client";
 
-import { SearchIcon, XIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import type { WordListSort, WordMatchMode } from "@/lib/words-list";
+
+import { SearchInput } from "./search-input";
+import { setParam, useDebouncedCommit } from "./toolbar-url";
 
 type Props = {
   initialQuery: string;
@@ -22,110 +22,45 @@ export function WordListToolbar({ initialQuery, sort, match }: Props) {
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const [query, setQuery] = useState(initialQuery);
-  const [lastInitialQuery, setLastInitialQuery] = useState(initialQuery);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  if (initialQuery !== lastInitialQuery) {
-    setLastInitialQuery(initialQuery);
-    setQuery(initialQuery);
-  }
-
   function buildHref(next: { q?: string; sort?: WordListSort; match?: WordMatchMode }) {
     const params = new URLSearchParams(searchParams.toString());
-    if (next.q !== undefined) {
-      const trimmed = next.q.trim();
-      if (trimmed.length === 0) params.delete("q");
-      else params.set("q", trimmed);
-    }
-    if (next.sort !== undefined) {
-      if (next.sort === "recent") params.delete("sort");
-      else params.set("sort", next.sort);
-    }
-    if (next.match !== undefined) {
-      if (next.match === "prefix") params.delete("match");
-      else params.set("match", next.match);
-    }
+    if (next.q !== undefined) setParam(params, "q", next.q.trim());
+    if (next.sort !== undefined) setParam(params, "sort", next.sort, "recent");
+    if (next.match !== undefined) setParam(params, "match", next.match, "prefix");
     params.delete("page");
     const qs = params.toString();
     return qs.length > 0 ? `${pathname}?${qs}` : pathname;
   }
 
-  function commitQuery(value: string) {
-    const href = buildHref({ q: value });
+  function commit(href: string) {
     startTransition(() => {
       router.replace(href, { scroll: false });
     });
   }
 
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => commitQuery(value), 250);
-  }
-
-  function handleClear() {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setQuery("");
-    commitQuery("");
-  }
+  const search = useDebouncedCommit(initialQuery, (value) => commit(buildHref({ q: value })));
 
   function handleSortChange(values: string[]) {
     const next = values[0];
     if (next !== "recent" && next !== "headword") return;
     if (next === sort) return;
-    const href = buildHref({ sort: next });
-    startTransition(() => {
-      router.replace(href, { scroll: false });
-    });
+    commit(buildHref({ sort: next }));
   }
 
-  function handleMatchChange(values: string[]) {
-    const next = values[0];
-    if (next !== "prefix" && next !== "contains" && next !== "suffix") return;
+  function handleMatchChange(next: WordMatchMode) {
     if (next === match) return;
-    const href = buildHref({ match: next });
-    startTransition(() => {
-      router.replace(href, { scroll: false });
-    });
+    commit(buildHref({ match: next }));
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative">
-        <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-        <Input
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="英単語を検索"
-          className="pr-8 pl-8"
-          aria-label="英単語を検索"
-        />
-        {query.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={handleClear}
-            aria-label="検索をクリア"
-            className="absolute top-1/2 right-1 -translate-y-1/2"
-          >
-            <XIcon />
-          </Button>
-        ) : null}
-      </div>
-
-      <ToggleGroup
-        value={[match]}
-        onValueChange={handleMatchChange}
-        aria-label="検索方法"
-        variant="outline"
-        size="sm"
-      >
-        <ToggleGroupItem value="prefix">から始まる</ToggleGroupItem>
-        <ToggleGroupItem value="contains">を含む</ToggleGroupItem>
-        <ToggleGroupItem value="suffix">で終わる</ToggleGroupItem>
-      </ToggleGroup>
+      <SearchInput
+        query={search.value}
+        onQueryChange={search.onChange}
+        onClear={search.clear}
+        match={match}
+        onMatchChange={handleMatchChange}
+      />
 
       <ToggleGroup
         value={[sort]}

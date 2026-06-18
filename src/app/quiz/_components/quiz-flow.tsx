@@ -7,11 +7,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { buttonVariants } from "@/components/ui/button";
+import { isJaToEnFormat } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
-import type { QuizPayload } from "@/lib/quiz/payload";
+import type { MeaningDisplay, QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import {
@@ -28,10 +29,13 @@ import {
 } from "./answer-feedback-overlay";
 import { playAnswerSound } from "./answer-sound";
 import { Countdown } from "./countdown";
+import { MeaningBlocks } from "./meaning-blocks";
 import { QuestionChoice } from "./question-choice";
 import { QuestionMultiMeaning } from "./question-multi-meaning";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionSelfJudge } from "./question-self-judge";
+import { QuestionSelfJudgeJaEn } from "./question-self-judge-ja-en";
+import { QuestionSpelling } from "./question-spelling";
 import { ResultList, type ResultRow, type SubmitState } from "./result-list";
 import { StartForm, type OccurrenceOption } from "./start-form";
 
@@ -104,6 +108,26 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
         .map((option) => option.text)
         .join("; ");
     }
+    case "CHOICE_JA_EN": {
+      const question = quiz.questions[index];
+      return question.choices[question.correctIndex]?.text ?? "";
+    }
+    case "SELF_JUDGE_JA_EN":
+    case "SPELLING":
+      // 日本語→英語の正解は英単語（headword）
+      return quiz.questions[index].headword;
+  }
+}
+
+/** 日本語→英語の問題文（全 Meaning）。英語→日本語形式は null（問題文は headword）。 */
+function jaEnPromptOf(quiz: QuizPayload, index: number): MeaningDisplay[] | null {
+  switch (quiz.format) {
+    case "CHOICE_JA_EN":
+    case "SELF_JUDGE_JA_EN":
+    case "SPELLING":
+      return quiz.questions[index].prompt;
+    default:
+      return null;
   }
 }
 
@@ -149,6 +173,43 @@ function QuestionView({
       const question = quiz.questions[index];
       return (
         <QuestionMultiMeaning
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+        />
+      );
+    }
+    case "CHOICE_JA_EN": {
+      // 選択肢が英単語になるだけで挙動は四択と同一のため QuestionChoice を共用する
+      const question = quiz.questions[index];
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+        />
+      );
+    }
+    case "SELF_JUDGE_JA_EN": {
+      const question = quiz.questions[index];
+      return (
+        <QuestionSelfJudgeJaEn
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+        />
+      );
+    }
+    case "SPELLING": {
+      const question = quiz.questions[index];
+      return (
+        <QuestionSpelling
           key={question.wordId}
           question={question}
           timeoutSeconds={quiz.timeoutSeconds}
@@ -476,6 +537,8 @@ export function QuizFlow({
     if (!audio) return;
     // 発音の自動再生 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
     if (!autoplayPronunciation) return;
+    // 日本語→英語は発音が解答（英単語）を漏らすため、出題時の自動再生はしない
+    if (isJaToEnFormat(quiz.format)) return;
     audio.currentTime = 0;
     // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
     void audio.play().catch(() => {});
@@ -498,6 +561,8 @@ export function QuizFlow({
     const total = quiz.questions.length;
     const current = phase.index + 1;
     const question = quiz.questions[phase.index];
+    // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
+    const jaEnPrompt = jaEnPromptOf(quiz, phase.index);
     return (
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-6 px-4 pt-6 pb-16 md:max-w-2xl">
         <div className="flex flex-col gap-1.5">
@@ -519,10 +584,16 @@ export function QuizFlow({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 py-4">
-          <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
-          <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
-        </div>
+        {jaEnPrompt !== null ? (
+          <div className="py-2">
+            <MeaningBlocks meanings={jaEnPrompt} />
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-3 py-4">
+            <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
+            <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+          </div>
+        )}
 
         <QuestionView
           quiz={quiz}

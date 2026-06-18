@@ -1,4 +1,5 @@
-// 自己判定（SELF_JUDGE）の問題生成。解答表示は全 Meaning を見せる。
+// スペル確認（SPELLING / 日本語→英語）の問題生成。
+// 問題文は全 Meaning、解答は headword（入力したスペルを headword と照合して自動採点）。
 
 import {
   meaningDisplaysOf,
@@ -6,15 +7,15 @@ import {
   type QuizSourceMaterial,
 } from "@/lib/quiz/generation/material";
 import { fisherYatesShuffle, type Rng } from "@/lib/quiz/generation/shuffle";
-import type { SelfJudgeQuestion } from "@/lib/quiz/payload";
+import type { SpellingQuestion } from "@/lib/quiz/payload";
 
-export function buildSelfJudgeQuestions(
+export function buildSpellingQuestions(
   material: QuizSourceMaterial,
   rng: Rng,
-): SelfJudgeQuestion[] {
+): SpellingQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
     ...questionBaseOf(target),
-    answer: meaningDisplaysOf(target),
+    prompt: meaningDisplaysOf(target),
   }));
 }

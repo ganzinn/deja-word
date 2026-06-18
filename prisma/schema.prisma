@@ -326,10 +326,12 @@ model OccurrenceDetail {
 }
 
 enum QuizFormat {
-  CHOICE // 形式1: 四択
-  SELF_JUDGE // 形式2: 自己判定
-  MULTI_MEANING // 形式3: 多義語選択
-  // 将来: SPELLING(形式4), SELF_JUDGE_JA_EN(形式5) を値追加で対応
+  CHOICE // 形式1: 四択（英語→日本語）
+  SELF_JUDGE // 形式2: 自己判定（英語→日本語）
+  MULTI_MEANING // 形式3: 多義語選択（英語→日本語）
+  CHOICE_JA_EN // 形式4: 四択（日本語→英語）
+  SELF_JUDGE_JA_EN // 形式5: 自己判定（日本語→英語）
+  SPELLING // 形式6: スペル確認（日本語→英語）
 }
 
 enum QuizResult {

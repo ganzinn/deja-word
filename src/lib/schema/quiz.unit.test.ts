@@ -57,8 +57,15 @@ describe("quizRangeInputSchema", () => {
 });
 
 describe("quizFormatSchema", () => {
-  test("accepts the three quiz formats", () => {
-    for (const f of ["CHOICE", "SELF_JUDGE", "MULTI_MEANING"]) {
+  test("accepts every quiz format (both directions)", () => {
+    for (const f of [
+      "CHOICE",
+      "SELF_JUDGE",
+      "MULTI_MEANING",
+      "CHOICE_JA_EN",
+      "SELF_JUDGE_JA_EN",
+      "SPELLING",
+    ]) {
       expect(quizFormatSchema.safeParse(f).success).toBe(true);
     }
   });
@@ -176,6 +183,9 @@ describe("saveQuizDefaultsInputSchema", () => {
     CHOICE: null,
     SELF_JUDGE: null,
     MULTI_MEANING: null,
+    CHOICE_JA_EN: null,
+    SELF_JUDGE_JA_EN: null,
+    SPELLING: null,
     ...partial,
   });
   const ALL_NULL = timeoutMap({});

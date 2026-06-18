@@ -21,6 +21,8 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（回答／わからない／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（英単語）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
+  onAnswerReveal?: () => void;
 };
 
 // 解答確定状態。input: 入力したスペル、null =「わからない」または時間切れ
@@ -38,7 +40,13 @@ function outcomeFor(question: SpellingQuestion, answered: Answered): QuestionOut
 }
 
 /** スペル確認（日本語→英語）。問題文は意味（quiz-flow 側）、英単語のスペルを入力して自動採点。 */
-export function QuestionSpelling({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionSpelling({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerReveal,
+}: Props) {
   const [input, setInput] = useState("");
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
@@ -50,12 +58,13 @@ export function QuestionSpelling({ question, timeoutSeconds, onComplete, onRevea
     onTimeout: () => setAnswered((prev) => prev ?? { input: null, timedOut: true }),
   });
 
-  // 解答が確定した瞬間に正誤フラッシュ＋効果音を 1 回だけ要求する
+  // 解答が確定した瞬間に正誤フラッシュ＋効果音と、解答（英単語）の可視化を 1 回だけ要求する
   useEffect(() => {
     if (answered === null || revealedRef.current) return;
     revealedRef.current = true;
     onReveal(outcomeFor(question, answered).result);
-  }, [answered, question, onReveal]);
+    onAnswerReveal?.();
+  }, [answered, question, onReveal, onAnswerReveal]);
 
   const correct = answered !== null && outcomeFor(question, answered).result === "CORRECT";
 

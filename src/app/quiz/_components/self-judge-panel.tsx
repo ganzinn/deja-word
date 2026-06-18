@@ -18,6 +18,11 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（判定ボタン／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /**
+   * 解答が可視化された瞬間（「解答を表示」クリック／時間切れの両方）に 1 回だけ呼ばれる。
+   * 正誤確定（onReveal）より早いことがある（手動表示時）。日→英のみ指定される。
+   */
+  onAnswerReveal?: () => void;
   /** 「解答を表示」後に見せる正解（英語→日本語＝意味、日本語→英語＝英単語）。 */
   children: ReactNode;
 };
@@ -29,10 +34,17 @@ type Revealed = { byTimeout: boolean };
  * 自己判定（自己申告で正誤を委ねる）の状態機械。出題の向き（英→日／日→英）に依らず
  * タイマー・解答表示・判定ボタンの挙動は共通で、見せる正解（children）だけが異なる。
  */
-export function SelfJudgePanel({ timeoutSeconds, onComplete, onReveal, children }: Props) {
+export function SelfJudgePanel({
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerReveal,
+  children,
+}: Props) {
   const [revealed, setRevealed] = useState<Revealed | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
+  const answerRevealedRef = useRef(false);
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: revealed !== null,
@@ -48,6 +60,14 @@ export function SelfJudgePanel({ timeoutSeconds, onComplete, onReveal, children 
       onReveal("TIMEOUT");
     }
   }, [revealed, onReveal]);
+
+  // 解答が可視化された瞬間（手動表示・時間切れの両方）に発音再生を 1 回だけ要求する。
+  useEffect(() => {
+    if (revealed !== null && !answerRevealedRef.current) {
+      answerRevealedRef.current = true;
+      onAnswerReveal?.();
+    }
+  }, [revealed, onAnswerReveal]);
 
   function handleJudge(result: QuestionOutcome["result"]) {
     if (completed) return; // onComplete は 1 回だけ（3 ボタンの連打ガード）

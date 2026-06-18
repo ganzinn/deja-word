@@ -14,12 +14,25 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（判定ボタン／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（英単語）が可視化された瞬間に 1 回だけ呼ばれる（発音再生用）。 */
+  onAnswerReveal?: () => void;
 };
 
 /** 自己判定（日本語→英語）。問題文は意味（quiz-flow 側）、解答は headword（英単語）。 */
-export function QuestionSelfJudgeJaEn({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionSelfJudgeJaEn({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerReveal,
+}: Props) {
   return (
-    <SelfJudgePanel timeoutSeconds={timeoutSeconds} onComplete={onComplete} onReveal={onReveal}>
+    <SelfJudgePanel
+      timeoutSeconds={timeoutSeconds}
+      onComplete={onComplete}
+      onReveal={onReveal}
+      onAnswerReveal={onAnswerReveal}
+    >
       <div className="border-border bg-card/50 flex flex-wrap items-center justify-center gap-3 rounded-lg border p-4">
         <span className="text-2xl font-bold tracking-tight break-words">{question.headword}</span>
         <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />

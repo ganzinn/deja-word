@@ -22,4 +22,5 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   showCountdown: false,
   autoplayPronunciation: true,
   enableAnswerSound: true,
+  autoplayAnswerAudioJaEn: true,
 };

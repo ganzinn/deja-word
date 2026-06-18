@@ -84,6 +84,9 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     defaults?.autoplayPronunciation ?? true,
   );
   const [enableAnswerSound, setEnableAnswerSound] = useState(defaults?.enableAnswerSound ?? true);
+  const [autoplayAnswerAudioJaEn, setAutoplayAnswerAudioJaEn] = useState(
+    defaults?.autoplayAnswerAudioJaEn ?? true,
+  );
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -103,6 +106,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         showCountdown,
         autoplayPronunciation,
         enableAnswerSound,
+        autoplayAnswerAudioJaEn,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -123,6 +127,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setShowCountdown(DEFAULT_QUIZ_SETTINGS.showCountdown ?? false);
     setAutoplayPronunciation(DEFAULT_QUIZ_SETTINGS.autoplayPronunciation ?? true);
     setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
+    setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
     toast.success("デフォルト設定に戻しました（「保存」で確定します）");
   }
 
@@ -292,7 +297,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <Label>サウンド</Label>
+        <Label>発音の自動再生</Label>
         <div className="flex items-center gap-2">
           <Checkbox
             id="quiz-defaults-autoplay-pronunciation"
@@ -300,12 +305,29 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             onCheckedChange={(checked) => setAutoplayPronunciation(checked === true)}
           />
           <Label htmlFor="quiz-defaults-autoplay-pronunciation" className="font-normal">
-            発音の自動再生
+            英語→日本語（出題時）
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オフにすると、出題時に発音を自動再生しません（手動の再生ボタンは使えます）。
+          出題時に問題（英単語）の発音を再生します。オフでも手動の再生ボタンは使えます。
         </p>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-autoplay-answer-audio-ja-en"
+            checked={autoplayAnswerAudioJaEn}
+            onCheckedChange={(checked) => setAutoplayAnswerAudioJaEn(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-autoplay-answer-audio-ja-en" className="font-normal">
+            日本語→英語（解答表示時）
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          解答（英単語）が表示されたときに発音を再生します。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>効果音</Label>
         <div className="flex items-center gap-2">
           <Checkbox
             id="quiz-defaults-enable-answer-sound"
@@ -317,7 +339,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オフにすると、正解・不正解の効果音を鳴らしません。
+          正解・不正解のときに効果音を鳴らします。
         </p>
       </section>
 

@@ -44,7 +44,10 @@ type Props = {
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
   defaults: Omit<
     QuizDefaults,
-    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound"
+    | "showCountdown"
+    | "autoplayPronunciation"
+    | "enableAnswerSound"
+    | "autoplayAnswerAudioJaEn"
   > | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
@@ -52,6 +55,8 @@ type Props = {
   autoplayPronunciation: boolean;
   /** 正誤の効果音（設定画面のみで変更）。false で正解・不正解の効果音を無効化する。 */
   enableAnswerSound: boolean;
+  /** 日→英の解答表示時の発音自動再生（設定画面のみで変更）。false で無効化する。 */
+  autoplayAnswerAudioJaEn: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -135,12 +140,15 @@ function QuestionView({
   index,
   onComplete,
   onReveal,
+  onAnswerReveal,
 }: {
   quiz: QuizPayload;
   index: number;
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間に 1 回だけ呼ばれる（フラッシュ＋効果音は QuizFlow が集中処理）。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（英単語）が画面に現れた瞬間に 1 回だけ呼ばれる（日→英のみ。発音再生は QuizFlow が集中処理）。 */
+  onAnswerReveal: () => void;
 }) {
   // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
@@ -190,6 +198,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
         />
       );
     }
@@ -202,6 +211,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
         />
       );
     }
@@ -214,6 +224,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
         />
       );
     }
@@ -227,6 +238,7 @@ export function QuizFlow({
   showCountdown,
   autoplayPronunciation,
   enableAnswerSound,
+  autoplayAnswerAudioJaEn,
 }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
@@ -399,6 +411,21 @@ export function QuizFlow({
     if (enableAnswerSound) playAnswerSound(kind);
     if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => setFeedback(null), 800);
+  }
+
+  /**
+   * 日→英で解答（英単語）が画面に現れた瞬間（onAnswerReveal）に発音を自動再生する。
+   * 出題時の発音再生は解答漏れのため抑止しているが、解答が見えた後なら漏れないため
+   * ここで再生する。OFF 設定・音源なし・再生ブロック時はスキップ（手動の再生ボタンは従来どおり）。
+   */
+  function handleAnswerReveal() {
+    if (!autoplayAnswerAudioJaEn) return;
+    if (phase.name !== "play" || quiz === null) return;
+    const url = quiz.questions[phase.index]?.pronunciationAudioUrl ?? null;
+    const audio = preloadAudio(audioCacheRef.current, url);
+    if (!audio) return;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
   }
 
   // アンマウント時に保留中のフラッシュ消去タイマーを解放する
@@ -601,6 +628,7 @@ export function QuizFlow({
           index={phase.index}
           onComplete={handleQuestionComplete}
           onReveal={handleReveal}
+          onAnswerReveal={handleAnswerReveal}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
       </main>

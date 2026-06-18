@@ -18,6 +18,8 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（解答クリック／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（選択肢の正解）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
+  onAnswerReveal?: () => void;
 };
 
 // 解答確定状態。selectedIndex: 選んだ選択肢の index、null =「わからない」または時間切れ
@@ -34,7 +36,13 @@ function outcomeFor(question: ChoiceQuestion, answered: Answered): QuestionOutco
   };
 }
 
-export function QuestionChoice({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionChoice({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerReveal,
+}: Props) {
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
@@ -45,12 +53,14 @@ export function QuestionChoice({ question, timeoutSeconds, onComplete, onReveal 
     onTimeout: () => setAnswered((prev) => prev ?? { selectedIndex: null, timedOut: true }),
   });
 
-  // 解答が確定した瞬間（クリック・時間切れの両方）に正誤フラッシュ＋効果音を 1 回だけ要求する
+  // 解答が確定した瞬間（クリック・時間切れの両方）に正誤フラッシュ＋効果音と、
+  // 解答（正解選択肢）の可視化を 1 回だけ要求する
   useEffect(() => {
     if (answered === null || revealedRef.current) return;
     revealedRef.current = true;
     onReveal(outcomeFor(question, answered).result);
-  }, [answered, question, onReveal]);
+    onAnswerReveal?.();
+  }, [answered, question, onReveal, onAnswerReveal]);
 
   function handleSelect(index: number | null) {
     if (answered) return; // 確定後の連打ガード

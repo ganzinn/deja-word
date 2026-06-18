@@ -35,6 +35,8 @@ export default async function QuizPage() {
   // 発音の自動再生・正誤の効果音。それぞれ未設定（null）はデフォルトで有効。
   const autoplayPronunciation = defaults?.autoplayPronunciation ?? true;
   const enableAnswerSound = defaults?.enableAnswerSound ?? true;
+  // 日→英の解答表示時の発音自動再生。未設定（null）はデフォルトで有効。
+  const autoplayAnswerAudioJaEn = defaults?.autoplayAnswerAudioJaEn ?? true;
 
   return (
     <QuizFlow
@@ -48,6 +50,7 @@ export default async function QuizPage() {
       showCountdown={showCountdown}
       autoplayPronunciation={autoplayPronunciation}
       enableAnswerSound={enableAnswerSound}
+      autoplayAnswerAudioJaEn={autoplayAnswerAudioJaEn}
     />
   );
 }

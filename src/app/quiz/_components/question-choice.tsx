@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { AudioPlayButton } from "@/components/audio-play-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChoiceQuestion } from "@/lib/quiz/payload";
@@ -46,6 +47,9 @@ export function QuestionChoice({
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
+  // onAnswerReveal は日→英のときだけ渡される（payload / quiz-flow の規約）。
+  // 日→英では解答（英単語）が確定後に見えるので発音ボタンを出す。英→日では発音＝解答のため出さない。
+  const isJaEn = onAnswerReveal !== undefined;
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: answered !== null,
@@ -85,23 +89,33 @@ export function QuestionChoice({
             answered !== null &&
             answered.selectedIndex === index &&
             index !== question.correctIndex;
+          // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン
+          const showAudio = isCorrect && isJaEn && question.pronunciationAudioUrl !== null;
           return (
-            <Button
-              key={index}
-              variant="outline"
-              size="lg"
-              disabled={answered !== null}
-              onClick={() => handleSelect(index)}
-              className={cn(
-                "h-auto min-h-9 justify-start py-2 text-left whitespace-normal",
-                isCorrect &&
-                  "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
-                isWrongSelected &&
-                  "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
-              )}
-            >
-              {choice.text}
-            </Button>
+            <div key={index} className="relative">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={answered !== null}
+                onClick={() => handleSelect(index)}
+                className={cn(
+                  "h-auto min-h-9 w-full justify-start py-2 text-left whitespace-normal",
+                  isCorrect &&
+                    "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
+                  isWrongSelected &&
+                    "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
+                  // 折り返した英単語が発音ボタンと重ならないよう右側を空ける
+                  showAudio && "pr-16",
+                )}
+              >
+                {choice.text}
+              </Button>
+              {showAudio ? (
+                <div className="absolute top-1/2 right-2 -translate-y-1/2">
+                  <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>

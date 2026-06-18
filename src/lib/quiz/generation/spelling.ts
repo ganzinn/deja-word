@@ -2,7 +2,7 @@
 // 問題文は全 Meaning、解答は headword（入力したスペルを headword と照合して自動採点）。
 
 import {
-  meaningDisplaysOf,
+  firstMeaningText,
   questionBaseOf,
   type QuizSourceMaterial,
 } from "@/lib/quiz/generation/material";
@@ -16,6 +16,6 @@ export function buildSpellingQuestions(
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
     ...questionBaseOf(target),
-    prompt: meaningDisplaysOf(target),
+    prompt: firstMeaningText(target),
   }));
 }

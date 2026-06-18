@@ -3,7 +3,7 @@
 
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
-  meaningDisplaysOf,
+  firstMeaningText,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -45,7 +45,7 @@ export function buildChoiceJaEnQuestions(
     );
     return {
       ...questionBaseOf(target),
-      prompt: meaningDisplaysOf(target),
+      prompt: firstMeaningText(target),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
     };

@@ -2,7 +2,7 @@
 // 問題文は全 Meaning、解答（自己申告で照合する英単語）は headword。
 
 import {
-  meaningDisplaysOf,
+  firstMeaningText,
   questionBaseOf,
   type QuizSourceMaterial,
 } from "@/lib/quiz/generation/material";
@@ -16,6 +16,6 @@ export function buildSelfJudgeJaEnQuestions(
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
     ...questionBaseOf(target),
-    prompt: meaningDisplaysOf(target),
+    prompt: firstMeaningText(target),
   }));
 }

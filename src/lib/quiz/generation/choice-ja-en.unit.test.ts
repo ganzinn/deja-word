@@ -26,7 +26,7 @@ function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
 }
 
 describe("buildChoiceJaEnQuestions", () => {
-  test("prompt carries every meaning and choices are English headwords", () => {
+  test("prompt is the first meaning joined with '; ' and choices are English headwords", () => {
     const target = word("t", [["走る", "駆ける"], ["走行"]], { audio: "https://audio/t" });
     const m = material({
       targets: [target],
@@ -36,11 +36,8 @@ describe("buildChoiceJaEnQuestions", () => {
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
     expect(q.pronunciationAudioUrl).toBe("https://audio/t");
-    // 問題文は全 Meaning（意味）
-    expect(q.prompt).toEqual([
-      { partOfSpeech: null, texts: ["走る", "駆ける"] },
-      { partOfSpeech: null, texts: ["走行"] },
-    ]);
+    // 問題文は最初の Meaning のみ「; 」連結（2 件目「走行」は含めない）
+    expect(q.prompt).toBe("走る; 駆ける");
     // 正解は target の headword、選択肢はすべて headword
     expect(q.choices).toHaveLength(4);
     expect(q.choices[q.correctIndex].text).toBe("hw-t");

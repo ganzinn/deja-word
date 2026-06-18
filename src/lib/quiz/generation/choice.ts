@@ -3,6 +3,7 @@
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
   allMeaningTexts,
+  firstMeaningText,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -15,7 +16,7 @@ const CHOICE_DUMMY_COUNT = 3;
 
 /** 四択の選択肢表示: 最初の Meaning（sortOrder 先頭）の MeaningText を「; 」で連結。 */
 export function choiceDisplayText(word: QuizWord): string {
-  return (word.meanings[0]?.texts ?? []).join("; ");
+  return firstMeaningText(word);
 }
 
 /** 四択のダミー候補（1 候補 = 1 単語）。重複排除は表示対象（最初の Meaning）のテキストで行う。 */

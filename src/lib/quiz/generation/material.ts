@@ -92,10 +92,18 @@ export function allMeaningTexts(word: QuizWord): string[] {
 
 /**
  * sortOrder 順の全 Meaning の表示用データ（品詞＋テキスト）。
- * 自己判定の解答表示と、日本語→英語の問題文（意味の提示）で共用する。
+ * 自己判定（英語→日本語）の解答表示で使う。
  */
 export function meaningDisplaysOf(word: QuizWord): MeaningDisplay[] {
   return word.meanings.map((m) => ({ partOfSpeech: m.partOfSpeech, texts: m.texts }));
+}
+
+/**
+ * 最初の Meaning（sortOrder 先頭）の MeaningText を「; 」で連結。品詞は含めない。
+ * 英語→日本語の四択の選択肢表示と、日本語→英語の問題文（意味の提示）で共用する。
+ */
+export function firstMeaningText(word: QuizWord): string {
+  return (word.meanings[0]?.texts ?? []).join("; ");
 }
 
 /** 問題の共通項目。発音音源 URL は最初の Meaning のもの（未登録なら null）。 */

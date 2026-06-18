@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
 import type { QuizDefaults } from "@/lib/quiz-default-settings";
-import type { MeaningDisplay, QuizPayload } from "@/lib/quiz/payload";
+import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import {
@@ -29,7 +29,6 @@ import {
 } from "./answer-feedback-overlay";
 import { playAnswerSound } from "./answer-sound";
 import { Countdown } from "./countdown";
-import { MeaningBlocks } from "./meaning-blocks";
 import { QuestionChoice } from "./question-choice";
 import { QuestionMultiMeaning } from "./question-multi-meaning";
 import type { QuestionOutcome } from "./question-outcome";
@@ -119,8 +118,8 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
   }
 }
 
-/** 日本語→英語の問題文（全 Meaning）。英語→日本語形式は null（問題文は headword）。 */
-function jaEnPromptOf(quiz: QuizPayload, index: number): MeaningDisplay[] | null {
+/** 日本語→英語の問題文（最初の Meaning を「; 」連結した文字列）。英語→日本語形式は null（問題文は headword）。 */
+function jaEnPromptOf(quiz: QuizPayload, index: number): string | null {
   switch (quiz.format) {
     case "CHOICE_JA_EN":
     case "SELF_JUDGE_JA_EN":
@@ -585,8 +584,10 @@ export function QuizFlow({
         </div>
 
         {jaEnPrompt !== null ? (
-          <div className="py-2">
-            <MeaningBlocks meanings={jaEnPrompt} />
+          <div className="flex flex-wrap items-center justify-center py-4">
+            <h1 className="text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
+              {jaEnPrompt}
+            </h1>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-center gap-3 py-4">

@@ -19,15 +19,13 @@ const target: QuizWord = {
 };
 
 describe("buildSelfJudgeJaEnQuestions", () => {
-  test("prompt carries every meaning; headword (answer) is preserved", () => {
+  test("prompt is the first meaning joined with '; '; headword (answer) is preserved", () => {
     const [q] = buildSelfJudgeJaEnQuestions(material([target]), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
-    expect(q.prompt).toEqual([
-      { partOfSpeech: "動詞", texts: ["走る", "駆ける"] },
-      { partOfSpeech: null, texts: ["経営する"] },
-    ]);
+    // 最初の Meaning のみ「; 」連結（2 件目「経営する」・品詞は含めない）
+    expect(q.prompt).toBe("走る; 駆ける");
   });
 
   test("is deterministic and covers every target once", () => {
@@ -44,14 +42,12 @@ describe("buildSelfJudgeJaEnQuestions", () => {
 });
 
 describe("buildSpellingQuestions", () => {
-  test("prompt carries every meaning; headword (answer) is preserved", () => {
+  test("prompt is the first meaning joined with '; '; headword (answer) is preserved", () => {
     const [q] = buildSpellingQuestions(material([target]), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
-    expect(q.prompt).toEqual([
-      { partOfSpeech: "動詞", texts: ["走る", "駆ける"] },
-      { partOfSpeech: null, texts: ["経営する"] },
-    ]);
+    // 最初の Meaning のみ「; 」連結（2 件目「経営する」・品詞は含めない）
+    expect(q.prompt).toBe("走る; 駆ける");
   });
 });

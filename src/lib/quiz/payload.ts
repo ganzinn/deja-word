@@ -25,10 +25,11 @@ export type SelfJudgeQuestion = QuestionBase & {
 };
 
 /**
- * 日本語→英語の問題文（全 Meaning）。出題画面は headword の代わりにこれを表示し、
- * 解答（英単語＝headword）は形式ごとの UI が確定後に見せる。
+ * 日本語→英語の問題文。最初の Meaning の MeaningText を「; 」で連結したプレーン文字列
+ * （品詞なし。英語→日本語の選択肢表示と同じルール）。出題画面は headword の代わりに
+ * これを表示し、解答（英単語＝headword）は形式ごとの UI が確定後に見せる。
  */
-export type JaEnPrompt = { prompt: MeaningDisplay[] };
+export type JaEnPrompt = { prompt: string };
 
 /** 四択（日本語→英語）。choices は英単語、correctIndex が target の headword。 */
 export type ChoiceJaEnQuestion = QuestionBase &

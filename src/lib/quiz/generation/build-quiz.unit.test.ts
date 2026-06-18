@@ -53,6 +53,7 @@ describe("buildQuiz", () => {
     expect(choiceJaEn.questions).toHaveLength(2);
     if (choiceJaEn.format === "CHOICE_JA_EN") {
       const q = choiceJaEn.questions[0];
+      expect(typeof q.prompt).toBe("string");
       expect(q.prompt.length).toBeGreaterThanOrEqual(1);
       // 選択肢は英単語（headword）で、正解は target の headword
       expect(q.choices[q.correctIndex].text).toBe(q.headword);
@@ -62,6 +63,7 @@ describe("buildQuiz", () => {
     expect(selfJudgeJaEn.format).toBe("SELF_JUDGE_JA_EN");
     expect(selfJudgeJaEn.questions).toHaveLength(2);
     if (selfJudgeJaEn.format === "SELF_JUDGE_JA_EN") {
+      expect(typeof selfJudgeJaEn.questions[0].prompt).toBe("string");
       expect(selfJudgeJaEn.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
     }
 
@@ -69,6 +71,7 @@ describe("buildQuiz", () => {
     expect(spelling.format).toBe("SPELLING");
     expect(spelling.questions).toHaveLength(2);
     if (spelling.format === "SPELLING") {
+      expect(typeof spelling.questions[0].prompt).toBe("string");
       expect(spelling.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
     }
   });

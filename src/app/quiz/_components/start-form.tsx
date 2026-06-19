@@ -64,10 +64,7 @@ type Props = {
    */
   defaults: Omit<
     QuizDefaults,
-    | "showCountdown"
-    | "autoplayPronunciation"
-    | "enableAnswerSound"
-    | "autoplayAnswerAudioJaEn"
+    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound" | "autoplayAnswerAudioJaEn"
   > | null;
   onStart: (input: StartQuizInput) => void;
   /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */

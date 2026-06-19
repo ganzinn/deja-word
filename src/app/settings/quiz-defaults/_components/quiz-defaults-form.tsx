@@ -338,9 +338,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             正誤の効果音
           </Label>
         </div>
-        <p className="text-muted-foreground text-xs">
-          正解・不正解のときに効果音を鳴らします。
-        </p>
+        <p className="text-muted-foreground text-xs">正解・不正解のときに効果音を鳴らします。</p>
       </section>
 
       <div className="flex flex-col gap-2">

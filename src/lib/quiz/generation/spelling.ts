@@ -9,10 +9,7 @@ import {
 import { fisherYatesShuffle, type Rng } from "@/lib/quiz/generation/shuffle";
 import type { SpellingQuestion } from "@/lib/quiz/payload";
 
-export function buildSpellingQuestions(
-  material: QuizSourceMaterial,
-  rng: Rng,
-): SpellingQuestion[] {
+export function buildSpellingQuestions(material: QuizSourceMaterial, rng: Rng): SpellingQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
     ...questionBaseOf(target),

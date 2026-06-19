@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { QuizSourceMaterial, QuizWord } from "@/lib/quiz/generation/material";
-import { buildSelfJudgeJaEnQuestions } from "@/lib/quiz/generation/self-judge-ja-en";
+import { buildSpellingQuestions } from "@/lib/quiz/generation/spelling";
 import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function material(targets: QuizWord[]): QuizSourceMaterial {
@@ -17,25 +17,13 @@ const target: QuizWord = {
   ],
 };
 
-describe("buildSelfJudgeJaEnQuestions", () => {
+describe("buildSpellingQuestions", () => {
   test("prompt is the first meaning joined with '; '; headword (answer) is preserved", () => {
-    const [q] = buildSelfJudgeJaEnQuestions(material([target]), seededRng(1));
+    const [q] = buildSpellingQuestions(material([target]), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
     // 最初の Meaning のみ「; 」連結（2 件目「経営する」・品詞は含めない）
     expect(q.prompt).toBe("走る; 駆ける");
-  });
-
-  test("is deterministic and covers every target once", () => {
-    const targets = ["a", "b", "c"].map((id) => ({
-      id,
-      headword: id,
-      meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [id] }],
-    }));
-    const first = buildSelfJudgeJaEnQuestions(material(targets), seededRng(7));
-    const second = buildSelfJudgeJaEnQuestions(material(targets), seededRng(7));
-    expect(first).toEqual(second);
-    expect([...first.map((q) => q.wordId)].sort()).toEqual(["a", "b", "c"]);
   });
 });

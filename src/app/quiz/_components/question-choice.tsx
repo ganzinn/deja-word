@@ -21,6 +21,8 @@ type Props = {
   onReveal: (result: QuizResult) => void;
   /** 解答（選択肢の正解）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
   onAnswerReveal?: () => void;
+  /** 正解選択肢の右端に発音ボタンを出すか。発音＝解答になる日→英のみ true。 */
+  showCorrectAudio?: boolean;
 };
 
 // 解答確定状態。selectedIndex: 選んだ選択肢の index、null =「わからない」または時間切れ
@@ -43,13 +45,11 @@ export function QuestionChoice({
   onComplete,
   onReveal,
   onAnswerReveal,
+  showCorrectAudio = false,
 }: Props) {
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
-  // onAnswerReveal は日→英のときだけ渡される（payload / quiz-flow の規約）。
-  // 日→英では解答（英単語）が確定後に見えるので発音ボタンを出す。英→日では発音＝解答のため出さない。
-  const isJaEn = onAnswerReveal !== undefined;
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: answered !== null,
@@ -90,7 +90,8 @@ export function QuestionChoice({
             answered.selectedIndex === index &&
             index !== question.correctIndex;
           // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン
-          const showAudio = isCorrect && isJaEn && question.pronunciationAudioUrl !== null;
+          const showAudio =
+            isCorrect && showCorrectAudio && question.pronunciationAudioUrl !== null;
           return (
             <div key={index} className="relative">
               <Button

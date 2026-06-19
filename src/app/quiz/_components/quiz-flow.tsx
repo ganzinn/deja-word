@@ -44,10 +44,7 @@ type Props = {
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
   defaults: Omit<
     QuizDefaults,
-    | "showCountdown"
-    | "autoplayPronunciation"
-    | "enableAnswerSound"
-    | "autoplayAnswerAudioJaEn"
+    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound" | "autoplayAnswerAudioJaEn"
   > | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
@@ -125,13 +122,17 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
 
 /** 日本語→英語の問題文（最初の Meaning を「; 」連結した文字列）。英語→日本語形式は null（問題文は headword）。 */
 function jaEnPromptOf(quiz: QuizPayload, index: number): string | null {
+  // 全形式を列挙し default を置かないことで、形式追加時の更新漏れを型で検出する
+  // （英語→日本語は問題文が headword のため null）。
   switch (quiz.format) {
+    case "CHOICE":
+    case "SELF_JUDGE":
+    case "MULTI_MEANING":
+      return null;
     case "CHOICE_JA_EN":
     case "SELF_JUDGE_JA_EN":
     case "SPELLING":
       return quiz.questions[index].prompt;
-    default:
-      return null;
   }
 }
 
@@ -199,6 +200,7 @@ function QuestionView({
           onComplete={onComplete}
           onReveal={onReveal}
           onAnswerReveal={onAnswerReveal}
+          showCorrectAudio
         />
       );
     }

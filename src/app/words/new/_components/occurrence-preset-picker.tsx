@@ -51,7 +51,9 @@ export function OccurrencePresetPicker({
             disabled={systemLocked}
             onPressedChange={() => {
               if (action.kind === "add")
-                append(createPresetOccurrence(preset, autoNumberByOccurrenceId?.[preset.id] ?? null));
+                append(
+                  createPresetOccurrence(preset, autoNumberByOccurrenceId?.[preset.id] ?? null),
+                );
               else if (action.kind === "remove") remove(action.index);
             }}
           >

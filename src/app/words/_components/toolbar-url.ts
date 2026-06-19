@@ -37,12 +37,7 @@ export function useDebouncedCommit(
 }
 
 /** デフォルト値なら削除、それ以外は set。URL にデフォルト値を載せないための小ヘルパ。 */
-export function setParam(
-  params: URLSearchParams,
-  key: string,
-  value: string,
-  defaultValue = "",
-) {
+export function setParam(params: URLSearchParams, key: string, value: string, defaultValue = "") {
   if (value === defaultValue) params.delete(key);
   else params.set(key, value);
 }

@@ -28,9 +28,7 @@ describe("getAutoNumberOccurrencesForUser", () => {
     const user = await createTestUser();
     const occ = await createOccurrence(user.id, "空", true);
     const result = await getAutoNumberOccurrencesForUser(user.id);
-    expect(result).toEqual([
-      { id: occ.id, ownerId: user.id, location: "空", nextNumber: 1 },
-    ]);
+    expect(result).toEqual([{ id: occ.id, ownerId: user.id, location: "空", nextNumber: 1 }]);
   });
 
   test("nextNumber is max + 1, even with gaps", async () => {

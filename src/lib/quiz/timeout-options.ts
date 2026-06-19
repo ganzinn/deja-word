@@ -9,3 +9,8 @@ export const TIMEOUT_MAX_SECONDS = 60;
 
 /** 制限時間を ON にしたときの初期値（秒）。 */
 export const DEFAULT_TIMEOUT_SECONDS = 5;
+
+/** 制限時間を表示用ラベルに変換する（null＝制限なし）。 */
+export function formatTimeoutLabel(seconds: number | null): string {
+  return seconds == null ? "制限なし" : `制限 ${seconds} 秒`;
+}

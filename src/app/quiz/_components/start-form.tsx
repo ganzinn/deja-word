@@ -29,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_GROUPS } from "@/lib/quiz/format-options";
+import { FORMAT_GROUPS, formatLabelOf } from "@/lib/quiz/format-options";
 import {
   DEFAULT_TIMEOUT_SECONDS,
+  formatTimeoutLabel,
   TIMEOUT_MAX_SECONDS,
   TIMEOUT_MIN_SECONDS,
 } from "@/lib/quiz/timeout-options";
@@ -388,6 +389,9 @@ function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () 
     <div className="border-border bg-card/50 flex items-center gap-3 rounded-lg border p-3">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-sm font-semibold break-words">{rangeLabel}</span>
+        <span className="text-muted-foreground text-xs">
+          {formatLabelOf(drill.format)}・{formatTimeoutLabel(drill.timeoutSeconds)}
+        </span>
         <span className="text-muted-foreground text-xs">
           残り {drill.remainingWordCount} 語・最終実施{" "}
           {/* SSR とクライアントのタイムゾーン差による表記ゆれは許容する */}

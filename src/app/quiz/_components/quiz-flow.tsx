@@ -444,6 +444,7 @@ export function QuizFlow({
       {
         wordId: question.wordId,
         headword: question.headword,
+        prompt: jaEnPromptOf(quiz, index),
         correctDisplay: correctAnswerDisplay(quiz, index),
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,

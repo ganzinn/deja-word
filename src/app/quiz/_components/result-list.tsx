@@ -18,6 +18,8 @@ import { WordDetailDialog } from "./word-detail-dialog";
 export type ResultRow = {
   wordId: string;
   headword: string;
+  /** 日本語→英語の問題文（最初の Meaning の「; 」連結）。英語→日本語は null。主見出しは prompt があればそれ、無ければ headword。 */
+  prompt: string | null;
   /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
   correctDisplay: string;
   result: QuizResult;
@@ -115,7 +117,9 @@ export function ResultList({
             >
               <div className="flex w-full flex-wrap items-center gap-2">
                 <ResultIcon result={row.result} />
-                <span className="text-sm font-semibold break-words">{row.headword}</span>
+                <span className="text-sm font-semibold break-words whitespace-pre-wrap">
+                  {row.prompt ?? row.headword}
+                </span>
                 {skippedWordIds?.has(row.wordId) ? (
                   <Badge variant="secondary" className="ml-auto">
                     削除済み

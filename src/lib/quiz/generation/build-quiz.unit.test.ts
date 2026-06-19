@@ -47,13 +47,47 @@ describe("buildQuiz", () => {
     if (multi.format === "MULTI_MEANING") {
       expect(multi.questions[0].options.some((o) => o.isCorrect)).toBe(true);
     }
+
+    const choiceJaEn = buildQuiz("CHOICE_JA_EN", richMaterial, seededRng(1));
+    expect(choiceJaEn.format).toBe("CHOICE_JA_EN");
+    expect(choiceJaEn.questions).toHaveLength(2);
+    if (choiceJaEn.format === "CHOICE_JA_EN") {
+      const q = choiceJaEn.questions[0];
+      expect(typeof q.prompt).toBe("string");
+      expect(q.prompt.length).toBeGreaterThanOrEqual(1);
+      // 選択肢は英単語（headword）で、正解は target の headword
+      expect(q.choices[q.correctIndex].text).toBe(q.headword);
+    }
+
+    const selfJudgeJaEn = buildQuiz("SELF_JUDGE_JA_EN", richMaterial, seededRng(1));
+    expect(selfJudgeJaEn.format).toBe("SELF_JUDGE_JA_EN");
+    expect(selfJudgeJaEn.questions).toHaveLength(2);
+    if (selfJudgeJaEn.format === "SELF_JUDGE_JA_EN") {
+      expect(typeof selfJudgeJaEn.questions[0].prompt).toBe("string");
+      expect(selfJudgeJaEn.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
+    }
+
+    const spelling = buildQuiz("SPELLING", richMaterial, seededRng(1));
+    expect(spelling.format).toBe("SPELLING");
+    expect(spelling.questions).toHaveLength(2);
+    if (spelling.format === "SPELLING") {
+      expect(typeof spelling.questions[0].prompt).toBe("string");
+      expect(spelling.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
+    }
   });
 });
 
 describe("checkFormatAvailability", () => {
   test("is unavailable for every format when there is no target word", () => {
     const empty = material({ allWordsPool: [word("f1", [["甲"]])] });
-    for (const format of ["CHOICE", "SELF_JUDGE", "MULTI_MEANING"] as const) {
+    for (const format of [
+      "CHOICE",
+      "SELF_JUDGE",
+      "MULTI_MEANING",
+      "CHOICE_JA_EN",
+      "SELF_JUDGE_JA_EN",
+      "SPELLING",
+    ] as const) {
       const r = checkFormatAvailability(format, empty);
       expect(r.available).toBe(false);
       expect(r.reason).toBe("出題対象の単語がありません");
@@ -66,6 +100,30 @@ describe("checkFormatAvailability", () => {
     // 一方、ダミーが必要な形式は不成立
     expect(checkFormatAvailability("CHOICE", m).available).toBe(false);
     expect(checkFormatAvailability("MULTI_MEANING", m).available).toBe(false);
+    expect(checkFormatAvailability("CHOICE_JA_EN", m).available).toBe(false);
+  });
+
+  test("self-report formats (SELF_JUDGE_JA_EN / SPELLING) are available with any target", () => {
+    const m = material({ targets: [word("t", [["走る"]])] });
+    expect(checkFormatAvailability("SELF_JUDGE_JA_EN", m)).toEqual({
+      available: true,
+      reason: null,
+    });
+    expect(checkFormatAvailability("SPELLING", m)).toEqual({ available: true, reason: null });
+  });
+
+  test("CHOICE_JA_EN dummy availability is judged by headword, independent of meanings", () => {
+    // 意味は衝突しても headword が異なれば成立（向きが逆なので正解側は headword）
+    const ok = material({
+      targets: [word("t", [["走る"]])],
+      sameOccurrencePool: [word("d1", [["走る"]])],
+    });
+    expect(checkFormatAvailability("CHOICE_JA_EN", ok)).toEqual({ available: true, reason: null });
+    // headword 単独（ダミーなし）では不成立
+    const starved = material({ targets: [word("t", [["走る"]])] });
+    const r = checkFormatAvailability("CHOICE_JA_EN", starved);
+    expect(r.available).toBe(false);
+    expect(r.reason).toContain("hw-t");
   });
 
   test("CHOICE is unavailable when some target cannot get any dummy (trim-exact collision)", () => {

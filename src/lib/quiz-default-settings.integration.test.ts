@@ -19,6 +19,9 @@ function timeoutMap(
     CHOICE: partial.CHOICE ?? null,
     SELF_JUDGE: partial.SELF_JUDGE ?? null,
     MULTI_MEANING: partial.MULTI_MEANING ?? null,
+    CHOICE_JA_EN: partial.CHOICE_JA_EN ?? null,
+    SELF_JUDGE_JA_EN: partial.SELF_JUDGE_JA_EN ?? null,
+    SPELLING: partial.SPELLING ?? null,
   };
 }
 
@@ -36,6 +39,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: true,
       autoplayPronunciation: true,
       enableAnswerSound: true,
+      autoplayAnswerAudioJaEn: true,
     });
     await saveQuizDefaultsForUser(user.id, {
       occurrenceId: occ.id,
@@ -46,6 +50,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
 
     const rows = await prisma.quizDefaultSetting.findMany({ where: { userId: user.id } });
@@ -58,12 +63,13 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
   });
 
-  test("persists autoplayPronunciation and enableAnswerSound independently", async () => {
+  test("persists autoplayPronunciation, enableAnswerSound and autoplayAnswerAudioJaEn independently", async () => {
     const user = await createTestUser();
-    // 発音の自動再生は OFF、正誤の効果音は ON という独立した組み合わせを保存する
+    // 発音の自動再生は OFF、正誤の効果音は ON、解答表示時の発音は OFF という独立した組み合わせを保存する
     await saveQuizDefaultsForUser(user.id, {
       occurrenceId: null,
       rangeFrom: null,
@@ -73,10 +79,12 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: false,
       enableAnswerSound: true,
+      autoplayAnswerAudioJaEn: false,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults?.autoplayPronunciation).toBe(false);
     expect(defaults?.enableAnswerSound).toBe(true);
+    expect(defaults?.autoplayAnswerAudioJaEn).toBe(false);
   });
 
   test("syncs per-format timeout rows: upsert for values, delete for null on re-save", async () => {
@@ -91,6 +99,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
     expect(await prisma.quizDefaultTimeout.count({ where: { userId: user.id } })).toBe(3);
 
@@ -104,6 +113,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
 
     const defaults = await getQuizDefaultsForUser(user.id);
@@ -126,6 +136,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults).toEqual({
@@ -137,6 +148,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
     // QuizDefaultSetting 行は作られるが timeout 行はゼロ
     expect(await prisma.quizDefaultTimeout.count({ where: { userId: user.id } })).toBe(0);
@@ -156,6 +168,7 @@ describe("saveQuizDefaultsForUser", () => {
         showCountdown: null,
         autoplayPronunciation: null,
         enableAnswerSound: null,
+        autoplayAnswerAudioJaEn: null,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });
@@ -172,6 +185,7 @@ describe("saveQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
     const defaults = await getQuizDefaultsForUser(user.id);
     expect(defaults?.occurrenceId).toBe(sysOcc.id);
@@ -196,6 +210,7 @@ describe("getQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
     expect(await getQuizDefaultsForUser(user.id)).toEqual({
       occurrenceId: occ.id,
@@ -206,6 +221,7 @@ describe("getQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
   });
 
@@ -224,6 +240,7 @@ describe("getQuizDefaultsForUser", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     });
   });
 
@@ -239,6 +256,7 @@ describe("getQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
 
     await prisma.occurrence.delete({ where: { id: occ.id } });
@@ -252,6 +270,7 @@ describe("getQuizDefaultsForUser", () => {
       showCountdown: false,
       autoplayPronunciation: false,
       enableAnswerSound: false,
+      autoplayAnswerAudioJaEn: false,
     });
   });
 });

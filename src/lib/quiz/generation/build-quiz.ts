@@ -4,6 +4,7 @@
 
 import type { QuizFormat } from "@/generated/prisma/enums";
 import { buildChoiceQuestions } from "@/lib/quiz/generation/choice";
+import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
   allMeaningTexts,
@@ -12,6 +13,8 @@ import {
 } from "@/lib/quiz/generation/material";
 import { buildMultiMeaningQuestions } from "@/lib/quiz/generation/multi-meaning";
 import { buildSelfJudgeQuestions } from "@/lib/quiz/generation/self-judge";
+import { buildSelfJudgeJaEnQuestions } from "@/lib/quiz/generation/self-judge-ja-en";
+import { buildSpellingQuestions } from "@/lib/quiz/generation/spelling";
 import type { Rng } from "@/lib/quiz/generation/shuffle";
 import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
 
@@ -32,6 +35,12 @@ export function buildQuiz(
       return { format: "SELF_JUDGE", questions: buildSelfJudgeQuestions(material, rng) };
     case "MULTI_MEANING":
       return { format: "MULTI_MEANING", questions: buildMultiMeaningQuestions(material, rng) };
+    case "CHOICE_JA_EN":
+      return { format: "CHOICE_JA_EN", questions: buildChoiceJaEnQuestions(material, rng) };
+    case "SELF_JUDGE_JA_EN":
+      return { format: "SELF_JUDGE_JA_EN", questions: buildSelfJudgeJaEnQuestions(material, rng) };
+    case "SPELLING":
+      return { format: "SPELLING", questions: buildSpellingQuestions(material, rng) };
     default:
       return assertNever(format);
   }
@@ -44,10 +53,14 @@ export type FormatAvailability =
 
 const AVAILABLE: FormatAvailability = { available: true, reason: null };
 
-/** 候補抽出ルールに従い、全出題対象でダミーを 1 件以上確保できるか調べる。 */
+/**
+ * 候補抽出ルールに従い、全出題対象でダミーを 1 件以上確保できるか調べる。
+ * `correctTextsOf` は正解側テキスト（ダミーから除外する値）。既定は全 Meaning（英語→日本語）。
+ */
 function findDummylessTarget(
   material: QuizSourceMaterial,
   toCandidates: (word: QuizWord) => DummyCandidate<unknown>[],
+  correctTextsOf: (word: QuizWord) => string[] = allMeaningTexts,
 ): QuizWord | undefined {
   return material.targets.find((target) => {
     const candidates = [
@@ -57,7 +70,7 @@ function findDummylessTarget(
     ]
       .filter((w) => w.id !== target.id)
       .flatMap(toCandidates);
-    return !hasValidDummyCandidate(allMeaningTexts(target), candidates);
+    return !hasValidDummyCandidate(correctTextsOf(target), candidates);
   });
 }
 
@@ -92,7 +105,23 @@ export function checkFormatAvailability(
             reason: `ダミー選択肢を確保できない単語があります（${dummyless.headword}）`,
           };
     }
+    case "CHOICE_JA_EN": {
+      // 日本語→英語の四択は選択肢が英単語。正解側は headword、ダミー候補も headword。
+      const dummyless = findDummylessTarget(
+        material,
+        (word) => [{ value: word, texts: [word.headword] }],
+        (word) => [word.headword],
+      );
+      return dummyless === undefined
+        ? AVAILABLE
+        : {
+            available: false,
+            reason: `ダミー選択肢を確保できない単語があります（${dummyless.headword}）`,
+          };
+    }
     case "SELF_JUDGE":
+    case "SELF_JUDGE_JA_EN":
+    case "SPELLING":
       return AVAILABLE;
     default:
       return assertNever(format);

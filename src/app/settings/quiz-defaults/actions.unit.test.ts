@@ -35,10 +35,18 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   rangeFrom: 1,
   rangeTo: 100,
   format: "CHOICE",
-  timeoutByFormat: { CHOICE: 5, SELF_JUDGE: 20, MULTI_MEANING: null },
+  timeoutByFormat: {
+    CHOICE: 5,
+    SELF_JUDGE: 20,
+    MULTI_MEANING: null,
+    CHOICE_JA_EN: null,
+    SELF_JUDGE_JA_EN: null,
+    SPELLING: null,
+  },
   showCountdown: true,
   autoplayPronunciation: true,
   enableAnswerSound: true,
+  autoplayAnswerAudioJaEn: true,
 };
 
 beforeEach(() => {
@@ -101,10 +109,18 @@ describe("saveQuizDefaults (Server Action)", () => {
       rangeFrom: null,
       rangeTo: null,
       format: null,
-      timeoutByFormat: { CHOICE: null, SELF_JUDGE: null, MULTI_MEANING: null },
+      timeoutByFormat: {
+        CHOICE: null,
+        SELF_JUDGE: null,
+        MULTI_MEANING: null,
+        CHOICE_JA_EN: null,
+        SELF_JUDGE_JA_EN: null,
+        SPELLING: null,
+      },
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });

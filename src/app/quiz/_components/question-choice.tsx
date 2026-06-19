@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { AudioPlayButton } from "@/components/audio-play-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChoiceQuestion } from "@/lib/quiz/payload";
@@ -18,6 +19,10 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（解答クリック／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（選択肢の正解）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
+  onAnswerReveal?: () => void;
+  /** 正解選択肢の右端に発音ボタンを出すか。発音＝解答になる日→英のみ true。 */
+  showCorrectAudio?: boolean;
 };
 
 // 解答確定状態。selectedIndex: 選んだ選択肢の index、null =「わからない」または時間切れ
@@ -34,7 +39,14 @@ function outcomeFor(question: ChoiceQuestion, answered: Answered): QuestionOutco
   };
 }
 
-export function QuestionChoice({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionChoice({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerReveal,
+  showCorrectAudio = false,
+}: Props) {
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
@@ -45,12 +57,14 @@ export function QuestionChoice({ question, timeoutSeconds, onComplete, onReveal 
     onTimeout: () => setAnswered((prev) => prev ?? { selectedIndex: null, timedOut: true }),
   });
 
-  // 解答が確定した瞬間（クリック・時間切れの両方）に正誤フラッシュ＋効果音を 1 回だけ要求する
+  // 解答が確定した瞬間（クリック・時間切れの両方）に正誤フラッシュ＋効果音と、
+  // 解答（正解選択肢）の可視化を 1 回だけ要求する
   useEffect(() => {
     if (answered === null || revealedRef.current) return;
     revealedRef.current = true;
     onReveal(outcomeFor(question, answered).result);
-  }, [answered, question, onReveal]);
+    onAnswerReveal?.();
+  }, [answered, question, onReveal, onAnswerReveal]);
 
   function handleSelect(index: number | null) {
     if (answered) return; // 確定後の連打ガード
@@ -75,23 +89,34 @@ export function QuestionChoice({ question, timeoutSeconds, onComplete, onReveal 
             answered !== null &&
             answered.selectedIndex === index &&
             index !== question.correctIndex;
+          // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン
+          const showAudio =
+            isCorrect && showCorrectAudio && question.pronunciationAudioUrl !== null;
           return (
-            <Button
-              key={index}
-              variant="outline"
-              size="lg"
-              disabled={answered !== null}
-              onClick={() => handleSelect(index)}
-              className={cn(
-                "h-auto min-h-9 justify-start py-2 text-left whitespace-normal",
-                isCorrect &&
-                  "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
-                isWrongSelected &&
-                  "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
-              )}
-            >
-              {choice.text}
-            </Button>
+            <div key={index} className="relative">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={answered !== null}
+                onClick={() => handleSelect(index)}
+                className={cn(
+                  "h-auto min-h-9 w-full justify-start py-2 text-left whitespace-normal",
+                  isCorrect &&
+                    "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
+                  isWrongSelected &&
+                    "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
+                  // 折り返した英単語が発音ボタンと重ならないよう右側を空ける
+                  showAudio && "pr-16",
+                )}
+              >
+                {choice.text}
+              </Button>
+              {showAudio ? (
+                <div className="absolute top-1/2 right-2 -translate-y-1/2">
+                  <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>

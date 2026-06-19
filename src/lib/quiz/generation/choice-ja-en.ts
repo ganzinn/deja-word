@@ -1,38 +1,36 @@
-// 四択（CHOICE）の問題生成。
+// 四択（CHOICE_JA_EN / 日本語→英語）の問題生成。
+// 問題文は target の全 Meaning、選択肢は英単語（headword）。
 
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
-  allMeaningTexts,
   firstMeaningText,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
 } from "@/lib/quiz/generation/material";
 import { fisherYatesShuffle, type Rng } from "@/lib/quiz/generation/shuffle";
-import type { ChoiceQuestion } from "@/lib/quiz/payload";
+import type { ChoiceJaEnQuestion } from "@/lib/quiz/payload";
 
 /** ダミーの基本数（正解 1 ＋ダミー 3 ＝四択）。不足時は縮退（最低 2 択＝ダミー 1 件）。 */
 const CHOICE_DUMMY_COUNT = 3;
 
-/** 四択の選択肢表示: 最初の Meaning（sortOrder 先頭）の MeaningText を「; 」で連結。 */
-export function choiceDisplayText(word: QuizWord): string {
-  return firstMeaningText(word);
+/** 四択（日→英）のダミー候補（1 候補 = 1 単語）。重複排除・表示は headword で行う。 */
+function toHeadwordCandidate(word: QuizWord): DummyCandidate<QuizWord> {
+  return { value: word, texts: [word.headword] };
 }
 
-/** 四択のダミー候補（1 候補 = 1 単語）。重複排除は表示対象（最初の Meaning）のテキストで行う。 */
-function toWordCandidate(word: QuizWord): DummyCandidate<QuizWord> {
-  return { value: word, texts: word.meanings[0]?.texts ?? [] };
-}
-
-export function buildChoiceQuestions(material: QuizSourceMaterial, rng: Rng): ChoiceQuestion[] {
+export function buildChoiceJaEnQuestions(
+  material: QuizSourceMaterial,
+  rng: Rng,
+): ChoiceJaEnQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => {
     const primaryPool = [...material.targets, ...material.sameOccurrencePool]
       .filter((w) => w.id !== target.id)
-      .map(toWordCandidate);
-    const fallbackPool = material.allWordsPool.map(toWordCandidate);
+      .map(toHeadwordCandidate);
+    const fallbackPool = material.allWordsPool.map(toHeadwordCandidate);
     const dummies = selectDummies({
-      correctTexts: allMeaningTexts(target),
+      correctTexts: [target.headword],
       primaryPool,
       fallbackPool,
       desiredCount: CHOICE_DUMMY_COUNT,
@@ -40,13 +38,14 @@ export function buildChoiceQuestions(material: QuizSourceMaterial, rng: Rng): Ch
     });
     const shuffled = fisherYatesShuffle(
       [
-        { text: choiceDisplayText(target), isCorrect: true },
-        ...dummies.map((w) => ({ text: choiceDisplayText(w), isCorrect: false })),
+        { text: target.headword, isCorrect: true },
+        ...dummies.map((w) => ({ text: w.headword, isCorrect: false })),
       ],
       rng,
     );
     return {
       ...questionBaseOf(target),
+      prompt: firstMeaningText(target),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
     };

@@ -326,10 +326,12 @@ model OccurrenceDetail {
 }
 
 enum QuizFormat {
-  CHOICE // 形式1: 四択
-  SELF_JUDGE // 形式2: 自己判定
-  MULTI_MEANING // 形式3: 多義語選択
-  // 将来: SPELLING(形式4), SELF_JUDGE_JA_EN(形式5) を値追加で対応
+  CHOICE // 形式1: 四択（英語→日本語）
+  SELF_JUDGE // 形式2: 自己判定（英語→日本語）
+  MULTI_MEANING // 形式3: 多義語選択（英語→日本語）
+  CHOICE_JA_EN // 形式4: 四択（日本語→英語）
+  SELF_JUDGE_JA_EN // 形式5: 自己判定（日本語→英語）
+  SPELLING // 形式6: スペル確認（日本語→英語）
 }
 
 enum QuizResult {
@@ -372,6 +374,7 @@ model QuizDefaultSetting {
   showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
   autoplayPronunciation Boolean? @map("autoplay_pronunciation") // 発音の自動再生。null = 有効（デフォルト）
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
+  autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)

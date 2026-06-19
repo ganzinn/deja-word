@@ -11,8 +11,16 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   rangeFrom: null,
   rangeTo: null,
   format: "CHOICE",
-  timeoutByFormat: { CHOICE: 5, SELF_JUDGE: 3, MULTI_MEANING: null },
+  timeoutByFormat: {
+    CHOICE: 5,
+    SELF_JUDGE: 3,
+    MULTI_MEANING: null,
+    CHOICE_JA_EN: 5,
+    SELF_JUDGE_JA_EN: 3,
+    SPELLING: null,
+  },
   showCountdown: false,
   autoplayPronunciation: true,
   enableAnswerSound: true,
+  autoplayAnswerAudioJaEn: true,
 };

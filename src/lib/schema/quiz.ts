@@ -20,7 +20,9 @@ export const quizRangeInputSchema = z.object({
   rangeTo: z.number().int().positive().optional(),
 }) satisfies z.ZodType<QuizRangeInput>;
 
-export const quizFormatSchema = z.enum(["CHOICE", "SELF_JUDGE", "MULTI_MEANING"]);
+// 形式リストは ALL_QUIZ_FORMATS（FORMAT_GROUPS 由来）を単一の出どころとする。
+// 形式追加は enum 値＋FORMAT_GROUPS への追記だけでここに波及する。
+export const quizFormatSchema = z.enum(ALL_QUIZ_FORMATS as [QuizFormat, ...QuizFormat[]]);
 
 /** 1 問あたりの制限時間（秒）。null = 制限なしは各入力スキーマ側で .nullable() を付けて表現する。 */
 export const quizTimeoutSecondsSchema = z
@@ -79,6 +81,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   showCountdown: z.boolean().nullable(),
   autoplayPronunciation: z.boolean().nullable(),
   enableAnswerSound: z.boolean().nullable(),
+  autoplayAnswerAudioJaEn: z.boolean().nullable(),
 });
 
 // ---- drill 系 Server Action の入力スキーマ ----

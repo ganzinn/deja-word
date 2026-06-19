@@ -18,6 +18,8 @@ export type QuizDefaults = {
   autoplayPronunciation: boolean | null;
   /** 正誤の効果音。null = 有効（デフォルト）。OFF（false）で正解・不正解の効果音を無効化する。 */
   enableAnswerSound: boolean | null;
+  /** 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）。OFF（false）で解答表示時の発音再生を無効化する。 */
+  autoplayAnswerAudioJaEn: boolean | null;
 };
 
 export class DefaultOccurrenceNotInScopeError extends Error {
@@ -68,6 +70,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
     };
   }
 
@@ -82,6 +85,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     showCountdown: setting.showCountdown,
     autoplayPronunciation: setting.autoplayPronunciation,
     enableAnswerSound: setting.enableAnswerSound,
+    autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
   };
 }
 

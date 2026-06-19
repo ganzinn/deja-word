@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { buttonVariants } from "@/components/ui/button";
+import { isJaToEnFormat } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
@@ -32,6 +33,8 @@ import { QuestionChoice } from "./question-choice";
 import { QuestionMultiMeaning } from "./question-multi-meaning";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionSelfJudge } from "./question-self-judge";
+import { QuestionSelfJudgeJaEn } from "./question-self-judge-ja-en";
+import { QuestionSpelling } from "./question-spelling";
 import { ResultList, type ResultRow, type SubmitState } from "./result-list";
 import { StartForm, type OccurrenceOption } from "./start-form";
 
@@ -41,7 +44,7 @@ type Props = {
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
   defaults: Omit<
     QuizDefaults,
-    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound"
+    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound" | "autoplayAnswerAudioJaEn"
   > | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
@@ -49,6 +52,8 @@ type Props = {
   autoplayPronunciation: boolean;
   /** 正誤の効果音（設定画面のみで変更）。false で正解・不正解の効果音を無効化する。 */
   enableAnswerSound: boolean;
+  /** 日→英の解答表示時の発音自動再生（設定画面のみで変更）。false で無効化する。 */
+  autoplayAnswerAudioJaEn: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -104,6 +109,30 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
         .map((option) => option.text)
         .join("; ");
     }
+    case "CHOICE_JA_EN": {
+      const question = quiz.questions[index];
+      return question.choices[question.correctIndex]?.text ?? "";
+    }
+    case "SELF_JUDGE_JA_EN":
+    case "SPELLING":
+      // 日本語→英語の正解は英単語（headword）
+      return quiz.questions[index].headword;
+  }
+}
+
+/** 日本語→英語の問題文（最初の Meaning を「; 」連結した文字列）。英語→日本語形式は null（問題文は headword）。 */
+function jaEnPromptOf(quiz: QuizPayload, index: number): string | null {
+  // 全形式を列挙し default を置かないことで、形式追加時の更新漏れを型で検出する
+  // （英語→日本語は問題文が headword のため null）。
+  switch (quiz.format) {
+    case "CHOICE":
+    case "SELF_JUDGE":
+    case "MULTI_MEANING":
+      return null;
+    case "CHOICE_JA_EN":
+    case "SELF_JUDGE_JA_EN":
+    case "SPELLING":
+      return quiz.questions[index].prompt;
   }
 }
 
@@ -112,12 +141,15 @@ function QuestionView({
   index,
   onComplete,
   onReveal,
+  onAnswerReveal,
 }: {
   quiz: QuizPayload;
   index: number;
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間に 1 回だけ呼ばれる（フラッシュ＋効果音は QuizFlow が集中処理）。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答（英単語）が画面に現れた瞬間に 1 回だけ呼ばれる（日→英のみ。発音再生は QuizFlow が集中処理）。 */
+  onAnswerReveal: () => void;
 }) {
   // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
@@ -157,6 +189,47 @@ function QuestionView({
         />
       );
     }
+    case "CHOICE_JA_EN": {
+      // 選択肢が英単語になるだけで挙動は四択と同一のため QuestionChoice を共用する
+      const question = quiz.questions[index];
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
+          showCorrectAudio
+        />
+      );
+    }
+    case "SELF_JUDGE_JA_EN": {
+      const question = quiz.questions[index];
+      return (
+        <QuestionSelfJudgeJaEn
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
+        />
+      );
+    }
+    case "SPELLING": {
+      const question = quiz.questions[index];
+      return (
+        <QuestionSpelling
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
+        />
+      );
+    }
   }
 }
 
@@ -167,6 +240,7 @@ export function QuizFlow({
   showCountdown,
   autoplayPronunciation,
   enableAnswerSound,
+  autoplayAnswerAudioJaEn,
 }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
@@ -341,6 +415,21 @@ export function QuizFlow({
     feedbackTimerRef.current = setTimeout(() => setFeedback(null), 800);
   }
 
+  /**
+   * 日→英で解答（英単語）が画面に現れた瞬間（onAnswerReveal）に発音を自動再生する。
+   * 出題時の発音再生は解答漏れのため抑止しているが、解答が見えた後なら漏れないため
+   * ここで再生する。OFF 設定・音源なし・再生ブロック時はスキップ（手動の再生ボタンは従来どおり）。
+   */
+  function handleAnswerReveal() {
+    if (!autoplayAnswerAudioJaEn) return;
+    if (phase.name !== "play" || quiz === null) return;
+    const url = quiz.questions[phase.index]?.pronunciationAudioUrl ?? null;
+    const audio = preloadAudio(audioCacheRef.current, url);
+    if (!audio) return;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  }
+
   // アンマウント時に保留中のフラッシュ消去タイマーを解放する
   useEffect(() => {
     return () => {
@@ -357,6 +446,7 @@ export function QuizFlow({
       {
         wordId: question.wordId,
         headword: question.headword,
+        prompt: jaEnPromptOf(quiz, index),
         correctDisplay: correctAnswerDisplay(quiz, index),
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,
@@ -476,6 +566,8 @@ export function QuizFlow({
     if (!audio) return;
     // 発音の自動再生 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
     if (!autoplayPronunciation) return;
+    // 日本語→英語は発音が解答（英単語）を漏らすため、出題時の自動再生はしない
+    if (isJaToEnFormat(quiz.format)) return;
     audio.currentTime = 0;
     // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
     void audio.play().catch(() => {});
@@ -498,6 +590,8 @@ export function QuizFlow({
     const total = quiz.questions.length;
     const current = phase.index + 1;
     const question = quiz.questions[phase.index];
+    // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
+    const jaEnPrompt = jaEnPromptOf(quiz, phase.index);
     return (
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-6 px-4 pt-6 pb-16 md:max-w-2xl">
         <div className="flex flex-col gap-1.5">
@@ -519,16 +613,25 @@ export function QuizFlow({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 py-4">
-          <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
-          <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
-        </div>
+        {jaEnPrompt !== null ? (
+          <div className="flex flex-wrap items-center justify-center py-4">
+            <h1 className="text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
+              {jaEnPrompt}
+            </h1>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-3 py-4">
+            <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
+            <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+          </div>
+        )}
 
         <QuestionView
           quiz={quiz}
           index={phase.index}
           onComplete={handleQuestionComplete}
           onReveal={handleReveal}
+          onAnswerReveal={handleAnswerReveal}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
       </main>

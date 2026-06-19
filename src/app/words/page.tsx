@@ -68,8 +68,7 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   });
 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
-  const hrefForPage = (p: number) =>
-    buildHref("word", { q, sort, match, page: p });
+  const hrefForPage = (p: number) => buildHref("word", { q, sort, match, page: p });
 
   if (page > totalPages && total > 0) {
     redirect(hrefForPage(totalPages));
@@ -83,11 +82,7 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
 
       <ResultCount label={q.length > 0 ? `「${q}」の検索結果` : "全"} total={total} />
 
-      {items.length === 0 ? (
-        <EmptyState hasQuery={q.length > 0} />
-      ) : (
-        <WordRows items={items} />
-      )}
+      {items.length === 0 ? <EmptyState hasQuery={q.length > 0} /> : <WordRows items={items} />}
 
       {totalPages > 1 ? (
         <Pagination currentPage={currentPage} totalPages={totalPages} hrefForPage={hrefForPage} />
@@ -111,7 +106,11 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
 
   const toolbar = (
     <OccurrenceFilterToolbar
-      occurrences={occurrences.map((o) => ({ id: o.id, location: o.location, isSystem: o.isSystem }))}
+      occurrences={occurrences.map((o) => ({
+        id: o.id,
+        location: o.location,
+        isSystem: o.isSystem,
+      }))}
       occurrenceId={occurrenceId}
       initialQuery={q}
       match={match}

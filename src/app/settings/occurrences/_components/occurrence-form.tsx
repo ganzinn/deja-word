@@ -152,7 +152,9 @@ export function OccurrenceForm(props: OccurrenceFormProps) {
                     掲載番号を自動採番する
                   </FormLabel>
                   <FormDescription>
-                    ON にすると、単語の新規登録時にこの掲載箇所が展開され、掲載番号に最新の番号（最大値＋1）が自動入力されます。プリセット ON のときのみ設定できます。
+                    ON
+                    にすると、単語の新規登録時にこの掲載箇所が展開され、掲載番号に最新の番号（最大値＋1）が自動入力されます。プリセット
+                    ON のときのみ設定できます。
                   </FormDescription>
                 </div>
               </FormItem>

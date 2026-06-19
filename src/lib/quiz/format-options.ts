@@ -50,3 +50,17 @@ const JA_TO_EN_FORMATS = new Set<QuizFormat>(["CHOICE_JA_EN", "SELF_JUDGE_JA_EN"
 export function isJaToEnFormat(format: QuizFormat): boolean {
   return JA_TO_EN_FORMATS.has(format);
 }
+
+/**
+ * 出題形式を単一の表示用ラベルに変換する（例「英語→日本語・四択」）。
+ * `label` だけだとカテゴリ間で重複する（「四択」など）ため、向き（category）を併記する。
+ * 文言は FORMAT_GROUPS を単一の出どころとして再利用しドリフトを防ぐ。
+ */
+export function formatLabelOf(format: QuizFormat): string {
+  for (const group of FORMAT_GROUPS) {
+    const option = group.options.find((o) => o.value === format);
+    if (option) return `${group.category}・${option.label}`;
+  }
+  // ALL_QUIZ_FORMATS と同じ出どころのため通常到達しない。型の網羅性が崩れた場合のフォールバック。
+  return format;
+}

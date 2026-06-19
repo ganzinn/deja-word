@@ -10,6 +10,7 @@ export type ActiveDrill = {
   rangeFrom: number;
   rangeTo: number;
   format: QuizFormat;
+  timeoutSeconds: number | null; // 1 問あたりの制限時間（null = 制限なし）
   remainingWordCount: number; // remaining > 0 の DrillWord 数
   lastPlayedAt: Date; // Drill.updatedAt
 };
@@ -27,6 +28,7 @@ export async function listActiveDrillsForUser(userId: string): Promise<ActiveDri
       rangeFrom: true,
       rangeTo: true,
       format: true,
+      timeoutSeconds: true,
       updatedAt: true,
       occurrence: { select: { location: true } },
       _count: { select: { words: { where: { remaining: { gt: 0 } } } } },
@@ -38,6 +40,7 @@ export async function listActiveDrillsForUser(userId: string): Promise<ActiveDri
     rangeFrom: d.rangeFrom,
     rangeTo: d.rangeTo,
     format: d.format,
+    timeoutSeconds: d.timeoutSeconds,
     remainingWordCount: d._count.words,
     lastPlayedAt: d.updatedAt,
   }));

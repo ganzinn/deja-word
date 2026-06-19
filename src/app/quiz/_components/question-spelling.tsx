@@ -51,6 +51,8 @@ export function QuestionSpelling({
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
   const revealedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
   const timer = useQuestionTimer({
     timeoutSeconds,
     stopped: answered !== null,
@@ -65,6 +67,13 @@ export function QuestionSpelling({
     onReveal(outcomeFor(question, answered).result);
     onAnswerReveal?.();
   }, [answered, question, onReveal, onAnswerReveal]);
+
+  // 画面状態に応じて自動でフォーカスを移す:
+  //   入力画面 → スペル入力欄、解答表示画面 →「次へ」ボタン（Enter で次問へ進める）
+  useEffect(() => {
+    if (answered === null) inputRef.current?.focus();
+    else nextButtonRef.current?.focus();
+  }, [answered]);
 
   const correct = answered !== null && outcomeFor(question, answered).result === "CORRECT";
 
@@ -99,6 +108,7 @@ export function QuestionSpelling({
         }}
       >
         <Input
+          ref={inputRef}
           type="text"
           inputMode="text"
           autoComplete="off"
@@ -145,7 +155,13 @@ export function QuestionSpelling({
             </Button>
           </div>
         ) : (
-          <Button type="button" size="lg" disabled={completed} onClick={handleNext}>
+          <Button
+            ref={nextButtonRef}
+            type="button"
+            size="lg"
+            disabled={completed}
+            onClick={handleNext}
+          >
             次へ
           </Button>
         )}

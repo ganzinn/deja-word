@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write # タグと Release の作成に必要
+  deployments: write # 呼び出す release-deploy.yml が GitHub Deployments を書くために必要（reusable は呼び出し元の権限を超えられない）
 
 jobs:
   create-release:

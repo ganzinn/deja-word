@@ -13,6 +13,12 @@ on:
     types: [published]
   workflow_call:
 
+# GitHub の Deployments（production 環境）を Actions 側から明示的に作成・更新するために必要。
+# Vercel の Git Integration を停止し CLI デプロイしているため、これが無いと Deployments パネルは空のまま。
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -31,13 +37,59 @@ jobs:
 
       - run: pnpm test:unit
 
+      # GitHub Deployment を作成し status を in_progress にする。
+      # required_contexts: [] は必須（省略すると対象 commit の status checks 完了待ちで deployment が作られない）。
+      - name: GitHub Deployment を作成 (in_progress)
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: "production",
+              production_environment: true,
+              auto_merge: false,
+              required_contexts: [],
+              description: "Release deploy via Vercel CLI",
+            });
+            core.setOutput("id", deployment.data.id);
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: "in_progress",
+              log_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+
       # `--prebuilt` は付けない＝ソースをアップロードして Vercel 側でビルドする（リモートビルド）。
       # これにより Sensitive な BETTER_AUTH_SECRET や Neon Integration の env が Vercel 側で揃い、
       # `vercel-build`(prisma migrate deploy && next build) が現行の main-merge デプロイと同一に走る。
       # vercel は devDependencies に固定済みのため pnpm exec で lockfile 固定版を使う。
+      # Vercel CLI は進捗を stderr、最終デプロイ URL を stdout に出すため $(...) で URL を取得できる。
       - name: Deploy to Vercel (production)
-        run: pnpm exec vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        id: deploy
+        run: |
+          url=$(pnpm exec vercel deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # デプロイ結果に応じて Deployment status を確定する（成功なら environment_url にデプロイ URL を付与）。
+      - name: GitHub Deployment status を確定
+        if: always() && steps.deployment.outputs.id
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = "${{ steps.deploy.outcome }}" === "success";
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: "${{ steps.deployment.outputs.id }}",
+              state: success ? "success" : "failure",
+              ...(success ? { environment_url: "${{ steps.deploy.outputs.url }}" } : {}),
+              log_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });

@@ -13,12 +13,19 @@ export async function getOccurrencePresetsForUser(userId: string): Promise<Occur
     },
     select: {
       occurrence: {
-        select: { id: true, ownerId: true, location: true, sortOrder: true },
+        select: { id: true, ownerId: true, location: true, sortOrder: true, createdAt: true },
       },
     },
   });
+  // listOccurrencesForUser と同じ並び: own（全件 sortOrder=0）は createdAt 降順（新しい順）、
+  // system は sortOrder(0,1) の固定順を維持。
   return rows
     .map((r) => r.occurrence)
-    .sort((a, b) => a.sortOrder - b.sortOrder || a.location.localeCompare(b.location))
+    .sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder ||
+        b.createdAt.getTime() - a.createdAt.getTime() ||
+        a.location.localeCompare(b.location),
+    )
     .map(({ id, ownerId, location }) => ({ id, ownerId, location }));
 }

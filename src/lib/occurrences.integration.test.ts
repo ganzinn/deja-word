@@ -82,4 +82,41 @@ describe("getOccurrencePresetsForUser", () => {
     const presets = await getOccurrencePresetsForUser(a.id);
     expect(presets.map((p) => p.location)).not.toContain("B's");
   });
+
+  test("own presets are newest-first; system presets keep their fixed sortOrder", async () => {
+    const user = await createTestUser();
+    // createdAt を明示して順序を確定（古い → 新しい の順で作成）
+    const older = await prisma.occurrence.create({
+      data: {
+        ownerId: user.id,
+        location: "古いプリセット",
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      select: { id: true },
+    });
+    const newer = await prisma.occurrence.create({
+      data: {
+        ownerId: user.id,
+        location: "新しいプリセット",
+        createdAt: new Date("2026-06-01T00:00:00Z"),
+      },
+      select: { id: true },
+    });
+    await prisma.occurrencePresetSetting.createMany({
+      data: [
+        { userId: user.id, occurrenceId: older.id },
+        { userId: user.id, occurrenceId: newer.id },
+      ],
+    });
+
+    const presets = await getOccurrencePresetsForUser(user.id);
+
+    // 自分のプリセット: 新しいものほど前
+    const own = presets.filter((p) => p.ownerId === user.id).map((p) => p.location);
+    expect(own).toEqual(["新しいプリセット", "古いプリセット"]);
+
+    // システムプリセット: sortOrder の固定順を維持
+    const system = presets.filter((p) => p.ownerId === SYSTEM_USER_ID).map((p) => p.location);
+    expect(system).toEqual(SYSTEM_OCCURRENCE_LOCATIONS);
+  });
 });

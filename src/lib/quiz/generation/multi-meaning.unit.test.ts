@@ -38,15 +38,27 @@ const amplePool = [
 ];
 
 describe("buildMultiMeaningQuestions", () => {
-  test("correct options are all meaning texts across meanings, merged after trim", () => {
+  test("correct options are the first meaning's texts only, merged after trim", () => {
     const target = word("t", [
-      ["走る", "駆ける"],
-      [" 走る ", "経営する"],
+      ["走る", " 走る ", "駆ける"],
+      ["経営する"], // 別品詞の Meaning は正解に含めない
     ]);
     const m = material({ targets: [target], sameOccurrencePool: amplePool });
     const [q] = buildMultiMeaningQuestions(m, seededRng(1));
     const correct = q.options.filter((o) => o.isCorrect).map((o) => o.text);
-    expect([...correct].sort()).toEqual(["走る", "経営する", "駆ける"].sort());
+    expect([...correct].sort()).toEqual(["走る", "駆ける"].sort());
+  });
+
+  test("dummies never collide with a non-first meaning of the target", () => {
+    const target = word("t", [["走る"], ["経営する"]]);
+    const m = material({
+      targets: [target],
+      sameOccurrencePool: [word("d1", [["経営する"], ["甲"]])],
+    });
+    const [q] = buildMultiMeaningQuestions(m, sequenceRng([0.999]));
+    const dummyTexts = q.options.filter((o) => !o.isCorrect).map((o) => o.text);
+    expect(dummyTexts).not.toContain("経営する");
+    expect([...dummyTexts].sort()).toEqual(["甲"]);
   });
 
   test("dummy count is 2 when rng yields its minimum, 5 at its maximum", () => {

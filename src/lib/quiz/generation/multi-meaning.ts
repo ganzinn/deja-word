@@ -18,9 +18,9 @@ function toTextCandidates(word: QuizWord): DummyCandidate<string>[] {
   return allMeaningTexts(word).map((text) => ({ value: text.trim(), texts: [text] }));
 }
 
-/** 正解選択肢: 全 Meaning 横断の全 MeaningText。trim 後に同じテキストは 1 選択肢に統合。 */
+/** 正解選択肢: 最初の Meaning（sortOrder 先頭）の MeaningText のみ。trim 後に同じテキストは 1 選択肢に統合。 */
 function correctTextsOf(word: QuizWord): string[] {
-  return [...new Set(allMeaningTexts(word).map((t) => t.trim()))];
+  return [...new Set((word.meanings[0]?.texts ?? []).map((t) => t.trim()))];
 }
 
 export function buildMultiMeaningQuestions(
@@ -38,7 +38,9 @@ export function buildMultiMeaningQuestions(
       .flatMap(toTextCandidates);
     const fallbackPool = material.allWordsPool.flatMap(toTextCandidates);
     const dummies = selectDummies({
-      correctTexts,
+      // 正解表示は最初の Meaning のみだが、ダミー除外は target の全 Meaning で行う
+      // （別品詞の実意味を誤答ダミーとして表示しないため。四択 choice.ts と同じ方針）。
+      correctTexts: allMeaningTexts(target),
       primaryPool,
       fallbackPool,
       desiredCount: dummyCount,

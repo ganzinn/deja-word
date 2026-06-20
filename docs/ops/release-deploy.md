@@ -20,6 +20,8 @@ Vercel の Git Integration は **ブランチベース** で、git タグや Git
 
 > `GITHUB_TOKEN` で作成した Release は `release: published` を**再発火しない**（GitHub の無限ループ防止仕様）。そのため `create-release.yml` は `release-deploy.yml` を `workflow_call` で直接呼び出してデプロイをつなぐ。
 
+`release-deploy.yml` はデプロイ時に GitHub の **Deployments（`production` 環境）** を `actions/github-script` で明示的に作成・更新する（CLI デプロイは GitHub Deployments を作らないため）。完了するとリポジトリの Environments / Deployments パネルに履歴が積まれ、`environment_url`（View deployment のリンク先）には当該デプロイの Vercel URL が入る。この更新には `deployments: write` 権限が必要で、reusable は呼び出し元の権限を超えられないため `create-release.yml` 側にも同権限を付与している。
+
 ## 初期セットアップ（一度だけ）
 
 GitHub リポジトリの Settings → Secrets and variables → Actions に以下を登録する。

@@ -1,7 +1,8 @@
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon } from "lucide-react";
+import { ChevronRightIcon, PencilIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ScreenHeader } from "@/components/screen-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { listOccurrencesForUser, type OccurrenceListItem } from "@/lib/occurrences-list";
@@ -24,23 +25,19 @@ export default async function OccurrencesPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href="/settings"
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">掲載箇所</h1>
-        <Link
-          href="/settings/occurrences/new"
-          aria-label="掲載箇所を追加"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "ml-auto")}
-        >
-          <PlusIcon />
-        </Link>
-      </header>
+      <ScreenHeader
+        backHref="/settings"
+        title="掲載箇所"
+        actions={
+          <Link
+            href="/settings/occurrences/new"
+            aria-label="掲載箇所を追加"
+            className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+          >
+            <PlusIcon />
+          </Link>
+        }
+      />
 
       <div className="flex flex-col gap-6 px-4 pt-4">
         <section>

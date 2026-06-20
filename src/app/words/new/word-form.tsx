@@ -1,16 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
+import { ScreenHeader } from "@/components/screen-header";
 import { Accordion } from "@/components/ui/accordion";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
 
 import type { OccurrencePreset } from "@/lib/occurrences";
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
@@ -91,16 +89,7 @@ export function WordForm({
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-28 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href={backHref}
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">{title}</h1>
-      </header>
+      <ScreenHeader backHref={backHref} title={title} />
 
       <Form {...form}>
         <WordFormPermissionsProvider value={{ isCurrentUserSystem }}>

@@ -1,10 +1,9 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { buttonVariants } from "@/components/ui/button";
+import { ScreenHeader } from "@/components/screen-header";
 import { getCurrentSession } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
@@ -12,16 +11,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href="/menu"
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">設定</h1>
-      </header>
+      <ScreenHeader backHref="/menu" title="設定" />
 
       <ul className="flex flex-col gap-2 px-4 pt-4">
         <li>

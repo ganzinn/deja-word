@@ -28,7 +28,7 @@ export default async function EditOccurrencePage({ params }: PageProps) {
       mode="edit"
       occurrenceId={id}
       defaultValues={defaultValues}
-      headerActions={
+      actions={
         <DeleteOccurrenceButton
           occurrenceId={id}
           location={occ.location}

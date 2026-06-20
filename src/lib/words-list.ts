@@ -14,6 +14,7 @@ export type WordListItem = {
   isSystem: boolean;
   partOfSpeech: string | null;
   meaningTexts: string[];
+  pronunciationAudioUrl: string | null;
 };
 
 export type WordListParams = {
@@ -63,6 +64,7 @@ const wordListSelect = {
     take: 1,
     select: {
       partOfSpeech: true,
+      pronunciationAudioUrl: true,
       texts: {
         orderBy: { sortOrder: "asc" as const },
         select: { text: true },
@@ -75,7 +77,11 @@ type WordListRow = {
   id: string;
   headword: string;
   ownerId: string;
-  meanings: { partOfSpeech: string | null; texts: { text: string }[] }[];
+  meanings: {
+    partOfSpeech: string | null;
+    pronunciationAudioUrl: string | null;
+    texts: { text: string }[];
+  }[];
 };
 
 function toWordListItem(row: WordListRow): WordListItem {
@@ -87,6 +93,7 @@ function toWordListItem(row: WordListRow): WordListItem {
     isSystem: row.ownerId === SYSTEM_USER_ID,
     partOfSpeech: firstMeaning?.partOfSpeech ?? null,
     meaningTexts: firstMeaning?.texts.map((t) => t.text) ?? [],
+    pronunciationAudioUrl: firstMeaning?.pronunciationAudioUrl ?? null,
   };
 }
 

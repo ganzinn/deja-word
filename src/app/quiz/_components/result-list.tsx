@@ -8,6 +8,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 
+import { RowAudioButton } from "@/components/row-audio-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
@@ -25,6 +26,8 @@ export type ResultRow = {
   result: QuizResult;
   /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT は null）。 */
   answerDisplay: string | null;
+  /** 英単語の発音音源 URL（最初の Meaning）。未登録なら null。 */
+  pronunciationAudioUrl: string | null;
 };
 
 /**
@@ -110,29 +113,48 @@ export function ResultList({
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row.wordId}>
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => onOpenDialog(row.wordId)}
-              className="border-border bg-card/50 hover:bg-muted/60 flex w-full flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpenDialog(row.wordId);
+                }
+              }}
+              className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
             >
               <div className="flex w-full flex-wrap items-center gap-2">
                 <ResultIcon result={row.result} />
                 <span className="text-sm font-semibold break-words whitespace-pre-wrap">
                   {row.prompt ?? row.headword}
                 </span>
-                {skippedWordIds?.has(row.wordId) ? (
-                  <Badge variant="secondary" className="ml-auto">
-                    削除済み
-                  </Badge>
-                ) : null}
-                {remainingByWordId !== null ? (
-                  <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                <div className="ml-auto flex items-center gap-2">
+                  {skippedWordIds?.has(row.wordId) ? (
+                    <Badge variant="secondary">削除済み</Badge>
+                  ) : null}
+                  {remainingByWordId !== null ? (
+                    <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                  ) : null}
+                  {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
+                  {row.prompt === null ? (
+                    <RowAudioButton src={row.pronunciationAudioUrl} label="発音" />
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex w-full items-start gap-2">
+                <p className="text-sm whitespace-pre-wrap">
+                  <span className="text-muted-foreground">正解: </span>
+                  {row.correctDisplay}
+                </p>
+                {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
+                {row.prompt !== null ? (
+                  <div className="ml-auto shrink-0">
+                    <RowAudioButton src={row.pronunciationAudioUrl} label="発音" />
+                  </div>
                 ) : null}
               </div>
-              <p className="text-sm whitespace-pre-wrap">
-                <span className="text-muted-foreground">正解: </span>
-                {row.correctDisplay}
-              </p>
               {row.answerDisplay !== null ? (
                 <p className="text-sm whitespace-pre-wrap">
                   <span className="text-muted-foreground">自分の回答: </span>
@@ -143,7 +165,7 @@ export function ResultList({
               ) : row.result === "TIMEOUT" ? (
                 <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
               ) : null}
-            </button>
+            </div>
           </li>
         ))}
       </ul>

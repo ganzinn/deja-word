@@ -450,6 +450,7 @@ export function QuizFlow({
         correctDisplay: correctAnswerDisplay(quiz, index),
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,
+        pronunciationAudioUrl: question.pronunciationAudioUrl,
       },
     ];
     setRows(nextRows);

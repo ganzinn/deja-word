@@ -38,6 +38,37 @@ function formWithOccurrence(
   };
 }
 
+/** 複数の意味を持つ単語フォーム（先頭意味選択の検証用）。 */
+function formWithMeanings(headword: string, count: number): WordFormValues {
+  return {
+    ...form(headword),
+    meanings: Array.from({ length: count }, (_, i) => ({
+      partOfSpeech: "n",
+      pronunciation: "",
+      texts: [{ text: `意味${i + 1}:${headword}` }],
+      notes: [],
+    })),
+  };
+}
+
+/**
+ * 単語の意味（sortOrder 昇順）に発音音源 URL を直接セットする。
+ * 音源 URL はフォーム作成では永続化されず専用 Action で設定されるため、テストでは直接書き込む。
+ */
+async function setMeaningAudios(wordId: string, urls: (string | null)[]): Promise<void> {
+  const meanings = await prisma.meaning.findMany({
+    where: { wordId },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true },
+  });
+  for (const [i, url] of urls.entries()) {
+    await prisma.meaning.update({
+      where: { id: meanings[i].id },
+      data: { pronunciationAudioUrl: url },
+    });
+  }
+}
+
 /** create 時に find-or-create された掲載箇所の id を取得する。 */
 async function occurrenceIdOf(userId: string, location: string): Promise<string> {
   const occ = await prisma.occurrence.findFirstOrThrow({
@@ -180,6 +211,47 @@ describe("listWordsForUser", () => {
     expect(item?.meaningTexts).toEqual(["意味:hello"]);
     expect(item?.partOfSpeech).toBe("n");
   });
+
+  test("returns pronunciationAudioUrl of the first meaning", async () => {
+    const user = await createTestUser();
+    const w = await createWordForUser(user.id, form("hello"));
+    await setMeaningAudios(w.id, ["/api/dev-blob/audio/meaning/m/pronunciation.mp3"]);
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    const item = result.items.find((i) => i.id === w.id);
+    expect(item?.pronunciationAudioUrl).toBe("/api/dev-blob/audio/meaning/m/pronunciation.mp3");
+  });
+
+  test("pronunciationAudioUrl is null when the first meaning has no audio", async () => {
+    const user = await createTestUser();
+    const w = await createWordForUser(user.id, form("hello"));
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    const item = result.items.find((i) => i.id === w.id);
+    expect(item?.pronunciationAudioUrl).toBeNull();
+  });
+
+  test("uses the first meaning's audio, not later meanings", async () => {
+    const user = await createTestUser();
+    const w = await createWordForUser(user.id, formWithMeanings("hello", 2));
+    await setMeaningAudios(w.id, ["/audio/first.mp3", "/audio/second.mp3"]);
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    const item = result.items.find((i) => i.id === w.id);
+    expect(item?.pronunciationAudioUrl).toBe("/audio/first.mp3");
+  });
 });
 
 describe("listWordsByOccurrence", () => {
@@ -292,5 +364,22 @@ describe("listWordsByOccurrence", () => {
       take: 50,
     });
     expect(result.items.map((i) => i.headword)).toEqual(["alpha", "bravo", "charlie", "delta"]);
+  });
+
+  test("carries the first meaning's pronunciationAudioUrl", async () => {
+    const user = await createTestUser();
+    const w = await createWordForUser(user.id, formWithOccurrence("audible", LOC, 1));
+    await setMeaningAudios(w.id, ["/audio/occ.mp3"]);
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    const item = result.items.find((i) => i.id === w.id);
+    expect(item?.pronunciationAudioUrl).toBe("/audio/occ.mp3");
   });
 });

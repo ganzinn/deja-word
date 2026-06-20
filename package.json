@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:set-system-password": "tsx scripts/set-system-password.ts",
+    "db:purge-occurrence": "tsx scripts/purge-occurrence.ts",
     "test": "dotenv -e .env.test -- vitest run",
     "test:watch": "dotenv -e .env.test -- vitest",
     "test:unit": "vitest run --project unit",

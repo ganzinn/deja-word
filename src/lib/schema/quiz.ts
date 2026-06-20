@@ -82,6 +82,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   autoplayPronunciation: z.boolean().nullable(),
   enableAnswerSound: z.boolean().nullable(),
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
+  saveOnStart: z.boolean().nullable(),
 });
 
 // ---- drill 系 Server Action の入力スキーマ ----

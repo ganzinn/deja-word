@@ -11,7 +11,7 @@ import { isJaToEnFormat } from "@/lib/quiz/format-options";
 import { cn } from "@/lib/utils";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
-import type { QuizDefaults } from "@/lib/quiz-default-settings";
+import type { StartFormDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
@@ -42,10 +42,7 @@ type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
   /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
-  defaults: Omit<
-    QuizDefaults,
-    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound" | "autoplayAnswerAudioJaEn"
-  > | null;
+  defaults: StartFormDefaults | null;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
   /** 発音の自動再生（設定画面のみで変更）。false で出題時の自動再生を無効化する。 */
@@ -54,6 +51,8 @@ type Props = {
   enableAnswerSound: boolean;
   /** 日→英の解答表示時の発音自動再生（設定画面のみで変更）。false で無効化する。 */
   autoplayAnswerAudioJaEn: boolean;
+  /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態（設定画面のメタ設定由来）。 */
+  saveAsDefaultInitial: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -241,6 +240,7 @@ export function QuizFlow({
   autoplayPronunciation,
   enableAnswerSound,
   autoplayAnswerAudioJaEn,
+  saveAsDefaultInitial,
 }: Props) {
   const router = useRouter();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
@@ -677,6 +677,7 @@ export function QuizFlow({
           occurrences={occurrences}
           activeDrills={activeDrills}
           defaults={defaults}
+          saveAsDefaultInitial={saveAsDefaultInitial}
           onStart={handleStart}
           onResumeDrill={handleResumeDrill}
         />

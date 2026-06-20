@@ -39,11 +39,11 @@ import {
 import { cn } from "@/lib/utils";
 import type { QuizFormat } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
-import type { QuizDefaults } from "@/lib/quiz-default-settings";
+import type { StartFormDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPreview } from "@/lib/quiz-preview";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
-import { deleteDrill, getQuizPreview } from "../actions";
+import { deleteDrill, getQuizPreview, saveStartSettingsAsDefaults } from "../actions";
 
 /** 開始画面の Occurrence 選択肢（page.tsx が単語数つきで取得して渡す）。 */
 export type OccurrenceOption = {
@@ -61,12 +61,12 @@ type Props = {
    * page.tsx が occurrences に存在するものだけに絞って渡す。初期 format が
    * プレビューで不成立でも自動解除しない（ユーザー選択と同じ扱い）。
    * showCountdown / autoplayPronunciation / enableAnswerSound / autoplayAnswerAudioJaEn は
-   * 初期値ではなく挙動設定のため、ここには渡さない。
+   * 初期値ではなく挙動設定のため、ここには渡さない。saveOnStart も初期値ではなく
+   * 下のトグルの初期状態（saveAsDefaultInitial）として別に渡す（StartFormDefaults で除外済み）。
    */
-  defaults: Omit<
-    QuizDefaults,
-    "showCountdown" | "autoplayPronunciation" | "enableAnswerSound" | "autoplayAnswerAudioJaEn"
-  > | null;
+  defaults: StartFormDefaults | null;
+  /** 「この設定をデフォルト設定とする」トグルの初期状態（設定画面のメタ設定 saveOnStart 由来）。 */
+  saveAsDefaultInitial: boolean;
   onStart: (input: StartQuizInput) => void;
   /** 進行中一覧の「再開」: `startDrillRound` → DRILL モードのカウントダウンへ。 */
   onResumeDrill: (drillId: string) => void;
@@ -97,7 +97,14 @@ function parseRangeValue(text: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-export function StartForm({ occurrences, activeDrills, defaults, onStart, onResumeDrill }: Props) {
+export function StartForm({
+  occurrences,
+  activeDrills,
+  defaults,
+  saveAsDefaultInitial,
+  onStart,
+  onResumeDrill,
+}: Props) {
   const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
   const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
@@ -108,6 +115,9 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
   const [format, setFormat] = useState<QuizFormat | null>(initialFormat);
   const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
   const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
+  // 「この設定をデフォルト設定とする」トグル。初期状態は設定画面のメタ設定由来。
+  // ON のままテスト開始すると開始画面の入力でデフォルトを部分上書きする（メタ設定自体は変えない）。
+  const [saveAsDefault, setSaveAsDefault] = useState(saveAsDefaultInitial);
 
   /** 形式を選択し、その形式の保存済み制限時間を制限時間入力へ自動反映する。 */
   function selectFormat(value: QuizFormat) {
@@ -188,7 +198,20 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
 
   function handleStart() {
     if (!canStart || occurrenceId === null || format === null) return;
-    onStart({ occurrenceId, rangeFrom, rangeTo, format, timeoutSeconds: timeoutSeconds ?? null });
+    const input: StartQuizInput = {
+      occurrenceId,
+      rangeFrom,
+      rangeTo,
+      format,
+      timeoutSeconds: timeoutSeconds ?? null,
+    };
+    // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
+    if (saveAsDefault) {
+      void saveStartSettingsAsDefaults(input).then((result) => {
+        if (!result.ok) toast.error(result.message);
+      });
+    }
+    onStart(input);
   }
 
   const selectItems = occurrences.map((o) => ({
@@ -340,6 +363,22 @@ export function StartForm({ occurrences, activeDrills, defaults, onStart, onResu
             </p>
           </>
         ) : null}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-save-as-default"
+            checked={saveAsDefault}
+            onCheckedChange={(checked) => setSaveAsDefault(checked === true)}
+          />
+          <Label htmlFor="quiz-save-as-default" className="font-normal">
+            この設定をデフォルト設定とする
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オンで開始すると、上の掲載箇所・掲載番号範囲・出題形式・制限時間をデフォルト設定として保存します。
+        </p>
       </section>
 
       <Button size="lg" disabled={!canStart} onClick={handleStart}>

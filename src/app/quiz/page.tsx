@@ -37,6 +37,8 @@ export default async function QuizPage() {
   const enableAnswerSound = defaults?.enableAnswerSound ?? true;
   // 日→英の解答表示時の発音自動再生。未設定（null）はデフォルトで有効。
   const autoplayAnswerAudioJaEn = defaults?.autoplayAnswerAudioJaEn ?? true;
+  // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。未設定（null）は OFF。
+  const saveAsDefaultInitial = defaults?.saveOnStart ?? false;
 
   return (
     <QuizFlow
@@ -51,6 +53,7 @@ export default async function QuizPage() {
       autoplayPronunciation={autoplayPronunciation}
       enableAnswerSound={enableAnswerSound}
       autoplayAnswerAudioJaEn={autoplayAnswerAudioJaEn}
+      saveAsDefaultInitial={saveAsDefaultInitial}
     />
   );
 }

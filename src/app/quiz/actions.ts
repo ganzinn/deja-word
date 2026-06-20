@@ -6,6 +6,10 @@ import { generateDrillRoundForUser } from "@/lib/drill-round-generate";
 import { submitDrillRoundForUser } from "@/lib/drill-round-submit";
 import { submitQuizAnswersForUser } from "@/lib/quiz-answers-submit";
 import { generateQuizForUser } from "@/lib/quiz-generate";
+import {
+  DefaultOccurrenceNotInScopeError,
+  saveStartSettingsAsDefaultsForUser,
+} from "@/lib/quiz-default-settings";
 import { getQuizPreviewForUser, type QuizPreview, type QuizRangeInput } from "@/lib/quiz-preview";
 import { mapQuizErrorToResult, type QuizErrorCode } from "@/lib/quiz/error-map";
 import type { QuizPayload } from "@/lib/quiz/payload";
@@ -76,6 +80,37 @@ export async function startQuiz(input: StartQuizInput): Promise<StartQuizResult>
     const quiz = await generateQuizForUser(session.user.id, parsed.data);
     return { ok: true, quiz };
   } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type SaveStartSettingsAsDefaultsResult = { ok: true } | QuizActionFailure;
+
+/**
+ * 開始画面「この設定をデフォルト設定とする」トグル ON でのテスト開始時に、開始画面の入力
+ * （掲載箇所・範囲・形式・選択中形式の制限時間）でデフォルトを部分上書きする。テスト開始
+ * 自体とは独立（クライアントが非ブロッキングで発火し、失敗してもテストは進める）。
+ */
+export async function saveStartSettingsAsDefaults(
+  input: StartQuizInput,
+): Promise<SaveStartSettingsAsDefaultsResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = startQuizInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    await saveStartSettingsAsDefaultsForUser(session.user.id, parsed.data);
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof DefaultOccurrenceNotInScopeError) {
+      return {
+        ok: false,
+        error: "not_found",
+        message: "この掲載箇所をデフォルトに設定できませんでした。",
+      };
+    }
     return mapQuizErrorToResult(e);
   }
 }

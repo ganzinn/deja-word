@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -139,6 +139,7 @@ model QuizDefaultSetting {
   rangeTo      Int?        @map("range_to")
   format       QuizFormat?
   showCountdown  Boolean?  @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（2026-06-13 加算改訂）
+  saveOnStart  Boolean?    @map("save_on_start") // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（2026-06-20 加算改訂）
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -187,3 +188,11 @@ model QuizDefaultTimeout {
 
 - **`QuizDefaultSetting.showCountdown Boolean?`**。デフォルト設定の 5 項目目。既存の全項目 nullable 方針に従い null = 未設定。デフォルト（未設定）は非表示とする。設定画面の「クリア」（行削除）でも非表示に戻る。
 - 開始フォームの「初期値」ではなくテストの「挙動設定」のため、開始画面には設定 UI を出さない（変更は設定画面のみ）。
+
+### 開始画面設定のデフォルト保存（2026-06-20 加算改訂）
+
+開始画面で設定した内容をその場でデフォルトに保存できる導線を追加した（UI・経緯は [04](04-ui.md)）。
+
+- **`QuizDefaultSetting.saveOnStart Boolean?`**。デフォルト設定の項目（既存の全項目 nullable 方針に従い null = OFF）。**開始画面トグル「この設定をデフォルト設定とする」の初期状態だけを決めるメタ設定**で、上書き処理自体の挙動には影響しない。
+- 上書きは**開始画面にある項目のみの部分更新**（occurrence / range / format と、選択中形式の制限時間 1 行）。他形式の `QuizDefaultTimeout` 行・カウントダウン/発音/効果音などの挙動設定・`saveOnStart` 自体は温存する（`saveStartSettingsAsDefaultsForUser` が upsert の update に開始画面の 4 項目しか渡さないため既存値が残る）。occurrence の可視性検証・1 トランザクション同期は通常の保存と同じ。
+- **開始画面トグルの状態は `saveOnStart` に書き戻さない（一方向）**。メタ設定は初期状態を与えるだけで、開始画面でトグルを切り替えてもデフォルトのメタ設定は変わらない（変更は設定画面のみ）。

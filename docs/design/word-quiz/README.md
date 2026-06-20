@@ -38,6 +38,7 @@
 - **エントリポイントはダッシュボードの「単語テスト」ボタン → `/quiz`**。カウントダウン〜結果は `/quiz` 内のクライアント状態遷移（URL 遷移なし）。drill ラウンドも同フローを再利用。→ [04](04-ui.md)
 - **開始画面は Occurrence 選択＋番号範囲＋形式選択＋対象件数プレビュー**。除外件数（番号なし・意味未登録）を注記し、不成立の形式は選択不可＋理由表示（成立可否はサーバー判定）。→ [04](04-ui.md)
 - **開始画面の 3 項目はユーザーごとのデフォルトとして保存可**（2026-06-13 加算）。設定は設定画面（/settings/quiz-defaults）のみ・全項目任意・プレビューなし。スキーマはユーザーごと 1 行の `QuizDefaultSetting`（occurrence は onDelete: SetNull）。→ [04](04-ui.md)・[02](02-data-model.md)
+- **開始画面からもデフォルトを部分上書きできる**（2026-06-20 加算。当初の保存ボタン却下案の見直し）。開始画面の「この設定をデフォルト設定とする」トグル ON で開始すると開始画面の項目のみ上書き。トグルの初期状態はメタ設定 `QuizDefaultSetting.saveOnStart` 由来で、トグル操作はメタ設定に書き戻さない（一方向）。→ [04](04-ui.md)・[02](02-data-model.md)
 - **1 問あたりの制限時間（タイムアウト）を任意設定可**（2026-06-13 加算）。デフォルトなし・1〜60 秒（ON 初期値 5 秒）。開始画面と、デフォルト設定画面で **出題形式ごとに**設定（後続改訂）。デフォルトは形式別の子テーブル `QuizDefaultTimeout(userId, format, timeoutSeconds)`（行なし＝制限なし）に保存し、開始画面で形式を選ぶとその形式の値を自動入力する。→ [01](01-requirements.md)・[02](02-data-model.md)・[04](04-ui.md)
 - **時間切れは `QuizResult.TIMEOUT` として記録し間違い扱い**（集計・drill 残数計算は INCORRECT 同等＝3 にリセット）。出題画面に残り時間バーを表示し、時間切れで回答後と同じ状態（正解表示＋「次へ」）へ。自己判定はタイマーを「解答を表示」までに適用。→ [01](01-requirements.md)・[04](04-ui.md)
 - **制限時間は payload（`QuizPayload.timeoutSeconds`）に一本化**。TEST は `startQuiz` 入力のエコーバック、DRILL は `Drill.timeoutSeconds`（format と同じく `startDrill` で 1 回受領・全ラウンド引き継ぎ）から導出。→ [05](05-architecture.md)・[06](06-drill-mode.md)

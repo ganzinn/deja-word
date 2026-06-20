@@ -23,4 +23,5 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   autoplayPronunciation: true,
   enableAnswerSound: true,
   autoplayAnswerAudioJaEn: true,
+  saveOnStart: false,
 };

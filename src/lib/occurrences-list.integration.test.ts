@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { setPresetForUser } from "@/lib/occurrence-preset-settings";
+import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import {
@@ -51,6 +52,35 @@ describe("listOccurrencesForUser", () => {
     const target = items.find((i) => i.id === newSys.id);
     expect(target).toBeDefined();
     expect(target!.isPreset).toBe(false);
+  });
+
+  test("own occurrences are newest-first; system keeps its fixed sortOrder", async () => {
+    const user = await createTestUser();
+    // createdAt を明示して順序を確定（古い → 新しい の順で作成）
+    await prisma.occurrence.create({
+      data: {
+        ownerId: user.id,
+        location: "古い掲載箇所",
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+    });
+    await prisma.occurrence.create({
+      data: {
+        ownerId: user.id,
+        location: "新しい掲載箇所",
+        createdAt: new Date("2026-06-01T00:00:00Z"),
+      },
+    });
+
+    const items = await listOccurrencesForUser(user.id);
+
+    // 自分の掲載箇所: 新しいものほど前
+    const own = items.filter((i) => !i.isSystem).map((i) => i.location);
+    expect(own).toEqual(["新しい掲載箇所", "古い掲載箇所"]);
+
+    // システム掲載箇所: sortOrder の固定順を維持
+    const system = items.filter((i) => i.isSystem).map((i) => i.location);
+    expect(system).toEqual([SYSTEM_OCCURRENCE_LOCATIONS[0], SYSTEM_OCCURRENCE_LOCATIONS[1]]);
   });
 
   test("does not include other users' own occurrences", async () => {

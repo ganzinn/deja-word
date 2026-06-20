@@ -5,6 +5,8 @@ import { AudioPlayButton } from "@/components/audio-play-button";
 type RowAudioButtonProps = {
   src: string | null | undefined;
   label: string;
+  /** `src` が無いとき同寸の不可視プレースホルダでスロットを確保する（`AudioPlayButton` に委譲）。 */
+  reserveSpaceWhenEmpty?: boolean;
 };
 
 /**
@@ -17,7 +19,7 @@ type RowAudioButtonProps = {
  *   発音ボタンを押しても行の onKeyDown（ダイアログ展開等）が発火しない。
  * `src` が無ければ `AudioPlayButton` が何も描画しない。
  */
-export function RowAudioButton({ src, label }: RowAudioButtonProps) {
+export function RowAudioButton({ src, label, reserveSpaceWhenEmpty }: RowAudioButtonProps) {
   return (
     <span
       className="contents"
@@ -27,7 +29,7 @@ export function RowAudioButton({ src, label }: RowAudioButtonProps) {
       }}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <AudioPlayButton src={src} label={label} />
+      <AudioPlayButton src={src} label={label} reserveSpaceWhenEmpty={reserveSpaceWhenEmpty} />
     </span>
   );
 }

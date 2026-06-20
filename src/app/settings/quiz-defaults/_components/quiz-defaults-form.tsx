@@ -284,23 +284,6 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <Label>カウントダウン</Label>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="quiz-defaults-show-countdown"
-            checked={showCountdown}
-            onCheckedChange={(checked) => setShowCountdown(checked === true)}
-          />
-          <Label htmlFor="quiz-defaults-show-countdown" className="font-normal">
-            テスト開始時にカウントダウン（3・2・1）を表示する
-          </Label>
-        </div>
-        <p className="text-muted-foreground text-xs">
-          オフにすると、問題の準備が完了しだいすぐにテストが始まります。
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2">
         <Label>発音の自動再生</Label>
         <div className="flex items-center gap-2">
           <Checkbox
@@ -343,6 +326,23 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">正解・不正解のときに効果音を鳴らします。</p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>カウントダウン</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-show-countdown"
+            checked={showCountdown}
+            onCheckedChange={(checked) => setShowCountdown(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-show-countdown" className="font-normal">
+            テスト開始時にカウントダウン（3・2・1）を表示する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オフにすると、問題の準備が完了しだいすぐにテストが始まります。
+        </p>
       </section>
 
       <section className="flex flex-col gap-2">

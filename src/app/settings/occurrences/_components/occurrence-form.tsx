@@ -26,12 +26,12 @@ import { createOccurrence } from "../new/actions";
 import { updateOccurrence } from "../[id]/edit/actions";
 
 type OccurrenceFormProps =
-  | { mode: "create"; defaultValues: OccurrenceFormValues; headerActions?: ReactNode }
+  | { mode: "create"; defaultValues: OccurrenceFormValues; actions?: ReactNode }
   | {
       mode: "edit";
       occurrenceId: string;
       defaultValues: OccurrenceFormValues;
-      headerActions?: ReactNode;
+      actions?: ReactNode;
     };
 
 export function OccurrenceForm(props: OccurrenceFormProps) {
@@ -69,7 +69,7 @@ export function OccurrenceForm(props: OccurrenceFormProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-28 md:max-w-2xl">
-      <ScreenHeader backHref="/settings/occurrences" title={title} actions={props.headerActions} />
+      <ScreenHeader backHref="/settings/occurrences" title={title} actions={props.actions} />
 
       <Form {...form}>
         <form

@@ -112,7 +112,7 @@ export function WordForm({
                 className="w-full"
               >
                 <FormSection value="basic" title="基本" required>
-                  <BasicFields readOnly={headwordReadOnly} />
+                  <BasicFields readOnly={headwordReadOnly} wordId={isEdit ? wordId : undefined} />
                 </FormSection>
                 <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
                   <MeaningsFields />

@@ -2,6 +2,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { RowAudioButton } from "@/components/row-audio-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { commonPartOfSpeechShortLabel } from "@/lib/mock/parts-of-speech";
@@ -277,11 +278,10 @@ function WordRow({
           </Badge>
         ) : null}
         <span className="text-sm font-semibold break-words">{item.headword}</span>
-        {item.isSystem ? null : (
-          <Badge variant="secondary" className="ml-auto">
-            MY
-          </Badge>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {item.isSystem ? null : <Badge variant="secondary">MY</Badge>}
+          <RowAudioButton src={item.pronunciationAudioUrl} label="発音" />
+        </div>
       </div>
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (
         <div className="flex items-start gap-2">

@@ -262,8 +262,9 @@ model Occurrence {
   id            String  @id @default(cuid())
   ownerId       String  @map("owner_id")
   location      String
-  sortOrder     Int     @default(0) @map("sort_order")
-  autoNumbering Boolean @default(false) @map("auto_numbering")
+  sortOrder     Int      @default(0) @map("sort_order")
+  autoNumbering Boolean  @default(false) @map("auto_numbering")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   owner               User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   wordLinks           WordOccurrence[]

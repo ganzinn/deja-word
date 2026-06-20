@@ -33,7 +33,9 @@ export async function listOccurrencesForUser(userId: string): Promise<Occurrence
         select: { wordLinks: { where: { ownerId: { in: allowed } } } },
       },
     },
-    orderBy: [{ sortOrder: "asc" }, { location: "asc" }],
+    // own は全件 sortOrder=0 のため createdAt 降順（新しいもの順）が効く。
+    // system は sortOrder(0,1) で固定順を維持。
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }, { location: "asc" }],
   });
 
   return rows.map((row) => ({

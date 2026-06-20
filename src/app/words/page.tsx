@@ -280,7 +280,7 @@ function WordRow({
         <span className="text-sm font-semibold break-words">{item.headword}</span>
         <div className="ml-auto flex items-center gap-2">
           {item.isSystem ? null : <Badge variant="secondary">MY</Badge>}
-          <RowAudioButton src={item.pronunciationAudioUrl} label="発音" />
+          <RowAudioButton src={item.pronunciationAudioUrl} label="発音" reserveSpaceWhenEmpty />
         </div>
       </div>
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (

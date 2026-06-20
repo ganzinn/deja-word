@@ -1,11 +1,24 @@
 # Purge Occurrence（掲載箇所ごと単語を一括削除）
 
-ある掲載箇所（Occurrence）に紐づく**英単語（Word）本体・その配下テーブル・発音音源 Blob・掲載箇所本体**をまとめて削除する運用スクリプト。`pnpm db:purge-occurrence <occurrenceId>` が単一エントリポイント。既定はドライラン（件数表示のみ・無変更）で、`--execute` 指定時のみ実削除する。
+ある掲載箇所（Occurrence）に紐づく**英単語（Word）本体・その配下テーブル・発音音源 Blob・掲載箇所本体**をまとめて削除する運用スクリプト。`pnpm db:purge-occurrence` が単一エントリポイント。**引数なしなら対話モード**（一覧から選択 → ドライラン提示 → モード選択）、id 指定なら非対話で動く。非対話の既定はドライラン（件数表示のみ・無変更）で、`--execute` 指定時のみ実削除する。
 
 ```sh
-pnpm db:purge-occurrence <occurrenceId>            # ドライラン
-pnpm db:purge-occurrence <occurrenceId> --execute  # 実削除
+pnpm db:purge-occurrence                            # 対話モード（一覧から選択）
+pnpm db:purge-occurrence <occurrenceId>             # 非対話・ドライラン
+pnpm db:purge-occurrence <occurrenceId> --execute   # 非対話・実削除
 ```
+
+### 対話モード
+
+引数なしで実行すると以下の流れになる（TTY 必須。本番でも `pnpm dotenv -e .env.production.local -- ...` の手元端末で動く）。
+
+1. 全掲載箇所を `owner / location` 順で一覧表示（オーナーのメールアドレス・紐づく単語数つき）
+2. 番号を入力して対象を選択（`q` で中止）
+3. **必ずドライランの件数を提示**
+4. モード選択 `[1] ドライランのみ（終了）` / `[2] 実削除`
+5. 実削除を選んだ場合のみ、確認として**掲載箇所名の入力**を要求（一致しなければ中止）
+
+非対話（id 指定）モードは CI / スクリプトからの利用や、id が分かっている場合の最短経路として残してある。
 
 ## 背景・仕様
 
@@ -32,6 +45,14 @@ pnpm db:purge-occurrence <occurrenceId> --execute  # 実削除
 
 ローカルは `.env` の接続先（docker の `deja-word-db` / DB `dejaword`）に対して実行される。音源はディスク `.dev-blob/` から消える。
 
+最も簡単なのは**対話モード**（一覧から選んで実行）:
+
+```sh
+pnpm db:purge-occurrence   # 一覧 → 番号選択 → ドライラン提示 → モード選択
+```
+
+id が分かっている場合の非対話手順は以下。
+
 1. 対象 `occurrence.id` を特定する。
 
    ```sh
@@ -57,7 +78,13 @@ pnpm db:purge-occurrence <occurrenceId> --execute  # 実削除
 
 ## 本番（Neon + Vercel Blob）での手順
 
-スクリプトは**ローカルマシンから本番リソースに向けて**実行する（Vercel 上では動かない）。本番の id はローカルと**異なる**ため、必ず本番接続先で id 特定からやり直す。
+スクリプトは**ローカルマシンから本番リソースに向けて**実行する（Vercel 上では動かない）。本番の id はローカルと**異なる**ため、必ず本番接続先で対象を選び直す。対話モードなら本番の一覧から直接選べるので id 特定は不要:
+
+```sh
+pnpm dotenv -e .env.production.local -- pnpm db:purge-occurrence   # 本番一覧から対話選択
+```
+
+以下は id を明示する非対話手順。
 
 ### 必要な環境変数
 

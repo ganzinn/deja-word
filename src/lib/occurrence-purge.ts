@@ -13,6 +13,35 @@ export class OccurrenceNotFoundError extends Error {
   }
 }
 
+export type OccurrenceListItem = {
+  id: string;
+  location: string;
+  ownerId: string;
+  ownerEmail: string;
+  words: number; // この掲載箇所に紐づく単語数（WordOccurrence リンク数）
+};
+
+/** 全掲載箇所を owner / location 順で列挙する（対話選択 UI 用）。 */
+export async function listOccurrences(prisma: PrismaClient): Promise<OccurrenceListItem[]> {
+  const rows = await prisma.occurrence.findMany({
+    orderBy: [{ ownerId: "asc" }, { location: "asc" }],
+    select: {
+      id: true,
+      location: true,
+      ownerId: true,
+      owner: { select: { email: true } },
+      _count: { select: { wordLinks: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    location: r.location,
+    ownerId: r.ownerId,
+    ownerEmail: r.owner.email,
+    words: r._count.wordLinks,
+  }));
+}
+
 export type PurgeReport = {
   occurrence: { id: string; location: string; ownerId: string };
   words: number; // 削除対象 Word 数

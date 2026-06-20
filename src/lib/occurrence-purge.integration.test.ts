@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { BlobClient } from "@/lib/blob-client";
-import { OccurrenceNotFoundError, purgeOccurrence } from "@/lib/occurrence-purge";
+import { OccurrenceNotFoundError, listOccurrences, purgeOccurrence } from "@/lib/occurrence-purge";
 import { prisma } from "@/lib/prisma";
 
 import { createOccurrenceRow, createTestUser } from "../../tests/setup/fixtures";
@@ -107,5 +107,22 @@ describe("purgeOccurrence", () => {
     await expect(
       purgeOccurrence(prisma, blob, "nonexistent", { dryRun: true }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
+  });
+});
+
+describe("listOccurrences", () => {
+  test("lists occurrences with owner email and linked-word count", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "list-target", 0);
+    await createLinkedWord(user.id, "alpha", occ.id, null);
+    await createLinkedWord(user.id, "beta", occ.id, null);
+
+    const items = await listOccurrences(prisma);
+    const mine = items.find((it) => it.id === occ.id);
+
+    expect(mine).toBeDefined();
+    expect(mine?.location).toBe("list-target");
+    expect(mine?.ownerEmail).toBe(user.email);
+    expect(mine?.words).toBe(2);
   });
 });

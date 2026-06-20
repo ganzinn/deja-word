@@ -38,6 +38,9 @@ yarn-error.log*
 # local blob driver store (dev only)
 /.dev-blob/
 
+# local scratch (import CSV など、git 管理外)
+/tmp/
+
 # prisma generated client
 /src/generated/
 

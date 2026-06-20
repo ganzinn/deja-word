@@ -66,7 +66,9 @@ echo "==> Setting up toolchain in worktree"
 (
   cd "$WORKTREE_DIR"
   if command -v mise >/dev/null 2>&1; then
-    mise trust
+    # 既に信頼済み（本体と同一の .mise.toml）の場合 mise trust は exit 1 を返すため
+    # 非致命化する。set -e 下で install まで到達させるのが目的。
+    mise trust || true
   fi
   pnpm install
 )

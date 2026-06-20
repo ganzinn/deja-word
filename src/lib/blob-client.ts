@@ -30,8 +30,14 @@ export const vercelBlobClient: BlobClient = {
 
 // --- ローカルディスク driver（dev 限定） --------------------------------------
 
-/** `.dev-blob/` 配下に保存し、`/api/dev-blob/<key>` で配信する（Vercel に非依存）。 */
-export const DEV_BLOB_ROOT = resolve(process.cwd(), ".dev-blob");
+/**
+ * `.dev-blob/` 配下に保存し、`/api/dev-blob/<key>` で配信する（Vercel に非依存）。
+ * 既定は `<cwd>/.dev-blob` だが、git worktree で本体と DB を共有する際は `DEV_BLOB_ROOT`
+ * で本体の `.dev-blob` 絶対パスを指して音源も共有する（DB の相対 key と実体のズレ防止）。
+ */
+export const DEV_BLOB_ROOT = process.env.DEV_BLOB_ROOT
+  ? resolve(process.env.DEV_BLOB_ROOT)
+  : resolve(process.cwd(), ".dev-blob");
 export const DEV_BLOB_URL_PREFIX = "/api/dev-blob/";
 
 /** addRandomSuffix 相当: 拡張子の手前にランダム文字列を挟む。 */

@@ -375,6 +375,7 @@ model QuizDefaultSetting {
   autoplayPronunciation Boolean? @map("autoplay_pronunciation") // 発音の自動再生。null = 有効（デフォルト）
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
+  saveOnStart    Boolean?    @map("save_on_start") // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)

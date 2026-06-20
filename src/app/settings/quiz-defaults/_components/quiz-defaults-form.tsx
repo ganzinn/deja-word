@@ -87,6 +87,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [autoplayAnswerAudioJaEn, setAutoplayAnswerAudioJaEn] = useState(
     defaults?.autoplayAnswerAudioJaEn ?? true,
   );
+  // 開始画面トグルの初期 ON/OFF を決めるメタ設定。未設定（null）は OFF。
+  const [saveOnStart, setSaveOnStart] = useState(defaults?.saveOnStart ?? false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -107,6 +109,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         autoplayPronunciation,
         enableAnswerSound,
         autoplayAnswerAudioJaEn,
+        saveOnStart,
       });
       if (result.ok) {
         toast.success("保存しました");
@@ -128,6 +131,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setAutoplayPronunciation(DEFAULT_QUIZ_SETTINGS.autoplayPronunciation ?? true);
     setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
     setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
+    setSaveOnStart(DEFAULT_QUIZ_SETTINGS.saveOnStart ?? false);
     toast.success("デフォルト設定に戻しました（「保存」で確定します）");
   }
 
@@ -339,6 +343,24 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">正解・不正解のときに効果音を鳴らします。</p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>開始画面の設定の保存</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-save-on-start"
+            checked={saveOnStart}
+            onCheckedChange={(checked) => setSaveOnStart(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-save-on-start" className="font-normal">
+            テスト開始画面で設定した内容をデフォルト設定とする
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          オンにすると、開始画面の「この設定をデフォルト設定とする」が初期オンになります。開始画面で
+          オフに切り替えることもでき、その場合この設定は変わりません。
+        </p>
       </section>
 
       <div className="flex flex-col gap-2">

@@ -201,6 +201,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     });
     expect(r.success).toBe(true);
   });
@@ -217,6 +218,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        saveOnStart: null,
       }).success,
     ).toBe(true);
     expect(
@@ -230,6 +232,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        saveOnStart: null,
       }).success,
     ).toBe(true);
   });
@@ -245,6 +248,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: true,
       enableAnswerSound: true,
       autoplayAnswerAudioJaEn: true,
+      saveOnStart: true,
     });
     expect(r.success).toBe(true);
   });
@@ -259,6 +263,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     for (const v of [null, 1, 60]) {
       expect(
@@ -288,6 +293,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     // SELF_JUDGE / MULTI_MEANING を欠いた map は不正
     expect(
@@ -309,6 +315,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        saveOnStart: null,
       }).success,
     ).toBe(false);
   });
@@ -326,6 +333,7 @@ describe("saveQuizDefaultsInputSchema", () => {
           autoplayPronunciation: null,
           enableAnswerSound: null,
           autoplayAnswerAudioJaEn: null,
+          saveOnStart: null,
         }).success,
       ).toBe(false);
     }
@@ -343,6 +351,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        saveOnStart: null,
       }).success,
     ).toBe(false);
   });
@@ -357,6 +366,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     for (const showCountdown of [true, false, null]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, showCountdown }).success).toBe(true);
@@ -377,6 +387,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     for (const autoplayPronunciation of [true, false, null]) {
       expect(
@@ -399,6 +410,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     for (const enableAnswerSound of [true, false, null]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, enableAnswerSound }).success).toBe(
@@ -421,6 +433,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      saveOnStart: null,
     };
     for (const autoplayAnswerAudioJaEn of [true, false, null]) {
       expect(
@@ -444,8 +457,30 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     });
     expect(r.success).toBe(true);
+  });
+
+  test("saveOnStart accepts true / false / null, rejects non-boolean / missing", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
+    };
+    for (const saveOnStart of [true, false, null]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, saveOnStart }).success).toBe(true);
+    }
+    expect(saveQuizDefaultsInputSchema.safeParse({ ...base, saveOnStart: "true" }).success).toBe(
+      false,
+    );
+    expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
 });
 

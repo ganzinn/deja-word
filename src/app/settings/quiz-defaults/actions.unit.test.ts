@@ -47,6 +47,7 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   autoplayPronunciation: true,
   enableAnswerSound: true,
   autoplayAnswerAudioJaEn: true,
+  saveOnStart: true,
 };
 
 beforeEach(() => {
@@ -121,6 +122,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });

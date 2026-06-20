@@ -21,3 +21,23 @@ cp .env.test.example .env.test
 ```
 
 `pnpm test:integration` の初回起動で `prisma migrate deploy` が自動実行される。各テストの前にテーブルが `TRUNCATE ... CASCADE` され、system user / system occurrences が再 seed される。両方一括で走らせるなら `pnpm test`。
+
+## Worktree（複数機能の並行開発）
+
+git worktree でブランチごとに作業ディレクトリを分けて並行開発する。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
+
+```sh
+scripts/wt-new.sh <feature-name> [base-branch]   # 作成（branch feat/<name>, dir ../deja-word-<name>）
+scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
+```
+
+`wt-new.sh` は worktree 作成・`.env` / `.env.test` のコピー・`pnpm install`（`prisma generate` 含む）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
+
+**DB は単一 `dejaword` を共有**する。dev サーバは1つずつ起動する運用なので同時アクセスの競合は無いが、ブランチ間で migration が食い違うと drift が出る。アクティブな worktree を切り替えた直後は:
+
+- 通常（追加 migration のみ）: `pnpm db:migrate`
+- drift / 不整合時: `pnpm prisma migrate reset && pnpm db:seed`
+
+**発音音源（`.dev-blob/`）も本体と共有**する。DB には相対 key だけが入る（`src/lib/blob-client.ts`）ため、共有しないと「DB に URL はあるが実体が別 worktree にしか無い → 404」が起きる。`wt-new.sh` が各 worktree の `.env` に `DEV_BLOB_ROOT="<本体>/.dev-blob"` を追記して共有させる。
+
+同時に 2 つの dev を見比べたい場合のみ、片方を `PORT=3001 pnpm dev` で起動する。

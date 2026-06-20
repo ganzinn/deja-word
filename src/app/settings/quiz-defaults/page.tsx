@@ -1,12 +1,9 @@
-import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { buttonVariants } from "@/components/ui/button";
+import { ScreenHeader } from "@/components/screen-header";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { getQuizDefaultsForUser } from "@/lib/quiz-default-settings";
 import { getCurrentSession } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 import { QuizDefaultsForm } from "./_components/quiz-defaults-form";
 
@@ -26,16 +23,7 @@ export default async function QuizDefaultsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href="/settings"
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">単語テスト</h1>
-      </header>
+      <ScreenHeader backHref="/settings" title="単語テスト" />
 
       <div className="px-4 pt-4">
         <QuizDefaultsForm

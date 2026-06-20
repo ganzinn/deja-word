@@ -1,14 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { ScreenHeader } from "@/components/screen-header";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -70,17 +69,7 @@ export function OccurrenceForm(props: OccurrenceFormProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-28 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href="/settings/occurrences"
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">{title}</h1>
-        {props.headerActions ? <div className="ml-auto">{props.headerActions}</div> : null}
-      </header>
+      <ScreenHeader backHref="/settings/occurrences" title={title} actions={props.headerActions} />
 
       <Form {...form}>
         <form

@@ -1,13 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { ScreenHeader } from "@/components/screen-header";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -18,7 +17,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { accountProfileSchema, type AccountProfileValues } from "@/lib/schema/account-profile";
-import { cn } from "@/lib/utils";
 
 import { updateProfile } from "./actions";
 
@@ -43,16 +41,7 @@ export function ProfileForm({ defaultValues }: { defaultValues: AccountProfileVa
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-28 md:max-w-2xl">
-      <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 backdrop-blur">
-        <Link
-          href="/account"
-          aria-label="戻る"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ChevronLeftIcon />
-        </Link>
-        <h1 className="text-base font-semibold">アカウント編集</h1>
-      </header>
+      <ScreenHeader backHref="/account" title="アカウント編集" />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>

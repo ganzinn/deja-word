@@ -134,9 +134,6 @@ export function ResultList({
                   {skippedWordIds?.has(row.wordId) ? (
                     <Badge variant="secondary">削除済み</Badge>
                   ) : null}
-                  {remainingByWordId !== null ? (
-                    <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
-                  ) : null}
                   {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
                   {row.prompt === null ? (
                     <RowAudioButton src={row.pronunciationAudioUrl} label="発音" />
@@ -146,7 +143,7 @@ export function ResultList({
               <div className="flex w-full items-start gap-2">
                 <p className="text-sm whitespace-pre-wrap">
                   <span className="text-muted-foreground">正解: </span>
-                  {row.correctDisplay}
+                  <span className="font-semibold">{row.correctDisplay}</span>
                 </p>
                 {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
                 {row.prompt !== null ? (
@@ -155,15 +152,28 @@ export function ResultList({
                   </div>
                 ) : null}
               </div>
-              {row.answerDisplay !== null ? (
-                <p className="text-sm whitespace-pre-wrap">
-                  <span className="text-muted-foreground">自分の回答: </span>
-                  {row.answerDisplay}
-                </p>
-              ) : row.result === "GAVE_UP" ? (
-                <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
-              ) : row.result === "TIMEOUT" ? (
-                <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
+              {row.answerDisplay !== null ||
+              row.result === "GAVE_UP" ||
+              row.result === "TIMEOUT" ||
+              remainingByWordId !== null ? (
+                <div className="flex w-full items-start gap-2">
+                  {row.answerDisplay !== null ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      <span className="text-muted-foreground">自分の回答: </span>
+                      {row.answerDisplay}
+                    </p>
+                  ) : row.result === "GAVE_UP" ? (
+                    <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
+                  ) : row.result === "TIMEOUT" ? (
+                    <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
+                  ) : null}
+                  {/* 定着モードの残数バッジ（あと◯回 / 定着 / 削除済み）。自分の回答の右端に置く。 */}
+                  {remainingByWordId !== null ? (
+                    <div className="ml-auto shrink-0">
+                      <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </li>
@@ -185,7 +195,9 @@ export function ResultList({
           <>
             {drillCompleted ? (
               <p className="text-center text-base font-semibold" role="status">
-                すべての単語が定着しました！おつかれさまでした！
+                すべての単語が定着しました！
+                <br />
+                おつかれさまでした！
               </p>
             ) : (
               // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
@@ -215,20 +227,12 @@ export function ResultList({
  */
 function DrillRemainingBadge({ remaining }: { remaining: number | undefined }) {
   if (remaining === undefined) {
-    return (
-      <Badge variant="secondary" className="ml-auto">
-        削除済み
-      </Badge>
-    );
+    return <Badge variant="secondary">削除済み</Badge>;
   }
   if (remaining === 0) {
-    return <Badge className="ml-auto">定着</Badge>;
+    return <Badge>定着</Badge>;
   }
-  return (
-    <Badge variant="secondary" className="ml-auto">
-      あと{remaining}回
-    </Badge>
-  );
+  return <Badge variant="secondary">あと{remaining}回</Badge>;
 }
 
 function ResultIcon({ result }: { result: QuizResult }) {

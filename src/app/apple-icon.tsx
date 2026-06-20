@@ -17,25 +17,18 @@ const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" widt
 // Image generation
 export default function AppleIcon() {
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#18181b",
-        }}
-      >
-        <img
-          width={112}
-          height={112}
-          src={`data:image/svg+xml,${encodeURIComponent(mark)}`}
-          alt=""
-        />
-      </div>
-    ),
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#18181b",
+      }}
+    >
+      <img width={112} height={112} src={`data:image/svg+xml,${encodeURIComponent(mark)}`} alt="" />
+    </div>,
     {
       ...size,
     },

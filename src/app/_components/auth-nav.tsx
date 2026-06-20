@@ -35,7 +35,12 @@ export function AuthNav({ userName }: { userName: string }) {
         >
           メニュー
         </Link>
-        <span className="text-zinc-500 dark:text-zinc-400">{userName}</span>
+        <Link
+          href="/account"
+          className="text-zinc-500 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          {userName}
+        </Link>
         <button
           type="button"
           disabled={isPending}
@@ -48,7 +53,12 @@ export function AuthNav({ userName }: { userName: string }) {
 
       {/* モバイル: 3 点リーダーに集約 */}
       <div className="flex items-center gap-2 sm:hidden">
-        <span className="max-w-32 truncate text-zinc-500 dark:text-zinc-400">{userName}</span>
+        <Link
+          href="/account"
+          className="max-w-32 truncate text-zinc-500 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          {userName}
+        </Link>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             aria-label="メニュー"

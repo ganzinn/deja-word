@@ -57,7 +57,7 @@ function toQuizWord(row: QuizSourceRow): QuizWord {
 /**
  * 取得済みの 3 つの行集合を素材 (a)(b)(c) に対応づける純マッパ。
  *
- * 範囲（range）判定・Occurrence 紐付き判定・上限サンプリングは取得側（`fetchQuizSource`）が
+ * 範囲（range）判定・Occurrence 紐付き判定・目標件数までの不足分取得は取得側（`fetchQuizSource`）が
  * SQL で済ませているため、ここでは `QuizWord` への変換のみを行う:
  * `targetRows`→(a) 出題対象、`sameOccurrenceRows`→(b) 同一 Occurrence プール、
  * `fallbackRows`→(c) 全登録プール。

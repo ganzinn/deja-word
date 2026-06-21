@@ -170,7 +170,7 @@ src/lib/quiz/generation/
 
 `server-only` import は付けない（純関数のため。呼び出し元の UseCase / クエリが server-only）。unit test はシード付き PRNG（mulberry32 等の小さなヘルパを `tests/setup/` に追加）を注入して決定的に検証する。
 
-### 決定 8: ダミープール取得 — 出題対象（範囲内）は全件・ダミープール（同一Occurrence／補完）は上限付きで取得し、純関数でパーティション
+### 決定 8: ダミープール取得 — 出題対象（範囲内）は全件・ダミー候補プールは目標件数まで優先順で不足分だけ取得し、純関数でパーティション
 
 `src/lib/quiz/queries/quiz-source.ts` の `fetchQuizSource(userId, occurrenceId)` が、ユーザーの全可視単語（MeaningText 1 件以上）を一括取得する:
 
@@ -190,17 +190,22 @@ src/lib/quiz/generation/
 > 絞っても (a)+(b) が ~1900 語のままだった。出題対象 (a) は『範囲内全出題』のため全件必須だが、
 > (b)(c) は**ダミー専用**でサンプルで足りる。
 >
-> そこで `fetchQuizSource(userId, occurrenceId, range)` を **range 判定を SQL に寄せた 3 クエリ**に
-> 分割し `{ targetRows, sameOccurrenceRows, fallbackRows }` を返す:
+> そこで `fetchQuizSource(userId, occurrenceId, range)` を **range 判定を SQL に寄せ、ダミー候補プールを
+> 目標 `DUMMY_POOL_SIZE`（=100）件まで優先順で“不足分だけ”取得**する形にし、
+> `{ targetRows, sameOccurrenceRows, fallbackRows }` を返す（最大 3 クエリ・逐次）:
 > - **targetRows (a)**: 範囲内の出題対象。**上限なしで全件取得**（出題内容は不変）。
-> - **sameOccurrenceRows (b)**: 同一 Occurrence の範囲外・番号なし単語。`take: 100`（`SAME_OCCURRENCE_POOL_LIMIT`）。
-> - **fallbackRows (c)**: Occurrence 外の全登録単語。`take: 100`（`FALLBACK_POOL_LIMIT`）。
+> - **sameOccurrenceRows (b)**: 同一 Occurrence の範囲外・番号なし単語。
+>   `take: max(0, DUMMY_POOL_SIZE - targets)`（0 なら取得しない）。
+> - **fallbackRows (c)**: Occurrence 外の全登録単語。
+>   `take: max(0, DUMMY_POOL_SIZE - targets - sameOccurrence)`（0 なら取得しない）。
 >
-> これでサブレンジ出題時の取得量が「範囲内件数 ＋ 最大 200」に収まる。range が SQL に移ったため
+> 出題対象 (a) 自身が優先プール（(a)∪(b)）の候補になるため、targets が多いほどダミー取得は減り、
+> targets≥100 ならプール取得はゼロ。大 Occurrence から狭い範囲を出すケースでも、不足分だけを
+> 同一 Occurrence→他 Occurrence の順に補うので取得は合計「範囲内件数＋最大100」で頭打ちになる
+> （fallback の取得数は同一 Occurrence の実取得数に依存するため逐次）。range が SQL に移ったため
 > `select` から `wordOccurrences` を除去（occurrenceNumber は下流で不要）。ダミーは 1 問あたり数件・
-> 問題間で使い回せ、出題対象自身も相互にダミーになるため、(b)(c) のサンプリングによる品質劣化は
-> 実質なし（成立判定 `checkFormatAvailability` も同じ縮退素材で行うが、上限が効くのは各プールが
-> 100 を超える規模で、その規模では有効ダミー確保は容易）。掲載箇所全体を一度に出題するケースは
+> 問題間で使い回せるため、候補プール 100 件あれば dedup 後も充足し、出題・成立判定
+> （`checkFormatAvailability`）は実質不変・優先順も維持。掲載箇所全体を一度に出題するケースは
 > (a) が全件のため取得は減らない（仕様上不可避）。
 
 ~~**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。~~
@@ -213,8 +218,8 @@ src/lib/quiz/generation/
 > **成立可否は事前判定せず、テスト開始時（`generateQuizForUser`）に `checkFormatAvailability` で
 > 検証**する。トレードオフとして、開始画面での形式の事前グレーアウト＋理由表示は廃止し、不成立は
 > 「開始 → カウントダウン画面でエラーメッセージ＋戻る」で示す（不成立は極小コーパス等の縁ケース）。
-> 下記「採用理由」は問題生成経路（出題対象は全件必要だが、ダミープール（同一Occurrence／補完）は
-> 上限サンプリングで足りる＝2026-06-21 追補参照）の判断として有効。
+> 下記「採用理由」は問題生成経路（出題対象は全件必要だが、ダミー候補プールは目標件数までの
+> 不足分取得で足りる＝2026-06-21 追補参照）の判断として有効。
 
 - 採用理由（問題生成経路）: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみ。なお「個人語彙（数百〜数千語）の規模では問題にならない」と見込んでいたが、プレビューを掲載箇所選択ごとに走らせる頻度ではコストが顕在化したため、上記のとおりプレビューのみ経路を分離した。
 - 却下案（2 段階遅延クエリ）: 不足の事前判定が不正確で縮退仕様との整合が崩れる。コードパスも 2 本になりテスト負担増。

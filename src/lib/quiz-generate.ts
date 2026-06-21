@@ -11,7 +11,7 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
 /**
  * テスト開始: 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成して返す。
  *
- * 問題生成は範囲内の出題対象を全件＋ダミープール（同一 Occurrence／補完）を上限付きで読む独自経路
+ * 問題生成は範囲内の出題対象を全件＋ダミー候補プールを目標件数まで優先順で不足分だけ読む独自経路
  * （`fetchQuizSource`）。プレビュー（`getQuizPreviewForUser`）は件数のみの軽量経路に分離された
  * ため（05-architecture.md 決定 8 改訂）、形式の成立可否はここで `checkFormatAvailability` に
  * より初めて判定する。

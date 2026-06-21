@@ -18,25 +18,27 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
 }
 
 /**
- * ダミー専用プールの取得上限。
+ * ダミー候補プールの目標件数（出題対象を含む）。
  *
- * ダミー（誤答選択肢）は `selectDummies` で使う。同一 Occurrence の範囲外単語を優先プール、
- * Occurrence 外の全登録単語を補完プールにするが、どちらも出題対象ではなく「ダミー候補」専用。
- * ダミーは 1 問あたり数件・問題間で使い回せるうえ出題対象自身も相互にダミーになるため、
- * 全件読まず一定数のサンプルで足りる（05-architecture.md 決定 8・2026-06-21 追補）。
+ * ダミー（誤答選択肢）は `selectDummies` で使い、優先プール（出題対象 ∪ 同一 Occurrence の範囲外単語）→
+ * 補完プール（Occurrence 外の全登録単語）の順で選ぶ。**出題対象（targets）自身も優先プールの候補**に
+ * なるため、targets が十分あればダミー専用の取得は不要。よって候補プールがこの件数に達するよう、
+ * targets → 同一 Occurrence（範囲外）→ 他 Occurrence の優先順で**不足分だけ**取得する。
+ * ダミーは 1 問あたり数件・問題間で使い回せるため、この件数あれば dedup 後も充足する
+ * （05-architecture.md 決定 8・2026-06-21 追補）。
  */
-export const SAME_OCCURRENCE_POOL_LIMIT = 100;
-export const FALLBACK_POOL_LIMIT = 100;
+export const DUMMY_POOL_SIZE = 100;
 
 /**
  * 問題生成・drill ラウンド生成の素材を取得する。
  *
- * 範囲（range）判定を SQL に寄せ、3 クエリに分割する:
+ * 範囲（range）判定を SQL に寄せ、ダミー候補プールを {@link DUMMY_POOL_SIZE} 件まで優先順で
+ * **不足分だけ**取得する（最大 3 クエリ、逐次）:
  * - `targetRows`: 範囲内の出題対象。仕様『範囲内全出題』のため上限なしで全件取得。
- * - `sameOccurrenceRows`: 同一 Occurrence の範囲外・番号なし単語（優先ダミー専用）。
- *   最大 {@link SAME_OCCURRENCE_POOL_LIMIT} 件にサンプリング。
- * - `fallbackRows`: Occurrence 外の全登録単語（補完ダミー専用）。
- *   最大 {@link FALLBACK_POOL_LIMIT} 件にサンプリング。
+ * - `sameOccurrenceRows`: 同一 Occurrence の範囲外・番号なし単語（優先ダミー）。
+ *   不足分 `DUMMY_POOL_SIZE - targets` 件だけ取得（0 なら取得しない）。
+ * - `fallbackRows`: Occurrence 外の全登録単語（補完ダミー）。
+ *   残りの不足分 `DUMMY_POOL_SIZE - targets - sameOccurrence` 件だけ取得（0 なら取得しない）。
  * 行→素材（targets / sameOccurrencePool / allWordsPool）の対応は純関数 partitionMaterial に委ねる。
  *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
@@ -88,29 +90,43 @@ export async function fetchQuizSource(
     },
   } as const;
 
-  const [targetRows, sameOccurrenceRows, fallbackRows] = await Promise.all([
-    prisma.word.findMany({
-      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...inRangeWordOccurrence },
-      select,
-    }),
-    prisma.word.findMany({
-      where: {
-        ownerId: { in: allowed },
-        ...hasVisibleMeaning,
-        ...linkedToOccurrence,
-        NOT: inRangeWordOccurrence,
-      },
-      select,
-      orderBy: { createdAt: "desc" },
-      take: SAME_OCCURRENCE_POOL_LIMIT,
-    }),
-    prisma.word.findMany({
-      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, NOT: linkedToOccurrence },
-      select,
-      orderBy: { createdAt: "desc" },
-      take: FALLBACK_POOL_LIMIT,
-    }),
-  ]);
+  // 出題対象は全件取得。
+  const targetRows = await prisma.word.findMany({
+    where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...inRangeWordOccurrence },
+    select,
+  });
+
+  // ダミー候補プールを DUMMY_POOL_SIZE 件まで、同一 Occurrence（範囲外）→ 他 Occurrence の
+  // 順で不足分だけ補う。fallback の取得数は同一 Occurrence の実取得数に依存するため逐次。
+  const sameOccTake = Math.max(0, DUMMY_POOL_SIZE - targetRows.length);
+  const sameOccurrenceRows =
+    sameOccTake === 0
+      ? []
+      : await prisma.word.findMany({
+          where: {
+            ownerId: { in: allowed },
+            ...hasVisibleMeaning,
+            ...linkedToOccurrence,
+            NOT: inRangeWordOccurrence,
+          },
+          select,
+          orderBy: { createdAt: "desc" },
+          take: sameOccTake,
+        });
+
+  const fallbackTake = Math.max(
+    0,
+    DUMMY_POOL_SIZE - targetRows.length - sameOccurrenceRows.length,
+  );
+  const fallbackRows =
+    fallbackTake === 0
+      ? []
+      : await prisma.word.findMany({
+          where: { ownerId: { in: allowed }, ...hasVisibleMeaning, NOT: linkedToOccurrence },
+          select,
+          orderBy: { createdAt: "desc" },
+          take: fallbackTake,
+        });
 
   return { targetRows, sameOccurrenceRows, fallbackRows };
 }

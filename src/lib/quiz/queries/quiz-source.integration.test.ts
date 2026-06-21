@@ -4,9 +4,8 @@ import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import {
   countQuizSourceExclusions,
   countQuizTargets,
-  FALLBACK_POOL_LIMIT,
+  DUMMY_POOL_SIZE,
   fetchQuizSource,
-  SAME_OCCURRENCE_POOL_LIMIT,
 } from "@/lib/quiz/queries/quiz-source";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
@@ -109,11 +108,10 @@ describe("fetchQuizSource", () => {
     expect(row!.meanings[1].texts.map((t) => t.text)).toEqual(["別品詞の意味"]);
   });
 
-  test("caps dummy pools (same-occurrence / fallback) but never caps in-range targets", async () => {
+  test("fills the dummy pool up to DUMMY_POOL_SIZE from same-occurrence first (fallback skipped)", async () => {
     const user = await createTestUser();
-    const occurrence = await createOccurrenceRow(user.id, "上限テスト帳");
-    // 範囲内（1..50）の出題対象は上限なし
-    const targetCount = 3;
+    const occurrence = await createOccurrenceRow(user.id, "不足分テスト帳");
+    const targetCount = 10;
     await Promise.all(
       Array.from({ length: targetCount }, (_, i) =>
         createQuizWordRow(user.id, `target${i}`, {
@@ -121,18 +119,54 @@ describe("fetchQuizSource", () => {
         }),
       ),
     );
-    // 範囲外（>50）の同一 Occurrence ダミーを上限超で投入
+    // 範囲外の同一 Occurrence 単語を不足分（DUMMY_POOL_SIZE - targets）より多く投入
     await Promise.all(
-      Array.from({ length: SAME_OCCURRENCE_POOL_LIMIT + 5 }, (_, i) =>
+      Array.from({ length: DUMMY_POOL_SIZE }, (_, i) =>
         createQuizWordRow(user.id, `sameocc${i}`, {
           occurrence: { id: occurrence.id, occurrenceNumber: 1000 + i },
         }),
       ),
     );
-    // 対象 Occurrence 外の補完ダミーを上限超で投入
+    // 他 Occurrence の単語も用意するが、同一 Occurrence で充足するため取得されないはず
+    await createQuizWordRow(user.id, "other");
+
+    const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: 50 },
+    );
+    expect(targetRows).toHaveLength(targetCount);
+    expect(sameOccurrenceRows).toHaveLength(DUMMY_POOL_SIZE - targetCount);
+    expect(fallbackRows).toEqual([]);
+  });
+
+  test("tops up from other occurrences only for the remaining deficit", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "補完テスト帳");
+    const other = await createOccurrenceRow(user.id, "別帳", 1);
+    const targetCount = 10;
+    const sameOccCount = 30;
     await Promise.all(
-      Array.from({ length: FALLBACK_POOL_LIMIT + 5 }, (_, i) =>
-        createQuizWordRow(user.id, `fallback${i}`),
+      Array.from({ length: targetCount }, (_, i) =>
+        createQuizWordRow(user.id, `target${i}`, {
+          occurrence: { id: occurrence.id, occurrenceNumber: i + 1 },
+        }),
+      ),
+    );
+    // 同一 Occurrence の範囲外は不足分に満たない数だけ
+    await Promise.all(
+      Array.from({ length: sameOccCount }, (_, i) =>
+        createQuizWordRow(user.id, `sameocc${i}`, {
+          occurrence: { id: occurrence.id, occurrenceNumber: 1000 + i },
+        }),
+      ),
+    );
+    // 他 Occurrence を潤沢に投入
+    await Promise.all(
+      Array.from({ length: DUMMY_POOL_SIZE }, (_, i) =>
+        createQuizWordRow(user.id, `other${i}`, {
+          occurrence: { id: other.id, occurrenceNumber: i + 1 },
+        }),
       ),
     );
 
@@ -142,8 +176,34 @@ describe("fetchQuizSource", () => {
       { from: 1, to: 50 },
     );
     expect(targetRows).toHaveLength(targetCount);
-    expect(sameOccurrenceRows).toHaveLength(SAME_OCCURRENCE_POOL_LIMIT);
-    expect(fallbackRows).toHaveLength(FALLBACK_POOL_LIMIT);
+    expect(sameOccurrenceRows).toHaveLength(sameOccCount);
+    expect(fallbackRows).toHaveLength(DUMMY_POOL_SIZE - targetCount - sameOccCount);
+  });
+
+  test("fetches no dummy pools when in-range targets already reach DUMMY_POOL_SIZE", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "充足テスト帳");
+    await Promise.all(
+      Array.from({ length: DUMMY_POOL_SIZE }, (_, i) =>
+        createQuizWordRow(user.id, `target${i}`, {
+          occurrence: { id: occurrence.id, occurrenceNumber: i + 1 },
+        }),
+      ),
+    );
+    // 本来ならダミープールに入る単語を置いても取得されないはず
+    await createQuizWordRow(user.id, "outofrange", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 9999 },
+    });
+    await createQuizWordRow(user.id, "other");
+
+    const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: DUMMY_POOL_SIZE },
+    );
+    expect(targetRows).toHaveLength(DUMMY_POOL_SIZE);
+    expect(sameOccurrenceRows).toEqual([]);
+    expect(fallbackRows).toEqual([]);
   });
 
   test("throws OccurrenceNotFoundError for an unknown or foreign occurrence", async () => {

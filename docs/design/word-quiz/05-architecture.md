@@ -170,7 +170,7 @@ src/lib/quiz/generation/
 
 `server-only` import は付けない（純関数のため。呼び出し元の UseCase / クエリが server-only）。unit test はシード付き PRNG（mulberry32 等の小さなヘルパを `tests/setup/` に追加）を注入して決定的に検証する。
 
-### 決定 8: ダミープール取得 — 1 クエリで全可視単語を取得し、純関数でパーティション
+### 決定 8: ダミープール取得 — Occurrence 内は全件・Occurrence 外の補完ダミーは上限付きで取得し、純関数でパーティション
 
 `src/lib/quiz/queries/quiz-source.ts` の `fetchQuizSource(userId, occurrenceId)` が、ユーザーの全可視単語（MeaningText 1 件以上）を一括取得する:
 
@@ -182,7 +182,18 @@ src/lib/quiz/generation/
 //     wordOccurrences: { where: { occurrenceId, ownerId: { in: allowed } }, select: { occurrenceNumber } } } })
 ```
 
-純関数 `partitionMaterial(rows, range)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（wordOccurrences 非空の他単語）、(c) 全登録プール（残り）に分割して `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
+純関数 `partitionMaterial(occurrenceRows, fallbackRows, range)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（範囲外・番号なしの他単語）、(c) 全登録プール（Occurrence 外の補完単語）に分割して `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
+
+> **2026-06-21 追補（生成経路の取得量を上限化）**: 上記は全可視単語を 1 クエリで取得する設計
+> だったが、`where` に Occurrence 絞り込みが無く、テスト開始のたびに全コーパスを読み込んでいた
+> （実測 ~1900 語）。大半は (c) 全登録プール＝**不足時のみ使う補完ダミー**であり全件取得は無駄。
+> そこで `fetchQuizSource` を 2 クエリに分割し `{ occurrenceRows, fallbackRows }` を返す:
+> **出題対象＋同一 Occurrence プール（(a)(b)）はメインクエリを対象 Occurrence に絞って全件取得**
+> （Occurrence サイズで自然に bounded）、**Occurrence 外の補完ダミー（(c)）は `take: 100`
+> （`FALLBACK_POOL_LIMIT`）でサンプリング**する。出題対象は常に全件なので出題内容は不変。
+> ダミーは 1 問あたり数件・問題間で使い回せるため、補完プールはサンプルで足りる（成立判定
+> `checkFormatAvailability` も同じ素材で行うが、上限が効くのは Occurrence 外単語が 100 を超える
+> 大コーパスのみで、その規模では有効ダミーの確保は容易）。
 
 ~~**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。~~
 
@@ -194,7 +205,8 @@ src/lib/quiz/generation/
 > **成立可否は事前判定せず、テスト開始時（`generateQuizForUser`）に `checkFormatAvailability` で
 > 検証**する。トレードオフとして、開始画面での形式の事前グレーアウト＋理由表示は廃止し、不成立は
 > 「開始 → カウントダウン画面でエラーメッセージ＋戻る」で示す（不成立は極小コーパス等の縁ケース）。
-> 下記「採用理由」は問題生成（全コーパス読込が本質的に必要）側の判断として有効。
+> 下記「採用理由」は問題生成経路（出題対象は全件必要だが、補完ダミーは上限サンプリングで足りる＝
+> 2026-06-21 追補参照）の判断として有効。
 
 - 採用理由（問題生成経路）: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみ。なお「個人語彙（数百〜数千語）の規模では問題にならない」と見込んでいたが、プレビューを掲載箇所選択ごとに走らせる頻度ではコストが顕在化したため、上記のとおりプレビューのみ経路を分離した。
 - 却下案（2 段階遅延クエリ）: 不足の事前判定が不正確で縮退仕様との整合が崩れる。コードパスも 2 本になりテスト負担増。

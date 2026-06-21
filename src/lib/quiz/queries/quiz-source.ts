@@ -18,10 +18,21 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
 }
 
 /**
- * 問題生成・drill ラウンド生成の素材を 1 クエリで取得する。
+ * 補完ダミープール（対象 Occurrence 外の全登録単語）の取得上限。
  *
- * ユーザーの全可視単語（可視 MeaningText が 1 件以上あるもの）を一括取得し、
- * 対象 Occurrence への紐付き（occurrenceNumber）を wordOccurrences に含める。
+ * 補完ダミーは `selectDummies` の fallback で、同一 Occurrence 由来の優先プールが
+ * 不足したときだけ使う。ダミーは 1 問あたり数件・問題間で使い回せるため、全コーパスを
+ * 読まず一定数のサンプルで足りる（05-architecture.md 決定 8・2026-06-21 追補）。
+ */
+export const FALLBACK_POOL_LIMIT = 100;
+
+/**
+ * 問題生成・drill ラウンド生成の素材を取得する。
+ *
+ * 出題対象（範囲内の単語）は必ず全件必要なので、対象 Occurrence に紐づく単語
+ * （`occurrenceRows`＝出題対象＋同一 Occurrence プール）は上限なしで取得する。
+ * 一方、Occurrence 外の全登録単語は補完ダミー専用（不足時のみ使用）なので、
+ * `fallbackRows` として最大 {@link FALLBACK_POOL_LIMIT} 件にサンプリングする。
  * 行の分割（出題対象／同一 Occurrence プール／全登録プール）はチケット 03 の
  * 純関数 partitionMaterial に委ねる。
  *
@@ -32,36 +43,51 @@ export async function fetchQuizSource(userId: string, occurrenceId: string) {
   const allowed = scopedOwnerIds(userId);
   await assertOccurrenceVisible(userId, occurrenceId);
 
-  return prisma.word.findMany({
-    where: {
-      ownerId: { in: allowed },
-      meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
-    },
-    select: {
-      id: true,
-      headword: true,
-      meanings: {
-        where: { ownerId: { in: allowed } },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          partOfSpeech: true,
-          pronunciationAudioUrl: true,
-          texts: {
-            where: { ownerId: { in: allowed } },
-            orderBy: { sortOrder: "asc" },
-            select: { text: true },
-          },
+  const hasVisibleMeaning = {
+    meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
+  } as const;
+  const linkedToOccurrence = {
+    wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+  } as const;
+  const select = {
+    id: true,
+    headword: true,
+    meanings: {
+      where: { ownerId: { in: allowed } },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        partOfSpeech: true,
+        pronunciationAudioUrl: true,
+        texts: {
+          where: { ownerId: { in: allowed } },
+          orderBy: { sortOrder: "asc" },
+          select: { text: true },
         },
       },
-      wordOccurrences: {
-        where: { occurrenceId, ownerId: { in: allowed } },
-        select: { occurrenceNumber: true },
-      },
     },
-  });
+    wordOccurrences: {
+      where: { occurrenceId, ownerId: { in: allowed } },
+      select: { occurrenceNumber: true },
+    },
+  } as const;
+
+  const [occurrenceRows, fallbackRows] = await Promise.all([
+    prisma.word.findMany({
+      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...linkedToOccurrence },
+      select,
+    }),
+    prisma.word.findMany({
+      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, NOT: linkedToOccurrence },
+      select,
+      orderBy: { createdAt: "desc" },
+      take: FALLBACK_POOL_LIMIT,
+    }),
+  ]);
+
+  return { occurrenceRows, fallbackRows };
 }
 
-export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>[number];
+export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["occurrenceRows"][number];
 
 /**
  * 対象 Occurrence 内の除外内訳（番号なし・意味未登録）を count クエリで返す。

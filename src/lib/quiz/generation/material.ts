@@ -65,24 +65,32 @@ function isInRange(n: number, range: QuizRange): boolean {
   return true;
 }
 
-/** 取得行を (a) 出題対象 / (b) 同一 Occurrence プール / (c) 全登録プールに分割する。 */
-export function partitionMaterial(rows: QuizSourceRow[], range: QuizRange): QuizSourceMaterial {
+/**
+ * 取得行を (a) 出題対象 / (b) 同一 Occurrence プール / (c) 全登録プールに分割する。
+ *
+ * `occurrenceRows` は対象 Occurrence に紐づく単語（occurrenceNumber が範囲内なら (a)、
+ * それ以外＝範囲外・番号なしは (b)）。`fallbackRows` は Occurrence 外の補完ダミー用単語で、
+ * そのまま (c) になる（取得段階で上限サンプリング済み。`fetchQuizSource` 参照）。
+ */
+export function partitionMaterial(
+  occurrenceRows: QuizSourceRow[],
+  fallbackRows: QuizSourceRow[],
+  range: QuizRange,
+): QuizSourceMaterial {
   const targets: QuizWord[] = [];
   const sameOccurrencePool: QuizWord[] = [];
-  const allWordsPool: QuizWord[] = [];
-  for (const row of rows) {
+  for (const row of occurrenceRows) {
     const word = toQuizWord(row);
     const numbers = row.wordOccurrences
       .map((o) => o.occurrenceNumber)
       .filter((n): n is number => n !== null);
     if (numbers.some((n) => isInRange(n, range))) {
       targets.push(word);
-    } else if (row.wordOccurrences.length > 0) {
-      sameOccurrencePool.push(word);
     } else {
-      allWordsPool.push(word);
+      sameOccurrencePool.push(word);
     }
   }
+  const allWordsPool = fallbackRows.map(toQuizWord);
   return { targets, sameOccurrencePool, allWordsPool };
 }
 

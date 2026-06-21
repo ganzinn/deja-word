@@ -4,6 +4,7 @@ import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import {
   countQuizSourceExclusions,
   countQuizTargets,
+  FALLBACK_POOL_LIMIT,
   fetchQuizSource,
 } from "@/lib/quiz/queries/quiz-source";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
@@ -31,8 +32,8 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 3 },
     });
 
-    const rows = await fetchQuizSource(user.id, occurrence.id);
-    const ids = rows.map((r) => r.id);
+    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
+    const ids = occurrenceRows.map((r) => r.id);
     expect(ids).toContain(ownWord.id);
     expect(ids).toContain(systemWord.id);
     expect(ids).not.toContain(strangerWord.id);
@@ -53,14 +54,14 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 3 },
     });
 
-    const rows = await fetchQuizSource(user.id, occurrence.id);
-    const ids = rows.map((r) => r.id);
+    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
+    const ids = occurrenceRows.map((r) => r.id);
     expect(ids).toContain(withMeaning.id);
     expect(ids).not.toContain(noMeaning.id);
     expect(ids).not.toContain(emptyTexts.id);
   });
 
-  test("returns occurrenceNumber null for a linked word without number, and empty wordOccurrences for an unlinked word", async () => {
+  test("returns occurrenceNumber for linked words in occurrenceRows, and unlinked words in fallbackRows", async () => {
     const user = await createTestUser();
     const occurrence = await createOccurrenceRow(user.id, "番号テスト帳");
     const other = await createOccurrenceRow(user.id, "別の出典", 1);
@@ -74,12 +75,15 @@ describe("fetchQuizSource", () => {
       occurrence: { id: other.id, occurrenceNumber: 1 },
     });
 
-    const rows = await fetchQuizSource(user.id, occurrence.id);
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    expect(byId.get(numbered.id)!.wordOccurrences).toEqual([{ occurrenceNumber: 7 }]);
-    expect(byId.get(noNumber.id)!.wordOccurrences).toEqual([{ occurrenceNumber: null }]);
-    // 対象 Occurrence に紐付かない単語も全登録プール用に返るが、wordOccurrences は空
-    expect(byId.get(otherOccurrence.id)!.wordOccurrences).toEqual([]);
+    const { occurrenceRows, fallbackRows } = await fetchQuizSource(user.id, occurrence.id);
+    const occById = new Map(occurrenceRows.map((r) => [r.id, r]));
+    const fallbackById = new Map(fallbackRows.map((r) => [r.id, r]));
+    // 対象 Occurrence に紐づく単語は occurrenceRows 側（番号あり／なしとも）
+    expect(occById.get(numbered.id)!.wordOccurrences).toEqual([{ occurrenceNumber: 7 }]);
+    expect(occById.get(noNumber.id)!.wordOccurrences).toEqual([{ occurrenceNumber: null }]);
+    expect(occById.has(otherOccurrence.id)).toBe(false);
+    // 対象 Occurrence 外の単語は補完ダミー用 fallbackRows 側に返り、wordOccurrences は空
+    expect(fallbackById.get(otherOccurrence.id)!.wordOccurrences).toEqual([]);
   });
 
   test("returns meanings with texts ordered by sortOrder", async () => {
@@ -90,13 +94,37 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 1 },
     });
 
-    const rows = await fetchQuizSource(user.id, occurrence.id);
-    const row = rows.find((r) => r.id === word.id);
+    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
+    const row = occurrenceRows.find((r) => r.id === word.id);
     expect(row).toBeDefined();
     expect(row!.headword).toBe("delta");
     expect(row!.meanings).toHaveLength(2);
     expect(row!.meanings[0].texts.map((t) => t.text)).toEqual(["第一の意味", "第二の意味"]);
     expect(row!.meanings[1].texts.map((t) => t.text)).toEqual(["別品詞の意味"]);
+  });
+
+  test("caps fallbackRows at FALLBACK_POOL_LIMIT but does not cap occurrenceRows", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "上限テスト帳");
+    // 対象 Occurrence 内（出題対象＋同一 Occurrence）は上限なし
+    const linkedCount = 3;
+    await Promise.all(
+      Array.from({ length: linkedCount }, (_, i) =>
+        createQuizWordRow(user.id, `linked${i}`, {
+          occurrence: { id: occurrence.id, occurrenceNumber: i + 1 },
+        }),
+      ),
+    );
+    // 対象 Occurrence 外の補完ダミー用単語を上限超で投入
+    await Promise.all(
+      Array.from({ length: FALLBACK_POOL_LIMIT + 5 }, (_, i) =>
+        createQuizWordRow(user.id, `fallback${i}`),
+      ),
+    );
+
+    const { occurrenceRows, fallbackRows } = await fetchQuizSource(user.id, occurrence.id);
+    expect(occurrenceRows).toHaveLength(linkedCount);
+    expect(fallbackRows).toHaveLength(FALLBACK_POOL_LIMIT);
   });
 
   test("throws OccurrenceNotFoundError for an unknown or foreign occurrence", async () => {

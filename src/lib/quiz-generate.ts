@@ -11,9 +11,10 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
 /**
  * テスト開始: 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成して返す。
  *
- * 問題生成は全コーパスを読む独自経路（`fetchQuizSource`）。プレビュー
- * （`getQuizPreviewForUser`）は件数のみの軽量経路に分離されたため（05-architecture.md
- * 決定 8 改訂）、形式の成立可否はここで `checkFormatAvailability` により初めて判定する。
+ * 問題生成は対象 Occurrence の単語を全件＋Occurrence 外の補完ダミーを上限付きで読む独自経路
+ * （`fetchQuizSource`）。プレビュー（`getQuizPreviewForUser`）は件数のみの軽量経路に分離された
+ * ため（05-architecture.md 決定 8 改訂）、形式の成立可否はここで `checkFormatAvailability` に
+ * より初めて判定する。
  * 不成立の場合は QuizGenerationError（カウントダウン画面でメッセージ表示）。
  *
  * Occurrence の可視性確認（不在は OccurrenceNotFoundError）は `fetchQuizSource` 冒頭で行われる。
@@ -22,8 +23,11 @@ export async function generateQuizForUser(
   userId: string,
   input: QuizRangeInput & { format: QuizFormat; timeoutSeconds: number | null },
 ): Promise<QuizPayload> {
-  const rows = await fetchQuizSource(userId, input.occurrenceId);
-  const material = partitionMaterial(rows, { from: input.rangeFrom, to: input.rangeTo });
+  const { occurrenceRows, fallbackRows } = await fetchQuizSource(userId, input.occurrenceId);
+  const material = partitionMaterial(occurrenceRows, fallbackRows, {
+    from: input.rangeFrom,
+    to: input.rangeTo,
+  });
 
   const availability = checkFormatAvailability(input.format, material);
   if (!availability.available) {

@@ -40,8 +40,11 @@ export async function generateDrillRoundForUser(
   });
   if (!drill) throw new DrillNotFoundError();
 
-  const rows = await fetchQuizSource(userId, drill.occurrenceId);
-  const partitioned = partitionMaterial(rows, { from: drill.rangeFrom, to: drill.rangeTo });
+  const { occurrenceRows, fallbackRows } = await fetchQuizSource(userId, drill.occurrenceId);
+  const partitioned = partitionMaterial(occurrenceRows, fallbackRows, {
+    from: drill.rangeFrom,
+    to: drill.rangeTo,
+  });
 
   const unGraduated = new Set(drill.words.map((w) => w.wordId));
   const isTarget = (w: QuizWord) => unGraduated.has(w.id);

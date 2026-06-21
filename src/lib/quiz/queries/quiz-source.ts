@@ -27,7 +27,7 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
  * ダミーは 1 問あたり数件・問題間で使い回せるため、この件数あれば dedup 後も充足する
  * （05-architecture.md 決定 8・2026-06-21 追補）。
  */
-export const DUMMY_POOL_SIZE = 100;
+export const DUMMY_POOL_SIZE = 50;
 
 /**
  * 問題生成・drill ラウンド生成の素材を取得する。

@@ -191,7 +191,7 @@ src/lib/quiz/generation/
 > (b)(c) は**ダミー専用**でサンプルで足りる。
 >
 > そこで `fetchQuizSource(userId, occurrenceId, range)` を **range 判定を SQL に寄せ、ダミー候補プールを
-> 目標 `DUMMY_POOL_SIZE`（=100）件まで優先順で“不足分だけ”取得**する形にし、
+> 目標 `DUMMY_POOL_SIZE`（=50）件まで優先順で“不足分だけ”取得**する形にし、
 > `{ targetRows, sameOccurrenceRows, fallbackRows }` を返す（最大 3 クエリ・逐次）:
 > - **targetRows (a)**: 範囲内の出題対象。**上限なしで全件取得**（出題内容は不変）。
 > - **sameOccurrenceRows (b)**: 同一 Occurrence の範囲外・番号なし単語。
@@ -200,11 +200,11 @@ src/lib/quiz/generation/
 >   `take: max(0, DUMMY_POOL_SIZE - targets - sameOccurrence)`（0 なら取得しない）。
 >
 > 出題対象 (a) 自身が優先プール（(a)∪(b)）の候補になるため、targets が多いほどダミー取得は減り、
-> targets≥100 ならプール取得はゼロ。大 Occurrence から狭い範囲を出すケースでも、不足分だけを
-> 同一 Occurrence→他 Occurrence の順に補うので取得は合計「範囲内件数＋最大100」で頭打ちになる
+> targets≥`DUMMY_POOL_SIZE` ならプール取得はゼロ。大 Occurrence から狭い範囲を出すケースでも、不足分だけを
+> 同一 Occurrence→他 Occurrence の順に補うので取得は合計「範囲内件数＋最大 `DUMMY_POOL_SIZE`」で頭打ちになる
 > （fallback の取得数は同一 Occurrence の実取得数に依存するため逐次）。range が SQL に移ったため
 > `select` から `wordOccurrences` を除去（occurrenceNumber は下流で不要）。ダミーは 1 問あたり数件・
-> 問題間で使い回せるため、候補プール 100 件あれば dedup 後も充足し、出題・成立判定
+> 問題間で使い回せるため、候補プール `DUMMY_POOL_SIZE`（=50）件あれば dedup 後も充足し、出題・成立判定
 > （`checkFormatAvailability`）は実質不変・優先順も維持。掲載箇所全体を一度に出題するケースは
 > (a) が全件のため取得は減らない（仕様上不可避）。
 

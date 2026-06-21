@@ -114,10 +114,7 @@ export async function fetchQuizSource(
           take: sameOccTake,
         });
 
-  const fallbackTake = Math.max(
-    0,
-    DUMMY_POOL_SIZE - targetRows.length - sameOccurrenceRows.length,
-  );
+  const fallbackTake = Math.max(0, DUMMY_POOL_SIZE - targetRows.length - sameOccurrenceRows.length);
   const fallbackRows =
     fallbackTake === 0
       ? []

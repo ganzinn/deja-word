@@ -1,4 +1,5 @@
-// 素材型と取得行のパーティション純関数（05-architecture.md 決定 8）。
+// 問題生成・drill ラウンド生成が使う素材型と取得行のパーティション純関数
+// （05-architecture.md 決定 8。プレビューはこの分割を使わず件数のみ取得する＝決定 8 改訂）。
 // 取得クエリ `fetchQuizSource` はチケット 04。本ファイルは DB 非依存。
 
 import type { MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
@@ -13,8 +14,6 @@ export type QuizSourceRow = {
     pronunciationAudioUrl: string | null;
     texts: { text: string }[];
   }[];
-  /** 対象 Occurrence に紐づく掲載情報（紐づきがなければ空配列）。 */
-  wordOccurrences: { occurrenceNumber: number | null }[];
 };
 
 export type QuizMeaning = {
@@ -29,9 +28,6 @@ export type QuizWord = {
   /** sortOrder 順。先頭が「最初の Meaning」。各単語は意味 1 件以上が入力前提。 */
   meanings: QuizMeaning[];
 };
-
-/** 掲載番号の範囲。空欄＝制限なし、片側のみ指定可。 */
-export type QuizRange = { from?: number; to?: number };
 
 /**
  * 出題素材。(a)(b)(c) は互いに素な分割。
@@ -58,31 +54,24 @@ function toQuizWord(row: QuizSourceRow): QuizWord {
   };
 }
 
-function isInRange(n: number, range: QuizRange): boolean {
-  if (range.from !== undefined && n < range.from) return false;
-  if (range.to !== undefined && n > range.to) return false;
-  return true;
-}
-
-/** 取得行を (a) 出題対象 / (b) 同一 Occurrence プール / (c) 全登録プールに分割する。 */
-export function partitionMaterial(rows: QuizSourceRow[], range: QuizRange): QuizSourceMaterial {
-  const targets: QuizWord[] = [];
-  const sameOccurrencePool: QuizWord[] = [];
-  const allWordsPool: QuizWord[] = [];
-  for (const row of rows) {
-    const word = toQuizWord(row);
-    const numbers = row.wordOccurrences
-      .map((o) => o.occurrenceNumber)
-      .filter((n): n is number => n !== null);
-    if (numbers.some((n) => isInRange(n, range))) {
-      targets.push(word);
-    } else if (row.wordOccurrences.length > 0) {
-      sameOccurrencePool.push(word);
-    } else {
-      allWordsPool.push(word);
-    }
-  }
-  return { targets, sameOccurrencePool, allWordsPool };
+/**
+ * 取得済みの 3 つの行集合を素材 (a)(b)(c) に対応づける純マッパ。
+ *
+ * 範囲（range）判定・Occurrence 紐付き判定・目標件数までの不足分取得は取得側（`fetchQuizSource`）が
+ * SQL で済ませているため、ここでは `QuizWord` への変換のみを行う:
+ * `targetRows`→(a) 出題対象、`sameOccurrenceRows`→(b) 同一 Occurrence プール、
+ * `fallbackRows`→(c) 全登録プール。
+ */
+export function partitionMaterial(
+  targetRows: QuizSourceRow[],
+  sameOccurrenceRows: QuizSourceRow[],
+  fallbackRows: QuizSourceRow[],
+): QuizSourceMaterial {
+  return {
+    targets: targetRows.map(toQuizWord),
+    sameOccurrencePool: sameOccurrenceRows.map(toQuizWord),
+    allWordsPool: fallbackRows.map(toQuizWord),
+  };
 }
 
 /** 全 Meaning 横断の全 MeaningText（trim なしの生テキスト）。 */

@@ -84,7 +84,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 
 | 用途 | Action（`src/app/quiz/actions.ts`） | 入出力 |
 | --- | --- | --- |
-| プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）・形式ごとの成立可否 |
+| プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）（決定 8 改訂で形式ごとの成立可否は返さない。成立可否は開始時 `startQuiz` で判定） |
 | テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
 | drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds は `Drill` に保存。timeoutSeconds は 2026-06-13 加算） |
@@ -131,7 +131,7 @@ Drill に `roundCount Int @default(0)` を加算する（**02 改訂済み**）�
 
 ### 決定 6: 形式追加への拡張点 — 形式別生成器＋exhaustive switch、payload は discriminated union
 
-拡張点は 4 箇所に閉じる: (1) Prisma enum へ値追加、(2) `src/lib/quiz/generation/<format>.ts` の生成器追加、(3) `payload.ts` の union メンバ追加、(4) `_components/question-<format>.tsx` 追加。ディスパッチャ `buildQuiz(format, material, rng)` と成立判定 `checkFormatAvailability(format, material)` を exhaustive switch（`never` チェック）にしておけば、enum 追加時に (2)(3) の漏れがコンパイルエラーで露見する。`checkFormatAvailability` は 1 形式分の判定（成立可否＋不成立理由）を返し、プレビューでは全形式分を呼んで形式ごとの可否を組み立てる。
+拡張点は 4 箇所に閉じる: (1) Prisma enum へ値追加、(2) `src/lib/quiz/generation/<format>.ts` の生成器追加、(3) `payload.ts` の union メンバ追加、(4) `_components/question-<format>.tsx` 追加。ディスパッチャ `buildQuiz(format, material, rng)` と成立判定 `checkFormatAvailability(format, material)` を exhaustive switch（`never` チェック）にしておけば、enum 追加時に (2)(3) の漏れがコンパイルエラーで露見する。`checkFormatAvailability` は 1 形式分の判定（成立可否＋不成立理由）を返し、テスト開始時（`generateQuizForUser`）に選択形式について 1 回呼ぶ（決定 8 改訂前はプレビューでも全形式分を呼んでいた）。
 
 ```ts
 // src/lib/quiz/payload.ts
@@ -170,7 +170,7 @@ src/lib/quiz/generation/
 
 `server-only` import は付けない（純関数のため。呼び出し元の UseCase / クエリが server-only）。unit test はシード付き PRNG（mulberry32 等の小さなヘルパを `tests/setup/` に追加）を注入して決定的に検証する。
 
-### 決定 8: ダミープール取得 — 1 クエリで全可視単語を取得し、純関数でパーティション
+### 決定 8: ダミープール取得 — 出題対象（範囲内）は全件・ダミー候補プールは目標件数まで優先順で不足分だけ取得し、純関数でパーティション
 
 `src/lib/quiz/queries/quiz-source.ts` の `fetchQuizSource(userId, occurrenceId)` が、ユーザーの全可視単語（MeaningText 1 件以上）を一括取得する:
 
@@ -182,12 +182,52 @@ src/lib/quiz/generation/
 //     wordOccurrences: { where: { occurrenceId, ownerId: { in: allowed } }, select: { occurrenceNumber } } } })
 ```
 
-純関数 `partitionMaterial(rows, range)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（wordOccurrences 非空の他単語）、(c) 全登録プール（残り）に分割して `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
+純関数 `partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（範囲外・番号なしの他単語）、(c) 全登録プール（Occurrence 外の補完単語）に対応づけて `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
 
-**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。
+> **2026-06-21 追補（生成経路の取得量を上限化）**: 当初は全可視単語を 1 クエリで取得する設計
+> だったが、`where` に Occurrence 絞り込みが無く、テスト開始のたびに全コーパスを読み込んでいた
+> （実測 ~1900 語）。さらに「単語がほぼ 1 つの掲載箇所に集中しているデータ」では、Occurrence で
+> 絞っても (a)+(b) が ~1900 語のままだった。出題対象 (a) は『範囲内全出題』のため全件必須だが、
+> (b)(c) は**ダミー専用**でサンプルで足りる。
+>
+> そこで `fetchQuizSource(userId, occurrenceId, range)` を **range 判定を SQL に寄せ、ダミー候補プールを
+> 目標 `DUMMY_POOL_SIZE`（=50）件まで優先順で“不足分だけ”取得**する形にし、
+> `{ targetRows, sameOccurrenceRows, fallbackRows }` を返す（最大 3 クエリ・逐次）:
+> - **targetRows (a)**: 範囲内の出題対象。**上限なしで全件取得**（出題内容は不変）。
+> - **sameOccurrenceRows (b)**: 同一 Occurrence の範囲外・番号なし単語。
+>   `take: max(0, DUMMY_POOL_SIZE - targets)`（0 なら取得しない）。
+> - **fallbackRows (c)**: Occurrence 外の全登録単語。
+>   `take: max(0, DUMMY_POOL_SIZE - targets - sameOccurrence)`（0 なら取得しない）。
+>
+> 出題対象 (a) 自身が優先プール（(a)∪(b)）の候補になるため、targets が多いほどダミー取得は減り、
+> targets≥`DUMMY_POOL_SIZE` ならプール取得はゼロ。大 Occurrence から狭い範囲を出すケースでも、不足分だけを
+> 同一 Occurrence→他 Occurrence の順に補うので取得は合計「範囲内件数＋最大 `DUMMY_POOL_SIZE`」で頭打ちになる
+> （fallback の取得数は同一 Occurrence の実取得数に依存するため逐次）。range が SQL に移ったため
+> `select` から `wordOccurrences` を除去（occurrenceNumber は下流で不要）。ダミーは 1 問あたり数件・
+> 問題間で使い回せるため、候補プール `DUMMY_POOL_SIZE`（=50）件あれば dedup 後も充足し、出題・成立判定
+> （`checkFormatAvailability`）は実質不変・優先順も維持。掲載箇所全体を一度に出題するケースは
+> (a) が全件のため取得は減らない（仕様上不可避）。
 
-- 採用理由: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみで、個人語彙（数百〜数千語）の規模では問題にならない。
+~~**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。~~
+
+> **2026-06-21 改訂（共有を終了）**: プレビューは掲載箇所を選択するたびに走るが、共有経路では毎回
+> 全コーパス（`fetchQuizSource`）を読み込み（実測 ~1900 meaning・application-code 1063ms）、さらに
+> 対象単語ごとに全プールを舐める成立可否判定を 3 形式分回していた。これを受け、**プレビューは
+> `fetchQuizSource`／`checkFormatAvailability` の共有を終了**し、対象件数・除外内訳のみを count
+> クエリ（`countQuizTargets` / `countQuizSourceExclusions`）で返す軽量経路に分離した。形式の
+> **成立可否は事前判定せず、テスト開始時（`generateQuizForUser`）に `checkFormatAvailability` で
+> 検証**する。トレードオフとして、開始画面での形式の事前グレーアウト＋理由表示は廃止し、不成立は
+> 「開始 → カウントダウン画面でエラーメッセージ＋戻る」で示す（不成立は極小コーパス等の縁ケース）。
+> 下記「採用理由」は問題生成経路（出題対象は全件必要だが、ダミー候補プールは目標件数までの
+> 不足分取得で足りる＝2026-06-21 追補参照）の判断として有効。
+
+- 採用理由（問題生成経路）: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみ。なお「個人語彙（数百〜数千語）の規模では問題にならない」と見込んでいたが、プレビューを掲載箇所選択ごとに走らせる頻度ではコストが顕在化したため、上記のとおりプレビューのみ経路を分離した。
 - 却下案（2 段階遅延クエリ）: 不足の事前判定が不正確で縮退仕様との整合が崩れる。コードパスも 2 本になりテスト負担増。
+  - 補足（2026-06-21 追補との関係）: 追補の deficit-fill（出題対象→同一Occurrence→他Occurrence の順に
+    候補プールを目標件数まで満たす段階取得）は、ここで却下した案とは別物。却下したのは**各問のダミー
+    不足量（dedup 後・問題ごとに変動）を DB クエリで事前判定する**案。deficit-fill は候補プールを固定
+    件数（`DUMMY_POOL_SIZE`）まで満たすだけで、各問の不足判定・縮退は従来どおりメモリ上の純関数
+    （`selectDummies`）が担う（「純関数内で 03 をそのまま実装」は維持）。よってこの却下理由には当たらない。
 - 却下案（raw SQL の UNION＋優先度フラグ）: Prisma の型を捨てる早すぎる最適化。性能課題が実測されてから。
 
 ### 決定 9: テスト戦略

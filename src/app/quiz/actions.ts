@@ -50,7 +50,7 @@ const INVALID: QuizActionFailure = {
 
 export type GetQuizPreviewResult = { ok: true; preview: QuizPreview } | QuizActionFailure;
 
-/** テスト開始前のプレビュー（対象件数・除外内訳・形式ごとの成立可否）。 */
+/** テスト開始前のプレビュー（対象件数・除外内訳）。 */
 export async function getQuizPreview(input: QuizRangeInput): Promise<GetQuizPreviewResult> {
   const session = await getCurrentSession();
   if (!session) return UNAUTHORIZED;

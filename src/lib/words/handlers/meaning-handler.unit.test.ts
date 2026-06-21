@@ -17,7 +17,7 @@ describe("upsertMeanings", () => {
         {
           id: "m1",
           ownerId: SYSTEM_USER_ID,
-          partOfSpeech: "n",
+          partOfSpeech: "noun",
           pronunciation: "p",
           notes: [{ id: "n1", ownerId: SYSTEM_USER_ID, text: "共通補足" }, { text: "自分の補足" }],
           texts: [{ id: "t1", ownerId: SYSTEM_USER_ID, text: "共通" }, { text: "自分の追記" }],
@@ -62,7 +62,7 @@ describe("upsertMeanings", () => {
         {
           id: "m1",
           ownerId: "u1",
-          partOfSpeech: "adj",
+          partOfSpeech: "adjective",
           pronunciation: "",
           notes: [{ text: "補足" }],
           texts: [{ text: "意味" }],
@@ -74,7 +74,7 @@ describe("upsertMeanings", () => {
     expect(tx.meaning.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "m1" },
-        data: expect.objectContaining({ partOfSpeech: "adj", sortOrder: 0 }),
+        data: expect.objectContaining({ partOfSpeech: "adjective", sortOrder: 0 }),
       }),
     );
     expect(tx.meaningText.createMany).toHaveBeenCalledWith({

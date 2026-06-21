@@ -3,7 +3,8 @@
 //
 // CSV: ヘッダ `headword,part_of_speech,meaning_text`（1 行＝1 単語＝1 Meaning）。
 //   meaning_text は `;` 区切りで複数 MeaningText に分割する（例 どこにでもある;遍在する）。
-//   part_of_speech は任意（空なら無し）。
+//   part_of_speech は任意（空なら無し）。指定する場合は parts-of-speech.ts の英語キー
+//   （verb/noun/… ＝ commonPartOfSpeechValues）のみ許容し、enum 外はエラー終了する。
 //
 // Usage:
 //   pnpm db:import-words                                          # 対話モード（順に設定を入力）
@@ -25,6 +26,7 @@ import {
   UserNotFoundByEmailError,
   bulkImportWords,
 } from "../src/lib/bulk-word-import";
+import { commonPartOfSpeechValues, isCommonPartOfSpeech } from "../src/lib/mock/parts-of-speech";
 
 const MEANING_TEXT_SEPARATOR = ";";
 const EXPECTED_HEADER = ["headword", "part_of_speech", "meaning_text"];
@@ -94,6 +96,8 @@ function readRows(csvPath: string): { rows: BulkImportRow[]; dropped: number } {
 
   const rows: BulkImportRow[] = [];
   let dropped = 0;
+  // enum 外の品詞は自動変換せず弾く。distinct ラベル → { 件数, 例 headword } を集計。
+  const invalidPos = new Map<string, { count: number; sample: string }>();
   for (let i = 1; i < records.length; i++) {
     const rec = records[i]!;
     const headword = (rec[0] ?? "").trim();
@@ -102,6 +106,11 @@ function readRows(csvPath: string): { rows: BulkImportRow[]; dropped: number } {
       continue;
     }
     const partOfSpeech = (rec[1] ?? "").trim();
+    if (partOfSpeech.length > 0 && !isCommonPartOfSpeech(partOfSpeech)) {
+      const hit = invalidPos.get(partOfSpeech);
+      if (hit) hit.count += 1;
+      else invalidPos.set(partOfSpeech, { count: 1, sample: headword });
+    }
     // 引用符なしで meaning_text 内にカンマがあっても拾えるよう 3 列目以降を結合して復元する。
     const meaningTextRaw = rec.slice(2).join(",");
     const meaningTexts = meaningTextRaw
@@ -113,6 +122,15 @@ function readRows(csvPath: string): { rows: BulkImportRow[]; dropped: number } {
       partOfSpeech: partOfSpeech.length > 0 ? partOfSpeech : null,
       meaningTexts,
     });
+  }
+  if (invalidPos.size > 0) {
+    const detail = [...invalidPos.entries()]
+      .map(([label, { count, sample }]) => `${label}(${count}件, 例: ${sample})`)
+      .join(", ");
+    throw new CsvError(
+      `part_of_speech が enum 外です。${commonPartOfSpeechValues.join("/")} のいずれか、` +
+        `または空にしてください: ${detail}`,
+    );
   }
   return { rows, dropped };
 }

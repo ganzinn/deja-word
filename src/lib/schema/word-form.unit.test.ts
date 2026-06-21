@@ -58,6 +58,51 @@ describe("wordFormSchema", () => {
     expect(r.success).toBe(false);
   });
 
+  test("accepts a meaning with an enum part-of-speech key", () => {
+    const values = validWordFormValues({
+      meanings: [{ partOfSpeech: "verb", pronunciation: "", texts: [{ text: "走る" }], notes: [] }],
+    });
+    expect(wordFormSchema.safeParse(values).success).toBe(true);
+  });
+
+  test("rejects a meaning whose part-of-speech is not an enum key", () => {
+    for (const pos of ["動詞", "xyz"]) {
+      const values = validWordFormValues({
+        meanings: [{ partOfSpeech: pos, pronunciation: "", texts: [{ text: "走る" }], notes: [] }],
+      });
+      const r = wordFormSchema.safeParse(values);
+      expect(r.success).toBe(false);
+      if (!r.success) {
+        expect(r.error.issues.some((i) => i.path.join(".") === "meanings.0.partOfSpeech")).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  test("rejects a related word whose part-of-speech is not an enum key", () => {
+    const values = validWordFormValues({
+      relatedWords: [
+        {
+          kind: null,
+          term: "run",
+          partOfSpeech: "動詞",
+          pronunciation: "",
+          meaning: "",
+          notes: [],
+          linkedWordId: null,
+        },
+      ],
+    });
+    const r = wordFormSchema.safeParse(values);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join(".") === "relatedWords.0.partOfSpeech")).toBe(
+        true,
+      );
+    }
+  });
+
   test("accepts a meaning with multiple notes", () => {
     const values = validWordFormValues({
       meanings: [

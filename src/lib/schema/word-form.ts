@@ -1,8 +1,18 @@
 import { z } from "zod/v3";
 
 import { exampleKinds } from "@/lib/mock/example-kinds";
+import { isCommonPartOfSpeech } from "@/lib/mock/parts-of-speech";
 import { relatedWordKinds } from "@/lib/mock/related-word-kinds";
 import type { WordDetail } from "@/lib/words-detail";
+
+// 品詞は空（未選択）または enum キー（parts-of-speech.ts の value）のみ許容する。
+// commonPartOfSpeechValues は string[] 型で z.enum のタプル要件を満たさないため refine で表現。
+const partOfSpeechSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || isCommonPartOfSpeech(v), { message: "品詞は一覧から選択してください" })
+  .optional()
+  .or(z.literal(""));
 
 const meaningTextSchema = z.object({
   id: z.string().cuid().optional(),
@@ -21,7 +31,7 @@ const noteSchema = z.object({
 const meaningSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
-  partOfSpeech: z.string().trim().optional().or(z.literal("")),
+  partOfSpeech: partOfSpeechSchema,
   pronunciation: z.string().trim().optional().or(z.literal("")),
   texts: z.array(meaningTextSchema).min(1, "意味を 1 件以上入力してください"),
   notes: z.array(noteSchema),
@@ -47,7 +57,7 @@ const relatedWordSchema = z.object({
   // 種別を解除してもトグルの表示が戻らない（UI と保存結果が食い違う）。
   kind: z.enum(relatedWordKinds).nullish(),
   term: z.string().trim().min(1, "関連語を入力してください"),
-  partOfSpeech: z.string().trim().optional().or(z.literal("")),
+  partOfSpeech: partOfSpeechSchema,
   pronunciation: z.string().trim().optional().or(z.literal("")),
   meaning: z.string().trim().optional().or(z.literal("")),
   notes: z.array(noteSchema),

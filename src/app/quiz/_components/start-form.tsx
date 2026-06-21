@@ -164,11 +164,6 @@ export function StartForm({
 
   const preview = previewState.status === "ready" ? previewState.preview : null;
 
-  function formatInfoOf(value: QuizFormat) {
-    return preview?.formats.find((f) => f.format === value) ?? null;
-  }
-
-  const selectedFormatInfo = format !== null ? formatInfoOf(format) : null;
   // ドロップダウンの value→label マップ。SelectValue がトリガー表示にのみ使う。
   // 閉じた状態でもグループが分かるよう、グループ名（薄色）＋形式名で表示する。
   const formatItems = FORMAT_GROUPS.flatMap((g) =>
@@ -188,12 +183,12 @@ export function StartForm({
       : null;
   // ON かつ未入力・数値でない場合は開始をゲートする（範囲外は min/max とサーバー zod が弾く）
   const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
+  // 形式の成立可否は事前判定しない（開始時に generateQuizForUser が検証しエラー表示）。
   const canStart =
     occurrenceId !== null &&
     format !== null &&
     preview !== null &&
     preview.targetCount > 0 &&
-    selectedFormatInfo?.available === true &&
     (!timeoutEnabled || timeoutSeconds !== undefined);
 
   function handleStart() {
@@ -300,28 +295,17 @@ export function StartForm({
             {FORMAT_GROUPS.map((group) => (
               <SelectGroup key={group.category}>
                 <SelectLabel>{group.category}</SelectLabel>
-                {group.options.map((option) => {
-                  const info = formatInfoOf(option.value);
-                  // 成立可否はプレビュー応答（サーバー判定）。プレビュー未取得の間は選択を許す
-                  const unavailable = info !== null && !info.available;
-                  return (
-                    <SelectItem key={option.value} value={option.value} disabled={unavailable}>
-                      <span>{option.label}</span>
-                      {unavailable ? (
-                        <span className="text-destructive text-xs">（{info.reason}）</span>
-                      ) : null}
-                    </SelectItem>
-                  );
-                })}
+                {group.options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                  </SelectItem>
+                ))}
               </SelectGroup>
             ))}
           </SelectContent>
         </Select>
         {selectedOption ? (
           <p className="text-muted-foreground text-xs">{selectedOption.description}</p>
-        ) : null}
-        {selectedFormatInfo !== null && !selectedFormatInfo.available ? (
-          <p className="text-destructive text-xs">選択できません: {selectedFormatInfo.reason}</p>
         ) : null}
       </section>
 

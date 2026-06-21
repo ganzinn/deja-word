@@ -11,8 +11,10 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
 /**
  * テスト開始: 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成して返す。
  *
- * プレビュー（`getQuizPreviewForUser`）と同じ `fetchQuizSource`＋`checkFormatAvailability`
- * を共有する（05-architecture.md 決定 8）。形式が不成立の場合は QuizGenerationError。
+ * 問題生成は全コーパスを読む独自経路（`fetchQuizSource`）。プレビュー
+ * （`getQuizPreviewForUser`）は件数のみの軽量経路に分離されたため（05-architecture.md
+ * 決定 8 改訂）、形式の成立可否はここで `checkFormatAvailability` により初めて判定する。
+ * 不成立の場合は QuizGenerationError（カウントダウン画面でメッセージ表示）。
  *
  * Occurrence の可視性確認（不在は OccurrenceNotFoundError）は `fetchQuizSource` 冒頭で行われる。
  */

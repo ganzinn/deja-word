@@ -5,20 +5,32 @@ import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
 
 /**
- * 問題生成・プレビューの素材を 1 クエリで取得する。
- *
- * ユーザーの全可視単語（可視 MeaningText が 1 件以上あるもの）を一括取得し、
- * 対象 Occurrence への紐付き（occurrenceNumber）を wordOccurrences に含める。
- * 行の分割（出題対象／同一 Occurrence プール／全登録プール）はチケット 03 の
- * 純関数 partitionMaterial に委ねる。
+ * 対象 Occurrence がユーザーに可視であることを確認する（不在・不可視なら
+ * OccurrenceNotFoundError）。問題生成・プレビューの両経路で契約を共有する。
  */
-export async function fetchQuizSource(userId: string, occurrenceId: string) {
+export async function assertOccurrenceVisible(userId: string, occurrenceId: string): Promise<void> {
   const allowed = scopedOwnerIds(userId);
   const occurrence = await prisma.occurrence.findFirst({
     where: { id: occurrenceId, ownerId: { in: allowed } },
     select: { id: true },
   });
   if (!occurrence) throw new OccurrenceNotFoundError();
+}
+
+/**
+ * 問題生成・drill ラウンド生成の素材を 1 クエリで取得する。
+ *
+ * ユーザーの全可視単語（可視 MeaningText が 1 件以上あるもの）を一括取得し、
+ * 対象 Occurrence への紐付き（occurrenceNumber）を wordOccurrences に含める。
+ * 行の分割（出題対象／同一 Occurrence プール／全登録プール）はチケット 03 の
+ * 純関数 partitionMaterial に委ねる。
+ *
+ * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
+ * `countQuizSourceExclusions` で取得する（05-architecture.md 決定 8 改訂）。
+ */
+export async function fetchQuizSource(userId: string, occurrenceId: string) {
+  const allowed = scopedOwnerIds(userId);
+  await assertOccurrenceVisible(userId, occurrenceId);
 
   return prisma.word.findMany({
     where: {
@@ -80,4 +92,36 @@ export async function countQuizSourceExclusions(
     }),
   ]);
   return { noNumber, noMeaning };
+}
+
+/**
+ * 出題対象（target）の件数を count クエリで返す。プレビューの軽量経路用。
+ *
+ * partitionMaterial の target 定義と一致させる: 可視 MeaningText を 1 件以上持ち、かつ
+ * 対象 Occurrence に occurrenceNumber 非 null かつ範囲内の wordOccurrence を持つ単語。
+ * 範囲（from/to）は未指定なら制限なし。
+ */
+export async function countQuizTargets(
+  userId: string,
+  occurrenceId: string,
+  range: { from?: number; to?: number },
+): Promise<number> {
+  const allowed = scopedOwnerIds(userId);
+  return prisma.word.count({
+    where: {
+      ownerId: { in: allowed },
+      meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
+      wordOccurrences: {
+        some: {
+          occurrenceId,
+          ownerId: { in: allowed },
+          occurrenceNumber: {
+            not: null,
+            ...(range.from !== undefined ? { gte: range.from } : {}),
+            ...(range.to !== undefined ? { lte: range.to } : {}),
+          },
+        },
+      },
+    },
+  });
 }

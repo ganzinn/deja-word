@@ -84,7 +84,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 
 | 用途 | Action（`src/app/quiz/actions.ts`） | 入出力 |
 | --- | --- | --- |
-| プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）・形式ごとの成立可否 |
+| プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）（決定 8 改訂で形式ごとの成立可否は返さない。成立可否は開始時 `startQuiz` で判定） |
 | テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
 | drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds は `Drill` に保存。timeoutSeconds は 2026-06-13 加算） |
@@ -131,7 +131,7 @@ Drill に `roundCount Int @default(0)` を加算する（**02 改訂済み**）�
 
 ### 決定 6: 形式追加への拡張点 — 形式別生成器＋exhaustive switch、payload は discriminated union
 
-拡張点は 4 箇所に閉じる: (1) Prisma enum へ値追加、(2) `src/lib/quiz/generation/<format>.ts` の生成器追加、(3) `payload.ts` の union メンバ追加、(4) `_components/question-<format>.tsx` 追加。ディスパッチャ `buildQuiz(format, material, rng)` と成立判定 `checkFormatAvailability(format, material)` を exhaustive switch（`never` チェック）にしておけば、enum 追加時に (2)(3) の漏れがコンパイルエラーで露見する。`checkFormatAvailability` は 1 形式分の判定（成立可否＋不成立理由）を返し、プレビューでは全形式分を呼んで形式ごとの可否を組み立てる。
+拡張点は 4 箇所に閉じる: (1) Prisma enum へ値追加、(2) `src/lib/quiz/generation/<format>.ts` の生成器追加、(3) `payload.ts` の union メンバ追加、(4) `_components/question-<format>.tsx` 追加。ディスパッチャ `buildQuiz(format, material, rng)` と成立判定 `checkFormatAvailability(format, material)` を exhaustive switch（`never` チェック）にしておけば、enum 追加時に (2)(3) の漏れがコンパイルエラーで露見する。`checkFormatAvailability` は 1 形式分の判定（成立可否＋不成立理由）を返し、テスト開始時（`generateQuizForUser`）に選択形式について 1 回呼ぶ（決定 8 改訂前はプレビューでも全形式分を呼んでいた）。
 
 ```ts
 // src/lib/quiz/payload.ts
@@ -184,9 +184,19 @@ src/lib/quiz/generation/
 
 純関数 `partitionMaterial(rows, range)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（wordOccurrences 非空の他単語）、(c) 全登録プール（残り）に分割して `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
 
-**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。
+~~**プレビュー（`quiz-preview.ts`）と問題生成（`quiz-generate.ts`）は同じ `fetchQuizSource`＋`checkFormatAvailability` を共有**する。開始ボタンの成立判定と生成時の成立判定が同一ロジックになり、「プレビューでは成立・生成でエラー」の乖離が（レース以外で）起きない。~~
 
-- 採用理由: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみで、個人語彙（数百〜数千語）の規模では問題にならない。
+> **2026-06-21 改訂（共有を終了）**: プレビューは掲載箇所を選択するたびに走るが、共有経路では毎回
+> 全コーパス（`fetchQuizSource`）を読み込み（実測 ~1900 meaning・application-code 1063ms）、さらに
+> 対象単語ごとに全プールを舐める成立可否判定を 3 形式分回していた。これを受け、**プレビューは
+> `fetchQuizSource`／`checkFormatAvailability` の共有を終了**し、対象件数・除外内訳のみを count
+> クエリ（`countQuizTargets` / `countQuizSourceExclusions`）で返す軽量経路に分離した。形式の
+> **成立可否は事前判定せず、テスト開始時（`generateQuizForUser`）に `checkFormatAvailability` で
+> 検証**する。トレードオフとして、開始画面での形式の事前グレーアウト＋理由表示は廃止し、不成立は
+> 「開始 → カウントダウン画面でエラーメッセージ＋戻る」で示す（不成立は極小コーパス等の縁ケース）。
+> 下記「採用理由」は問題生成（全コーパス読込が本質的に必要）側の判断として有効。
+
+- 採用理由（問題生成経路）: 03 の補完仕様（重複排除**後**の不足分だけ全登録から補う）は問題ごとに不足量が変わるため、遅延 2 クエリ目だと不足の事前判定が原理的に正確にできない。最初から両プールを持てば純関数内で 03 をそのまま実装でき、テストも DB 不要になる。データ量は id・headword・訳語文字列のみ。なお「個人語彙（数百〜数千語）の規模では問題にならない」と見込んでいたが、プレビューを掲載箇所選択ごとに走らせる頻度ではコストが顕在化したため、上記のとおりプレビューのみ経路を分離した。
 - 却下案（2 段階遅延クエリ）: 不足の事前判定が不正確で縮退仕様との整合が崩れる。コードパスも 2 本になりテスト負担増。
 - 却下案（raw SQL の UNION＋優先度フラグ）: Prisma の型を捨てる早すぎる最適化。性能課題が実測されてから。
 

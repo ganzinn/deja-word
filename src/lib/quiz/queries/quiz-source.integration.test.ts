@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
-import { countQuizSourceExclusions, fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
+import {
+  countQuizSourceExclusions,
+  countQuizTargets,
+  fetchQuizSource,
+} from "@/lib/quiz/queries/quiz-source";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
 import {
@@ -165,5 +169,65 @@ describe("countQuizSourceExclusions", () => {
 
     const counts = await countQuizSourceExclusions(user.id, occurrence.id);
     expect(counts).toEqual({ noNumber: 0, noMeaning: 0 });
+  });
+});
+
+describe("countQuizTargets", () => {
+  test("counts numbered+meaning words and respects range bounds (both / one-sided / none)", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "対象件数テスト帳");
+    for (const n of [1, 3, 5, 7]) {
+      await createQuizWordRow(user.id, `w${n}`, {
+        occurrence: { id: occurrence.id, occurrenceNumber: n },
+      });
+    }
+
+    // 範囲なし: 番号あり・意味ありの 4 件
+    expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(4);
+    // 両側指定 [3, 5]: 3, 5 の 2 件
+    expect(await countQuizTargets(user.id, occurrence.id, { from: 3, to: 5 })).toBe(2);
+    // from のみ: >= 5 の 5, 7 の 2 件
+    expect(await countQuizTargets(user.id, occurrence.id, { from: 5 })).toBe(2);
+    // to のみ: <= 3 の 1, 3 の 2 件
+    expect(await countQuizTargets(user.id, occurrence.id, { to: 3 })).toBe(2);
+  });
+
+  test("excludes no-number, no-meaning, and out-of-occurrence words", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "対象除外テスト帳");
+    const other = await createOccurrenceRow(user.id, "別帳", 1);
+    // 対象（番号あり・意味あり）
+    await createQuizWordRow(user.id, "ok", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    // 番号なし → 対象外
+    await createQuizWordRow(user.id, "nonum", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    // 意味なし（番号あり）→ 対象外
+    await createQuizWordRow(user.id, "nomeaning", {
+      meanings: [],
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    // 別 Occurrence の単語 → 対象外
+    await createQuizWordRow(user.id, "elsewhere", {
+      occurrence: { id: other.id, occurrenceNumber: 1 },
+    });
+
+    expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(1);
+  });
+
+  test("does not count a foreign user's words", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const occurrence = await getSystemOccurrence(SYSTEM_OCCURRENCE_LOCATIONS[0]);
+    await createQuizWordRow(stranger.id, "foreign", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    await createQuizWordRow(user.id, "own", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+
+    expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(1);
   });
 });

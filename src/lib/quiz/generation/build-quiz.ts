@@ -74,7 +74,7 @@ function findDummylessTarget(
   });
 }
 
-/** 1 形式分の成立可否を返す。プレビューと問題生成が同じ判定を共有する。 */
+/** 1 形式分の成立可否を返す。テスト開始時（`generateQuizForUser`）が選択形式について呼ぶ。 */
 export function checkFormatAvailability(
   format: QuizFormat,
   material: QuizSourceMaterial,

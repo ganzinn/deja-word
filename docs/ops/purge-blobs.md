@@ -35,8 +35,11 @@ pnpm db:purge-blobs --execute   # 実削除
 # 0) docker の deja-word-db が起動していること
 pnpm db:purge-blobs             # 1) 削除対象 Blob 件数を確認（ドライラン）
 pnpm db:purge-blobs --execute   # 2) Blob を実削除（DB はまだ無傷 = URL を読めるうちに消す）
-pnpm prisma migrate reset --force   # 3) DB を全削除 → migration 再適用 → 最小 seed（system ユーザーのみ）
+pnpm prisma migrate reset --force   # 3) DB を全削除 → migration 再適用（Prisma 7 の reset は seed を走らせない）
+pnpm db:seed                        # 4) 最小 seed（system ユーザーのみ）を投入
 ```
+
+> ⚠️ Prisma 7 の `prisma migrate reset` は **seed を自動実行しない**（旧 `--skip-seed` フラグも廃止）。reset 後に必ず `pnpm db:seed` を別途実行すること。`db:seed` は `upsert` で冪等なので重複実行しても安全。
 
 > 注: `migrate reset` で **ユーザーアカウント（better-auth）も消える**。再ログインには新規登録、または `pnpm db:set-system-password` で system ユーザーに credential を再設定する。
 

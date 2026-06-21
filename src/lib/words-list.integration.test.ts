@@ -13,7 +13,7 @@ function form(headword: string): WordFormValues {
     headword,
     meanings: [
       {
-        partOfSpeech: "n",
+        partOfSpeech: "noun",
         pronunciation: "",
         texts: [{ text: `意味:${headword}` }],
         notes: [],
@@ -43,7 +43,7 @@ function formWithMeanings(headword: string, count: number): WordFormValues {
   return {
     ...form(headword),
     meanings: Array.from({ length: count }, (_, i) => ({
-      partOfSpeech: "n",
+      partOfSpeech: "noun",
       pronunciation: "",
       texts: [{ text: `意味${i + 1}:${headword}` }],
       notes: [],
@@ -209,7 +209,7 @@ describe("listWordsForUser", () => {
     });
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.meaningTexts).toEqual(["意味:hello"]);
-    expect(item?.partOfSpeech).toBe("n");
+    expect(item?.partOfSpeech).toBe("noun");
   });
 
   test("returns pronunciationAudioUrl of the first meaning", async () => {

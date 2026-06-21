@@ -28,13 +28,13 @@ pnpm db:import-words <location> <csvPath> --email=foo@bar.com   # 個人ユー�
 | 列 | 必須 | 内容 |
 |---|---|---|
 | `headword` | ✅ | 見出し語。空行は除外される |
-| `part_of_speech` | – | 品詞（例 `形` `動`）。空なら無し（null） |
+| `part_of_speech` | – | 品詞。`src/lib/mock/parts-of-speech.ts` の**英語キー**（`verb`/`noun`/`adjective`/… ＝ `commonPartOfSpeechValues`）で指定。空なら無し（null）。**enum 外の値はエラー終了**（ドライランで検出。日本語ラベルや短縮形は不可） |
 | `meaning_text` | ✅ | 意味。`;` 区切りで**複数の MeaningText** に分割される。全部空なら「意味なし」でスキップ |
 
 ```csv
 headword,part_of_speech,meaning_text
-ubiquitous,形,どこにでもある;遍在する
-concise,形,簡潔な
+ubiquitous,adjective,どこにでもある;遍在する
+concise,adjective,簡潔な
 lucid,,明快な
 ```
 

@@ -12,8 +12,12 @@ import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createTestUser, createWordRow } from "../../tests/setup/fixtures";
 
 const rows: BulkImportRow[] = [
-  { headword: "ubiquitous", partOfSpeech: "形", meaningTexts: ["どこにでもある", "遍在する"] },
-  { headword: "concise", partOfSpeech: "形", meaningTexts: ["簡潔な"] },
+  {
+    headword: "ubiquitous",
+    partOfSpeech: "adjective",
+    meaningTexts: ["どこにでもある", "遍在する"],
+  },
+  { headword: "concise", partOfSpeech: "adjective", meaningTexts: ["簡潔な"] },
   { headword: "lucid", partOfSpeech: null, meaningTexts: ["明快な"] },
 ];
 
@@ -78,7 +82,7 @@ describe("bulkImportWords", () => {
       select: { meanings: { select: { partOfSpeech: true, texts: { select: { text: true } } } } },
     });
     expect(word.meanings).toHaveLength(1);
-    expect(word.meanings[0]!.partOfSpeech).toBe("形");
+    expect(word.meanings[0]!.partOfSpeech).toBe("adjective");
     expect(word.meanings[0]!.texts.map((t) => t.text)).toEqual(["どこにでもある", "遍在する"]);
   });
 

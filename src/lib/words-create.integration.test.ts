@@ -45,7 +45,7 @@ describe("createWordForUser", () => {
       emptyForm("ubiquitous", {
         meanings: [
           {
-            partOfSpeech: "adj",
+            partOfSpeech: "adjective",
             pronunciation: "",
             texts: [{ text: "あちこちにある" }, { text: "遍在する" }],
             notes: [],
@@ -171,7 +171,7 @@ describe("createWordForUser", () => {
       emptyForm("apple", {
         meanings: [
           {
-            partOfSpeech: "n",
+            partOfSpeech: "noun",
             pronunciation: "",
             texts: [{ text: "りんご (A)" }],
             notes: [],
@@ -186,7 +186,7 @@ describe("createWordForUser", () => {
       emptyForm("apple", {
         meanings: [
           {
-            partOfSpeech: "n",
+            partOfSpeech: "noun",
             pronunciation: "",
             texts: [{ text: "りんご (system)" }],
             notes: [],

@@ -18,28 +18,35 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
 }
 
 /**
- * 補完ダミープール（対象 Occurrence 外の全登録単語）の取得上限。
+ * ダミー専用プールの取得上限。
  *
- * 補完ダミーは `selectDummies` の fallback で、同一 Occurrence 由来の優先プールが
- * 不足したときだけ使う。ダミーは 1 問あたり数件・問題間で使い回せるため、全コーパスを
- * 読まず一定数のサンプルで足りる（05-architecture.md 決定 8・2026-06-21 追補）。
+ * ダミー（誤答選択肢）は `selectDummies` で使う。同一 Occurrence の範囲外単語を優先プール、
+ * Occurrence 外の全登録単語を補完プールにするが、どちらも出題対象ではなく「ダミー候補」専用。
+ * ダミーは 1 問あたり数件・問題間で使い回せるうえ出題対象自身も相互にダミーになるため、
+ * 全件読まず一定数のサンプルで足りる（05-architecture.md 決定 8・2026-06-21 追補）。
  */
+export const SAME_OCCURRENCE_POOL_LIMIT = 100;
 export const FALLBACK_POOL_LIMIT = 100;
 
 /**
  * 問題生成・drill ラウンド生成の素材を取得する。
  *
- * 出題対象（範囲内の単語）は必ず全件必要なので、対象 Occurrence に紐づく単語
- * （`occurrenceRows`＝出題対象＋同一 Occurrence プール）は上限なしで取得する。
- * 一方、Occurrence 外の全登録単語は補完ダミー専用（不足時のみ使用）なので、
- * `fallbackRows` として最大 {@link FALLBACK_POOL_LIMIT} 件にサンプリングする。
- * 行の分割（出題対象／同一 Occurrence プール／全登録プール）はチケット 03 の
- * 純関数 partitionMaterial に委ねる。
+ * 範囲（range）判定を SQL に寄せ、3 クエリに分割する:
+ * - `targetRows`: 範囲内の出題対象。仕様『範囲内全出題』のため上限なしで全件取得。
+ * - `sameOccurrenceRows`: 同一 Occurrence の範囲外・番号なし単語（優先ダミー専用）。
+ *   最大 {@link SAME_OCCURRENCE_POOL_LIMIT} 件にサンプリング。
+ * - `fallbackRows`: Occurrence 外の全登録単語（補完ダミー専用）。
+ *   最大 {@link FALLBACK_POOL_LIMIT} 件にサンプリング。
+ * 行→素材（targets / sameOccurrencePool / allWordsPool）の対応は純関数 partitionMaterial に委ねる。
  *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
  * `countQuizSourceExclusions` で取得する（05-architecture.md 決定 8 改訂）。
  */
-export async function fetchQuizSource(userId: string, occurrenceId: string) {
+export async function fetchQuizSource(
+  userId: string,
+  occurrenceId: string,
+  range: { from?: number; to?: number },
+) {
   const allowed = scopedOwnerIds(userId);
   await assertOccurrenceVisible(userId, occurrenceId);
 
@@ -48,6 +55,20 @@ export async function fetchQuizSource(userId: string, occurrenceId: string) {
   } as const;
   const linkedToOccurrence = {
     wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+  } as const;
+  // 出題対象の述語: occurrenceNumber が非 null かつ範囲内（`countQuizTargets` と一致）。
+  const inRangeWordOccurrence = {
+    wordOccurrences: {
+      some: {
+        occurrenceId,
+        ownerId: { in: allowed },
+        occurrenceNumber: {
+          not: null,
+          ...(range.from !== undefined ? { gte: range.from } : {}),
+          ...(range.to !== undefined ? { lte: range.to } : {}),
+        },
+      },
+    },
   } as const;
   const select = {
     id: true,
@@ -65,16 +86,23 @@ export async function fetchQuizSource(userId: string, occurrenceId: string) {
         },
       },
     },
-    wordOccurrences: {
-      where: { occurrenceId, ownerId: { in: allowed } },
-      select: { occurrenceNumber: true },
-    },
   } as const;
 
-  const [occurrenceRows, fallbackRows] = await Promise.all([
+  const [targetRows, sameOccurrenceRows, fallbackRows] = await Promise.all([
     prisma.word.findMany({
-      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...linkedToOccurrence },
+      where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...inRangeWordOccurrence },
       select,
+    }),
+    prisma.word.findMany({
+      where: {
+        ownerId: { in: allowed },
+        ...hasVisibleMeaning,
+        ...linkedToOccurrence,
+        NOT: inRangeWordOccurrence,
+      },
+      select,
+      orderBy: { createdAt: "desc" },
+      take: SAME_OCCURRENCE_POOL_LIMIT,
     }),
     prisma.word.findMany({
       where: { ownerId: { in: allowed }, ...hasVisibleMeaning, NOT: linkedToOccurrence },
@@ -84,10 +112,10 @@ export async function fetchQuizSource(userId: string, occurrenceId: string) {
     }),
   ]);
 
-  return { occurrenceRows, fallbackRows };
+  return { targetRows, sameOccurrenceRows, fallbackRows };
 }
 
-export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["occurrenceRows"][number];
+export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["targetRows"][number];
 
 /**
  * 対象 Occurrence 内の除外内訳（番号なし・意味未登録）を count クエリで返す。

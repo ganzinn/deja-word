@@ -6,6 +6,7 @@ import {
   countQuizTargets,
   FALLBACK_POOL_LIMIT,
   fetchQuizSource,
+  SAME_OCCURRENCE_POOL_LIMIT,
 } from "@/lib/quiz/queries/quiz-source";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
@@ -32,8 +33,8 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 3 },
     });
 
-    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
-    const ids = occurrenceRows.map((r) => r.id);
+    const { targetRows } = await fetchQuizSource(user.id, occurrence.id, {});
+    const ids = targetRows.map((r) => r.id);
     expect(ids).toContain(ownWord.id);
     expect(ids).toContain(systemWord.id);
     expect(ids).not.toContain(strangerWord.id);
@@ -54,19 +55,22 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 3 },
     });
 
-    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
-    const ids = occurrenceRows.map((r) => r.id);
+    const { targetRows } = await fetchQuizSource(user.id, occurrence.id, {});
+    const ids = targetRows.map((r) => r.id);
     expect(ids).toContain(withMeaning.id);
     expect(ids).not.toContain(noMeaning.id);
     expect(ids).not.toContain(emptyTexts.id);
   });
 
-  test("returns occurrenceNumber for linked words in occurrenceRows, and unlinked words in fallbackRows", async () => {
+  test("splits rows into target (in range) / same-occurrence (out of range or no number) / fallback (other occurrence)", async () => {
     const user = await createTestUser();
     const occurrence = await createOccurrenceRow(user.id, "番号テスト帳");
     const other = await createOccurrenceRow(user.id, "別の出典", 1);
-    const numbered = await createQuizWordRow(user.id, "numbered", {
+    const inRange = await createQuizWordRow(user.id, "inrange", {
       occurrence: { id: occurrence.id, occurrenceNumber: 7 },
+    });
+    const outOfRange = await createQuizWordRow(user.id, "outofrange", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 99 },
     });
     const noNumber = await createQuizWordRow(user.id, "nonumber", {
       occurrence: { id: occurrence.id, occurrenceNumber: null },
@@ -75,15 +79,17 @@ describe("fetchQuizSource", () => {
       occurrence: { id: other.id, occurrenceNumber: 1 },
     });
 
-    const { occurrenceRows, fallbackRows } = await fetchQuizSource(user.id, occurrence.id);
-    const occById = new Map(occurrenceRows.map((r) => [r.id, r]));
-    const fallbackById = new Map(fallbackRows.map((r) => [r.id, r]));
-    // 対象 Occurrence に紐づく単語は occurrenceRows 側（番号あり／なしとも）
-    expect(occById.get(numbered.id)!.wordOccurrences).toEqual([{ occurrenceNumber: 7 }]);
-    expect(occById.get(noNumber.id)!.wordOccurrences).toEqual([{ occurrenceNumber: null }]);
-    expect(occById.has(otherOccurrence.id)).toBe(false);
-    // 対象 Occurrence 外の単語は補完ダミー用 fallbackRows 側に返り、wordOccurrences は空
-    expect(fallbackById.get(otherOccurrence.id)!.wordOccurrences).toEqual([]);
+    const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: 50 },
+    );
+    // 範囲内（occurrenceNumber 7）は出題対象
+    expect(targetRows.map((r) => r.id)).toEqual([inRange.id]);
+    // 範囲外（99）・番号なしは同一 Occurrence プール（ダミー専用）
+    expect(sameOccurrenceRows.map((r) => r.id).sort()).toEqual([noNumber.id, outOfRange.id].sort());
+    // 別 Occurrence の単語は補完プール
+    expect(fallbackRows.map((r) => r.id)).toEqual([otherOccurrence.id]);
   });
 
   test("returns meanings with texts ordered by sortOrder", async () => {
@@ -94,8 +100,8 @@ describe("fetchQuizSource", () => {
       occurrence: { id: occurrence.id, occurrenceNumber: 1 },
     });
 
-    const { occurrenceRows } = await fetchQuizSource(user.id, occurrence.id);
-    const row = occurrenceRows.find((r) => r.id === word.id);
+    const { targetRows } = await fetchQuizSource(user.id, occurrence.id, {});
+    const row = targetRows.find((r) => r.id === word.id);
     expect(row).toBeDefined();
     expect(row!.headword).toBe("delta");
     expect(row!.meanings).toHaveLength(2);
@@ -103,27 +109,40 @@ describe("fetchQuizSource", () => {
     expect(row!.meanings[1].texts.map((t) => t.text)).toEqual(["別品詞の意味"]);
   });
 
-  test("caps fallbackRows at FALLBACK_POOL_LIMIT but does not cap occurrenceRows", async () => {
+  test("caps dummy pools (same-occurrence / fallback) but never caps in-range targets", async () => {
     const user = await createTestUser();
     const occurrence = await createOccurrenceRow(user.id, "上限テスト帳");
-    // 対象 Occurrence 内（出題対象＋同一 Occurrence）は上限なし
-    const linkedCount = 3;
+    // 範囲内（1..50）の出題対象は上限なし
+    const targetCount = 3;
     await Promise.all(
-      Array.from({ length: linkedCount }, (_, i) =>
-        createQuizWordRow(user.id, `linked${i}`, {
+      Array.from({ length: targetCount }, (_, i) =>
+        createQuizWordRow(user.id, `target${i}`, {
           occurrence: { id: occurrence.id, occurrenceNumber: i + 1 },
         }),
       ),
     );
-    // 対象 Occurrence 外の補完ダミー用単語を上限超で投入
+    // 範囲外（>50）の同一 Occurrence ダミーを上限超で投入
+    await Promise.all(
+      Array.from({ length: SAME_OCCURRENCE_POOL_LIMIT + 5 }, (_, i) =>
+        createQuizWordRow(user.id, `sameocc${i}`, {
+          occurrence: { id: occurrence.id, occurrenceNumber: 1000 + i },
+        }),
+      ),
+    );
+    // 対象 Occurrence 外の補完ダミーを上限超で投入
     await Promise.all(
       Array.from({ length: FALLBACK_POOL_LIMIT + 5 }, (_, i) =>
         createQuizWordRow(user.id, `fallback${i}`),
       ),
     );
 
-    const { occurrenceRows, fallbackRows } = await fetchQuizSource(user.id, occurrence.id);
-    expect(occurrenceRows).toHaveLength(linkedCount);
+    const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: 50 },
+    );
+    expect(targetRows).toHaveLength(targetCount);
+    expect(sameOccurrenceRows).toHaveLength(SAME_OCCURRENCE_POOL_LIMIT);
     expect(fallbackRows).toHaveLength(FALLBACK_POOL_LIMIT);
   });
 
@@ -132,10 +151,10 @@ describe("fetchQuizSource", () => {
     const stranger = await createTestUser();
     const strangerOccurrence = await createOccurrenceRow(stranger.id, "他人の出典");
 
-    await expect(fetchQuizSource(user.id, "nonexistent-id")).rejects.toThrow(
+    await expect(fetchQuizSource(user.id, "nonexistent-id", {})).rejects.toThrow(
       OccurrenceNotFoundError,
     );
-    await expect(fetchQuizSource(user.id, strangerOccurrence.id)).rejects.toThrow(
+    await expect(fetchQuizSource(user.id, strangerOccurrence.id, {})).rejects.toThrow(
       OccurrenceNotFoundError,
     );
   });

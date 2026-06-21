@@ -14,8 +14,6 @@ export type QuizSourceRow = {
     pronunciationAudioUrl: string | null;
     texts: { text: string }[];
   }[];
-  /** 対象 Occurrence に紐づく掲載情報（紐づきがなければ空配列）。 */
-  wordOccurrences: { occurrenceNumber: number | null }[];
 };
 
 export type QuizMeaning = {
@@ -30,9 +28,6 @@ export type QuizWord = {
   /** sortOrder 順。先頭が「最初の Meaning」。各単語は意味 1 件以上が入力前提。 */
   meanings: QuizMeaning[];
 };
-
-/** 掲載番号の範囲。空欄＝制限なし、片側のみ指定可。 */
-export type QuizRange = { from?: number; to?: number };
 
 /**
  * 出題素材。(a)(b)(c) は互いに素な分割。
@@ -59,39 +54,24 @@ function toQuizWord(row: QuizSourceRow): QuizWord {
   };
 }
 
-function isInRange(n: number, range: QuizRange): boolean {
-  if (range.from !== undefined && n < range.from) return false;
-  if (range.to !== undefined && n > range.to) return false;
-  return true;
-}
-
 /**
- * 取得行を (a) 出題対象 / (b) 同一 Occurrence プール / (c) 全登録プールに分割する。
+ * 取得済みの 3 つの行集合を素材 (a)(b)(c) に対応づける純マッパ。
  *
- * `occurrenceRows` は対象 Occurrence に紐づく単語（occurrenceNumber が範囲内なら (a)、
- * それ以外＝範囲外・番号なしは (b)）。`fallbackRows` は Occurrence 外の補完ダミー用単語で、
- * そのまま (c) になる（取得段階で上限サンプリング済み。`fetchQuizSource` 参照）。
+ * 範囲（range）判定・Occurrence 紐付き判定・上限サンプリングは取得側（`fetchQuizSource`）が
+ * SQL で済ませているため、ここでは `QuizWord` への変換のみを行う:
+ * `targetRows`→(a) 出題対象、`sameOccurrenceRows`→(b) 同一 Occurrence プール、
+ * `fallbackRows`→(c) 全登録プール。
  */
 export function partitionMaterial(
-  occurrenceRows: QuizSourceRow[],
+  targetRows: QuizSourceRow[],
+  sameOccurrenceRows: QuizSourceRow[],
   fallbackRows: QuizSourceRow[],
-  range: QuizRange,
 ): QuizSourceMaterial {
-  const targets: QuizWord[] = [];
-  const sameOccurrencePool: QuizWord[] = [];
-  for (const row of occurrenceRows) {
-    const word = toQuizWord(row);
-    const numbers = row.wordOccurrences
-      .map((o) => o.occurrenceNumber)
-      .filter((n): n is number => n !== null);
-    if (numbers.some((n) => isInRange(n, range))) {
-      targets.push(word);
-    } else {
-      sameOccurrencePool.push(word);
-    }
-  }
-  const allWordsPool = fallbackRows.map(toQuizWord);
-  return { targets, sameOccurrencePool, allWordsPool };
+  return {
+    targets: targetRows.map(toQuizWord),
+    sameOccurrencePool: sameOccurrenceRows.map(toQuizWord),
+    allWordsPool: fallbackRows.map(toQuizWord),
+  };
 }
 
 /** 全 Meaning 横断の全 MeaningText（trim なしの生テキスト）。 */

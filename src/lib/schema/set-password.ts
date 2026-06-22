@@ -1,8 +1,8 @@
 import { z } from "zod/v3";
 
-// Better Auth の既定パスワード長（min 8 / max 128）に合わせる。
-export const MIN_PASSWORD_LENGTH = 8;
-export const MAX_PASSWORD_LENGTH = 128;
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
+
+export { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH };
 
 export const setPasswordSchema = z
   .object({

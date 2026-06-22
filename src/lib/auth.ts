@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 
 import { recordResetToken } from "@/lib/auth-reset-link";
 import { seedOccurrencePresetSettingsForUser } from "@/lib/occurrence-preset-settings";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
 import { signUpDisabled } from "@/lib/signup-policy";
 
@@ -22,8 +23,15 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     disableSignUp: signUpDisabled,
+    // クライアント検証（set-password 等）とサーバーポリシーを一致させるため明示する
+    // （値は Better Auth の既定 8/128 と同じ）。
+    minPasswordLength: MIN_PASSWORD_LENGTH,
+    maxPasswordLength: MAX_PASSWORD_LENGTH,
     resetPasswordTokenExpiresIn: RESET_PASSWORD_TOKEN_EXPIRES_IN,
     // メール送信はせず、発行された reset トークンを捕捉して管理画面に設定 URL を表示する。
+    // この捕捉（auth-reset-link.ts）は sendResetPassword が同一 async コンテキストで
+    // await されることに依存する。`advanced.backgroundTasks.handler` を設定すると
+    // コールバックが切り離されてトークン捕捉が静かに失敗するため、設定しないこと。
     sendResetPassword: async ({ token }) => {
       recordResetToken(token);
     },

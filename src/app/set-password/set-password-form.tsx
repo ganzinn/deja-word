@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { authClient } from "@/lib/auth-client";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { setPasswordSchema } from "@/lib/schema/set-password";
 
 export function SetPasswordForm() {
@@ -84,13 +85,14 @@ function SetPasswordFormInner() {
   return (
     <Shell>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <Field label="新しいパスワード（8 文字以上）" htmlFor="newPassword">
+        <Field label={`新しいパスワード（${MIN_PASSWORD_LENGTH} 文字以上）`} htmlFor="newPassword">
           <input
             id="newPassword"
             name="newPassword"
             type="password"
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
+            maxLength={MAX_PASSWORD_LENGTH}
             autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}

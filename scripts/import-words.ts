@@ -26,6 +26,7 @@ import {
   UserNotFoundByEmailError,
   bulkImportWords,
 } from "../src/lib/bulk-word-import";
+import { splitMeaningTexts } from "../src/lib/meaning-text-parser";
 import { commonPartOfSpeechValues, isCommonPartOfSpeech } from "../src/lib/mock/parts-of-speech";
 
 const MEANING_TEXT_SEPARATOR = ";";
@@ -113,10 +114,8 @@ function readRows(csvPath: string): { rows: BulkImportRow[]; dropped: number } {
     }
     // 引用符なしで meaning_text 内にカンマがあっても拾えるよう 3 列目以降を結合して復元する。
     const meaningTextRaw = rec.slice(2).join(",");
-    const meaningTexts = meaningTextRaw
-      .split(MEANING_TEXT_SEPARATOR)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+    // 全角カッコ内の `;`（例 `（～に;...するのに）`）を区切りにしないよう深さ対応で分割する。
+    const meaningTexts = splitMeaningTexts(meaningTextRaw);
     rows.push({
       headword,
       partOfSpeech: partOfSpeech.length > 0 ? partOfSpeech : null,

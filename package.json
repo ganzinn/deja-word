@@ -19,6 +19,7 @@
     "db:purge-occurrence": "tsx scripts/purge-occurrence.ts",
     "db:purge-blobs": "tsx scripts/purge-blobs.ts",
     "db:import-words": "tsx scripts/import-words.ts",
+    "db:import-related-words": "tsx scripts/import-related-words.ts",
     "test": "dotenv -e .env.test -- vitest run",
     "test:watch": "dotenv -e .env.test -- vitest",
     "test:unit": "vitest run --project unit",

@@ -38,17 +38,35 @@ concise,adjective,簡潔な
 lucid,,明快な
 ```
 
-実際の単語帳の例（`tmp/target1900.csv`。`part_of_speech` は空でもよく、意味内の `,` は `"..."` で囲む）:
-
 ```csv
 headword,part_of_speech,meaning_text
 create,,を創り出す;を引き起こす
-increase,,増加する（⇔ decrease ⇒ 223）;を増やす
-argue,,"と主張する（≒ claim ⇒ 110, maintain ⇒ 206）;議論する"
+concise,adjective,簡潔な
 ```
 
-- 意味テキスト内に**カンマ（、や ,）**を含めてよい（引用符なしでも 3 列目以降を結合して復元する。確実を期すなら `argue` の行のように `"..."` で囲む）。
-- 複数意味の区切りは **`;`**（meaning_text 内の `、` は区切りにならない）。
+- 意味テキスト内に**カンマ（、や ,）**を含めてよい（引用符なしでも 3 列目以降を結合して復元する。確実を期すなら `"..."` で囲む）。
+- 複数意味の区切りは **`;`**（meaning_text 内の `、` は区切りにならない）。**全角カッコ内の `;`**（例 `（～に;...するのに）十分な`）は区切りにせず 1 意味として扱う（深さ対応分割。`src/lib/meaning-text-parser.ts` の `splitMeaningTexts`）。
+- このツールは meaning_text を**そのまま**意味として登録する。`増加する（⇔ decrease ⇒ 223）` のような**関連語（≒/⇔）の埋め込み記法は解釈しない**（カッコごと意味文字列になる）。`ターゲット1900` のようにこの記法を含む元 CSV は、先に分解してから取り込む（次節）。
+
+### 関連語を含む元 CSV（ターゲット1900）の取り込み手順
+
+`tmp/target1900.csv` は意味欄に関連語（同意語 `≒` / 反意語 `⇔`、`⇒ N` で掲載番号リンク）が埋め込まれている。
+取り込みは **3 段** で行う:
+
+1. **分解**（使い捨て生成スクリプト）— 意味本文と関連語を 2 ファイルに切り出す。
+
+   ```sh
+   pnpm tsx scripts/split-target1900.ts            # → tmp/target1900.words.csv / tmp/target1900.related.csv
+   ```
+
+2. **単語登録** — 生成された `words.csv`（関連語注記を除去済み）を**本ツール**で取り込む。
+
+   ```sh
+   pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv          # dry-run
+   pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv --execute
+   ```
+
+3. **関連語登録** — `related.csv` を**人手レビュー後**、`db:import-related-words` で取り込む（→ `docs/ops/import-related-words.md`）。掲載番号リンクは単語登録済みであることが前提（このとき掲載番号＝本の見出し番号になる＝スキップ 0 のため）。
 
 ## 仕様
 
@@ -75,11 +93,11 @@ argue,,"と主張する（≒ claim ⇒ 110, maintain ⇒ 206）;議論する"
 
 ローカルは `.env` の接続先（docker の `deja-word-db` / DB `dejaword`）に対して実行される。
 
-1. CSV を用意（上記仕様。例として `tmp/target1900.csv` … ヘッダ + 1900 語）。
+1. CSV を用意（上記仕様）。`ターゲット1900` は先に `scripts/split-target1900.ts` で `tmp/target1900.words.csv` を生成しておく（関連語を含む元 CSV をそのまま入れない）。
 2. ドライラン → 件数・スキップ確認。
 
    ```sh
-   pnpm db:import-words "ターゲット1900" tmp/target1900.csv
+   pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv
    ```
 
    ```text
@@ -97,12 +115,13 @@ argue,,"と主張する（≒ claim ⇒ 110, maintain ⇒ 206）;議論する"
 3. 納得したら実登録。
 
    ```sh
-   pnpm db:import-words "ターゲット1900" tmp/target1900.csv --execute
+   pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv --execute
    ```
 
 4. 確認（任意）: `pnpm db:studio` で `occurrence`（owner=system）/ `word` / `meaning` / `meaning_text` / `word_occurrence`（掲載番号）/ `occurrence_preset_setting`（全ユーザー分）を見る。
+5. 関連語も入れる場合は続けて `tmp/target1900.related.csv` を `db:import-related-words` で取り込む（→ `docs/ops/import-related-words.md`）。
 
-引数なしの **対話モード**でも同じことができる（登録先 Enter→system / 掲載箇所名 `ターゲット1900` / CSV パス `tmp/target1900.csv` を順に入力 → ドライラン提示 → `[2] 実登録`）。個人ユーザー宛てに入れたい場合は `--email=<対象ユーザーの email>` を付ける（掲載箇所もそのユーザー所有になり、プリセットは本人のみ）。
+引数なしの **対話モード**でも同じことができる（登録先 Enter→system / 掲載箇所名 `ターゲット1900` / CSV パス `tmp/target1900.words.csv` を順に入力 → ドライラン提示 → `[2] 実登録`）。個人ユーザー宛てに入れたい場合は `--email=<対象ユーザーの email>` を付ける（掲載箇所もそのユーザー所有になり、プリセットは本人のみ）。
 
 ## 本番（Neon）での手順
 
@@ -112,10 +131,10 @@ argue,,"と主張する（≒ claim ⇒ 110, maintain ⇒ 206）;議論する"
 vercel env pull .env.production.local --environment=production   # DIRECT_URL を取得
 
 # dry-run（無変更・件数確認）
-pnpm dotenv -e .env.production.local -- pnpm db:import-words "ターゲット1900" tmp/target1900.csv
+pnpm dotenv -e .env.production.local -- pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv
 
 # 件数を確認・納得してから実登録
-pnpm dotenv -e .env.production.local -- pnpm db:import-words "ターゲット1900" tmp/target1900.csv --execute
+pnpm dotenv -e .env.production.local -- pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv --execute
 ```
 
 `pnpm dotenv -e ...` が先に本番 env を `process.env` に載せ、スクリプト内の `import "dotenv/config"`（`.env` 読み込み）は既存値を上書きしないため、ローカル `.env` と混ざらない。実登録前に **Neon のブランチ / PITR** でスナップショットを取っておくと安全。

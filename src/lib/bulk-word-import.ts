@@ -6,9 +6,17 @@
 // 単語登録の正規パス（createWordForUser）は server-only + @/ 依存で tsx から呼べないため、
 // prisma/seed.ts の seedSystemWord と同じ「skip 重複・マージなし」のネスト create で構成する。
 
-import { SYSTEM_USER_ID, scopedOwnerIds } from "./system-user";
+import { resolveImportOwner } from "./import-owner";
+import { scopedOwnerIds } from "./system-user";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+
+// owner 解決系は import-owner に集約。既存の import 元（scripts / tests）の互換のため re-export する。
+export {
+  resolveImportOwner,
+  SystemUserMissingError,
+  UserNotFoundByEmailError,
+} from "./import-owner";
 
 /** CSV 1 行を前処理した投入単位。区切り適用・trim・空除去は呼び出し側（スクリプト）で済ませる。 */
 export type BulkImportRow = {
@@ -39,48 +47,11 @@ export type BulkImportReport = {
   executed: boolean;
 };
 
-export class UserNotFoundByEmailError extends Error {
-  constructor(public readonly email: string) {
-    super(`USER_NOT_FOUND: ${email}`);
-    this.name = "UserNotFoundByEmailError";
-  }
-}
-
-export class SystemUserMissingError extends Error {
-  constructor() {
-    super("SYSTEM_USER_MISSING");
-    this.name = "SystemUserMissingError";
-  }
-}
-
 export class DuplicateOccurrenceLocationError extends Error {
   constructor(public readonly location: string) {
     super(`DUPLICATE_OCCURRENCE_LOCATION: ${location}`);
     this.name = "DuplicateOccurrenceLocationError";
   }
-}
-
-type ResolvedOwner = { ownerId: string; ownerEmail: string; isSystem: boolean };
-
-async function resolveOwner(
-  prisma: PrismaClient,
-  email: string | undefined,
-): Promise<ResolvedOwner> {
-  if (!email) {
-    const sys = await prisma.user.findUnique({
-      where: { id: SYSTEM_USER_ID },
-      select: { email: true },
-    });
-    if (!sys) throw new SystemUserMissingError();
-    return { ownerId: SYSTEM_USER_ID, ownerEmail: sys.email, isSystem: true };
-  }
-  const normalized = email.toLowerCase();
-  const user = await prisma.user.findUnique({
-    where: { email: normalized },
-    select: { id: true, email: true },
-  });
-  if (!user) throw new UserNotFoundByEmailError(normalized);
-  return { ownerId: user.id, ownerEmail: user.email, isSystem: false };
 }
 
 /** スキップ対象を仕分けし、登録すべき行だけを返す。 */
@@ -116,7 +87,7 @@ export async function bulkImportWords(
   rows: BulkImportRow[],
   opts: { dryRun: boolean },
 ): Promise<BulkImportReport> {
-  const { ownerId, ownerEmail, isSystem } = await resolveOwner(prisma, input.email);
+  const { ownerId, ownerEmail, isSystem } = await resolveImportOwner(prisma, input.email);
   const location = input.location.trim();
 
   // 掲載箇所名の衝突チェック（createOccurrenceForUser と同義のスコープ判定）。

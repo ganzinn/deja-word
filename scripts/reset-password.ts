@@ -14,7 +14,9 @@ async function main() {
     process.exit(1);
   }
   if (newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
-    console.error(`password length must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH}`);
+    console.error(
+      `password length must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH}`,
+    );
     process.exit(1);
   }
   const connectionString = process.env.DATABASE_URL;

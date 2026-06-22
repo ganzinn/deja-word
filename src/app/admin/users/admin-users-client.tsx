@@ -84,7 +84,7 @@ export function AdminUsersClient({ users }: { users: AdminUserRow[] }) {
             disabled={isPending}
             className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {isPending ? "発行中..." : "登録 / リンク発行"}
+            {isPending ? "発行中..." : "仮登録 / パスワード設定リンク発行"}
           </button>
         </form>
 
@@ -196,7 +196,7 @@ function UserRow({
             onClick={onReissue}
             className={rowButtonClass}
           >
-            設定リンク再発行
+            パスワード設定リンク発行
           </button>
         </div>
       </div>
@@ -221,7 +221,7 @@ function UserRow({
             disabled={isPending}
             className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {isPending ? "発行中..." : "検証リンクを発行"}
+            {isPending ? "発行中..." : "メールアドレス検証リンク発行"}
           </button>
         </form>
       ) : null}

@@ -6,7 +6,7 @@
 
 仕組みは Better Auth の正規パスワードリセット機構（`requestPasswordReset` → `resetPassword`）に乗っている。
 メール送信は行わず、`sendResetPassword` コールバックで発行トークンを捕捉し、設定 URL を管理画面に表示する
-（`src/lib/auth-reset-link.ts` / `src/lib/auth.ts`）。
+（`src/lib/auth-token-capture.ts` / `src/lib/auth.ts`）。
 
 ## 前提：管理者ログイン
 
@@ -29,6 +29,28 @@ SYSTEM_USER_PASSWORD=... pnpm db:set-system-password
 4. 本人が URL を開き、新しいパスワードを設定すると credential アカウントが作成される。
    完了後は `/sign-in` から登録した email とパスワードでログインできる。
 
+## メールアドレスの変更
+
+登録済みユーザーのメールアドレスは `/admin/users` の各ユーザー行「メール変更」から変更できる。
+**新しいアドレスが受信確認できてから初めて切り替わる**（ステージング型）。確認が取れるまでは現アドレスのまま。
+Better Auth の `change-email-verification` トークン（`updateTo` 付き JWT。`better-auth/api` の
+`createEmailVerificationToken` で発行）に乗せており、メール送信は行わず**検証 URL を管理画面に表示**する。
+
+1. 対象ユーザー行の「メール変更」→ 新しいメールアドレスを入力して「検証リンクを発行」。
+   - **この時点では `User.email` は変わらない**（トークンを発行するだけ。DB 書き込みなし）。
+2. 表示された **検証 URL（`/api/auth/verify-email?token=...`）をコピーして本人に渡す**。有効期限は **24 時間**。
+3. 本人が URL を開いた瞬間に `User.email` が新アドレスへ**切り替わり**、`emailVerified = true` になる。
+   `/menu` へリダイレクトされる（踏むとセッションが作られ自動ログイン状態で着地する）。一覧も新アドレス・
+   「メール確認済み」に変わる。
+   - ログイン・パスワードは無影響（credential アカウントは `accountId = user.id` で紐づくため）。
+     切替後は**新アドレス + 既存パスワード**でログインできる。
+
+重複するアドレス・現在と同一のアドレス・system ユーザーへの変更はエラーとして弾かれる。
+
+> ⚠️ セキュリティ上の既知の制約: 検証リンクはログイン不要で確定でき、踏むと自動ログインされる。
+> ＝リンク保持者は本人でなくても変更＋ログインできてしまう。「ログイン中セッションでのみ変更可」への
+> 厳格化は後日の課題。
+
 ## 注意
 
 - 設定 URL のトークンは `Verification` テーブル（`identifier = "reset-password:<token>"`）に保存され、
@@ -36,3 +58,9 @@ SYSTEM_USER_PASSWORD=... pnpm db:set-system-password
   管理者へ再発行を依頼する案内が出る。
 - 有効期限は `src/lib/auth.ts` の `resetPasswordTokenExpiresIn`（既定 24h）で変更できる。
 - 本番のセルフサインアップ停止（`DISABLE_SIGNUP="true"`）は維持する。本フローが本番でのユーザー追加経路になる。
+- 将来メール基盤を導入する際は、招待は `emailAndPassword.sendResetPassword`（現状はトークン捕捉のみ）を
+  実送信に差し替えればよい。メール変更は、発行した検証 URL を画面表示する代わりに新アドレスへメール送信
+  すればよい（リンクが新アドレスへ直接届くことが受信確認になる）。管理画面のリンク手渡し UI は
+  フォールバックとして残せる。
+  なお `requireEmailVerification` は**有効化しない**こと（既存ユーザーは全員 `emailVerified=false` のため、
+  有効化すると一斉にログイン不能になる）。

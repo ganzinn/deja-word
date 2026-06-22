@@ -18,14 +18,17 @@ export default async function AdminUsersPage() {
       id: true,
       email: true,
       name: true,
+      emailVerified: true,
       createdAt: true,
       accounts: { where: { providerId: "credential" }, select: { id: true } },
     },
   });
 
   const rows: AdminUserRow[] = users.map((u) => ({
+    id: u.id,
     email: u.email,
     name: u.name,
+    emailVerified: u.emailVerified,
     hasPassword: u.accounts.length > 0,
     createdAt: u.createdAt.toISOString(),
   }));

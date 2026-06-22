@@ -5,9 +5,7 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
-
-const MIN_PASSWORD = 8;
-const MAX_PASSWORD = 128;
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "../src/lib/password-policy";
 
 async function main() {
   const [, , emailRaw, password, name] = process.argv;
@@ -15,8 +13,10 @@ async function main() {
     console.error("usage: tsx scripts/create-user.ts <email> <password> <name>");
     process.exit(1);
   }
-  if (password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
-    console.error(`password length must be between ${MIN_PASSWORD} and ${MAX_PASSWORD}`);
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+    console.error(
+      `password length must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH}`,
+    );
     process.exit(1);
   }
 

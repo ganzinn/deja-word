@@ -4,9 +4,7 @@ import "dotenv/config";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
-
-const MIN = 8;
-const MAX = 128;
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "../src/lib/password-policy";
 
 async function main() {
   const email = process.argv[2];
@@ -15,8 +13,10 @@ async function main() {
     console.error("usage: tsx scripts/reset-password.ts <email> <newPassword>");
     process.exit(1);
   }
-  if (newPassword.length < MIN || newPassword.length > MAX) {
-    console.error(`password length must be between ${MIN} and ${MAX}`);
+  if (newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
+    console.error(
+      `password length must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH}`,
+    );
     process.exit(1);
   }
   const connectionString = process.env.DATABASE_URL;

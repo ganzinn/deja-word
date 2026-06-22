@@ -34,9 +34,22 @@ model User {
   drills                   Drill[]
   quizDefaultSetting       QuizDefaultSetting?
   quizDefaultTimeouts      QuizDefaultTimeout[]
+  preference               UserPreference?
 
   @@unique([email])
   @@map("user")
+}
+
+// ユーザー全般の設定: ユーザーごと 1 行。全項目任意（quiz 専用でない横断設定をここに集約する）
+model UserPreference {
+  userId      String   @id @map("user_id")
+  // 発音音源が未登録のとき端末内蔵の自動音声（Web Speech API）で代用する。null = 有効（デフォルト）
+  ttsFallback Boolean? @map("tts_fallback")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference")
 }
 
 model Session {

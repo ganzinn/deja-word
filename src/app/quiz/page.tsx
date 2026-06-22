@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 
+import { TtsFallbackProvider } from "@/components/tts-fallback-context";
 import { listActiveDrillsForUser } from "@/lib/drill-list";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { getQuizDefaultsForUser } from "@/lib/quiz-default-settings";
 import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { getCurrentSession } from "@/lib/session";
+import { getTtsFallbackEnabled } from "@/lib/user-preferences";
 
 import { QuizFlow } from "./_components/quiz-flow";
 
@@ -18,10 +20,11 @@ export default async function QuizPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/sign-in?redirect=/quiz");
 
-  const [occurrences, activeDrills, savedDefaults] = await Promise.all([
+  const [occurrences, activeDrills, savedDefaults, ttsFallbackEnabled] = await Promise.all([
     listOccurrencesForUser(session.user.id),
     listActiveDrillsForUser(session.user.id),
     getQuizDefaultsForUser(session.user.id),
+    getTtsFallbackEnabled(session.user.id),
   ]);
   // 未保存（レコードなし）のユーザーには推奨デフォルトを初期値として反映する。
   // 保存後に明示的に未設定にした状態は非 null で返るためここでは差し替わらない。
@@ -44,19 +47,21 @@ export default async function QuizPage() {
   const saveAsDefaultInitial = defaults.saveOnStart ?? false;
 
   return (
-    <QuizFlow
-      occurrences={occurrences.map((o) => ({
-        id: o.id,
-        location: o.location,
-        wordCount: o.wordLinkCount,
-      }))}
-      activeDrills={activeDrills}
-      defaults={{ ...defaults, occurrenceId: defaultOccurrenceId }}
-      showCountdown={showCountdown}
-      autoplayPronunciation={autoplayPronunciation}
-      enableAnswerSound={enableAnswerSound}
-      autoplayAnswerAudioJaEn={autoplayAnswerAudioJaEn}
-      saveAsDefaultInitial={saveAsDefaultInitial}
-    />
+    <TtsFallbackProvider enabled={ttsFallbackEnabled}>
+      <QuizFlow
+        occurrences={occurrences.map((o) => ({
+          id: o.id,
+          location: o.location,
+          wordCount: o.wordLinkCount,
+        }))}
+        activeDrills={activeDrills}
+        defaults={{ ...defaults, occurrenceId: defaultOccurrenceId }}
+        showCountdown={showCountdown}
+        autoplayPronunciation={autoplayPronunciation}
+        enableAnswerSound={enableAnswerSound}
+        autoplayAnswerAudioJaEn={autoplayAnswerAudioJaEn}
+        saveAsDefaultInitial={saveAsDefaultInitial}
+      />
+    </TtsFallbackProvider>
   );
 }

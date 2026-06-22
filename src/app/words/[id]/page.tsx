@@ -3,10 +3,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ScreenHeader } from "@/components/screen-header";
+import { TtsFallbackProvider } from "@/components/tts-fallback-context";
 import { buttonVariants } from "@/components/ui/button";
 import { WordDetailView } from "@/components/word-detail-view";
 import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { getTtsFallbackEnabled } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import { countIncomingLinksForUser } from "@/lib/words-delete";
 import { getWordDetailForUser } from "@/lib/words-detail";
@@ -29,6 +31,7 @@ export default async function WordDetailPage({ params }: PageProps) {
   const canEdit = word.ownerId === session.user.id || word.ownerId === SYSTEM_USER_ID;
   const canDelete = word.ownerId === session.user.id;
   const incomingLinkCount = canDelete ? await countIncomingLinksForUser(session.user.id, id) : 0;
+  const ttsFallbackEnabled = await getTtsFallbackEnabled(session.user.id);
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
@@ -60,7 +63,9 @@ export default async function WordDetailPage({ params }: PageProps) {
         }
       />
 
-      <WordDetailView word={word} />
+      <TtsFallbackProvider enabled={ttsFallbackEnabled}>
+        <WordDetailView word={word} />
+      </TtsFallbackProvider>
     </main>
   );
 }

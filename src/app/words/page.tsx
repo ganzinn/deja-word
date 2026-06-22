@@ -4,11 +4,13 @@ import { redirect } from "next/navigation";
 
 import { RowAudioButton } from "@/components/row-audio-button";
 import { ScreenHeader } from "@/components/screen-header";
+import { TtsFallbackProvider } from "@/components/tts-fallback-context";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { commonPartOfSpeechShortLabel } from "@/lib/mock/parts-of-speech";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { getCurrentSession } from "@/lib/session";
+import { getTtsFallbackEnabled } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import {
   listWordsByOccurrence,
@@ -48,10 +50,15 @@ export default async function WordsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const view: WordsViewMode = params.view === "occurrence" ? "occurrence" : "word";
 
-  if (view === "occurrence") {
-    return <OccurrenceView userId={session.user.id} params={params} />;
-  }
-  return <WordView userId={session.user.id} params={params} />;
+  // 自動音声フォールバック設定を一覧ツリー全体へ配る（発音音源が無い行の発音ボタン表示を制御）。
+  const ttsFallbackEnabled = await getTtsFallbackEnabled(session.user.id);
+  const content =
+    view === "occurrence" ? (
+      <OccurrenceView userId={session.user.id} params={params} />
+    ) : (
+      <WordView userId={session.user.id} params={params} />
+    );
+  return <TtsFallbackProvider enabled={ttsFallbackEnabled}>{content}</TtsFallbackProvider>;
 }
 
 /** 単語単位（従来）の表示。 */
@@ -277,7 +284,12 @@ function WordRow({
         <span className="text-sm font-semibold break-words">{item.headword}</span>
         <div className="ml-auto flex items-center gap-2">
           {item.isSystem ? null : <Badge variant="secondary">MY</Badge>}
-          <RowAudioButton src={item.pronunciationAudioUrl} label="発音" reserveSpaceWhenEmpty />
+          <RowAudioButton
+            src={item.pronunciationAudioUrl}
+            label="発音"
+            ttsText={item.headword}
+            reserveSpaceWhenEmpty
+          />
         </div>
       </div>
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (

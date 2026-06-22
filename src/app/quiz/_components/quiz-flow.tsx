@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
+import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { isJaToEnFormat } from "@/lib/quiz/format-options";
+import { cancelSpeech, speakEnglish } from "@/lib/speech";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
 import type { StartFormDefaults } from "@/lib/quiz-default-settings";
@@ -240,6 +242,8 @@ export function QuizFlow({
   saveAsDefaultInitial,
 }: Props) {
   const router = useRouter();
+  // 発音音源が無いとき自動音声で代用する設定（出題時／解答表示時の自動再生に使う）
+  const ttsFallbackEnabled = useTtsFallbackEnabled();
   // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
   const [mode, setMode] = useState<QuizMode>("TEST");
   const [phase, setPhase] = useState<Phase>({ name: "start" });
@@ -420,11 +424,15 @@ export function QuizFlow({
   function handleAnswerReveal() {
     if (!autoplayAnswerAudioJaEn) return;
     if (phase.name !== "play" || quiz === null) return;
-    const url = quiz.questions[phase.index]?.pronunciationAudioUrl ?? null;
-    const audio = preloadAudio(audioCacheRef.current, url);
-    if (!audio) return;
-    audio.currentTime = 0;
-    void audio.play().catch(() => {});
+    const question = quiz.questions[phase.index];
+    const audio = preloadAudio(audioCacheRef.current, question?.pronunciationAudioUrl ?? null);
+    if (audio) {
+      audio.currentTime = 0;
+      void audio.play().catch(() => {});
+      return;
+    }
+    // 発音音源が無いときは自動音声フォールバック（設定 ON のとき）で読み上げる
+    if (ttsFallbackEnabled && question?.headword) speakEnglish(question.headword);
   }
 
   // アンマウント時に保留中のフラッシュ消去タイマーを解放する
@@ -559,18 +567,25 @@ export function QuizFlow({
   useEffect(() => {
     if (playIndex === null || quiz === null) return;
     const cache = audioCacheRef.current;
+    const question = quiz.questions[playIndex];
     preloadAudio(cache, quiz.questions[playIndex + 1]?.pronunciationAudioUrl ?? null);
-    const audio = preloadAudio(cache, quiz.questions[playIndex]?.pronunciationAudioUrl ?? null);
-    if (!audio) return;
+    const audio = preloadAudio(cache, question?.pronunciationAudioUrl ?? null);
     // 発音の自動再生 OFF のときは自動再生しない（手動の再生ボタンは従来どおり機能する）
     if (!autoplayPronunciation) return;
     // 日本語→英語は発音が解答（英単語）を漏らすため、出題時の自動再生はしない
     if (isJaToEnFormat(quiz.format)) return;
-    audio.currentTime = 0;
-    // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
-    void audio.play().catch(() => {});
-    return () => audio.pause();
-  }, [playIndex, quiz, autoplayPronunciation]);
+    if (audio) {
+      audio.currentTime = 0;
+      // 自動再生がブロック／取得失敗した場合はスキップし、手動の再生ボタンにフォールバック
+      void audio.play().catch(() => {});
+      return () => audio.pause();
+    }
+    // 発音音源が無いときは自動音声フォールバック（設定 ON のとき）で読み上げる
+    if (ttsFallbackEnabled && question?.headword) {
+      speakEnglish(question.headword);
+      return () => cancelSpeech();
+    }
+  }, [playIndex, quiz, autoplayPronunciation, ttsFallbackEnabled]);
 
   if (phase.name === "countdown") {
     return (
@@ -620,7 +635,11 @@ export function QuizFlow({
         ) : (
           <div className="flex flex-wrap items-center justify-center gap-3 py-4">
             <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
-            <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+            <AudioPlayButton
+              src={question.pronunciationAudioUrl}
+              label="発音"
+              ttsText={question.headword}
+            />
           </div>
         )}
 

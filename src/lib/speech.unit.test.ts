@@ -12,25 +12,21 @@ type SpeechGlobals = {
   SpeechSynthesisUtterance?: unknown;
 };
 
-function installSpeechMock({ speaking = false, pending = false } = {}) {
+function installSpeechMock() {
   const speak = vi.fn();
   const cancel = vi.fn();
-  const addEventListener = vi.fn();
-  // lang / voice を保持する最小の Utterance スタブ
+  // lang を保持する最小の Utterance スタブ
   class UtteranceStub {
     lang = "";
-    voice: unknown = null;
     onstart: (() => void) | null = null;
     onend: (() => void) | null = null;
-    onerror: ((event?: unknown) => void) | null = null;
+    onerror: (() => void) | null = null;
     constructor(public text: string) {}
   }
   const g = globalThis as SpeechGlobals;
-  g.window = {
-    speechSynthesis: { speak, cancel, addEventListener, getVoices: () => [], speaking, pending },
-  };
+  g.window = { speechSynthesis: { speak, cancel } };
   g.SpeechSynthesisUtterance = UtteranceStub;
-  return { speak, cancel };
+  return { speak, cancel, UtteranceStub };
 }
 
 afterEach(() => {
@@ -60,36 +56,23 @@ describe("speakEnglish", () => {
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it("speaks an en-US utterance with the given text", () => {
-    const { speak } = installSpeechMock();
+  it("cancels any in-flight speech, then speaks an en-US utterance", () => {
+    const { speak, cancel } = installSpeechMock();
     speakEnglish("hello");
+    expect(cancel).toHaveBeenCalledTimes(1);
     expect(speak).toHaveBeenCalledTimes(1);
     const utterance = speak.mock.calls[0][0] as { text: string; lang: string };
     expect(utterance.text).toBe("hello");
     expect(utterance.lang).toBe("en-US");
   });
 
-  it("does not cancel when nothing is speaking (avoids the cancel→speak race)", () => {
-    const { speak, cancel } = installSpeechMock({ speaking: false, pending: false });
-    speakEnglish("hello");
-    expect(cancel).not.toHaveBeenCalled();
-    expect(speak).toHaveBeenCalledTimes(1);
-  });
-
-  it("cancels first when speech is in flight", () => {
-    const { cancel } = installSpeechMock({ speaking: true });
-    speakEnglish("hello");
-    expect(cancel).toHaveBeenCalledTimes(1);
-  });
-
   it("wires onEnd to both onend and onerror of the utterance", () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     const { speak } = installSpeechMock();
     const onEnd = vi.fn();
     speakEnglish("hi", { onEnd });
     const utterance = speak.mock.calls[0][0] as {
       onend: () => void;
-      onerror: (event?: unknown) => void;
+      onerror: () => void;
     };
     utterance.onend();
     utterance.onerror();

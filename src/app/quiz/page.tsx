@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { listActiveDrillsForUser } from "@/lib/drill-list";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { getQuizDefaultsForUser } from "@/lib/quiz-default-settings";
+import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { getCurrentSession } from "@/lib/session";
 
 import { QuizFlow } from "./_components/quiz-flow";
@@ -17,28 +18,30 @@ export default async function QuizPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/sign-in?redirect=/quiz");
 
-  const [occurrences, activeDrills, defaults] = await Promise.all([
+  const [occurrences, activeDrills, savedDefaults] = await Promise.all([
     listOccurrencesForUser(session.user.id),
     listActiveDrillsForUser(session.user.id),
     getQuizDefaultsForUser(session.user.id),
   ]);
+  // 未保存（レコードなし）のユーザーには推奨デフォルトを初期値として反映する。
+  // 保存後に明示的に未設定にした状態は非 null で返るためここでは差し替わらない。
+  const defaults = savedDefaults ?? DEFAULT_QUIZ_SETTINGS;
 
   // デフォルトの掲載箇所が選択肢にない場合（lib 層の可視判定との二重防御）は未選択に落とす
-  const defaultOccurrenceId =
-    defaults !== null && occurrences.some((o) => o.id === defaults.occurrenceId)
-      ? defaults.occurrenceId
-      : null;
+  const defaultOccurrenceId = occurrences.some((o) => o.id === defaults.occurrenceId)
+    ? defaults.occurrenceId
+    : null;
 
   // カウントダウン表示は設定画面のみで変更する挙動設定（開始フォームの初期値ではない）。
   // 未設定（null）はデフォルトで非表示。
-  const showCountdown = defaults?.showCountdown ?? false;
+  const showCountdown = defaults.showCountdown ?? false;
   // 発音の自動再生・正誤の効果音。それぞれ未設定（null）はデフォルトで有効。
-  const autoplayPronunciation = defaults?.autoplayPronunciation ?? true;
-  const enableAnswerSound = defaults?.enableAnswerSound ?? true;
+  const autoplayPronunciation = defaults.autoplayPronunciation ?? true;
+  const enableAnswerSound = defaults.enableAnswerSound ?? true;
   // 日→英の解答表示時の発音自動再生。未設定（null）はデフォルトで有効。
-  const autoplayAnswerAudioJaEn = defaults?.autoplayAnswerAudioJaEn ?? true;
+  const autoplayAnswerAudioJaEn = defaults.autoplayAnswerAudioJaEn ?? true;
   // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。未設定（null）は OFF。
-  const saveAsDefaultInitial = defaults?.saveOnStart ?? false;
+  const saveAsDefaultInitial = defaults.saveOnStart ?? false;
 
   return (
     <QuizFlow
@@ -48,7 +51,7 @@ export default async function QuizPage() {
         wordCount: o.wordLinkCount,
       }))}
       activeDrills={activeDrills}
-      defaults={defaults === null ? null : { ...defaults, occurrenceId: defaultOccurrenceId }}
+      defaults={{ ...defaults, occurrenceId: defaultOccurrenceId }}
       showCountdown={showCountdown}
       autoplayPronunciation={autoplayPronunciation}
       enableAnswerSound={enableAnswerSound}

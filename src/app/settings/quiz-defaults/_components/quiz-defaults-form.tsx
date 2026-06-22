@@ -36,8 +36,11 @@ export type OccurrenceOption = {
 
 type Props = {
   occurrences: OccurrenceOption[];
-  /** 保存済みデフォルト（未保存なら null）。 */
-  defaults: QuizDefaults | null;
+  /**
+   * フォームの初期値。未保存ユーザーには page.tsx が推奨デフォルト（DEFAULT_QUIZ_SETTINGS）を
+   * 解決して渡すため常に非 null（各フィールドは未設定として null を取り得る）。
+   */
+  defaults: QuizDefaults;
 };
 
 /** 空欄は null（制限なし）。0 以下・非整数はサーバー側 zod が invalid として弾く。 */
@@ -51,13 +54,13 @@ function parseRangeValue(text: string): number | null {
 /** 形式 1 つ分の制限時間入力状態（チェック ON/OFF と秒数テキスト）。 */
 type TimeoutFieldState = { enabled: boolean; text: string };
 
-/** 保存済み timeoutByFormat（全形式キー）からフォーム状態を組み立てる。 */
+/** timeoutByFormat（全形式キー）からフォーム状態を組み立てる。 */
 function initTimeoutState(
-  timeoutByFormat: Record<QuizFormat, number | null> | undefined,
+  timeoutByFormat: Record<QuizFormat, number | null>,
 ): Record<QuizFormat, TimeoutFieldState> {
   return Object.fromEntries(
     ALL_QUIZ_FORMATS.map((f) => {
-      const seconds = timeoutByFormat?.[f] ?? null;
+      const seconds = timeoutByFormat[f] ?? null;
       return [f, { enabled: seconds !== null, text: seconds?.toString() ?? "" }];
     }),
   ) as Record<QuizFormat, TimeoutFieldState>;
@@ -71,24 +74,24 @@ function initTimeoutState(
  * 変わるため、開始画面のプレビューが毎回再検証して開始をゲートする。
  */
 export function QuizDefaultsForm({ occurrences, defaults }: Props) {
-  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
-  const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
-  const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
-  const [format, setFormat] = useState<QuizFormat | null>(defaults?.format ?? null);
+  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults.occurrenceId);
+  const [rangeFromText, setRangeFromText] = useState(defaults.rangeFrom?.toString() ?? "");
+  const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
+  const [format, setFormat] = useState<QuizFormat | null>(defaults.format);
   const [timeoutByFormat, setTimeoutByFormat] = useState<Record<QuizFormat, TimeoutFieldState>>(
-    () => initTimeoutState(defaults?.timeoutByFormat),
+    () => initTimeoutState(defaults.timeoutByFormat),
   );
-  const [showCountdown, setShowCountdown] = useState(defaults?.showCountdown ?? false);
+  const [showCountdown, setShowCountdown] = useState(defaults.showCountdown ?? false);
   // 未設定（null）は有効が既定。明示的に false を保存したときだけ OFF にする
   const [autoplayPronunciation, setAutoplayPronunciation] = useState(
-    defaults?.autoplayPronunciation ?? true,
+    defaults.autoplayPronunciation ?? true,
   );
-  const [enableAnswerSound, setEnableAnswerSound] = useState(defaults?.enableAnswerSound ?? true);
+  const [enableAnswerSound, setEnableAnswerSound] = useState(defaults.enableAnswerSound ?? true);
   const [autoplayAnswerAudioJaEn, setAutoplayAnswerAudioJaEn] = useState(
-    defaults?.autoplayAnswerAudioJaEn ?? true,
+    defaults.autoplayAnswerAudioJaEn ?? true,
   );
   // 開始画面トグルの初期 ON/OFF を決めるメタ設定。未設定（null）は OFF。
-  const [saveOnStart, setSaveOnStart] = useState(defaults?.saveOnStart ?? false);
+  const [saveOnStart, setSaveOnStart] = useState(defaults.saveOnStart ?? false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {

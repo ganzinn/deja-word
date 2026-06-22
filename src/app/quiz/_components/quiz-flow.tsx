@@ -38,8 +38,8 @@ import { StartForm, type OccurrenceOption } from "./start-form";
 type Props = {
   occurrences: OccurrenceOption[];
   activeDrills: ActiveDrill[];
-  /** 開始フォームの初期値（デフォルト設定。未保存なら null）。 */
-  defaults: StartFormDefaults | null;
+  /** 開始フォームの初期値。未保存ユーザーには page.tsx が推奨デフォルトを解決して渡す。 */
+  defaults: StartFormDefaults;
   /** カウントダウン演出の表示（設定画面のみで変更。開始フォームには出さない）。 */
   showCountdown: boolean;
   /** 発音の自動再生（設定画面のみで変更）。false で出題時の自動再生を無効化する。 */

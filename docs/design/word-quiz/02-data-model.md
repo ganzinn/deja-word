@@ -167,6 +167,7 @@ model QuizDefaultTimeout {
 - **ユーザーごと 1 行（userId が PK）**。デフォルトは 1 セットで十分なため。複数プリセットの要求が出たら別途検討。
 - **occurrence の onDelete は SetNull**（既存規約の Cascade からの意図的な逸脱）。Occurrence 削除時は掲載箇所だけ未設定へ戻し、range / format のデフォルトは道連れにしない。`OccurrencePresetSetting` は「occurrence に従属する設定」なので Cascade が正しいが、本モデルは「ユーザーの設定の一部が occurrence を参照」する構図で従属関係が逆。
 - **全項目 nullable（部分的なデフォルトを許す）**。SetNull により「format だけ残る」状態が DB 上必ず生じるため、その状態をフォームでも表現・再保存できるように揃える。「出題形式だけいつも四択」のような使い方も自然。
+- **未保存ユーザーの初期表示には推奨デフォルトを使う（2026-06-22 加算）**。レコードを一度も保存していないユーザーは `getQuizDefaultsForUser` が `null` を返す（設定行も `QuizDefaultTimeout` 行も無い状態のみ）。この `null` のときに限り、UI 側（`/quiz`・`/settings/quiz-defaults` の page.tsx）が `DEFAULT_QUIZ_SETTINGS`（`src/lib/quiz/default-settings.ts`）を初期値として反映する。**フォールバックはレコード丸ごと `null` の場合のみ**で、フィールド単位のマージはしない（保存後に明示的に未設定へ戻した状態は非 null で返るため尊重される）。ユーザー作成時の seed は行わない（occurrence preset と異なり作成コストをかけない）。`getQuizDefaultsForUser` 自体の戻り値契約（未保存＝`null`）は変えない。
 
 ### 制限時間（タイムアウト）（2026-06-13 加算改訂。デフォルトの形式別化を後続改訂で追加）
 

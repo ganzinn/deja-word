@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ScreenHeader } from "@/components/screen-header";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
 import { getQuizDefaultsForUser } from "@/lib/quiz-default-settings";
+import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { getCurrentSession } from "@/lib/session";
 
 import { QuizDefaultsForm } from "./_components/quiz-defaults-form";
@@ -16,10 +17,13 @@ export default async function QuizDefaultsPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/sign-in?redirect=/settings/quiz-defaults");
 
-  const [occurrences, defaults] = await Promise.all([
+  const [occurrences, savedDefaults] = await Promise.all([
     listOccurrencesForUser(session.user.id),
     getQuizDefaultsForUser(session.user.id),
   ]);
+  // 未保存（レコードなし）のユーザーには推奨デフォルトを初期表示として反映する。
+  // 保存後に明示的に未設定にした状態は非 null で返るためここでは差し替わらない。
+  const defaults = savedDefaults ?? DEFAULT_QUIZ_SETTINGS;
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">

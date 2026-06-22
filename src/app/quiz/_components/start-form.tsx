@@ -57,14 +57,15 @@ type Props = {
   /** 進行中（未完了）の drill 一覧（page.tsx が server 取得して渡す）。 */
   activeDrills: ActiveDrill[];
   /**
-   * フォームの初期値（デフォルト設定。未保存なら null）。occurrenceId は
+   * フォームの初期値（デフォルト設定）。未保存ユーザーには page.tsx が推奨デフォルトを
+   * 解決して渡すため常に非 null（各フィールドは未設定として null を取り得る）。occurrenceId は
    * page.tsx が occurrences に存在するものだけに絞って渡す。初期 format が
    * プレビューで不成立でも自動解除しない（ユーザー選択と同じ扱い）。
    * showCountdown / autoplayPronunciation / enableAnswerSound / autoplayAnswerAudioJaEn は
    * 初期値ではなく挙動設定のため、ここには渡さない。saveOnStart も初期値ではなく
    * 下のトグルの初期状態（saveAsDefaultInitial）として別に渡す（StartFormDefaults で除外済み）。
    */
-  defaults: StartFormDefaults | null;
+  defaults: StartFormDefaults;
   /** 「この設定をデフォルト設定とする」トグルの初期状態（設定画面のメタ設定 saveOnStart 由来）。 */
   saveAsDefaultInitial: boolean;
   onStart: (input: StartQuizInput) => void;
@@ -105,13 +106,13 @@ export function StartForm({
   onStart,
   onResumeDrill,
 }: Props) {
-  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults?.occurrenceId ?? null);
-  const [rangeFromText, setRangeFromText] = useState(defaults?.rangeFrom?.toString() ?? "");
-  const [rangeToText, setRangeToText] = useState(defaults?.rangeTo?.toString() ?? "");
-  const initialFormat = defaults?.format ?? null;
+  const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults.occurrenceId);
+  const [rangeFromText, setRangeFromText] = useState(defaults.rangeFrom?.toString() ?? "");
+  const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
+  const initialFormat = defaults.format;
   // 初期選択形式があれば、その形式の保存済み制限時間を初期値に（未選択なら制限なし）
   const initialTimeout =
-    initialFormat !== null ? (defaults?.timeoutByFormat[initialFormat] ?? null) : null;
+    initialFormat !== null ? (defaults.timeoutByFormat[initialFormat] ?? null) : null;
   const [format, setFormat] = useState<QuizFormat | null>(initialFormat);
   const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
   const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
@@ -122,7 +123,7 @@ export function StartForm({
   /** 形式を選択し、その形式の保存済み制限時間を制限時間入力へ自動反映する。 */
   function selectFormat(value: QuizFormat) {
     setFormat(value);
-    const saved = defaults?.timeoutByFormat[value] ?? null;
+    const saved = defaults.timeoutByFormat[value] ?? null;
     setTimeoutEnabled(saved !== null);
     setTimeoutText(saved?.toString() ?? "");
   }

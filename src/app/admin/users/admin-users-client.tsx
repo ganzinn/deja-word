@@ -1,9 +1,22 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { changeUserEmail, inviteUser, type InviteUserResult } from "./actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+import { changeUserEmail, deleteUser, inviteUser, type InviteUserResult } from "./actions";
 
 export type AdminUserRow = {
   id: string;
@@ -163,7 +176,7 @@ function UserRow({
 
   return (
     <li className="py-3">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
             {user.email}
@@ -173,8 +186,9 @@ function UserRow({
             {user.emailVerified ? "メール確認済み" : "メール未確認"}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {/* パスワード未設定のユーザーはメール変更不可（サーバー側でも弾く）。 */}
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          {/* パスワード未設定のユーザーはメール変更不可（サーバー側でも弾く）。
+              ボタンが欠けると行間で他ボタンの位置がずれるため、非表示でも同幅の slot を確保する。 */}
           {user.hasPassword ? (
             <button
               type="button"
@@ -189,7 +203,16 @@ function UserRow({
             >
               {editing ? "キャンセル" : "メール変更"}
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              aria-hidden
+              tabIndex={-1}
+              className={`${rowButtonClass} invisible`}
+            >
+              メール変更
+            </button>
+          )}
           <button
             type="button"
             disabled={disabled || isPending}
@@ -198,6 +221,7 @@ function UserRow({
           >
             パスワード設定リンク発行
           </button>
+          <DeleteUserButton userId={user.id} email={user.email} disabled={disabled || isPending} />
         </div>
       </div>
 
@@ -246,6 +270,97 @@ function UserRow({
         </div>
       ) : null}
     </li>
+  );
+}
+
+function DeleteUserButton({
+  userId,
+  email,
+  disabled,
+}: {
+  userId: string;
+  email: string;
+  disabled: boolean;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  // 誤操作防止: 対象ユーザーのメールアドレスと一致したときだけ削除を許可する。
+  const canDelete = confirmEmail.trim() === email;
+
+  function handleConfirm() {
+    if (!canDelete) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteUser({ userId });
+      if (result.ok) {
+        setOpen(false);
+        // page.tsx はサーバーコンポーネントなので再取得すれば一覧から行が消える。
+        router.refresh();
+        return;
+      }
+      setError(result.message);
+    });
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setConfirmEmail("");
+          setError(null);
+        }
+      }}
+    >
+      <AlertDialogTrigger disabled={disabled} className={destructiveRowButtonClass}>
+        削除
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>「{email}」を削除しますか？</AlertDialogTitle>
+          <AlertDialogDescription>
+            この操作は取り消せません。このユーザーが登録した単語・意味・例文・関連語・メモ・テスト履歴など、すべてのデータが削除されます。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor={`delete-confirm-${userId}`}
+            className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            確認のため、削除するユーザーのメールアドレスを入力してください。
+          </label>
+          <input
+            id={`delete-confirm-${userId}`}
+            type="text"
+            autoComplete="off"
+            value={confirmEmail}
+            onChange={(e) => setConfirmEmail(e.target.value)}
+            placeholder={email}
+            className={inputClass}
+          />
+          {error ? (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>キャンセル</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={!canDelete || isPending}
+            onClick={handleConfirm}
+          >
+            {isPending ? "削除中…" : "削除する"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -300,3 +415,6 @@ const inputClass =
 
 const rowButtonClass =
   "shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
+
+const destructiveRowButtonClass =
+  "shrink-0 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950";

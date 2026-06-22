@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { createEmailVerificationToken } from "better-auth/api";
 
+import { deleteUserForAdmin, UserNotFoundError } from "@/lib/admin-user-delete";
 import { auth } from "@/lib/auth";
 import { captureResetToken } from "@/lib/auth-reset-link";
 import { seedOccurrencePresetSettingsForUser } from "@/lib/occurrence-preset-settings";
@@ -24,6 +25,12 @@ export type ChangeUserEmailError = "unauthorized" | "invalid" | "conflict" | "un
 export type ChangeUserEmailResult =
   | { ok: true; email: string; url: string }
   | { ok: false; error: ChangeUserEmailError; message: string };
+
+export type DeleteUserError = "unauthorized" | "invalid" | "unknown";
+
+export type DeleteUserResult =
+  | { ok: true }
+  | { ok: false; error: DeleteUserError; message: string };
 
 // メール変更の検証リンク（change-email-verification トークン）の有効期限。招待リンクと揃えて 24h。
 const EMAIL_CHANGE_TOKEN_EXPIRES_IN = 60 * 60 * 24;
@@ -167,6 +174,32 @@ export async function changeUserEmail(input: {
     return { ok: true, email: newEmail, url };
   } catch (e) {
     console.error("[admin] changeUserEmail failed", e);
+    return {
+      ok: false,
+      error: "unknown",
+      message: "処理に失敗しました。しばらくしてから再度お試しください。",
+    };
+  }
+}
+
+export async function deleteUser(input: { userId: string }): Promise<DeleteUserResult> {
+  const session = await getCurrentSession();
+  if (!session || session.user.id !== SYSTEM_USER_ID) {
+    return { ok: false, error: "unauthorized", message: "権限がありません。" };
+  }
+
+  if (input.userId === SYSTEM_USER_ID) {
+    return { ok: false, error: "invalid", message: "system ユーザーは削除できません。" };
+  }
+
+  try {
+    await deleteUserForAdmin(input.userId);
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof UserNotFoundError) {
+      return { ok: false, error: "invalid", message: "対象のユーザーが見つかりません。" };
+    }
+    console.error("[admin] deleteUser failed", e);
     return {
       ok: false,
       error: "unknown",

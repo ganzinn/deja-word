@@ -116,10 +116,22 @@ export async function changeUserEmail(input: {
   try {
     const target = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: {
+        email: true,
+        accounts: { where: { providerId: "credential" }, select: { id: true } },
+      },
     });
     if (!target) {
       return { ok: false, error: "invalid", message: "対象のユーザーが見つかりません。" };
+    }
+    // パスワード未設定（credential アカウント無し）のユーザーは変更不可。
+    // 変更リンクを踏むだけで未設定のまま自動ログインできてしまうのを防ぐ。
+    if (target.accounts.length === 0) {
+      return {
+        ok: false,
+        error: "invalid",
+        message: "パスワード未設定のユーザーはメールアドレスを変更できません。",
+      };
     }
     if (target.email === newEmail) {
       return { ok: false, error: "invalid", message: "現在のメールアドレスと同じです。" };

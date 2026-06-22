@@ -174,19 +174,22 @@ function UserRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            disabled={disabled || isPending}
-            onClick={() => {
-              setVerifyUrl(null);
-              setError(null);
-              setEditing((v) => !v);
-              setNewEmail("");
-            }}
-            className={rowButtonClass}
-          >
-            {editing ? "キャンセル" : "メール変更"}
-          </button>
+          {/* パスワード未設定のユーザーはメール変更不可（サーバー側でも弾く）。 */}
+          {user.hasPassword ? (
+            <button
+              type="button"
+              disabled={disabled || isPending}
+              onClick={() => {
+                setVerifyUrl(null);
+                setError(null);
+                setEditing((v) => !v);
+                setNewEmail("");
+              }}
+              className={rowButtonClass}
+            >
+              {editing ? "キャンセル" : "メール変更"}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={disabled || isPending}

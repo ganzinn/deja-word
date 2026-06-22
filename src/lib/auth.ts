@@ -35,6 +35,13 @@ export const auth = betterAuth({
     sendResetPassword: async ({ token }) => {
       recordResetToken(token);
     },
+    // 招待 / 設定リンクは入力アドレスへ手動送付される。本人がリンクを踏んでパスワードを設定できた＝
+    // そのアドレスを受信できる証明なので、設定完了時に emailVerified=true にする。
+    onPasswordReset: async ({ user }) => {
+      if (!user.emailVerified) {
+        await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
+      }
+    },
   },
   databaseHooks: {
     user: {

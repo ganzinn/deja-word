@@ -35,7 +35,11 @@ export function QuestionSelfJudgeJaEn({
     >
       <div className="border-border bg-card/50 flex flex-wrap items-center justify-center gap-3 rounded-lg border p-4">
         <span className="text-2xl font-bold tracking-tight break-words">{question.headword}</span>
-        <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+        <AudioPlayButton
+          src={question.pronunciationAudioUrl}
+          label="発音"
+          ttsText={question.headword}
+        />
       </div>
     </SelfJudgePanel>
   );

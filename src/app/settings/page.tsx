@@ -16,6 +16,20 @@ export default async function SettingsPage() {
       <ul className="flex flex-col gap-2 px-4 pt-4">
         <li>
           <Link
+            href="/settings/general"
+            className="border-border bg-card/50 hover:bg-muted/60 flex items-center justify-between gap-2 rounded-lg border p-4 transition-colors"
+          >
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">単語全般</span>
+              <span className="text-muted-foreground text-xs">
+                一覧の表示設定や音声などの全般設定を行います
+              </span>
+            </div>
+            <ChevronRightIcon className="text-muted-foreground size-4" />
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/settings/occurrences"
             className="border-border bg-card/50 hover:bg-muted/60 flex items-center justify-between gap-2 rounded-lg border p-4 transition-colors"
           >

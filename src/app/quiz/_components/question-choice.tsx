@@ -113,7 +113,11 @@ export function QuestionChoice({
               </Button>
               {showAudio ? (
                 <div className="absolute top-1/2 right-2 -translate-y-1/2">
-                  <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+                  <AudioPlayButton
+                    src={question.pronunciationAudioUrl}
+                    label="発音"
+                    ttsText={question.headword}
+                  />
                 </div>
               ) : null}
             </div>

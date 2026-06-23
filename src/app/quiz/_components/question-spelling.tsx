@@ -136,7 +136,11 @@ export function QuestionSpelling({
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground">正解:</span>
             <span className="font-semibold break-words">{question.headword}</span>
-            <AudioPlayButton src={question.pronunciationAudioUrl} label="発音" />
+            <AudioPlayButton
+              src={question.pronunciationAudioUrl}
+              label="発音"
+              ttsText={question.headword}
+            />
           </div>
         ) : null}
 

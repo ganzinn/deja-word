@@ -25,7 +25,7 @@ export function WordDetailView({ word }: { word: WordDetail }) {
         <Section title="意味">
           <div className="flex flex-col gap-3">
             {word.meanings.map((m, i) => (
-              <MeaningCard key={m.id} meaning={m} isFirst={i === 0} />
+              <MeaningCard key={m.id} meaning={m} headword={word.headword} isFirst={i === 0} />
             ))}
           </div>
         </Section>
@@ -94,9 +94,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MeaningCard({
   meaning,
+  headword,
   isFirst,
 }: {
   meaning: WordDetail["meanings"][number];
+  headword: string;
   isFirst: boolean;
 }) {
   const partOfSpeech = nonEmpty(meaning.partOfSpeech);
@@ -114,7 +116,7 @@ function MeaningCard({
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
           ) : null}
-          <AudioPlayButton src={pronunciationAudioUrl} label="発音" />
+          <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={headword} />
         </div>
       ) : null}
       {meaning.texts.length === 1 ? (
@@ -168,7 +170,7 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
           {pronunciation ? (
             <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
           ) : null}
-          <AudioPlayButton src={pronunciationAudioUrl} label="発音" />
+          <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={related.term} />
         </div>
       ) : null}
       {related.linkedWord ? (

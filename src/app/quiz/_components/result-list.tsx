@@ -136,7 +136,11 @@ export function ResultList({
                   ) : null}
                   {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
                   {row.prompt === null ? (
-                    <RowAudioButton src={row.pronunciationAudioUrl} label="発音" />
+                    <RowAudioButton
+                      src={row.pronunciationAudioUrl}
+                      label="発音"
+                      ttsText={row.headword}
+                    />
                   ) : null}
                 </div>
               </div>
@@ -148,7 +152,11 @@ export function ResultList({
                 {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
                 {row.prompt !== null ? (
                   <div className="ml-auto shrink-0">
-                    <RowAudioButton src={row.pronunciationAudioUrl} label="発音" />
+                    <RowAudioButton
+                      src={row.pronunciationAudioUrl}
+                      label="発音"
+                      ttsText={row.headword}
+                    />
                   </div>
                 ) : null}
               </div>

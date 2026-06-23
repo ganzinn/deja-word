@@ -52,6 +52,11 @@ export function GeneralSettingsForm({ ttsFallbackEnabled }: Props) {
           表示されます（発音音源が登録されている場合は常にそちらを再生します）。音声の品質や声は
           端末・ブラウザによって異なり、未対応の端末では表示されません。
         </p>
+        <p className="text-muted-foreground text-xs">
+          自動音声の再生には、端末側の音声合成（テキスト読み上げ）機能と英語の音声データが必要です。
+          再生ボタンを押しても音が出ない場合は、端末の「設定 → システム → 言語と入力 → 音声合成」
+          などで、読み上げエンジンと英語の音声データが有効になっているかご確認ください。
+        </p>
       </section>
 
       <div className="flex flex-col gap-2">

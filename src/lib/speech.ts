@@ -13,6 +13,11 @@ type SpeakHandlers = {
   onStart?: () => void;
   /** 終了・中断・エラーのいずれでも 1 回呼ばれる（再生中フラグの解除用）。 */
   onEnd?: () => void;
+  /**
+   * 合成失敗時に呼ばれる（端末に音声データが無い等。引数は SpeechSynthesisErrorEvent.error）。
+   * 意図的な中断（cancel 由来の "canceled" / "interrupted"）では呼ばない。
+   */
+  onError?: (error: string) => void;
 };
 
 /**
@@ -27,11 +32,14 @@ export function speakEnglish(text: string, handlers?: SpeakHandlers): void {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "en-US";
   if (handlers?.onStart) utterance.onstart = handlers.onStart;
-  if (handlers?.onEnd) {
-    const end = handlers.onEnd;
-    utterance.onend = () => end();
-    utterance.onerror = () => end();
-  }
+  utterance.onend = () => handlers?.onEnd?.();
+  utterance.onerror = (event) => {
+    // cancel() による中断（"canceled" / "interrupted"）は失敗扱いしない
+    if (event.error !== "canceled" && event.error !== "interrupted") {
+      handlers?.onError?.(event.error);
+    }
+    handlers?.onEnd?.();
+  };
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }

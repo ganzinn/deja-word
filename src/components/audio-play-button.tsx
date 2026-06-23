@@ -2,6 +2,7 @@
 
 import { PauseIcon, PlayIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,19 @@ import { cancelSpeech, isSpeechSupported, speakEnglish } from "@/lib/speech";
 const subscribeNoop = () => () => {};
 const getSpeechSupported = () => isSpeechSupported();
 const getSpeechSupportedServer = () => false;
+
+// 自動音声が端末側で失敗したとき（端末に英語音声が無い等）に、セッション中 1 回だけ案内する。
+// API 上は対応（speechSynthesis あり）でも実際の合成に失敗する端末があるため、無反応で
+// 壊れて見えるのを防ぐ。
+let ttsFailureNotified = false;
+function notifyTtsFailure() {
+  if (ttsFailureNotified) return;
+  ttsFailureNotified = true;
+  toast.error(
+    "お使いの端末で自動音声を再生できませんでした。端末の音声合成（テキスト読み上げ）の設定をご確認ください。",
+    { duration: 6000 },
+  );
+}
 
 type AudioPlayButtonProps = {
   src: string | null | undefined;
@@ -103,6 +117,7 @@ export function AudioPlayButton({
     speakEnglish(ttsText_, {
       onStart: () => setPlaying(true),
       onEnd: () => setPlaying(false),
+      onError: () => notifyTtsFailure(),
     });
   }
 

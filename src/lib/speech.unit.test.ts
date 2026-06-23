@@ -66,16 +66,39 @@ describe("speakEnglish", () => {
     expect(utterance.lang).toBe("en-US");
   });
 
-  it("wires onEnd to both onend and onerror of the utterance", () => {
+  it("calls onEnd on normal end", () => {
     const { speak } = installSpeechMock();
     const onEnd = vi.fn();
     speakEnglish("hi", { onEnd });
-    const utterance = speak.mock.calls[0][0] as {
-      onend: () => void;
-      onerror: () => void;
-    };
+    const utterance = speak.mock.calls[0][0] as { onend: () => void };
     utterance.onend();
-    utterance.onerror();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onError (with the code) and onEnd on a synthesis failure", () => {
+    const { speak } = installSpeechMock();
+    const onEnd = vi.fn();
+    const onError = vi.fn();
+    speakEnglish("hi", { onEnd, onError });
+    const utterance = speak.mock.calls[0][0] as {
+      onerror: (event: { error: string }) => void;
+    };
+    utterance.onerror({ error: "synthesis-failed" });
+    expect(onError).toHaveBeenCalledWith("synthesis-failed");
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call onError for intentional cancel/interrupt, but still calls onEnd", () => {
+    const { speak } = installSpeechMock();
+    const onEnd = vi.fn();
+    const onError = vi.fn();
+    speakEnglish("hi", { onEnd, onError });
+    const utterance = speak.mock.calls[0][0] as {
+      onerror: (event: { error: string }) => void;
+    };
+    utterance.onerror({ error: "canceled" });
+    utterance.onerror({ error: "interrupted" });
+    expect(onError).not.toHaveBeenCalled();
     expect(onEnd).toHaveBeenCalledTimes(2);
   });
 });

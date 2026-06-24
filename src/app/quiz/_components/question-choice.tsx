@@ -100,7 +100,7 @@ export function QuestionChoice({
                 disabled={answered !== null}
                 onClick={() => handleSelect(index)}
                 className={cn(
-                  "h-auto min-h-9 w-full justify-start py-2 text-left whitespace-normal",
+                  "h-auto min-h-16 w-full justify-start py-4 text-left whitespace-normal",
                   isCorrect &&
                     "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
                   isWrongSelected &&
@@ -128,13 +128,18 @@ export function QuestionChoice({
       {answered === null ? (
         <Button
           variant="ghost"
-          className="text-muted-foreground"
+          className="text-muted-foreground h-auto min-h-14 py-4"
           onClick={() => handleSelect(null)}
         >
           わからない
         </Button>
       ) : (
-        <Button size="lg" disabled={completed} onClick={handleNext}>
+        <Button
+          size="lg"
+          className="h-auto min-h-14 py-4"
+          disabled={completed}
+          onClick={handleNext}
+        >
           次へ
         </Button>
       )}

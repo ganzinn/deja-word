@@ -91,4 +91,6 @@ pnpm dotenv -e .env.production.local -- pnpm db:import-related-words "ターゲ�
 pnpm dotenv -e .env.production.local -- pnpm db:import-related-words "ターゲット1900" tmp/target1900.related.csv --execute
 ```
 
-実登録前に **Neon のブランチ / PITR** でスナップショットを取っておくと安全。
+`<location>` は**単語登録時と同じ掲載箇所名**（例: `英単語ターゲット1900(6訂版)`）。省略不可で、間違えると `word_not_found` で全行スキップになる。実登録前に **Neon のブランチ / PITR** でスナップショットを取っておくと安全。
+
+本番は往復遅延で時間がかかる（単語ほどではないが数分見ておく）。プロンプトが返らなくても正常。**進捗確認（別ターミナルの psql で件数監視）・中断時の注意**は [`import-words`](./import-words.md) の「本番実行時の所要時間・進捗確認・中断時の注意」と同じ要領（`related_word` の件数を数える）。関連語は重複排除しないため、中断後の単純な再実行は**重複登録**になる点に注意（やり直すなら掲載箇所ごと [`db:purge-occurrence`](./purge-occurrence.md) で掃除してから単語・関連語を入れ直す）。

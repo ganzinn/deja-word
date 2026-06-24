@@ -138,3 +138,26 @@ pnpm dotenv -e .env.production.local -- pnpm db:import-words "ターゲット190
 ```
 
 `pnpm dotenv -e ...` が先に本番 env を `process.env` に載せ、スクリプト内の `import "dotenv/config"`（`.env` 読み込み）は既存値を上書きしないため、ローカル `.env` と混ざらない。実登録前に **Neon のブランチ / PITR** でスナップショットを取っておくと安全。
+
+### 本番実行時の所要時間・進捗確認・中断時の注意
+
+本番 Neon はリージョンによってローカルマシンからの往復遅延が大きい（実測例: `ap-southeast-1` へ日本から 1 往復 ≈ 80ms。ローカル docker DB は ≈ 0.5ms）。単語登録は **1 単語ずつ逐次 create**（`bulk-word-import.ts` のループ。各 create は word → meaning → meaning_text → word_occurrence のネストで内部的に複数文 = **1 単語あたり 5〜6 往復**）のため、1900 語で **十数分**かかり、その間プロンプトは返らない。**これは正常**で、安易に中断しないこと。
+
+進捗・状態は**別ターミナル**から確認する。ホストに psql を入れなくても、稼働中の docker `deja-word-db` の psql で本番に接続できる:
+
+```sh
+URL="$(grep -E '^DATABASE_URL_UNPOOLED=' .env.production.local | cut -d= -f2- | tr -d '"')"
+
+# (a) いま DB が何をしているか（active=処理中 / wait_event_type=Lock=ロック待ち / idle in transaction=クライアント待ち＝正常）
+docker exec -i deja-word-db psql "$URL" -c \
+  "select pid, state, wait_event_type, now()-query_start as since_q, left(query,60) q
+     from pg_stat_activity where state <> 'idle' and query not ilike '%pg_stat_activity%';"
+
+# (b) 実際の進捗（単語は 1 件ずつコミットされるので別接続から件数が増えていくのが見える。掲載箇所名は実際に使った正確な名前を指定）
+docker exec -i deja-word-db psql "$URL" -c \
+  "select count(*) from word_occurrence wo join occurrence o on o.id=wo.occurrence_id where o.location='英単語ターゲット1900(6訂版)';"
+```
+
+> ⚠️ **単語ループは 1 件ずつコミット（インポート全体は非原子的）**。掲載箇所は先に別トランザクションで作成・コミットされ、その後の単語ループも 1 件ずつコミットされる。途中で **Ctrl+C すると掲載箇所＋作成済みの単語が残る**（全ロールバックではない）。再実行は掲載箇所名の衝突で中止になるため、やり直すときは先に [`db:purge-occurrence`](./purge-occurrence.md) でその掲載箇所を掃除してから入れ直す。
+
+> 💡 出力をログに残すと後追いしやすい: `... --execute 2>&1 | tee tmp/import.log`

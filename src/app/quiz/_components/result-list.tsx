@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   CircleCheckIcon,
   CircleHelpIcon,
@@ -81,10 +83,13 @@ export function ResultList({
   onOpenDialog,
   onCloseDialog,
 }: Props) {
+  const [wrongOnly, setWrongOnly] = useState(false);
   const total = rows.length;
   const correctCount = rows.filter((r) => r.result === "CORRECT").length;
   const wrongCount = total - correctCount;
   const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
+  // 表示専用フィルタ。集計（correctCount 等）は全行ベースのまま、一覧だけを誤答（CORRECT 以外）に絞る。
+  const visibleRows = wrongOnly ? rows.filter((r) => r.result !== "CORRECT") : rows;
   // 誤答のみ（トグル OFF）かつ全問正解だと定着対象が 0 件になるため開始を抑止する。
   const noDrillWords = !drillIncludeCorrect && wrongCount === 0;
   const skippedWordIds =
@@ -120,83 +125,103 @@ export function ResultList({
         <span className="text-muted-foreground ml-2 text-sm font-normal">（正答率 {rate}%）</span>
       </p>
 
-      <ul className="flex flex-col gap-2">
-        {rows.map((row) => (
-          <li key={row.wordId}>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => onOpenDialog(row.wordId)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onOpenDialog(row.wordId);
-                }
-              }}
-              className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
-            >
-              <div className="flex w-full flex-wrap items-center gap-2">
-                <ResultIcon result={row.result} />
-                <span className="text-sm font-semibold break-words whitespace-pre-wrap">
-                  {row.prompt ?? row.headword}
-                </span>
-                <div className="ml-auto flex items-center gap-2">
-                  {skippedWordIds?.has(row.wordId) ? (
-                    <Badge variant="secondary">削除済み</Badge>
-                  ) : null}
-                  {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
-                  {row.prompt === null ? (
-                    <RowAudioButton
-                      src={row.pronunciationAudioUrl}
-                      label="発音"
-                      ttsText={row.headword}
-                    />
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex w-full items-start gap-2">
-                <p className="text-sm whitespace-pre-wrap">
-                  <span className="text-muted-foreground">正解: </span>
-                  <span className="font-semibold">{row.correctDisplay}</span>
-                </p>
-                {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
-                {row.prompt !== null ? (
-                  <div className="ml-auto shrink-0">
-                    <RowAudioButton
-                      src={row.pronunciationAudioUrl}
-                      label="発音"
-                      ttsText={row.headword}
-                    />
+      {total > 0 ? (
+        <Label
+          htmlFor="result-wrong-only"
+          className="text-muted-foreground flex cursor-pointer items-center gap-2 text-sm font-normal"
+        >
+          <Checkbox
+            id="result-wrong-only"
+            checked={wrongOnly}
+            onCheckedChange={(checked) => setWrongOnly(checked === true)}
+          />
+          間違えた問題だけ表示
+        </Label>
+      ) : null}
+
+      {wrongOnly && visibleRows.length === 0 ? (
+        <p className="text-muted-foreground text-sm" role="status">
+          間違えた問題はありません。
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {visibleRows.map((row) => (
+            <li key={row.wordId}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenDialog(row.wordId)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenDialog(row.wordId);
+                  }
+                }}
+                className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
+              >
+                <div className="flex w-full flex-wrap items-center gap-2">
+                  <ResultIcon result={row.result} />
+                  <span className="text-sm font-semibold break-words whitespace-pre-wrap">
+                    {row.prompt ?? row.headword}
+                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    {skippedWordIds?.has(row.wordId) ? (
+                      <Badge variant="secondary">削除済み</Badge>
+                    ) : null}
+                    {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
+                    {row.prompt === null ? (
+                      <RowAudioButton
+                        src={row.pronunciationAudioUrl}
+                        label="発音"
+                        ttsText={row.headword}
+                      />
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              {row.answerDisplay !== null ||
-              row.result === "GAVE_UP" ||
-              row.result === "TIMEOUT" ||
-              remainingByWordId !== null ? (
+                </div>
                 <div className="flex w-full items-start gap-2">
-                  {row.answerDisplay !== null ? (
-                    <p className="text-sm whitespace-pre-wrap">
-                      <span className="text-muted-foreground">自分の回答: </span>
-                      {row.answerDisplay}
-                    </p>
-                  ) : row.result === "GAVE_UP" ? (
-                    <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
-                  ) : row.result === "TIMEOUT" ? (
-                    <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
-                  ) : null}
-                  {/* 定着モードの残数バッジ（あと◯回 / 定着 / 削除済み）。自分の回答の右端に置く。 */}
-                  {remainingByWordId !== null ? (
+                  <p className="text-sm whitespace-pre-wrap">
+                    <span className="text-muted-foreground">正解: </span>
+                    <span className="font-semibold">{row.correctDisplay}</span>
+                  </p>
+                  {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
+                  {row.prompt !== null ? (
                     <div className="ml-auto shrink-0">
-                      <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                      <RowAudioButton
+                        src={row.pronunciationAudioUrl}
+                        label="発音"
+                        ttsText={row.headword}
+                      />
                     </div>
                   ) : null}
                 </div>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
+                {row.answerDisplay !== null ||
+                row.result === "GAVE_UP" ||
+                row.result === "TIMEOUT" ||
+                remainingByWordId !== null ? (
+                  <div className="flex w-full items-start gap-2">
+                    {row.answerDisplay !== null ? (
+                      <p className="text-sm whitespace-pre-wrap">
+                        <span className="text-muted-foreground">自分の回答: </span>
+                        {row.answerDisplay}
+                      </p>
+                    ) : row.result === "GAVE_UP" ? (
+                      <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
+                    ) : row.result === "TIMEOUT" ? (
+                      <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
+                    ) : null}
+                    {/* 定着モードの残数バッジ（あと◯回 / 定着 / 削除済み）。自分の回答の右端に置く。 */}
+                    {remainingByWordId !== null ? (
+                      <div className="ml-auto shrink-0">
+                        <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="flex flex-col gap-2 pt-2">
         {mode === "TEST" ? (

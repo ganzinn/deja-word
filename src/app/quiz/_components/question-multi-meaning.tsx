@@ -129,15 +129,29 @@ export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete, onR
 
       {answered === null ? (
         <div className="flex flex-col gap-2">
-          <Button size="lg" disabled={selected.size === 0} onClick={handleSubmit}>
+          <Button
+            size="lg"
+            className="h-auto min-h-14 py-4"
+            disabled={selected.size === 0}
+            onClick={handleSubmit}
+          >
             回答する
           </Button>
-          <Button variant="ghost" className="text-muted-foreground" onClick={handleGiveUp}>
+          <Button
+            variant="ghost"
+            className="text-muted-foreground h-auto min-h-14 py-4"
+            onClick={handleGiveUp}
+          >
             わからない
           </Button>
         </div>
       ) : (
-        <Button size="lg" disabled={completed} onClick={handleNext}>
+        <Button
+          size="lg"
+          className="h-auto min-h-14 py-4"
+          disabled={completed}
+          onClick={handleNext}
+        >
           次へ
         </Button>
       )}

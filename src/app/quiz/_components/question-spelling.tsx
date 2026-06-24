@@ -121,6 +121,7 @@ export function QuestionSpelling({
           disabled={answered !== null}
           onChange={(e) => setInput(e.target.value)}
           className={cn(
+            "h-14",
             answered !== null &&
               correct &&
               "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
@@ -146,13 +147,18 @@ export function QuestionSpelling({
 
         {answered === null ? (
           <div className="flex flex-col gap-2">
-            <Button type="submit" size="lg" disabled={input.trim().length === 0}>
+            <Button
+              type="submit"
+              size="lg"
+              className="h-auto min-h-14 py-4"
+              disabled={input.trim().length === 0}
+            >
               回答する
             </Button>
             <Button
               type="button"
               variant="ghost"
-              className="text-muted-foreground"
+              className="text-muted-foreground h-auto min-h-14 py-4"
               onClick={handleGiveUp}
             >
               わからない
@@ -163,6 +169,7 @@ export function QuestionSpelling({
             ref={nextButtonRef}
             type="button"
             size="lg"
+            className="h-auto min-h-14 py-4"
             disabled={completed}
             onClick={handleNext}
           >

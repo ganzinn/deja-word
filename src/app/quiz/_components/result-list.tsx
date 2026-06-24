@@ -192,10 +192,20 @@ export function ResultList({
         {mode === "TEST" ? (
           <>
             {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効 */}
-            <Button size="lg" disabled={submitState.status !== "success"} onClick={onStartDrill}>
+            <Button
+              size="lg"
+              className="h-auto min-h-14 py-4"
+              disabled={submitState.status !== "success"}
+              onClick={onStartDrill}
+            >
               定着モードをはじめる
             </Button>
-            <Button size="lg" variant="outline" onClick={onBackToStart}>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              onClick={onBackToStart}
+            >
               開始画面に戻る
             </Button>
           </>
@@ -211,13 +221,19 @@ export function ResultList({
               // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
               <Button
                 size="lg"
+                className="h-auto min-h-14 py-4"
                 disabled={submitState.status !== "drill-success"}
                 onClick={onNextRound}
               >
                 次のラウンドへ
               </Button>
             )}
-            <Button size="lg" variant="outline" onClick={onBackToStart}>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              onClick={onBackToStart}
+            >
               終了
             </Button>
           </>

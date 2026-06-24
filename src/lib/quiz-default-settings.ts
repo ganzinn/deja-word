@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { ALL_QUIZ_FORMATS } from "@/lib/quiz/format-options";
 import { scopedOwnerIds } from "@/lib/system-user";
 import type { QuizFormat } from "@/generated/prisma/enums";
@@ -161,6 +162,12 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
  * （choiceFirstMeaningTextOnly）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
  * カウントダウン/発音/効果音などの挙動設定・saveOnStart 自体は既存値を保持する
  * （upsert の update に開始画面の項目しか渡さないため温存される）。
+ *
+ * 例外として「初回保存」（QuizDefaultSetting も QuizDefaultTimeout も未存在）のときだけは、
+ * 選択中形式に加えて推奨デフォルト（DEFAULT_QUIZ_SETTINGS.timeoutByFormat）の全形式 timeout も
+ * 確立する。未保存時の開始画面は推奨デフォルトを「全形式に制限時間が入っている」状態で表示する
+ * が、選択中 1 形式だけ書くと残りが「行なし = 制限なし」に化け、再訪問時に未選択形式の制限時間が
+ * 消えて見える。初回のみ全形式を確立し、画面表示と保存後の再構築状態を一致させる。
  */
 export async function saveStartSettingsAsDefaultsForUser(
   userId: string,
@@ -177,13 +184,33 @@ export async function saveStartSettingsAsDefaultsForUser(
     choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
   };
 
+  // 初回保存（設定行・timeout 行ともゼロ）の判定。getQuizDefaultsForUser が null を返す状態。
+  const [existingSetting, existingTimeoutCount] = await Promise.all([
+    prisma.quizDefaultSetting.findUnique({ where: { userId }, select: { userId: true } }),
+    prisma.quizDefaultTimeout.count({ where: { userId } }),
+  ]);
+  const isFirstSave = !existingSetting && existingTimeoutCount === 0;
+
+  // 通常は選択中形式の 1 行だけ同期（他形式の行には触れない）。初回のみ推奨デフォルトで全形式を
+  // 確立し、選択中形式だけ開始画面の入力値で上書きする。null = 行削除（= 制限なし）。
+  const timeoutOps = isFirstSave
+    ? ALL_QUIZ_FORMATS.map((format) =>
+        syncTimeout(
+          userId,
+          format,
+          format === input.format
+            ? input.timeoutSeconds
+            : DEFAULT_QUIZ_SETTINGS.timeoutByFormat[format],
+        ),
+      )
+    : [syncTimeout(userId, input.format, input.timeoutSeconds)];
+
   await prisma.$transaction([
     prisma.quizDefaultSetting.upsert({
       where: { userId },
       create: { userId, ...settingInput },
       update: settingInput,
     }),
-    // 制限時間は選択中形式の 1 行だけ同期（null = 行削除 = 制限なし）。他形式の行には触れない。
-    syncTimeout(userId, input.format, input.timeoutSeconds),
+    ...timeoutOps,
   ]);
 }

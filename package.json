@@ -18,6 +18,7 @@
     "db:set-system-password": "tsx scripts/set-system-password.ts",
     "db:purge-occurrence": "tsx scripts/purge-occurrence.ts",
     "db:purge-blobs": "tsx scripts/purge-blobs.ts",
+    "db:reset-prod": "tsx scripts/reset-prod-db.ts",
     "db:import-words": "tsx scripts/import-words.ts",
     "db:import-related-words": "tsx scripts/import-related-words.ts",
     "test": "dotenv -e .env.test -- vitest run",

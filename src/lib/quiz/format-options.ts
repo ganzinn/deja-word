@@ -51,6 +51,14 @@ export function isJaToEnFormat(format: QuizFormat): boolean {
   return JA_TO_EN_FORMATS.has(format);
 }
 
+/** 自己判定（解答を見て本人が正誤を申告する）の出題形式。 */
+const SELF_JUDGE_FORMATS = new Set<QuizFormat>(["SELF_JUDGE", "SELF_JUDGE_JA_EN"]);
+
+/** 自己判定の出題形式か（本人が正誤を申告するため正誤フラッシュ・効果音を出さない）。 */
+export function isSelfJudgeFormat(format: QuizFormat): boolean {
+  return SELF_JUDGE_FORMATS.has(format);
+}
+
 /**
  * 出題形式を単一の表示用ラベルに変換する（例「英語→日本語・四択」）。
  * `label` だけだとカテゴリ間で重複する（「四択」など）ため、向き（category）を併記する。

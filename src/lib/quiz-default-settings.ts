@@ -23,6 +23,8 @@ export type QuizDefaults = {
   autoplayAnswerAudioJaEn: boolean | null;
   /** 四択（英→日）の選択肢で先頭の訳語のみ表示する。null = ON（デフォルト＝先頭の訳語のみ）。OFF（false）で全訳語を「; 」連結。 */
   choiceFirstMeaningTextOnly: boolean | null;
+  /** 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題。 */
+  drillIncludeCorrect: boolean | null;
   /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）。 */
   saveOnStart: boolean | null;
 };
@@ -39,6 +41,7 @@ export type StartFormDefaults = Omit<
   | "autoplayPronunciation"
   | "enableAnswerSound"
   | "autoplayAnswerAudioJaEn"
+  | "drillIncludeCorrect"
   | "saveOnStart"
 >;
 
@@ -112,6 +115,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
       choiceFirstMeaningTextOnly: null,
+      drillIncludeCorrect: null,
       saveOnStart: null,
     };
   }
@@ -129,6 +133,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     enableAnswerSound: setting.enableAnswerSound,
     autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
     choiceFirstMeaningTextOnly: setting.choiceFirstMeaningTextOnly,
+    drillIncludeCorrect: setting.drillIncludeCorrect,
     saveOnStart: setting.saveOnStart,
   };
 }

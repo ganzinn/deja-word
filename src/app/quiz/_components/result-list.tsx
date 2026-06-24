@@ -11,6 +11,8 @@ import {
 import { RowAudioButton } from "@/components/row-audio-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
 import { WordDetailDialog } from "./word-detail-dialog";
@@ -56,6 +58,9 @@ type Props = {
   onStartDrill: () => void;
   /** DRILL: 「次のラウンドへ」。ラウンド送信成功後のみ有効。 */
   onNextRound: () => void;
+  /** TEST: 「正解した問題も定着モードで出題する」トグルの状態（false = 誤答のみ）。 */
+  drillIncludeCorrect: boolean;
+  onDrillIncludeCorrectChange: (value: boolean) => void;
   /** 単語詳細ダイアログの状態は親（QuizFlow）が持ち、back ガードの最上段の層として一元管理する。 */
   dialogWordId: string | null;
   onOpenDialog: (wordId: string) => void;
@@ -70,13 +75,18 @@ export function ResultList({
   onBackToStart,
   onStartDrill,
   onNextRound,
+  drillIncludeCorrect,
+  onDrillIncludeCorrectChange,
   dialogWordId,
   onOpenDialog,
   onCloseDialog,
 }: Props) {
   const total = rows.length;
   const correctCount = rows.filter((r) => r.result === "CORRECT").length;
+  const wrongCount = total - correctCount;
   const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
+  // 誤答のみ（トグル OFF）かつ全問正解だと定着対象が 0 件になるため開始を抑止する。
+  const noDrillWords = !drillIncludeCorrect && wrongCount === 0;
   const skippedWordIds =
     submitState.status === "success" ? new Set(submitState.skippedWordIds) : null;
   // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）
@@ -191,11 +201,30 @@ export function ResultList({
       <div className="flex flex-col gap-2 pt-2">
         {mode === "TEST" ? (
           <>
+            {/* 定着モードの対象を「正解も含める / 誤答のみ」で切り替える（既定は誤答のみ）。
+                テスト直後の最初の結果画面だけに出す項目（DRILL ラウンド結果には出さない）。
+                大きなボタン群に並ぶため、カード全体をタップ領域にして存在感を揃える。 */}
+            <Label
+              htmlFor="result-drill-include-correct"
+              className="border-border bg-card/50 hover:bg-muted/60 flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3 font-normal transition-colors"
+            >
+              <Checkbox
+                id="result-drill-include-correct"
+                checked={drillIncludeCorrect}
+                onCheckedChange={(checked) => onDrillIncludeCorrectChange(checked === true)}
+              />
+              正解した問題も定着モードで出題する
+            </Label>
+            {noDrillWords ? (
+              <p className="text-muted-foreground text-sm" role="status">
+                全問正解のため、定着させる単語はありません。
+              </p>
+            ) : null}
             {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効 */}
             <Button
               size="lg"
               className="h-auto min-h-14 py-4"
-              disabled={submitState.status !== "success"}
+              disabled={submitState.status !== "success" || noDrillWords}
               onClick={onStartDrill}
             >
               定着モードをはじめる

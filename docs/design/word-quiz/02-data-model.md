@@ -98,7 +98,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int      // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
+  remaining Int      // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1（正答は「正解も出題する」ON 時のみ投入。06 決定 9）
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

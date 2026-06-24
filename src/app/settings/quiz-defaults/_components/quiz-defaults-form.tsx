@@ -94,6 +94,10 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
     defaults.choiceFirstMeaningTextOnly ?? true,
   );
+  // 定着モードに正答単語も含めるか（テスト結果画面トグルの初期値）。未設定（null）は OFF（誤答のみ）。
+  const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(
+    defaults.drillIncludeCorrect ?? false,
+  );
   // 開始画面トグルの初期 ON/OFF を決めるメタ設定。未設定（null）は OFF。
   const [saveOnStart, setSaveOnStart] = useState(defaults.saveOnStart ?? false);
   const [isPending, startTransition] = useTransition();
@@ -117,6 +121,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         enableAnswerSound,
         autoplayAnswerAudioJaEn,
         choiceFirstMeaningTextOnly,
+        drillIncludeCorrect,
         saveOnStart,
       });
       if (result.ok) {
@@ -140,6 +145,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
     setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
     setChoiceFirstMeaningTextOnly(DEFAULT_QUIZ_SETTINGS.choiceFirstMeaningTextOnly ?? true);
+    setDrillIncludeCorrect(DEFAULT_QUIZ_SETTINGS.drillIncludeCorrect ?? false);
     setSaveOnStart(DEFAULT_QUIZ_SETTINGS.saveOnStart ?? false);
     toast.success("デフォルト設定に戻しました（「保存」で確定します）");
   }
@@ -308,6 +314,21 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           オンにすると、複数の訳語を「; 」で連結せず、先頭の訳語だけを選択肢に表示します（四択
           英語→日本語のみ）。
         </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>定着モードの出題対象</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-drill-include-correct"
+            checked={drillIncludeCorrect}
+            onCheckedChange={(checked) => setDrillIncludeCorrect(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-drill-include-correct" className="font-normal">
+            正解した問題も定着モードで出題する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">テスト結果画面のトグルの初期値です。</p>
       </section>
 
       <section className="flex flex-col gap-2">

@@ -85,6 +85,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   enableAnswerSound: z.boolean().nullable(),
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
   choiceFirstMeaningTextOnly: z.boolean().nullable(),
+  drillIncludeCorrect: z.boolean().nullable(),
   saveOnStart: z.boolean().nullable(),
 });
 
@@ -106,6 +107,8 @@ export const startDrillInputSchema = z.object({
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   choiceFirstMeaningTextOnly: z.boolean(),
+  // テスト結果画面で解決済みのトグル値。false（既定）= 誤答のみ、true = 正答も出題。
+  drillIncludeCorrect: z.boolean(),
   results: z.array(drillResultInputSchema).min(1),
 });
 

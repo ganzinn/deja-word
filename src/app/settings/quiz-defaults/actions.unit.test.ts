@@ -48,6 +48,7 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   enableAnswerSound: true,
   autoplayAnswerAudioJaEn: true,
   choiceFirstMeaningTextOnly: null,
+  drillIncludeCorrect: false,
   saveOnStart: true,
 };
 
@@ -124,6 +125,7 @@ describe("saveQuizDefaults (Server Action)", () => {
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
       choiceFirstMeaningTextOnly: null,
+      drillIncludeCorrect: null,
       saveOnStart: null,
     };
     const res = await saveQuizDefaults(input);

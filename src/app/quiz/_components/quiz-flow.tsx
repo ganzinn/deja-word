@@ -52,6 +52,8 @@ type Props = {
   autoplayAnswerAudioJaEn: boolean;
   /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態（設定画面のメタ設定由来）。 */
   saveAsDefaultInitial: boolean;
+  /** テスト結果画面「正解した問題も定着モードで出題する」トグルの初期状態（設定画面由来）。false = 誤答のみ。 */
+  drillIncludeCorrectInitial: boolean;
 };
 
 /** クライアント状態機械: start → countdown → play → result（URL 遷移しない）。 */
@@ -240,6 +242,7 @@ export function QuizFlow({
   enableAnswerSound,
   autoplayAnswerAudioJaEn,
   saveAsDefaultInitial,
+  drillIncludeCorrectInitial,
 }: Props) {
   const router = useRouter();
   // 発音音源が無いとき自動音声で代用する設定（出題時／解答表示時の自動再生に使う）
@@ -253,6 +256,8 @@ export function QuizFlow({
   const [submitState, setSubmitState] = useState<SubmitState | null>(null);
   // テスト開始時の入力（drill 生成の occurrenceId に使う）
   const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
+  // テスト結果画面「正解した問題も定着モードで出題する」トグル。テスト開始ごとに設定デフォルトへ戻す。
+  const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(drillIncludeCorrectInitial);
   const [drill, setDrill] = useState<DrillState | null>(null);
   // 結果一覧で開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
   const [dialogWordId, setDialogWordId] = useState<string | null>(null);
@@ -277,6 +282,8 @@ export function QuizFlow({
     setMode("TEST");
     setDrill(null);
     setStartInput(input);
+    // 結果画面トグルは各テスト開始時に設定デフォルトへ戻す（「デフォルト」の意味に忠実にする）
+    setDrillIncludeCorrect(drillIncludeCorrectInitial);
     resetRunState();
     setPhase({ name: "countdown" });
     // カウントダウンの裏で問題データを一括取得し、取得完了後ただちに第 1 問の音声をプリロード
@@ -317,6 +324,8 @@ export function QuizFlow({
       timeoutSeconds: quiz.timeoutSeconds,
       // 元テストの「四択で先頭の訳語のみ表示」設定も Drill に保存して引き継ぐ
       choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
+      // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
+      drillIncludeCorrect,
       results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
     };
     const runId = ++runIdRef.current;
@@ -676,6 +685,8 @@ export function QuizFlow({
           onBackToStart={resetToStart}
           onStartDrill={handleStartDrill}
           onNextRound={handleNextRound}
+          drillIncludeCorrect={drillIncludeCorrect}
+          onDrillIncludeCorrectChange={setDrillIncludeCorrect}
           dialogWordId={dialogWordId}
           onOpenDialog={setDialogWordId}
           onCloseDialog={() => setDialogWordId(null)}

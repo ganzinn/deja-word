@@ -390,6 +390,7 @@ model QuizDefaultSetting {
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
   choiceFirstMeaningTextOnly Boolean? @map("choice_first_meaning_text_only") // 四択（英→日）の選択肢で先頭の訳語のみ表示。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
+  drillIncludeCorrect Boolean? @map("drill_include_correct") // 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題
   saveOnStart    Boolean?    @map("save_on_start") // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 

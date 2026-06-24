@@ -40,6 +40,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     enableAnswerSound: null,
     autoplayAnswerAudioJaEn: null,
     choiceFirstMeaningTextOnly: null,
+    drillIncludeCorrect: null,
     saveOnStart: null,
     ...overrides,
   };
@@ -114,6 +115,12 @@ describe("saveQuizDefaultsForUser", () => {
     const user = await createTestUser();
     await saveQuizDefaultsForUser(user.id, defaults({ saveOnStart: true }));
     expect((await getQuizDefaultsForUser(user.id))?.saveOnStart).toBe(true);
+  });
+
+  test("persists drillIncludeCorrect (round-trips true)", async () => {
+    const user = await createTestUser();
+    await saveQuizDefaultsForUser(user.id, defaults({ drillIncludeCorrect: true }));
+    expect((await getQuizDefaultsForUser(user.id))?.drillIncludeCorrect).toBe(true);
   });
 
   test("syncs per-format timeout rows: upsert for values, delete for null on re-save", async () => {

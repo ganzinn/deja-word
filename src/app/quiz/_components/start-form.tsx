@@ -370,12 +370,7 @@ export function StartForm({
         </p>
       </section>
 
-      <Button
-        size="lg"
-        className="h-auto min-h-14 py-4"
-        disabled={!canStart}
-        onClick={handleStart}
-      >
+      <Button size="lg" className="h-auto min-h-14 py-4" disabled={!canStart} onClick={handleStart}>
         開始
       </Button>
 

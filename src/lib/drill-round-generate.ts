@@ -32,6 +32,7 @@ export async function generateDrillRoundForUser(
       occurrenceId: true,
       format: true,
       timeoutSeconds: true,
+      choiceFirstMeaningTextOnly: true,
       rangeFrom: true,
       rangeTo: true,
       roundCount: true,
@@ -63,7 +64,9 @@ export async function generateDrillRoundForUser(
 
   return {
     quiz: {
-      ...buildQuiz(drill.format, material, Math.random),
+      ...buildQuiz(drill.format, material, Math.random, {
+        choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+      }),
       timeoutSeconds: drill.timeoutSeconds,
     },
     roundCount: drill.roundCount,

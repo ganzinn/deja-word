@@ -315,6 +315,8 @@ export function QuizFlow({
       format: quiz.format,
       // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
       timeoutSeconds: quiz.timeoutSeconds,
+      // 元テストの「四択で先頭の訳語のみ表示」設定も Drill に保存して引き継ぐ
+      choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
       results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
     };
     const runId = ++runIdRef.current;

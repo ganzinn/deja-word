@@ -166,7 +166,12 @@ describe("getQuizPreview (Server Action)", () => {
 });
 
 describe("startQuiz (Server Action)", () => {
-  const input = { occurrenceId: "occ_1", format: "CHOICE" as const, timeoutSeconds: null };
+  const input = {
+    occurrenceId: "occ_1",
+    format: "CHOICE" as const,
+    timeoutSeconds: null,
+    choiceFirstMeaningTextOnly: false,
+  };
 
   test("unauthorized: no session", async () => {
     mockedGetSession.mockResolvedValue(null);
@@ -318,6 +323,7 @@ describe("startDrill (Server Action)", () => {
     occurrenceId: "occ_1",
     format: "CHOICE" as const,
     timeoutSeconds: null,
+    choiceFirstMeaningTextOnly: false,
     results: [
       { wordId: "w_1", correct: true },
       { wordId: "w_2", correct: false },
@@ -337,6 +343,7 @@ describe("startDrill (Server Action)", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
       results: [],
     });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });

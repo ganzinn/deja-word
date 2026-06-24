@@ -21,6 +21,8 @@ export type QuizDefaults = {
   enableAnswerSound: boolean | null;
   /** 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）。OFF（false）で解答表示時の発音再生を無効化する。 */
   autoplayAnswerAudioJaEn: boolean | null;
+  /** 四択（英→日）の選択肢で先頭の訳語のみ表示する。null = ON（デフォルト＝先頭の訳語のみ）。OFF（false）で全訳語を「; 」連結。 */
+  choiceFirstMeaningTextOnly: boolean | null;
   /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）。 */
   saveOnStart: boolean | null;
 };
@@ -28,6 +30,8 @@ export type QuizDefaults = {
 /**
  * 開始フォームに渡すデフォルトの初期値。挙動設定（showCountdown / autoplay* /
  * enableAnswerSound）と saveOnStart は「初期値」ではなく別経路で扱うため除外する。
+ * choiceFirstMeaningTextOnly は挙動設定だが、選択肢の生成結果に影響し開始画面でも選べる
+ * （StartQuizInput 経由で生成に渡す）ため、初期値として除外せず残す。
  */
 export type StartFormDefaults = Omit<
   QuizDefaults,
@@ -107,6 +111,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
   }
@@ -123,6 +128,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     autoplayPronunciation: setting.autoplayPronunciation,
     enableAnswerSound: setting.enableAnswerSound,
     autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
+    choiceFirstMeaningTextOnly: setting.choiceFirstMeaningTextOnly,
     saveOnStart: setting.saveOnStart,
   };
 }
@@ -146,9 +152,10 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
 
 /**
  * 開始画面で設定した内容をデフォルトに上書きする（開始画面トグル ON でテスト開始時）。
- * 開始画面にある項目だけの部分更新: occurrence / range / format と、選択中形式の制限時間
- * のみを書き換える。他形式の制限時間・カウントダウン/発音/効果音などの挙動設定・saveOnStart
- * 自体は既存値を保持する（upsert の update に開始画面の 4 項目しか渡さないため温存される）。
+ * 開始画面にある項目だけの部分更新: occurrence / range / format / 四択先頭訳語のみ表示
+ * （choiceFirstMeaningTextOnly）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
+ * カウントダウン/発音/効果音などの挙動設定・saveOnStart 自体は既存値を保持する
+ * （upsert の update に開始画面の項目しか渡さないため温存される）。
  */
 export async function saveStartSettingsAsDefaultsForUser(
   userId: string,
@@ -162,6 +169,7 @@ export async function saveStartSettingsAsDefaultsForUser(
     rangeFrom: input.rangeFrom ?? null,
     rangeTo: input.rangeTo ?? null,
     format: input.format,
+    choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
   };
 
   await prisma.$transaction([

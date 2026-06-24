@@ -95,6 +95,14 @@ export function firstMeaningText(word: QuizWord): string {
   return (word.meanings[0]?.texts ?? []).join("; ");
 }
 
+/**
+ * 最初の Meaning（sortOrder 先頭）の先頭 MeaningText（先頭の訳語）のみ。未登録なら空文字。
+ * 四択（英語→日本語）で「先頭の訳語だけ表示する」設定が ON のときの選択肢表示に使う。
+ */
+export function firstMeaningHeadText(word: QuizWord): string {
+  return word.meanings[0]?.texts[0] ?? "";
+}
+
 /** 問題の共通項目。発音音源 URL は最初の Meaning のもの（未登録なら null）。 */
 export function questionBaseOf(word: QuizWord): QuestionBase {
   return {

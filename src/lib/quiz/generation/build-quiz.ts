@@ -3,7 +3,7 @@
 // (4) question-<format>.tsx の 4 箇所＋本ファイルの switch を更新する。
 
 import type { QuizFormat } from "@/generated/prisma/enums";
-import { buildChoiceQuestions } from "@/lib/quiz/generation/choice";
+import { buildChoiceQuestions, choiceCandidateTexts } from "@/lib/quiz/generation/choice";
 import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
@@ -22,15 +22,25 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected quiz format: ${String(value)}`);
 }
 
+/** `buildQuiz` の形式別オプション。CHOICE の選択肢表示のみ参照する。 */
+export type BuildQuizOptions = {
+  /** 四択（英→日）の選択肢を先頭の訳語のみで表示する（false = 全訳語を「; 」連結）。 */
+  choiceFirstMeaningTextOnly?: boolean;
+};
+
 /** 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成する。 */
 export function buildQuiz(
   format: QuizFormat,
   material: QuizSourceMaterial,
   rng: Rng,
+  options: BuildQuizOptions = {},
 ): QuizQuestionsPayload {
   switch (format) {
     case "CHOICE":
-      return { format: "CHOICE", questions: buildChoiceQuestions(material, rng) };
+      return {
+        format: "CHOICE",
+        questions: buildChoiceQuestions(material, rng, options.choiceFirstMeaningTextOnly ?? false),
+      };
     case "SELF_JUDGE":
       return { format: "SELF_JUDGE", questions: buildSelfJudgeQuestions(material, rng) };
     case "MULTI_MEANING":
@@ -78,14 +88,17 @@ function findDummylessTarget(
 export function checkFormatAvailability(
   format: QuizFormat,
   material: QuizSourceMaterial,
+  options: BuildQuizOptions = {},
 ): FormatAvailability {
   if (material.targets.length === 0) {
     return { available: false, reason: "出題対象の単語がありません" };
   }
   switch (format) {
     case "CHOICE": {
+      // 選択肢生成（buildChoiceQuestions）と同じキーで成立判定する。
+      const firstMeaningTextOnly = options.choiceFirstMeaningTextOnly ?? false;
       const dummyless = findDummylessTarget(material, (word) => [
-        { value: word, texts: word.meanings[0]?.texts ?? [] },
+        { value: word, texts: choiceCandidateTexts(word, firstMeaningTextOnly) },
       ]);
       return dummyless === undefined
         ? AVAILABLE

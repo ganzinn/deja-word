@@ -389,6 +389,7 @@ model QuizDefaultSetting {
   autoplayPronunciation Boolean? @map("autoplay_pronunciation") // 発音の自動再生。null = 有効（デフォルト）
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
+  choiceFirstMeaningTextOnly Boolean? @map("choice_first_meaning_text_only") // 四択（英→日）の選択肢で先頭の訳語のみ表示。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
   saveOnStart    Boolean?    @map("save_on_start") // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -425,6 +426,7 @@ model Drill {
   rangeTo        Int        @map("range_to")
   format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
   timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
+  choiceFirstMeaningTextOnly Boolean @default(false) @map("choice_first_meaning_text_only") // 元テストの「四択で先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ
   roundCount     Int        @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")

@@ -40,6 +40,7 @@
 形式によって粒度を使い分ける。
 
 - **四択**: 1 選択肢 = 1 単語。表示はその単語の**最初の Meaning（sortOrder 先頭）**の MeaningText を「; 」で連結した文字列（例: `走る; 駆ける`）。2 つ目以降の Meaning（別品詞の意味など）は表示しない。正解・ダミーとも同じルール。
+  - **先頭の訳語のみ表示オプション**（2026-06-24 加算。**デフォルト ON**）: 開始画面／デフォルト設定の「選択肢に最初の訳語だけを表示する」が ON のときは、連結せず先頭の MeaningText のみを表示する（例: `走る`）。OFF にすると従来どおり「; 」連結。未設定（`choiceFirstMeaningTextOnly` が null）は ON 扱い（推奨デフォルト `DEFAULT_QUIZ_SETTINGS` と整合）。正解・ダミー共通。ダミーの重複排除キーも先頭訳語に縮め、別単語でも先頭訳語が一致する場合に見た目同一の選択肢が並ぶのを防ぐ（成立判定 `checkFormatAvailability` も同じキー）。設定は `StartQuizInput.choiceFirstMeaningTextOnly` → `buildQuiz` のオプションとして流れ、drill は `Drill.choiceFirstMeaningTextOnly` に凍結して全ラウンドへ引き継ぐ。CHOICE 専用で他形式の表示は不変。結果一覧は生成済みの選択肢文字列を描画するため自動追従する。
 - **多義語選択**: 1 選択肢 = 1 MeaningText。正解集合はその単語の**最初の Meaning（sortOrder 先頭）の MeaningText**（別品詞の 2 つ目以降の Meaning は含めない。四択と同じ品詞境界）。（改訂 2026-06-20）
 
 四択の表示は 01 の当初文言「複数の意味がある場合は全て表示し、最初に登録した意味を目立たせる」を覆す決定のため、01・ハブの文言を更新した（運用ルール 4）。

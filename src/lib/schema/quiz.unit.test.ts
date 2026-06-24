@@ -113,6 +113,7 @@ describe("startQuizInputSchema", () => {
         occurrenceId: "occ_1",
         format: "CHOICE",
         timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
       }).success,
     ).toBe(true);
   });
@@ -128,7 +129,11 @@ describe("startQuizInputSchema", () => {
   });
 
   test("timeoutSeconds accepts null and 1..60 integers, rejects out-of-range / non-integer / missing", () => {
-    const base = { occurrenceId: "occ_1", format: "CHOICE" } as const;
+    const base = {
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      choiceFirstMeaningTextOnly: false,
+    } as const;
     for (const timeoutSeconds of [null, 1, 5, 60]) {
       expect(startQuizInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(true);
     }
@@ -201,6 +206,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     });
     expect(r.success).toBe(true);
@@ -218,6 +224,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        choiceFirstMeaningTextOnly: null,
         saveOnStart: null,
       }).success,
     ).toBe(true);
@@ -232,6 +239,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        choiceFirstMeaningTextOnly: null,
         saveOnStart: null,
       }).success,
     ).toBe(true);
@@ -248,6 +256,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: true,
       enableAnswerSound: true,
       autoplayAnswerAudioJaEn: true,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: true,
     });
     expect(r.success).toBe(true);
@@ -263,6 +272,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     for (const v of [null, 1, 60]) {
@@ -293,6 +303,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     // SELF_JUDGE / MULTI_MEANING を欠いた map は不正
@@ -315,6 +326,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        choiceFirstMeaningTextOnly: null,
         saveOnStart: null,
       }).success,
     ).toBe(false);
@@ -333,6 +345,7 @@ describe("saveQuizDefaultsInputSchema", () => {
           autoplayPronunciation: null,
           enableAnswerSound: null,
           autoplayAnswerAudioJaEn: null,
+          choiceFirstMeaningTextOnly: null,
           saveOnStart: null,
         }).success,
       ).toBe(false);
@@ -351,6 +364,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
+        choiceFirstMeaningTextOnly: null,
         saveOnStart: null,
       }).success,
     ).toBe(false);
@@ -366,6 +380,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     for (const showCountdown of [true, false, null]) {
@@ -387,6 +402,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     for (const autoplayPronunciation of [true, false, null]) {
@@ -410,6 +426,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     for (const enableAnswerSound of [true, false, null]) {
@@ -433,6 +450,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
     for (const autoplayAnswerAudioJaEn of [true, false, null]) {
@@ -442,6 +460,31 @@ describe("saveQuizDefaultsInputSchema", () => {
     }
     expect(
       saveQuizDefaultsInputSchema.safeParse({ ...base, autoplayAnswerAudioJaEn: "true" }).success,
+    ).toBe(false);
+    expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
+  });
+
+  test("choiceFirstMeaningTextOnly accepts true / false / null, rejects non-boolean / missing", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
+      saveOnStart: null,
+    };
+    for (const choiceFirstMeaningTextOnly of [true, false, null]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({ ...base, choiceFirstMeaningTextOnly }).success,
+      ).toBe(true);
+    }
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({ ...base, choiceFirstMeaningTextOnly: "true" })
+        .success,
     ).toBe(false);
     expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
@@ -457,6 +500,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     });
     expect(r.success).toBe(true);
@@ -473,6 +517,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
     };
     for (const saveOnStart of [true, false, null]) {
       expect(saveQuizDefaultsInputSchema.safeParse({ ...base, saveOnStart }).success).toBe(true);
@@ -489,6 +534,7 @@ describe("startDrillInputSchema", () => {
     const base = {
       occurrenceId: "occ_1",
       format: "CHOICE",
+      choiceFirstMeaningTextOnly: false,
       results: [{ wordId: "w_1", correct: true }],
     };
     expect(startDrillInputSchema.safeParse(base).success).toBe(false);

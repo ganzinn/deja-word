@@ -24,6 +24,7 @@ describe("createDrillForUser", () => {
       occurrenceId: occurrence.id,
       format: "CHOICE",
       timeoutSeconds: 5,
+      choiceFirstMeaningTextOnly: false,
       results: [
         { wordId: w1.id, correct: false },
         { wordId: w2.id, correct: true },
@@ -62,6 +63,7 @@ describe("createDrillForUser", () => {
         occurrenceId: foreign.id,
         format: "SELF_JUDGE",
         timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
         results: [{ wordId: word.id, correct: false }],
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
@@ -82,6 +84,7 @@ describe("createDrillForUser", () => {
       occurrenceId: occurrence.id,
       format: "CHOICE",
       timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
       results: [
         { wordId: alive.id, correct: false },
         { wordId: deleted.id, correct: false },
@@ -111,6 +114,7 @@ describe("createDrillForUser", () => {
         occurrenceId: occurrence.id,
         format: "CHOICE",
         timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
         results: [{ wordId: unnumbered.id, correct: false }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);

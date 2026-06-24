@@ -116,6 +116,10 @@ export function StartForm({
   const [format, setFormat] = useState<QuizFormat | null>(initialFormat);
   const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
   const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
+  // 四択（英→日）の選択肢で先頭の訳語のみ表示する。初期値はデフォルト設定（未設定は ON）。
+  const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
+    defaults.choiceFirstMeaningTextOnly ?? true,
+  );
   // 「この設定をデフォルト設定とする」トグル。初期状態は設定画面のメタ設定由来。
   // ON のままテスト開始すると開始画面の入力でデフォルトを部分上書きする（メタ設定自体は変えない）。
   const [saveAsDefault, setSaveAsDefault] = useState(saveAsDefaultInitial);
@@ -200,6 +204,7 @@ export function StartForm({
       rangeTo,
       format,
       timeoutSeconds: timeoutSeconds ?? null,
+      choiceFirstMeaningTextOnly,
     };
     // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
     if (saveAsDefault) {
@@ -309,6 +314,19 @@ export function StartForm({
         </Select>
         {selectedOption ? (
           <p className="text-muted-foreground text-xs">{selectedOption.description}</p>
+        ) : null}
+        {format === "CHOICE" ? (
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="quiz-choice-first-meaning-text-only"
+              className="size-6"
+              checked={choiceFirstMeaningTextOnly}
+              onCheckedChange={(checked) => setChoiceFirstMeaningTextOnly(checked === true)}
+            />
+            <Label htmlFor="quiz-choice-first-meaning-text-only" className="font-normal">
+              選択肢に最初の訳語だけを表示する
+            </Label>
+          </div>
         ) : null}
       </section>
 

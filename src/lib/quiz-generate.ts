@@ -21,7 +21,11 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
  */
 export async function generateQuizForUser(
   userId: string,
-  input: QuizRangeInput & { format: QuizFormat; timeoutSeconds: number | null },
+  input: QuizRangeInput & {
+    format: QuizFormat;
+    timeoutSeconds: number | null;
+    choiceFirstMeaningTextOnly: boolean;
+  },
 ): Promise<QuizPayload> {
   const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
     userId,
@@ -30,13 +34,14 @@ export async function generateQuizForUser(
   );
   const material = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows);
 
-  const availability = checkFormatAvailability(input.format, material);
+  const buildOptions = { choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly };
+  const availability = checkFormatAvailability(input.format, material, buildOptions);
   if (!availability.available) {
     throw new QuizGenerationError(availability.reason);
   }
 
   return {
-    ...buildQuiz(input.format, material, Math.random),
+    ...buildQuiz(input.format, material, Math.random, buildOptions),
     timeoutSeconds: input.timeoutSeconds,
   };
 }

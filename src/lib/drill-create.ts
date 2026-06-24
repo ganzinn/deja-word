@@ -40,6 +40,7 @@ export async function createDrillForUser(
     occurrenceId: string;
     format: QuizFormat;
     timeoutSeconds: number | null;
+    choiceFirstMeaningTextOnly: boolean;
     results: DrillResultInput[];
   },
 ): Promise<{ drillId: string }> {
@@ -79,6 +80,7 @@ export async function createDrillForUser(
         rangeTo: Math.max(...numbers),
         format: input.format,
         timeoutSeconds: input.timeoutSeconds,
+        choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
         words: {
           createMany: {
             data: results.map((r) => ({

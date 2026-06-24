@@ -32,7 +32,7 @@ describe("buildChoiceQuestions", () => {
       targets: [target],
       sameOccurrencePool: [word("d1", [["歩く"]]), word("d2", [["泳ぐ"]]), word("d3", [["飛ぶ"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
     expect(q.pronunciationAudioUrl).toBe("https://audio/t");
@@ -47,7 +47,7 @@ describe("buildChoiceQuestions", () => {
       targets: [word("t", [["走る"]])],
       sameOccurrencePool: [word("d1", [["歩く", "歩む"], ["徒歩"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
     expect(dummyTexts).toEqual(["歩く; 歩む"]);
   });
@@ -58,7 +58,7 @@ describe("buildChoiceQuestions", () => {
       sameOccurrencePool: [word("o2", [["書く"]]), word("o3", [["聞く"]])],
       allWordsPool: [word("f1", [["話す"]])],
     });
-    const questions = buildChoiceQuestions(m, seededRng(1));
+    const questions = buildChoiceQuestions(m, seededRng(1), false);
     const q = questions.find((x) => x.wordId === "t");
     expect(q).toBeDefined();
     const dummyTexts = q!.choices.filter((_, i) => i !== q!.correctIndex).map((c) => c.text);
@@ -71,7 +71,7 @@ describe("buildChoiceQuestions", () => {
       sameOccurrencePool: [word("o1", [["読む"]])],
       allWordsPool: [word("f1", [["話す"]]), word("f2", [["聞く"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
     expect(dummyTexts).toContain("読む");
     expect(dummyTexts).toHaveLength(3);
@@ -83,7 +83,7 @@ describe("buildChoiceQuestions", () => {
       targets: [word("t", [["駆ける"], ["走る"]])],
       sameOccurrencePool: [word("d1", [[" 走る "]]), word("d2", [["歩く"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
     expect(dummyTexts).toEqual(["歩く"]);
   });
@@ -93,7 +93,7 @@ describe("buildChoiceQuestions", () => {
       targets: [word("t", [["走る"]])],
       sameOccurrencePool: [word("d1", [["歩く"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     expect(q.choices).toHaveLength(2);
     expect(q.choices[q.correctIndex].text).toBe("走る");
   });
@@ -103,7 +103,7 @@ describe("buildChoiceQuestions", () => {
       targets: [word("t", [["走る"]])],
       sameOccurrencePool: [word("d1", [["走る"]])],
     });
-    expect(() => buildChoiceQuestions(m, seededRng(1))).toThrow(QuizGenerationError);
+    expect(() => buildChoiceQuestions(m, seededRng(1), false)).toThrow(QuizGenerationError);
   });
 
   test("covers every target exactly once in shuffled question order, deterministically", () => {
@@ -115,8 +115,8 @@ describe("buildChoiceQuestions", () => {
       word("t5", [["五"]]),
     ];
     const m = material({ targets });
-    const first = buildChoiceQuestions(m, seededRng(42));
-    const second = buildChoiceQuestions(m, seededRng(42));
+    const first = buildChoiceQuestions(m, seededRng(42), false);
+    const second = buildChoiceQuestions(m, seededRng(42), false);
     expect(first.map((q) => q.wordId)).toEqual(second.map((q) => q.wordId));
     expect([...first.map((q) => q.wordId)].sort()).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
@@ -126,7 +126,39 @@ describe("buildChoiceQuestions", () => {
       targets: [word("t", [["走る"]])],
       sameOccurrencePool: [word("d1", [["歩く"]])],
     });
-    const [q] = buildChoiceQuestions(m, seededRng(1));
+    const [q] = buildChoiceQuestions(m, seededRng(1), false);
     expect(q.pronunciationAudioUrl).toBeNull();
+  });
+
+  describe("firstMeaningTextOnly = true", () => {
+    test("shows only the first translation of correct and dummies (no '; ')", () => {
+      const m = material({
+        targets: [word("t", [["走る", "駆ける"], ["走行"]])],
+        sameOccurrencePool: [
+          word("d1", [["歩く", "歩む"]]),
+          word("d2", [["泳ぐ"]]),
+          word("d3", [["飛ぶ"]]),
+        ],
+      });
+      const [q] = buildChoiceQuestions(m, seededRng(1), true);
+      expect(q.choices[q.correctIndex].text).toBe("走る");
+      for (const c of q.choices) expect(c.text).not.toContain("; ");
+      const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
+      expect([...dummyTexts].sort()).toEqual(["歩く", "泳ぐ", "飛ぶ"].sort());
+    });
+
+    test("does not render two choices identical after truncation to the first translation", () => {
+      // 「走る; 駆ける」と「走る; 急ぐ」はどちらも先頭訳語が「走る」。重複排除キーを先頭訳語に
+      // 縮めることで、見た目が同一の選択肢が生じない（正解と重複しないことも確認）。
+      const m = material({
+        targets: [word("t", [["走る", "駆ける"]])],
+        sameOccurrencePool: [word("d1", [["走る", "急ぐ"]]), word("d2", [["歩く"]])],
+      });
+      const [q] = buildChoiceQuestions(m, seededRng(1), true);
+      const texts = q.choices.map((c) => c.text);
+      expect(new Set(texts).size).toBe(texts.length);
+      const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
+      expect(dummyTexts).toEqual(["歩く"]);
+    });
   });
 });

@@ -26,6 +26,7 @@ async function setupDrill(words: { headword: string; number: number; correct: bo
     occurrenceId: occurrence.id,
     format: "SELF_JUDGE",
     timeoutSeconds: null,
+    choiceFirstMeaningTextOnly: false,
     results: words.map((w, i) => ({ wordId: created[i].id, correct: w.correct })),
   });
   return { user, occurrence, drillId, wordIds: created.map((w) => w.id) };

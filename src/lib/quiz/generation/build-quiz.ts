@@ -22,15 +22,25 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected quiz format: ${String(value)}`);
 }
 
+/** `buildQuiz` の形式別オプション。CHOICE の選択肢表示のみ参照する。 */
+export type BuildQuizOptions = {
+  /** 四択（英→日）の選択肢を先頭の訳語のみで表示する（false = 全訳語を「; 」連結）。 */
+  choiceFirstMeaningTextOnly?: boolean;
+};
+
 /** 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成する。 */
 export function buildQuiz(
   format: QuizFormat,
   material: QuizSourceMaterial,
   rng: Rng,
+  options: BuildQuizOptions = {},
 ): QuizQuestionsPayload {
   switch (format) {
     case "CHOICE":
-      return { format: "CHOICE", questions: buildChoiceQuestions(material, rng) };
+      return {
+        format: "CHOICE",
+        questions: buildChoiceQuestions(material, rng, options.choiceFirstMeaningTextOnly ?? false),
+      };
     case "SELF_JUDGE":
       return { format: "SELF_JUDGE", questions: buildSelfJudgeQuestions(material, rng) };
     case "MULTI_MEANING":
@@ -78,15 +88,19 @@ function findDummylessTarget(
 export function checkFormatAvailability(
   format: QuizFormat,
   material: QuizSourceMaterial,
+  options: BuildQuizOptions = {},
 ): FormatAvailability {
   if (material.targets.length === 0) {
     return { available: false, reason: "出題対象の単語がありません" };
   }
   switch (format) {
     case "CHOICE": {
-      const dummyless = findDummylessTarget(material, (word) => [
-        { value: word, texts: word.meanings[0]?.texts ?? [] },
-      ]);
+      // 選択肢表示と同じキーで成立判定する（先頭訳語のみ表示なら先頭訳語で重複排除）。
+      const firstMeaningTextOnly = options.choiceFirstMeaningTextOnly ?? false;
+      const dummyless = findDummylessTarget(material, (word) => {
+        const texts = word.meanings[0]?.texts ?? [];
+        return [{ value: word, texts: firstMeaningTextOnly ? texts.slice(0, 1) : texts }];
+      });
       return dummyless === undefined
         ? AVAILABLE
         : {

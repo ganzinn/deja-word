@@ -39,6 +39,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     autoplayPronunciation: null,
     enableAnswerSound: null,
     autoplayAnswerAudioJaEn: null,
+    choiceFirstMeaningTextOnly: null,
     saveOnStart: null,
     ...overrides,
   };
@@ -273,13 +274,15 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       }),
     );
 
-    // 開始画面からの部分上書き: occurrence/range/format と選択中形式（SELF_JUDGE）の制限時間のみ
+    // 開始画面からの部分上書き: occurrence/range/format・選択中形式（SELF_JUDGE）の制限時間・
+    // 四択先頭訳語のみ表示のみ（null→true に上書きされることを確認）
     await saveStartSettingsAsDefaultsForUser(user.id, {
       occurrenceId: occB.id,
       rangeFrom: 3,
       rangeTo: 7,
       format: "SELF_JUDGE",
       timeoutSeconds: 30,
+      choiceFirstMeaningTextOnly: true,
     });
 
     expect(await getQuizDefaultsForUser(user.id)).toEqual(
@@ -290,6 +293,8 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "SELF_JUDGE",
         // CHOICE の制限時間は温存、SELF_JUDGE は 20→30 に更新
         timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 30 }),
+        // 開始画面項目（四択先頭訳語のみ表示）は上書きされる
+        choiceFirstMeaningTextOnly: true,
         // 挙動設定・メタ設定はすべて温存
         showCountdown: true,
         autoplayPronunciation: false,
@@ -310,6 +315,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: undefined,
       format: "CHOICE",
       timeoutSeconds: 8,
+      choiceFirstMeaningTextOnly: true,
     });
 
     expect(await getQuizDefaultsForUser(user.id)).toEqual(
@@ -317,6 +323,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         occurrenceId: occ.id,
         format: "CHOICE",
         timeoutByFormat: timeoutMap({ CHOICE: 8 }),
+        choiceFirstMeaningTextOnly: true,
       }),
     );
   });
@@ -339,6 +346,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: undefined,
       format: "CHOICE",
       timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
     });
 
     const saved = await getQuizDefaultsForUser(user.id);
@@ -357,6 +365,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         rangeTo: undefined,
         format: "CHOICE",
         timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });

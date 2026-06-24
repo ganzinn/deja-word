@@ -55,6 +55,8 @@ export const getQuizPreviewInputSchema = quizRangeInputSchema;
 export const startQuizInputSchema = quizRangeInputSchema.extend({
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
+  // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
+  choiceFirstMeaningTextOnly: z.boolean(),
 });
 
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
@@ -82,6 +84,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   autoplayPronunciation: z.boolean().nullable(),
   enableAnswerSound: z.boolean().nullable(),
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
+  choiceFirstMeaningTextOnly: z.boolean().nullable(),
   saveOnStart: z.boolean().nullable(),
 });
 
@@ -102,6 +105,7 @@ export const startDrillInputSchema = z.object({
   occurrenceId: z.string().min(1),
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
+  choiceFirstMeaningTextOnly: z.boolean(),
   results: z.array(drillResultInputSchema).min(1),
 });
 

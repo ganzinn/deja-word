@@ -21,6 +21,8 @@ export type QuizDefaults = {
   enableAnswerSound: boolean | null;
   /** 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）。OFF（false）で解答表示時の発音再生を無効化する。 */
   autoplayAnswerAudioJaEn: boolean | null;
+  /** 四択（英→日）の選択肢で先頭の訳語のみ表示する。null = ON（デフォルト＝先頭の訳語のみ）。OFF（false）で全訳語を「; 」連結。 */
+  choiceFirstMeaningTextOnly: boolean | null;
   /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）。 */
   saveOnStart: boolean | null;
 };
@@ -107,6 +109,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
       saveOnStart: null,
     };
   }
@@ -123,6 +126,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     autoplayPronunciation: setting.autoplayPronunciation,
     enableAnswerSound: setting.enableAnswerSound,
     autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
+    choiceFirstMeaningTextOnly: setting.choiceFirstMeaningTextOnly,
     saveOnStart: setting.saveOnStart,
   };
 }
@@ -162,6 +166,7 @@ export async function saveStartSettingsAsDefaultsForUser(
     rangeFrom: input.rangeFrom ?? null,
     rangeTo: input.rangeTo ?? null,
     format: input.format,
+    choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
   };
 
   await prisma.$transaction([

@@ -8,6 +8,7 @@ import {
   saveStartSettingsAsDefaultsForUser,
   type QuizDefaults,
 } from "@/lib/quiz-default-settings";
+import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import type { QuizFormat } from "@/generated/prisma/enums";
 
@@ -312,7 +313,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
     );
   });
 
-  test("creates a row when no defaults exist yet, with timeout only for the selected format", async () => {
+  test("first save establishes recommended defaults for all formats, with the selected format overridden", async () => {
     const user = await createTestUser();
     const occ = await createOccurrenceRow(user.id, "新規", 0);
 
@@ -325,14 +326,37 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       choiceFirstMeaningTextOnly: true,
     });
 
+    // 初回保存なので推奨デフォルトの全形式制限時間が確立され、選択中の CHOICE のみ 8 に上書き。
+    // これにより未選択形式（SELF_JUDGE など）の推奨制限時間が「制限なし」に化けない。
     expect(await getQuizDefaultsForUser(user.id)).toEqual(
       defaults({
         occurrenceId: occ.id,
         format: "CHOICE",
-        timeoutByFormat: timeoutMap({ CHOICE: 8 }),
+        timeoutByFormat: { ...DEFAULT_QUIZ_SETTINGS.timeoutByFormat, CHOICE: 8 },
         choiceFirstMeaningTextOnly: true,
       }),
     );
+  });
+
+  test("first save disabling the selected format's timeout still establishes other formats' recommended defaults", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "新規2", 0);
+
+    // 選択中形式（CHOICE）の制限時間を無効化（null）して初回保存しても、
+    // 未選択形式の推奨デフォルトは確立される。
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      occurrenceId: occ.id,
+      rangeFrom: undefined,
+      rangeTo: undefined,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: true,
+    });
+
+    expect((await getQuizDefaultsForUser(user.id))?.timeoutByFormat).toEqual({
+      ...DEFAULT_QUIZ_SETTINGS.timeoutByFormat,
+      CHOICE: null,
+    });
   });
 
   test("timeoutSeconds null deletes only the selected format's timeout row", async () => {

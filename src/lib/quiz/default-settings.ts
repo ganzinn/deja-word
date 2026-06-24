@@ -24,5 +24,6 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   enableAnswerSound: true,
   autoplayAnswerAudioJaEn: true,
   choiceFirstMeaningTextOnly: true,
+  drillIncludeCorrect: false,
   saveOnStart: false,
 };

@@ -41,6 +41,8 @@ export async function createDrillForUser(
     format: QuizFormat;
     timeoutSeconds: number | null;
     choiceFirstMeaningTextOnly: boolean;
+    /** false（既定）= 誤答のみ Drill に入れる。true で正答単語も入れる（従来挙動）。 */
+    drillIncludeCorrect: boolean;
     results: DrillResultInput[];
   },
 ): Promise<{ drillId: string }> {
@@ -58,7 +60,11 @@ export async function createDrillForUser(
       select: { id: true },
     });
     const existingIds = new Set(existing.map((w) => w.id));
-    const results = input.results.filter((r) => existingIds.has(r.wordId));
+    const existingResults = input.results.filter((r) => existingIds.has(r.wordId));
+    // 既定（drillIncludeCorrect=false）は誤答のみ Drill に投入する。正答単語は DrillWord を作らず除外。
+    const results = input.drillIncludeCorrect
+      ? existingResults
+      : existingResults.filter((r) => !r.correct);
 
     const links = await tx.wordOccurrence.findMany({
       where: {

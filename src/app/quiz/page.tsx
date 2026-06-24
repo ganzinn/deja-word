@@ -45,6 +45,8 @@ export default async function QuizPage() {
   const autoplayAnswerAudioJaEn = defaults.autoplayAnswerAudioJaEn ?? true;
   // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。未設定（null）は OFF。
   const saveAsDefaultInitial = defaults.saveOnStart ?? false;
+  // テスト結果画面「正解した問題も定着モードで出題する」トグルの初期状態。未設定（null）は OFF（誤答のみ）。
+  const drillIncludeCorrectInitial = defaults.drillIncludeCorrect ?? false;
 
   return (
     <TtsFallbackProvider enabled={ttsFallbackEnabled}>
@@ -61,6 +63,7 @@ export default async function QuizPage() {
         enableAnswerSound={enableAnswerSound}
         autoplayAnswerAudioJaEn={autoplayAnswerAudioJaEn}
         saveAsDefaultInitial={saveAsDefaultInitial}
+        drillIncludeCorrectInitial={drillIncludeCorrectInitial}
       />
     </TtsFallbackProvider>
   );

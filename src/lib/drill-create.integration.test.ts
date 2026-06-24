@@ -25,6 +25,7 @@ describe("createDrillForUser", () => {
       format: "CHOICE",
       timeoutSeconds: 5,
       choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: true,
       results: [
         { wordId: w1.id, correct: false },
         { wordId: w2.id, correct: true },
@@ -64,6 +65,7 @@ describe("createDrillForUser", () => {
         format: "SELF_JUDGE",
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
+        drillIncludeCorrect: false,
         results: [{ wordId: word.id, correct: false }],
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
@@ -85,6 +87,7 @@ describe("createDrillForUser", () => {
       format: "CHOICE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
       results: [
         { wordId: alive.id, correct: false },
         { wordId: deleted.id, correct: false },
@@ -115,7 +118,60 @@ describe("createDrillForUser", () => {
         format: "CHOICE",
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
+        drillIncludeCorrect: false,
         results: [{ wordId: unnumbered.id, correct: false }],
+      }),
+    ).rejects.toBeInstanceOf(EmptyDrillResultsError);
+  });
+
+  test("drillIncludeCorrect=false excludes correct words; range is from incorrect words only", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const correct = await createQuizWordRow(user.id, "correct", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+    const wrong = await createQuizWordRow(user.id, "wrong", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 20 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      results: [
+        { wordId: correct.id, correct: true },
+        { wordId: wrong.id, correct: false },
+      ],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({
+      where: { id: drillId },
+      include: { words: true },
+    });
+    // 正答単語は除外され、誤答 1 件のみ。範囲も誤答単語の番号に縮まる。
+    expect(drill.rangeFrom).toBe(20);
+    expect(drill.rangeTo).toBe(20);
+    expect(drill.words).toHaveLength(1);
+    expect(drill.words[0]).toMatchObject({ wordId: wrong.id, remaining: 3 });
+  });
+
+  test("drillIncludeCorrect=false with all-correct results throws EmptyDrillResultsError", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const w = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+
+    await expect(
+      createDrillForUser(user.id, {
+        occurrenceId: occurrence.id,
+        format: "CHOICE",
+        timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
+        drillIncludeCorrect: false,
+        results: [{ wordId: w.id, correct: true }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);
   });

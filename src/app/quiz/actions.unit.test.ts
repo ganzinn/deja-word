@@ -324,6 +324,7 @@ describe("startDrill (Server Action)", () => {
     format: "CHOICE" as const,
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
+    drillIncludeCorrect: false,
     results: [
       { wordId: "w_1", correct: true },
       { wordId: "w_2", correct: false },
@@ -344,6 +345,7 @@ describe("startDrill (Server Action)", () => {
       format: "CHOICE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
       results: [],
     });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });

@@ -3,7 +3,7 @@
 // (4) question-<format>.tsx の 4 箇所＋本ファイルの switch を更新する。
 
 import type { QuizFormat } from "@/generated/prisma/enums";
-import { buildChoiceQuestions } from "@/lib/quiz/generation/choice";
+import { buildChoiceQuestions, choiceCandidateTexts } from "@/lib/quiz/generation/choice";
 import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
@@ -95,12 +95,11 @@ export function checkFormatAvailability(
   }
   switch (format) {
     case "CHOICE": {
-      // 選択肢表示と同じキーで成立判定する（先頭訳語のみ表示なら先頭訳語で重複排除）。
+      // 選択肢生成（buildChoiceQuestions）と同じキーで成立判定する。
       const firstMeaningTextOnly = options.choiceFirstMeaningTextOnly ?? false;
-      const dummyless = findDummylessTarget(material, (word) => {
-        const texts = word.meanings[0]?.texts ?? [];
-        return [{ value: word, texts: firstMeaningTextOnly ? texts.slice(0, 1) : texts }];
-      });
+      const dummyless = findDummylessTarget(material, (word) => [
+        { value: word, texts: choiceCandidateTexts(word, firstMeaningTextOnly) },
+      ]);
       return dummyless === undefined
         ? AVAILABLE
         : {

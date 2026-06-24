@@ -30,6 +30,8 @@ export type QuizDefaults = {
 /**
  * 開始フォームに渡すデフォルトの初期値。挙動設定（showCountdown / autoplay* /
  * enableAnswerSound）と saveOnStart は「初期値」ではなく別経路で扱うため除外する。
+ * choiceFirstMeaningTextOnly は挙動設定だが、選択肢の生成結果に影響し開始画面でも選べる
+ * （StartQuizInput 経由で生成に渡す）ため、初期値として除外せず残す。
  */
 export type StartFormDefaults = Omit<
   QuizDefaults,
@@ -150,9 +152,10 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
 
 /**
  * 開始画面で設定した内容をデフォルトに上書きする（開始画面トグル ON でテスト開始時）。
- * 開始画面にある項目だけの部分更新: occurrence / range / format と、選択中形式の制限時間
- * のみを書き換える。他形式の制限時間・カウントダウン/発音/効果音などの挙動設定・saveOnStart
- * 自体は既存値を保持する（upsert の update に開始画面の 4 項目しか渡さないため温存される）。
+ * 開始画面にある項目だけの部分更新: occurrence / range / format / 四択先頭訳語のみ表示
+ * （choiceFirstMeaningTextOnly）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
+ * カウントダウン/発音/効果音などの挙動設定・saveOnStart 自体は既存値を保持する
+ * （upsert の update に開始画面の項目しか渡さないため温存される）。
  */
 export async function saveStartSettingsAsDefaultsForUser(
   userId: string,

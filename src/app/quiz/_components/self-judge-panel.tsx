@@ -85,7 +85,11 @@ export function SelfJudgePanel({
     return (
       <div className="flex flex-col gap-4">
         {timer !== null ? <QuestionTimerBar state={timer} timedOut={false} /> : null}
-        <Button size="lg" onClick={() => setRevealed({ byTimeout: false })}>
+        <Button
+          size="lg"
+          className="h-auto min-h-14 py-4"
+          onClick={() => setRevealed({ byTimeout: false })}
+        >
           解答を表示
         </Button>
       </div>
@@ -98,7 +102,12 @@ export function SelfJudgePanel({
       {children}
 
       {revealed.byTimeout ? (
-        <Button size="lg" disabled={completed} onClick={() => handleJudge("TIMEOUT")}>
+        <Button
+          size="lg"
+          className="h-auto min-h-14 py-4"
+          disabled={completed}
+          onClick={() => handleJudge("TIMEOUT")}
+        >
           次へ
         </Button>
       ) : (
@@ -107,7 +116,7 @@ export function SelfJudgePanel({
             size="lg"
             disabled={completed}
             onClick={() => handleJudge("CORRECT")}
-            className="border-green-600 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-400 dark:hover:bg-green-900"
+            className="h-auto min-h-14 border-green-600 bg-green-50 py-4 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-400 dark:hover:bg-green-900"
             variant="outline"
           >
             合っていた
@@ -116,7 +125,7 @@ export function SelfJudgePanel({
             size="lg"
             disabled={completed}
             onClick={() => handleJudge("INCORRECT")}
-            className="border-red-600 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+            className="h-auto min-h-14 border-red-600 bg-red-50 py-4 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
             variant="outline"
           >
             間違っていた
@@ -126,7 +135,7 @@ export function SelfJudgePanel({
             disabled={completed}
             onClick={() => handleJudge("GAVE_UP")}
             variant="outline"
-            className="text-muted-foreground"
+            className="text-muted-foreground h-auto min-h-14 py-4"
           >
             思い浮かばなかった
           </Button>

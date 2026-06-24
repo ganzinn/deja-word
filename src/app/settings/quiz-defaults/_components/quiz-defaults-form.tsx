@@ -289,6 +289,30 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
                           <span className="text-muted-foreground shrink-0 text-sm">秒</span>
                         </div>
                       ) : null}
+
+                      {/* 四択（英→日）固有: 選択肢に先頭の訳語だけを表示するか */}
+                      {option.value === "CHOICE" ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="quiz-defaults-choice-first-meaning-text-only"
+                              checked={choiceFirstMeaningTextOnly}
+                              onCheckedChange={(checked) =>
+                                setChoiceFirstMeaningTextOnly(checked === true)
+                              }
+                            />
+                            <Label
+                              htmlFor="quiz-defaults-choice-first-meaning-text-only"
+                              className="font-normal"
+                            >
+                              選択肢に最初の訳語だけを表示する
+                            </Label>
+                          </div>
+                          <p className="text-muted-foreground pl-6 text-xs">
+                            オフにすると、複数の訳語を「; 」で連結して選択肢に表示します。
+                          </p>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -296,24 +320,6 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <Label>四択（英語→日本語）の選択肢表示</Label>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="quiz-defaults-choice-first-meaning-text-only"
-            checked={choiceFirstMeaningTextOnly}
-            onCheckedChange={(checked) => setChoiceFirstMeaningTextOnly(checked === true)}
-          />
-          <Label htmlFor="quiz-defaults-choice-first-meaning-text-only" className="font-normal">
-            選択肢に最初の訳語だけを表示する
-          </Label>
-        </div>
-        <p className="text-muted-foreground text-xs">
-          オンにすると、複数の訳語を「; 」で連結せず、先頭の訳語だけを選択肢に表示します（四択
-          英語→日本語のみ）。
-        </p>
       </section>
 
       <section className="flex flex-col gap-2">

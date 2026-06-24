@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
-import { isJaToEnFormat } from "@/lib/quiz/format-options";
+import { isJaToEnFormat, isSelfJudgeFormat } from "@/lib/quiz/format-options";
 import { cancelSpeech, speakEnglish } from "@/lib/speech";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
@@ -407,10 +407,15 @@ export function QuizFlow({
    * 正誤が確定した瞬間（onReveal）に中央フラッシュ＋効果音を出す。集中処理にすることで
    * 自己判定の即時 onComplete（次問へ遷移）でもオーバーレイが生き残る。
    * GAVE_UP（わからない・思い浮かばなかった）は kind=null で表示も音もなし。
+   * 自己判定形式の本人申告（CORRECT/INCORRECT）も演出なし（本人が正誤を把握済みのため）。
    */
   function handleReveal(result: QuizResult) {
     const kind = feedbackKindForResult(result);
     if (kind === null) return;
+    // 自己判定形式で本人が押した正誤判定（合っていた/間違っていた）は、ユーザー自身が
+    // 正誤を分かっているためフラッシュ・効果音を出さない。時間切れ(TIMEOUT)は本人の
+    // 判定ではないため従来どおり × を出す。
+    if (quiz !== null && isSelfJudgeFormat(quiz.format) && result !== "TIMEOUT") return;
     feedbackKeyRef.current += 1;
     setFeedback({ kind, key: feedbackKeyRef.current });
     if (enableAnswerSound) playAnswerSound(kind);

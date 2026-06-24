@@ -220,7 +220,7 @@ export function StartForm({
       <section className="flex flex-col gap-2">
         <Label htmlFor="quiz-occurrence">掲載箇所</Label>
         <Select items={selectItems} value={occurrenceId} onValueChange={setOccurrenceId}>
-          <SelectTrigger id="quiz-occurrence" className="w-full">
+          <SelectTrigger id="quiz-occurrence" className="w-full data-[size=default]:h-14">
             <SelectValue placeholder="掲載箇所を選択" />
           </SelectTrigger>
           <SelectContent>
@@ -245,6 +245,7 @@ export function StartForm({
             value={rangeFromText}
             onChange={(e) => setRangeFromText(e.target.value)}
             aria-label="掲載番号（から）"
+            className="h-14"
           />
           <span className="text-muted-foreground shrink-0 text-sm">〜</span>
           <Input
@@ -255,6 +256,7 @@ export function StartForm({
             value={rangeToText}
             onChange={(e) => setRangeToText(e.target.value)}
             aria-label="掲載番号（まで）"
+            className="h-14"
           />
         </div>
         <p className="text-muted-foreground text-xs">
@@ -289,7 +291,7 @@ export function StartForm({
             if (value !== null) selectFormat(value);
           }}
         >
-          <SelectTrigger id="quiz-format" className="w-full">
+          <SelectTrigger id="quiz-format" className="w-full data-[size=default]:h-14">
             <SelectValue placeholder="出題形式を選択" />
           </SelectTrigger>
           <SelectContent>
@@ -315,6 +317,7 @@ export function StartForm({
         <div className="flex items-center gap-2">
           <Checkbox
             id="quiz-timeout-enabled"
+            className="size-6"
             checked={timeoutEnabled}
             onCheckedChange={(checked) => {
               setTimeoutEnabled(checked === true);
@@ -338,7 +341,7 @@ export function StartForm({
                 value={timeoutText}
                 onChange={(e) => setTimeoutText(e.target.value)}
                 aria-label="制限時間（秒）"
-                className="w-24"
+                className="h-14 w-24"
               />
               <span className="text-muted-foreground shrink-0 text-sm">秒</span>
             </div>
@@ -354,6 +357,7 @@ export function StartForm({
         <div className="flex items-center gap-2">
           <Checkbox
             id="quiz-save-as-default"
+            className="size-6"
             checked={saveAsDefault}
             onCheckedChange={(checked) => setSaveAsDefault(checked === true)}
           />
@@ -366,7 +370,12 @@ export function StartForm({
         </p>
       </section>
 
-      <Button size="lg" disabled={!canStart} onClick={handleStart}>
+      <Button
+        size="lg"
+        className="h-auto min-h-14 py-4"
+        disabled={!canStart}
+        onClick={handleStart}
+      >
         開始
       </Button>
 

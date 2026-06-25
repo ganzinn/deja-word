@@ -71,9 +71,9 @@ concise,adjective,簡潔な
 ## 仕様
 
 - **登録先**: `--email` 省略 → `system` ユーザー所有。指定 → その `User`（email は小文字化して検索）所有。
-- **掲載箇所**: 新規作成し**プリセット ON**・**自動採番 ON**。掲載番号は**実際に登録された単語の順**に `1,2,3…`。
-  - system 所有: プリセット設定（`OccurrencePresetSetting`）を**全既存ユーザー**に付与。将来のユーザーはサインアップ時の既存処理（`seedOccurrencePresetSettingsForUser`）が自動でカバーする。
-  - 個人所有: プリセット設定はその**ユーザー本人のみ**。
+- **掲載箇所**: 新規作成し**自動採番 ON**。掲載番号は**実際に登録された単語の順**に `1,2,3…`。
+  - 共通の掲載箇所はオプトイン方式のため、プリセット設定（`OccurrencePresetSetting`）は**掲載箇所オーナー本人ぶんのみ**付与する（system 所有なら system のみ、個人所有ならそのユーザー本人のみ）。
+  - 他の既存ユーザー・将来のユーザーには付与しない。各自が `/settings/occurrences` で必要に応じて ON にする。
 - **重複は skip（マージしない）**: 登録先オーナーに同じ `headword` が既存なら、その行を**スキップして続行**する。CSV 内の重複・意味なし行も同様にスキップし、明細を報告する。
 - **掲載箇所名の衝突**: 登録先スコープ（system＋本人）に同名の掲載箇所が既にあれば中止する（別名にするか既存を整理）。
 - 例文 / 関連語 / メモ / 補足 / 発音音源は登録対象外（単語＋意味＋掲載箇所のみ）。
@@ -103,7 +103,7 @@ concise,adjective,簡潔な
    ```text
    登録先            : system (system@deja-word.internal)
    掲載箇所          : "ターゲット1900" (未作成)
-   プリセット付与    : 3 ユーザー
+   プリセット付与    : 1 ユーザー
    結果:
      CSV 行数        : 1900
      登録予定(Word) : 1900
@@ -118,7 +118,7 @@ concise,adjective,簡潔な
    pnpm db:import-words "ターゲット1900" tmp/target1900.words.csv --execute
    ```
 
-4. 確認（任意）: `pnpm db:studio` で `occurrence`（owner=system）/ `word` / `meaning` / `meaning_text` / `word_occurrence`（掲載番号）/ `occurrence_preset_setting`（全ユーザー分）を見る。
+4. 確認（任意）: `pnpm db:studio` で `occurrence`（owner=system）/ `word` / `meaning` / `meaning_text` / `word_occurrence`（掲載番号）/ `occurrence_preset_setting`（オーナー本人ぶんのみ）を見る。
 5. 関連語も入れる場合は続けて `tmp/target1900.related.csv` を `db:import-related-words` で取り込む（→ `docs/ops/import-related-words.md`）。
 
 引数なしの **対話モード**でも同じことができる（登録先 Enter→system / 掲載箇所名 `ターゲット1900` / CSV パス `tmp/target1900.words.csv` を順に入力 → ドライラン提示 → `[2] 実登録`）。個人ユーザー宛てに入れたい場合は `--email=<対象ユーザーの email>` を付ける（掲載箇所もそのユーザー所有になり、プリセットは本人のみ）。

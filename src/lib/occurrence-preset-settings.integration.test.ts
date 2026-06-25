@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import {
   PresetOccurrenceNotInScopeError,
-  seedOccurrencePresetSettingsForUser,
   setPresetForUser,
 } from "@/lib/occurrence-preset-settings";
 import { prisma } from "@/lib/prisma";
@@ -13,22 +12,6 @@ import {
   createOccurrenceRow,
   createTestUser,
 } from "../../tests/setup/fixtures";
-
-describe("seedOccurrencePresetSettingsForUser", () => {
-  test("is idempotent: repeated calls don't duplicate records", async () => {
-    const user = await createTestUser();
-    const before = await prisma.occurrencePresetSetting.count({
-      where: { userId: user.id },
-    });
-    await seedOccurrencePresetSettingsForUser(user.id);
-    await seedOccurrencePresetSettingsForUser(user.id);
-    const after = await prisma.occurrencePresetSetting.count({
-      where: { userId: user.id },
-    });
-    expect(after).toBe(before);
-    expect(after).toBe(SYSTEM_OCCURRENCE_LOCATIONS.length);
-  });
-});
 
 describe("setPresetForUser", () => {
   test("isPreset=true creates a record (upsert) and the second call is a no-op", async () => {

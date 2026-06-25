@@ -116,30 +116,20 @@ export async function bulkImportWords(
   } satisfies Partial<BulkImportReport>;
 
   if (opts.dryRun) {
-    const presetSettings = isSystem ? await prisma.user.count() : 1;
-    return { ...base, occurrenceId: null, presetSettings, created: 0, executed: false };
+    return { ...base, occurrenceId: null, presetSettings: 1, created: 0, executed: false };
   }
 
-  // 掲載箇所 + プリセット設定はまとめて作る（system は全ユーザー、個人は本人のみ）。
+  // 掲載箇所 + プリセット設定はまとめて作る。共通掲載箇所はオプトイン方式のため、
+  // system 取り込みでも他ユーザーへは付与せず、掲載箇所オーナー本人ぶんのみ ON にする
+  // （他ユーザーは設定画面で各自 ON にする）。
   // sortOrder は createOccurrenceForUser と同様に既定（0）のままにし、一覧は createdAt で並ぶ。
   const { occurrenceId, presetSettings } = await prisma.$transaction(async (tx) => {
     const occ = await tx.occurrence.create({
       data: { ownerId, location, autoNumbering: true },
       select: { id: true },
     });
-    let presets: number;
-    if (isSystem) {
-      const users = await tx.user.findMany({ select: { id: true } });
-      const res = await tx.occurrencePresetSetting.createMany({
-        data: users.map((u) => ({ userId: u.id, occurrenceId: occ.id })),
-        skipDuplicates: true,
-      });
-      presets = res.count;
-    } else {
-      await tx.occurrencePresetSetting.create({ data: { userId: ownerId, occurrenceId: occ.id } });
-      presets = 1;
-    }
-    return { occurrenceId: occ.id, presetSettings: presets };
+    await tx.occurrencePresetSetting.create({ data: { userId: ownerId, occurrenceId: occ.id } });
+    return { occurrenceId: occ.id, presetSettings: 1 };
   });
 
   // 各単語は 1 件ずつネスト create（単一呼び出しで原子的）。掲載番号は登録順に 1,2,3…。

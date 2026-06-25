@@ -39,17 +39,6 @@ async function main() {
       create: { id: randomUUID(), email, name, emailVerified: false },
     });
 
-    const systemOccurrences = await prisma.occurrence.findMany({
-      where: { ownerId: "system" },
-      select: { id: true },
-    });
-    if (systemOccurrences.length > 0) {
-      await prisma.occurrencePresetSetting.createMany({
-        data: systemOccurrences.map((o) => ({ userId: user.id, occurrenceId: o.id })),
-        skipDuplicates: true,
-      });
-    }
-
     const existing = await prisma.account.findFirst({
       where: { userId: user.id, providerId: "credential" },
     });

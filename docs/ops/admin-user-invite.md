@@ -23,7 +23,7 @@ SYSTEM_USER_PASSWORD=... pnpm db:set-system-password
 
 1. system ユーザーで `/sign-in` → `/menu` →「ユーザー管理」（`/admin/users`）へ。
 2. 招待したい **メールアドレス**を入力して「登録 / リンク発行」。
-   - 未登録の email は新規ユーザーとして作成される（`User.name` は email のローカル部を仮値とし、本人が後から `/account/edit` で変更可能）。新規ユーザーには system 掲載箇所のプリセットが付与される。
+   - 未登録の email は新規ユーザーとして作成される（`User.name` は email のローカル部を仮値とし、本人が後から `/account/edit` で変更可能）。共通の掲載箇所のプリセットはデフォルト OFF（付与しない）。本人が `/settings/occurrences` で各自 ON にする。
    - 既存ユーザーの email でも実行でき、設定リンクの**再発行**として使える（一覧の「設定リンク再発行」ボタンも同じ）。
 3. 表示された **パスワード設定 URL（`/set-password?token=...`）をコピーして本人に渡す**。有効期限は **24 時間**。
 4. 本人が URL を開き、新しいパスワードを設定すると credential アカウントが作成される。

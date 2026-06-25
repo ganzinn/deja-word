@@ -75,7 +75,7 @@ rm .env.production.local
 >
 > - 取り込み用 CSV は `tmp/target1900.words.csv`（単語 1900 行）/ `tmp/target1900.related.csv`（関連語 183 行）。元 CSV から `scripts/split-target1900.ts` で生成したもの。詳細仕様は [`import-words`](./import-words.md) / [`import-related-words`](./import-related-words.md) を参照。
 > - **単語 → 関連語の順序は固定**。関連語の掲載番号リンク（`link_number`）は単語が登録済みでないと解決できない。
-> - `--email` 省略で **system 共有マスタ**として登録。掲載箇所「ターゲット1900」が新規作成され、プリセット ON・自動採番 ON で掲載番号 1〜1900 が振られる。
+> - `--email` 省略で **system 共有マスタ**として登録。掲載箇所「ターゲット1900」が新規作成され、自動採番 ON で掲載番号 1〜1900 が振られる。プリセットは**オーナー本人（system）ぶんのみ ON**（共通の掲載箇所はオプトイン方式。一般ユーザーは各自 `/settings/occurrences` で ON にする）。
 > - 掲載箇所名が system スコープに既存だと中止する。リセット直後（`db:seed` は掲載箇所を作らない）なら未作成なので問題ない。
 > - 必ず dry-run で「登録予定 1900 / スキップ 0」を確認してから `--execute`。
 > - `db:import-related-words` は **第 1 引数に掲載箇所名が必須**（単語と同じ名前）。省略するとリンク解決先が見つからず失敗する。

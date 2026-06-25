@@ -22,7 +22,7 @@ const rows: BulkImportRow[] = [
 ];
 
 describe("bulkImportWords", () => {
-  test("system 宛て: 掲載箇所が system 所有で作られ、全ユーザーにプリセット付与される", async () => {
+  test("system 宛て: 掲載箇所が system 所有で作られ、プリセットはオーナー本人のみ（既存ユーザーはオプトイン）", async () => {
     const userA = await createTestUser();
     const userB = await createTestUser();
 
@@ -46,7 +46,8 @@ describe("bulkImportWords", () => {
       autoNumbering: true,
     });
 
-    // system + userA + userB の全員にプリセット設定が付く
+    // 共通掲載箇所はオプトイン方式のため、system 取り込みでもオーナー本人（system）のみにプリセットが付く。
+    // 既存ユーザー（userA / userB）には付与されず、各自が設定画面で ON にする。
     const presetUserIds = (
       await prisma.occurrencePresetSetting.findMany({
         where: { occurrenceId: report.occurrenceId! },
@@ -55,8 +56,10 @@ describe("bulkImportWords", () => {
     )
       .map((p) => p.userId)
       .sort();
-    expect(presetUserIds).toEqual([SYSTEM_USER_ID, userA.id, userB.id].sort());
-    expect(report.presetSettings).toBe(3);
+    expect(presetUserIds).toEqual([SYSTEM_USER_ID]);
+    expect(presetUserIds).not.toContain(userA.id);
+    expect(presetUserIds).not.toContain(userB.id);
+    expect(report.presetSettings).toBe(1);
   });
 
   test("単語・意味・MeaningText・掲載番号(1,2,3…)が登録順で作られる", async () => {

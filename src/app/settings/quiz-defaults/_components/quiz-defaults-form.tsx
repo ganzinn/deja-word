@@ -323,21 +323,6 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <Label>定着モードの出題対象</Label>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="quiz-defaults-drill-include-correct"
-            checked={drillIncludeCorrect}
-            onCheckedChange={(checked) => setDrillIncludeCorrect(checked === true)}
-          />
-          <Label htmlFor="quiz-defaults-drill-include-correct" className="font-normal">
-            正解した問題も定着モードで出題する
-          </Label>
-        </div>
-        <p className="text-muted-foreground text-xs">テスト結果画面のトグルの初期値です。</p>
-      </section>
-
-      <section className="flex flex-col gap-2">
         <Label>発音の自動再生</Label>
         <div className="flex items-center gap-2">
           <Checkbox
@@ -415,6 +400,21 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           オンにすると、開始画面の「この設定をデフォルト設定とする」が初期オンになります。開始画面で
           オフに切り替えることもでき、その場合この設定は変わりません。
         </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>定着モードの出題対象</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-drill-include-correct"
+            checked={drillIncludeCorrect}
+            onCheckedChange={(checked) => setDrillIncludeCorrect(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-drill-include-correct" className="font-normal">
+            正解した問題も定着モードで出題する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">テスト結果画面のトグルの初期値です。</p>
       </section>
 
       <div className="flex flex-col gap-2">

@@ -5,7 +5,6 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 
 import { recordResetToken } from "@/lib/auth-reset-link";
-import { seedOccurrencePresetSettingsForUser } from "@/lib/occurrence-preset-settings";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
 import { signUpDisabled } from "@/lib/signup-policy";
@@ -41,15 +40,6 @@ export const auth = betterAuth({
       if (!user.emailVerified) {
         await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
       }
-    },
-  },
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          await seedOccurrencePresetSettingsForUser(user.id);
-        },
-      },
     },
   },
   plugins: [nextCookies()],

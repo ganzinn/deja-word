@@ -7,7 +7,6 @@ import { createEmailVerificationToken } from "better-auth/api";
 import { deleteUserForAdmin, UserNotFoundError } from "@/lib/admin-user-delete";
 import { auth } from "@/lib/auth";
 import { captureResetToken } from "@/lib/auth-reset-link";
-import { seedOccurrencePresetSettingsForUser } from "@/lib/occurrence-preset-settings";
 import { prisma } from "@/lib/prisma";
 import { adminInviteSchema } from "@/lib/schema/admin-invite";
 import { changeUserEmailSchema } from "@/lib/schema/change-user-email";
@@ -55,7 +54,7 @@ export async function inviteUser(input: { email: string }): Promise<InviteUserRe
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     let isNewUser = false;
     if (!existing) {
-      const user = await prisma.user.create({
+      await prisma.user.create({
         data: {
           id: randomUUID(),
           email,
@@ -63,10 +62,7 @@ export async function inviteUser(input: { email: string }): Promise<InviteUserRe
           name: localPart(email),
           emailVerified: false,
         },
-        select: { id: true },
       });
-      // databaseHooks は raw create では発火しないため、プリセット付与を明示的に行う。
-      await seedOccurrencePresetSettingsForUser(user.id);
       isNewUser = true;
     }
 

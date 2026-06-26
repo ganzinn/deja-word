@@ -171,9 +171,6 @@ describe("startQuiz (Server Action)", () => {
     format: "CHOICE" as const,
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
-    resetRemaining: 3,
-    vagueRemaining: 2,
-    initialCorrectRemaining: 1,
   };
 
   test("unauthorized: no session", async () => {

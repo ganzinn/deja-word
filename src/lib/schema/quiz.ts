@@ -62,16 +62,15 @@ export const answerInputSchema = z.object({
 /** `getQuizPreview` の入力。 */
 export const getQuizPreviewInputSchema = quizRangeInputSchema;
 
-/** `startQuiz` の入力。 */
+/**
+ * `startQuiz` の入力。定着までの回数（残数設定）はテスト結果画面で受け取り `startDrill` に渡すため
+ * ここには含めない（テスト生成 `generateQuizForUser` も残数を使わない）。
+ */
 export const startQuizInputSchema = quizRangeInputSchema.extend({
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
   choiceFirstMeaningTextOnly: z.boolean(),
-  // 定着までの回数（残数設定）。drill 生成時に `Drill` 行へ引き継ぐため開始時に受け取る。
-  resetRemaining: quizRemainingCountSchema,
-  vagueRemaining: quizRemainingCountSchema,
-  initialCorrectRemaining: quizRemainingCountSchema,
 });
 
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */

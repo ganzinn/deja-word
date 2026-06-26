@@ -49,8 +49,9 @@
 - 正解で残数 −1、**うろ覚え（VAGUE）で vagueRemaining にリセット**、**間違えたら（「わからない」・時間切れ TIMEOUT 含む）resetRemaining にリセット**（TIMEOUT は 2026-06-13 加算、VAGUE は 2026-06-26 加算）
 - 残数 0 = 卒業。以降のラウンドには出題されない
 
-**残数 3 値の永続化と引き継ぎ（2026-06-26）**: 3 値はテスト開始画面（start-form）と単語テスト設定
-（`/settings/quiz-defaults`）の両方で設定でき、`Drill` 行（`resetRemaining` / `vagueRemaining` /
+**残数 3 値の永続化と引き継ぎ（2026-06-26）**: 3 値はテスト結果一覧画面（result-list。定着モードに入る
+直前の 1 回だけ設定可。各テスト開始でデフォルトへ戻る）で設定し、デフォルト値は単語テスト設定
+（`/settings/quiz-defaults`）で設定する。`startDrill` 経由で `Drill` 行（`resetRemaining` / `vagueRemaining` /
 `initialCorrectRemaining`）に保存して**全ラウンドで引き継ぐ**（format / timeoutSeconds と同じパターン。決定 4）。
 初期残数（`initialRemaining`）だけでなくラウンド遷移（`nextRemaining`）も drill ごとの保存値を使うため、
 間違え直したときのリセット値も設定値に従う。設定既定は `QuizDefaultSetting`（各 null = アプリ既定）。

@@ -85,9 +85,9 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | 用途 | Action（`src/app/quiz/actions.ts`） | 入出力 |
 | --- | --- | --- |
 | プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）（決定 8 改訂で形式ごとの成立可否は返さない。成立可否は開始時 `startQuiz` で判定） |
-| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算。残数 3 値は drill 生成へ中継するため受け取る。2026-06-26 加算） |
+| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null, choiceFirstMeaningTextOnly: boolean }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算。残数 3 値は当初ここで受け取っていたが、結果画面で設定し `startDrill` で渡す方式へ移設。2026-06-26 改訂） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
-| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds / 残数 3 値は `Drill` に保存。timeoutSeconds は 2026-06-13・残数 3 値は 2026-06-26 加算） |
+| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds / 残数 3 値は `Drill` に保存。残数 3 値は結果画面で設定して受け取る。timeoutSeconds は 2026-06-13・残数 3 値は 2026-06-26 加算） |
 | drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出） |
 | drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
 | drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |

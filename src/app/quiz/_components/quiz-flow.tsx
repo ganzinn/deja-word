@@ -47,6 +47,8 @@ import {
   type SubmitState,
 } from "./result-list";
 import { StartForm, type OccurrenceOption } from "./start-form";
+import { WordDetailButton } from "./word-detail-button";
+import { WordDetailDialog } from "./word-detail-dialog";
 
 type Props = {
   occurrences: OccurrenceOption[];
@@ -153,6 +155,8 @@ function QuestionView({
   onComplete,
   onReveal,
   onAnswerReveal,
+  onAnswerShown,
+  onShowDetail,
 }: {
   quiz: QuizPayload;
   index: number;
@@ -161,6 +165,10 @@ function QuestionView({
   onReveal: (result: QuizResult) => void;
   /** 解答（英単語）が画面に現れた瞬間に 1 回だけ呼ばれる（日→英のみ。発音再生は QuizFlow が集中処理）。 */
   onAnswerReveal: () => void;
+  /** 解答が画面に現れた瞬間に呼ばれる（英→日。上部見出し語の「詳細」ボタン表示ゲートに使う）。 */
+  onAnswerShown: () => void;
+  /** 「詳細」ボタンのタップ（日→英。解答の英単語の隣に置く）。現在問題の wordId に束縛済み。 */
+  onShowDetail: () => void;
 }) {
   // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
@@ -173,6 +181,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerShown={onAnswerShown}
         />
       );
     }
@@ -185,6 +194,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerShown={onAnswerShown}
         />
       );
     }
@@ -197,6 +207,7 @@ function QuestionView({
           timeoutSeconds={quiz.timeoutSeconds}
           onComplete={onComplete}
           onReveal={onReveal}
+          onAnswerShown={onAnswerShown}
         />
       );
     }
@@ -211,6 +222,7 @@ function QuestionView({
           onComplete={onComplete}
           onReveal={onReveal}
           onAnswerReveal={onAnswerReveal}
+          onShowDetail={onShowDetail}
           showCorrectAudio
         />
       );
@@ -225,6 +237,7 @@ function QuestionView({
           onComplete={onComplete}
           onReveal={onReveal}
           onAnswerReveal={onAnswerReveal}
+          onShowDetail={onShowDetail}
         />
       );
     }
@@ -238,6 +251,7 @@ function QuestionView({
           onComplete={onComplete}
           onReveal={onReveal}
           onAnswerReveal={onAnswerReveal}
+          onShowDetail={onShowDetail}
         />
       );
     }
@@ -285,8 +299,10 @@ export function QuizFlow({
     initialDrillRemaining(defaults),
   );
   const [drill, setDrill] = useState<DrillState | null>(null);
-  // 結果一覧で開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
+  // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
   const [dialogWordId, setDialogWordId] = useState<string | null>(null);
+  // 出題中、現在の問題の解答が画面に出たか（英→日の上部見出し語に「詳細」ボタンを出すゲート）。
+  const [answerShown, setAnswerShown] = useState(false);
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
   const runIdRef = useRef(0);
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -301,6 +317,8 @@ export function QuizFlow({
     setLoadError(null);
     setRows([]);
     setSubmitState(null);
+    // 新しい出題に備えて「詳細」ボタンを解答前の非表示状態へ戻す
+    setAnswerShown(false);
   }
 
   function handleStart(input: StartQuizInput) {
@@ -524,6 +542,8 @@ export function QuizFlow({
     ];
     setRows(nextRows);
     if (index + 1 < quiz.questions.length) {
+      // 次問では解答前に戻すため「詳細」ボタンを隠す
+      setAnswerShown(false);
       setPhase({ name: "play", index: index + 1 });
       return;
     }
@@ -697,13 +717,22 @@ export function QuizFlow({
             </h1>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center justify-center gap-3 py-4">
-            <h1 className="text-3xl font-bold tracking-tight break-words">{question.headword}</h1>
-            <AudioPlayButton
-              src={question.pronunciationAudioUrl}
-              label="発音"
-              ttsText={question.headword}
-            />
+          <div className="flex flex-col items-center gap-2 py-4">
+            <h1 className="text-center text-3xl font-bold tracking-tight break-words">
+              {question.headword}
+            </h1>
+            {/* 見出し語と分けて、発音・詳細は1段下にまとめて横並びにする（横一列の圧迫感を避ける）。 */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <AudioPlayButton
+                src={question.pronunciationAudioUrl}
+                label="発音"
+                ttsText={question.headword}
+              />
+              {/* 英→日は見出し語が常時表示。解答が出た後だけ「詳細」を出す（解答前はネタバレ防止で隠す）。 */}
+              {answerShown ? (
+                <WordDetailButton onClick={() => setDialogWordId(question.wordId)} />
+              ) : null}
+            </div>
           </div>
         )}
 
@@ -713,8 +742,11 @@ export function QuizFlow({
           onComplete={handleQuestionComplete}
           onReveal={handleReveal}
           onAnswerReveal={handleAnswerReveal}
+          onAnswerShown={() => setAnswerShown(true)}
+          onShowDetail={() => setDialogWordId(question.wordId)}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
+        <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
       </main>
     );
   }
@@ -737,10 +769,10 @@ export function QuizFlow({
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}
           drillRemaining={drillRemaining}
           onDrillRemainingChange={setDrillRemaining}
-          dialogWordId={dialogWordId}
           onOpenDialog={setDialogWordId}
-          onCloseDialog={() => setDialogWordId(null)}
         />
+        {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
+        <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
       </main>
     );
   }

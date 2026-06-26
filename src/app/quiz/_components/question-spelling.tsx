@@ -14,6 +14,7 @@ import { AnswerAdvanceFooter } from "./answer-advance-footer";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
 import { useQuestionTimer } from "./use-question-timer";
+import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
   question: SpellingQuestion;
@@ -24,6 +25,8 @@ type Props = {
   onReveal: (result: QuizResult) => void;
   /** 解答（英単語）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
   onAnswerReveal?: () => void;
+  /** 「詳細」ボタンのタップ。解答（英単語）の隣に詳細ボタンを出す。 */
+  onShowDetail?: () => void;
 };
 
 // 解答確定状態。input: 入力したスペル、null =「わからない」または時間切れ
@@ -47,6 +50,7 @@ export function QuestionSpelling({
   onComplete,
   onReveal,
   onAnswerReveal,
+  onShowDetail,
 }: Props) {
   const [input, setInput] = useState("");
   const [answered, setAnswered] = useState<Answered | null>(null);
@@ -135,14 +139,20 @@ export function QuestionSpelling({
 
         {/* 確定後は正解（英単語）を発音つきで提示する */}
         {answered !== null ? (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">正解:</span>
-            <span className="font-semibold break-words">{question.headword}</span>
-            <AudioPlayButton
-              src={question.pronunciationAudioUrl}
-              label="発音"
-              ttsText={question.headword}
-            />
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">正解:</span>
+              <span className="font-semibold break-words">{question.headword}</span>
+            </div>
+            {/* 英単語と分けて、発音・詳細は1段下にまとめて横並びにする。 */}
+            <div className="flex flex-wrap items-center gap-2">
+              <AudioPlayButton
+                src={question.pronunciationAudioUrl}
+                label="発音"
+                ttsText={question.headword}
+              />
+              {onShowDetail ? <WordDetailButton onClick={onShowDetail} /> : null}
+            </div>
           </div>
         ) : null}
 

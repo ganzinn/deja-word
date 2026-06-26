@@ -20,6 +20,8 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（回答／わからない／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答が可視化された瞬間に 1 回だけ呼ばれる（英→日。上部見出し語の「詳細」ゲート用）。 */
+  onAnswerShown?: () => void;
 };
 
 // 解答確定状態。selectedIndexes: 選んだ選択肢の index 集合、null =「わからない」または時間切れ
@@ -43,7 +45,13 @@ function outcomeFor(question: MultiMeaningQuestion, answered: Answered): Questio
   };
 }
 
-export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionMultiMeaning({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerShown,
+}: Props) {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
@@ -60,7 +68,8 @@ export function QuestionMultiMeaning({ question, timeoutSeconds, onComplete, onR
     if (answered === null || revealedRef.current) return;
     revealedRef.current = true;
     onReveal(outcomeFor(question, answered).result);
-  }, [answered, question, onReveal]);
+    onAnswerShown?.();
+  }, [answered, question, onReveal, onAnswerShown]);
 
   function handleToggle(index: number) {
     if (answered) return; // 確定後の連打ガード

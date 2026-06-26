@@ -12,6 +12,7 @@ import { AnswerAdvanceFooter } from "./answer-advance-footer";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
 import { useQuestionTimer } from "./use-question-timer";
+import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
   question: ChoiceQuestion;
@@ -22,6 +23,10 @@ type Props = {
   onReveal: (result: QuizResult) => void;
   /** 解答（選択肢の正解）が可視化された瞬間に 1 回だけ呼ばれる。日→英のみ指定される。 */
   onAnswerReveal?: () => void;
+  /** 解答が可視化された瞬間に 1 回だけ呼ばれる。英→日（上部見出し語の「詳細」ゲート）で指定される。 */
+  onAnswerShown?: () => void;
+  /** 「詳細」ボタンのタップ。日→英で正解（英単語）選択肢の右端に詳細ボタンを出す。 */
+  onShowDetail?: () => void;
   /** 正解選択肢の右端に発音ボタンを出すか。発音＝解答になる日→英のみ true。 */
   showCorrectAudio?: boolean;
 };
@@ -46,6 +51,8 @@ export function QuestionChoice({
   onComplete,
   onReveal,
   onAnswerReveal,
+  onAnswerShown,
+  onShowDetail,
   showCorrectAudio = false,
 }: Props) {
   const [answered, setAnswered] = useState<Answered | null>(null);
@@ -65,7 +72,8 @@ export function QuestionChoice({
     revealedRef.current = true;
     onReveal(outcomeFor(question, answered).result);
     onAnswerReveal?.();
-  }, [answered, question, onReveal, onAnswerReveal]);
+    onAnswerShown?.();
+  }, [answered, question, onReveal, onAnswerReveal, onAnswerShown]);
 
   function handleSelect(index: number | null) {
     if (answered) return; // 確定後の連打ガード
@@ -93,6 +101,8 @@ export function QuestionChoice({
           // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン
           const showAudio =
             isCorrect && showCorrectAudio && question.pronunciationAudioUrl !== null;
+          // 日→英は正解（英単語）の右端に「詳細」ボタンも重ねる（音源の有無に依らず出す）
+          const showDetail = isCorrect && onShowDetail !== undefined;
           return (
             <div key={index} className="relative">
               <Button
@@ -106,19 +116,22 @@ export function QuestionChoice({
                     "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
                   isWrongSelected &&
                     "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
-                  // 折り返した英単語が発音ボタンと重ならないよう右側を空ける
-                  showAudio && "pr-16",
+                  // 折り返した英単語が発音・詳細ボタンと重ならないよう右側を空ける
+                  (showAudio || showDetail) && "pr-16",
                 )}
               >
                 {choice.text}
               </Button>
-              {showAudio ? (
-                <div className="absolute top-1/2 right-2 -translate-y-1/2">
-                  <AudioPlayButton
-                    src={question.pronunciationAudioUrl}
-                    label="発音"
-                    ttsText={question.headword}
-                  />
+              {showAudio || showDetail ? (
+                <div className="absolute top-1/2 right-2 flex -translate-y-1/2 flex-col items-end gap-1">
+                  {showAudio ? (
+                    <AudioPlayButton
+                      src={question.pronunciationAudioUrl}
+                      label="発音"
+                      ttsText={question.headword}
+                    />
+                  ) : null}
+                  {showDetail ? <WordDetailButton onClick={onShowDetail} /> : null}
                 </div>
               ) : null}
             </div>

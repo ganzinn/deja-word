@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { AudioPlayButton } from "@/components/audio-play-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isSpellingCorrect } from "@/lib/quiz/spelling";
@@ -13,8 +12,8 @@ import type { QuizResult } from "@/generated/prisma/enums";
 import { AnswerAdvanceFooter } from "./answer-advance-footer";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
+import { RevealedHeadwordCard } from "./revealed-headword-card";
 import { useQuestionTimer } from "./use-question-timer";
-import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
   question: SpellingQuestion;
@@ -137,23 +136,13 @@ export function QuestionSpelling({
           )}
         />
 
-        {/* 確定後は正解（英単語）を発音つきで提示する */}
+        {/* 確定後は正解（英単語）を自己判定（日→英）と揃えたカードで提示する */}
         {answered !== null ? (
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">正解:</span>
-              <span className="font-semibold break-words">{question.headword}</span>
-            </div>
-            {/* 英単語と分けて、発音・詳細は1段下にまとめて横並びにする。 */}
-            <div className="flex flex-wrap items-center gap-2">
-              <AudioPlayButton
-                src={question.pronunciationAudioUrl}
-                label="発音"
-                ttsText={question.headword}
-              />
-              {onShowDetail ? <WordDetailButton onClick={onShowDetail} /> : null}
-            </div>
-          </div>
+          <RevealedHeadwordCard
+            headword={question.headword}
+            pronunciationAudioUrl={question.pronunciationAudioUrl}
+            onShowDetail={onShowDetail}
+          />
         ) : null}
 
         {answered === null ? (

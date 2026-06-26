@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { ChoiceQuestion } from "@/lib/quiz/payload";
 import type { QuizResult } from "@/generated/prisma/enums";
 
+import { AnswerAdvanceFooter } from "./answer-advance-footer";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
 import { useQuestionTimer } from "./use-question-timer";
@@ -71,10 +72,10 @@ export function QuestionChoice({
     setAnswered({ selectedIndex: index, timedOut: false });
   }
 
-  function handleNext() {
+  function handleComplete(outcome: QuestionOutcome) {
     if (!answered || completed) return; // onComplete は 1 回だけ
     setCompleted(true);
-    onComplete(outcomeFor(question, answered));
+    onComplete(outcome);
   }
 
   return (
@@ -134,14 +135,11 @@ export function QuestionChoice({
           わからない
         </Button>
       ) : (
-        <Button
-          size="lg"
-          className="h-auto min-h-14 py-4"
-          disabled={completed}
-          onClick={handleNext}
-        >
-          次へ
-        </Button>
+        <AnswerAdvanceFooter
+          outcome={outcomeFor(question, answered)}
+          completed={completed}
+          onComplete={handleComplete}
+        />
       )}
     </div>
   );

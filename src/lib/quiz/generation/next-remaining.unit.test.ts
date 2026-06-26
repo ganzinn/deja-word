@@ -13,6 +13,12 @@ describe("nextRemaining", () => {
     expect(nextRemaining(0, "CORRECT")).toBe(0);
   });
 
+  test("VAGUE (うろ覚え) resets to 2 from any value（正解1・不正解3の中間）", () => {
+    expect(nextRemaining(0, "VAGUE")).toBe(2);
+    expect(nextRemaining(1, "VAGUE")).toBe(2);
+    expect(nextRemaining(3, "VAGUE")).toBe(2);
+  });
+
   test("INCORRECT resets to 3 from any value (boundaries 0 and 3 included)", () => {
     expect(nextRemaining(0, "INCORRECT")).toBe(3);
     expect(nextRemaining(1, "INCORRECT")).toBe(3);

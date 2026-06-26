@@ -577,7 +577,7 @@ describe("startDrillInputSchema", () => {
       format: "CHOICE",
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
-      results: [{ wordId: "w_1", correct: true }],
+      results: [{ wordId: "w_1", result: "CORRECT" }],
     };
     expect(startDrillInputSchema.safeParse(base).success).toBe(false);
     for (const timeoutSeconds of [null, 1, 60]) {
@@ -594,7 +594,7 @@ describe("startDrillInputSchema", () => {
       format: "CHOICE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
-      results: [{ wordId: "w_1", correct: true }],
+      results: [{ wordId: "w_1", result: "CORRECT" }],
     };
     // 欠落は不正（nullable でも optional でもない）
     expect(startDrillInputSchema.safeParse(base).success).toBe(false);

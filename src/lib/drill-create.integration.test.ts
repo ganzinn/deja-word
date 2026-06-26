@@ -27,9 +27,9 @@ describe("createDrillForUser", () => {
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: true,
       results: [
-        { wordId: w1.id, correct: false },
-        { wordId: w2.id, correct: true },
-        { wordId: w3.id, correct: false },
+        { wordId: w1.id, result: "INCORRECT" },
+        { wordId: w2.id, result: "CORRECT" },
+        { wordId: w3.id, result: "INCORRECT" },
       ],
     });
 
@@ -66,7 +66,7 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
-        results: [{ wordId: word.id, correct: false }],
+        results: [{ wordId: word.id, result: "INCORRECT" }],
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
   });
@@ -89,8 +89,8 @@ describe("createDrillForUser", () => {
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       results: [
-        { wordId: alive.id, correct: false },
-        { wordId: deleted.id, correct: false },
+        { wordId: alive.id, result: "INCORRECT" },
+        { wordId: deleted.id, result: "INCORRECT" },
       ],
     });
 
@@ -119,7 +119,7 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
-        results: [{ wordId: unnumbered.id, correct: false }],
+        results: [{ wordId: unnumbered.id, result: "INCORRECT" }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);
   });
@@ -141,8 +141,8 @@ describe("createDrillForUser", () => {
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       results: [
-        { wordId: correct.id, correct: true },
-        { wordId: wrong.id, correct: false },
+        { wordId: correct.id, result: "CORRECT" },
+        { wordId: wrong.id, result: "INCORRECT" },
       ],
     });
 
@@ -155,6 +155,39 @@ describe("createDrillForUser", () => {
     expect(drill.rangeTo).toBe(20);
     expect(drill.words).toHaveLength(1);
     expect(drill.words[0]).toMatchObject({ wordId: wrong.id, remaining: 3 });
+  });
+
+  test("VAGUE (うろ覚え) is always included with remaining 2 even when drillIncludeCorrect=false", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const correct = await createQuizWordRow(user.id, "correct", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+    const vague = await createQuizWordRow(user.id, "vague", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 15 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      results: [
+        { wordId: correct.id, result: "CORRECT" },
+        { wordId: vague.id, result: "VAGUE" },
+      ],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({
+      where: { id: drillId },
+      include: { words: true },
+    });
+    // 正答は除外、うろ覚えはトグル OFF でも投入され残数 2（中間）。範囲もうろ覚え単語のみ。
+    expect(drill.rangeFrom).toBe(15);
+    expect(drill.rangeTo).toBe(15);
+    expect(drill.words).toHaveLength(1);
+    expect(drill.words[0]).toMatchObject({ wordId: vague.id, remaining: 2 });
   });
 
   test("drillIncludeCorrect=false with all-correct results throws EmptyDrillResultsError", async () => {
@@ -171,7 +204,7 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
-        results: [{ wordId: w.id, correct: true }],
+        results: [{ wordId: w.id, result: "CORRECT" }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);
   });

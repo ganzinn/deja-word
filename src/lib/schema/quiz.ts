@@ -40,10 +40,13 @@ export const quizTimeoutByFormatSchema = z.object(
   Object.fromEntries(ALL_QUIZ_FORMATS.map((f) => [f, quizTimeoutSecondsSchema.nullable()])),
 ) as unknown as z.ZodType<Record<QuizFormat, number | null>>;
 
+/** 解答結果の値。QuizResult enum と同期させる（生成 enum は import 時の値として使えないため列挙）。 */
+export const quizResultSchema = z.enum(["CORRECT", "INCORRECT", "VAGUE", "GAVE_UP", "TIMEOUT"]);
+
 /** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
 export const answerInputSchema = z.object({
   wordId: z.string().min(1),
-  result: z.enum(["CORRECT", "INCORRECT", "GAVE_UP", "TIMEOUT"]),
+  result: quizResultSchema,
 }) satisfies z.ZodType<AnswerInput>;
 
 // ---- 各 Server Action の入力スキーマ ----
@@ -91,10 +94,11 @@ export const saveQuizDefaultsInputSchema = z.object({
 
 // ---- drill 系 Server Action の入力スキーマ ----
 
-/** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。 */
+/** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。
+ *  result から投入要否（CORRECT のみトグル依存）と初期残数（誤答3 / うろ覚え2 / 正答1）を導出する。 */
 export const drillResultInputSchema = z.object({
   wordId: z.string().min(1),
-  correct: z.boolean(),
+  result: quizResultSchema,
 }) satisfies z.ZodType<DrillResultInput>;
 
 /**

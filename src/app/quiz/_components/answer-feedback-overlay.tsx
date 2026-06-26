@@ -11,7 +11,7 @@ export type FeedbackKind = "correct" | "incorrect";
 /**
  * 解答結果を正誤フラッシュ／効果音の種別へ写像する。
  * CORRECT → ○（正解音）/ INCORRECT・TIMEOUT → ×（不正解音。時間切れは×と同じ扱い）/
- * GAVE_UP → null（わからない・思い浮かばなかったは表示も音もなし）。
+ * GAVE_UP・VAGUE → null（わからない・うろ覚えは中立。表示も音もなし）。
  */
 export function feedbackKindForResult(result: QuizResult): FeedbackKind | null {
   switch (result) {
@@ -21,6 +21,7 @@ export function feedbackKindForResult(result: QuizResult): FeedbackKind | null {
     case "TIMEOUT":
       return "incorrect";
     case "GAVE_UP":
+    case "VAGUE":
       return null;
   }
 }

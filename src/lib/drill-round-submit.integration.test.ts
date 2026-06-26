@@ -28,7 +28,10 @@ async function setupDrill(words: { headword: string; number: number; correct: bo
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
     drillIncludeCorrect: true,
-    results: words.map((w, i) => ({ wordId: created[i].id, correct: w.correct })),
+    results: words.map((w, i) => ({
+      wordId: created[i].id,
+      result: w.correct ? ("CORRECT" as const) : ("INCORRECT" as const),
+    })),
   });
   return { user, occurrence, drillId, wordIds: created.map((w) => w.id) };
 }

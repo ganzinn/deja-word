@@ -124,20 +124,20 @@ export function SelfJudgePanel({
           <Button
             size="lg"
             disabled={completed}
+            onClick={() => handleJudge("VAGUE")}
+            className="h-auto min-h-14 border-amber-600 bg-amber-50 py-4 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-400 dark:hover:bg-amber-900"
+            variant="outline"
+          >
+            うろ覚え
+          </Button>
+          <Button
+            size="lg"
+            disabled={completed}
             onClick={() => handleJudge("INCORRECT")}
             className="h-auto min-h-14 border-red-600 bg-red-50 py-4 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
             variant="outline"
           >
             間違っていた
-          </Button>
-          <Button
-            size="lg"
-            disabled={completed}
-            onClick={() => handleJudge("GAVE_UP")}
-            variant="outline"
-            className="text-muted-foreground h-auto min-h-14 py-4"
-          >
-            思い浮かばなかった
           </Button>
         </div>
       )}

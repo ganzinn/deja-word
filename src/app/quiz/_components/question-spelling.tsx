@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { SpellingQuestion } from "@/lib/quiz/payload";
 import type { QuizResult } from "@/generated/prisma/enums";
 
+import { AnswerAdvanceFooter } from "./answer-advance-footer";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionTimerBar } from "./question-timer-bar";
 import { useQuestionTimer } from "./use-question-timer";
@@ -88,10 +89,10 @@ export function QuestionSpelling({
     setAnswered({ input: null, timedOut: false });
   }
 
-  function handleNext() {
+  function handleComplete(outcome: QuestionOutcome) {
     if (!answered || completed) return; // onComplete は 1 回だけ
     setCompleted(true);
-    onComplete(outcomeFor(question, answered));
+    onComplete(outcome);
   }
 
   return (
@@ -165,16 +166,12 @@ export function QuestionSpelling({
             </Button>
           </div>
         ) : (
-          <Button
-            ref={nextButtonRef}
-            type="button"
-            size="lg"
-            className="h-auto min-h-14 py-4"
-            disabled={completed}
-            onClick={handleNext}
-          >
-            次へ
-          </Button>
+          <AnswerAdvanceFooter
+            outcome={outcomeFor(question, answered)}
+            completed={completed}
+            onComplete={handleComplete}
+            nextButtonRef={nextButtonRef}
+          />
         )}
       </form>
     </div>

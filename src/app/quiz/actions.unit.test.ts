@@ -326,8 +326,8 @@ describe("startDrill (Server Action)", () => {
     choiceFirstMeaningTextOnly: false,
     drillIncludeCorrect: false,
     results: [
-      { wordId: "w_1", correct: true },
-      { wordId: "w_2", correct: false },
+      { wordId: "w_1", result: "CORRECT" as const },
+      { wordId: "w_2", result: "INCORRECT" as const },
     ],
   };
 

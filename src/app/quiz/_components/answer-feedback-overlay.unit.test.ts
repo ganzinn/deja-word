@@ -18,4 +18,8 @@ describe("feedbackKindForResult", () => {
   test("GAVE_UP は中立（表示も音もなし）", () => {
     expect(feedbackKindForResult("GAVE_UP")).toBeNull();
   });
+
+  test("VAGUE（うろ覚え）は中立（表示も音もなし）", () => {
+    expect(feedbackKindForResult("VAGUE")).toBeNull();
+  });
 });

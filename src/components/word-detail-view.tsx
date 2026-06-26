@@ -9,7 +9,17 @@ import { relatedWordKindLabels } from "@/lib/mock/related-word-kinds";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import type { WordDetail } from "@/lib/words-detail";
 
-export function WordDetailView({ word }: { word: WordDetail }) {
+export function WordDetailView({
+  word,
+  onSelectRelated,
+}: {
+  word: WordDetail;
+  /**
+   * 関連語（linkedWord あり）タップ時のコールバック。渡されたとき（ダイアログ内表示）は
+   * ページ遷移せずこのコールバックで表示を切り替える。未指定（ページ表示）では従来の `<Link>` 遷移。
+   */
+  onSelectRelated?: (wordId: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-6 px-4 pt-6">
       <div className="flex items-start gap-2">
@@ -49,7 +59,7 @@ export function WordDetailView({ word }: { word: WordDetail }) {
         <Section title="関連語">
           <div className="flex flex-col gap-3">
             {word.relatedWords.map((r) => (
-              <RelatedWordCard key={r.id} related={r} />
+              <RelatedWordCard key={r.id} related={r} onSelectRelated={onSelectRelated} />
             ))}
           </div>
         </Section>
@@ -155,7 +165,16 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   );
 }
 
-function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][number] }) {
+const relatedLinkClassName =
+  "text-primary inline-flex items-center gap-1 text-base font-semibold underline-offset-4 hover:underline";
+
+function RelatedWordCard({
+  related,
+  onSelectRelated,
+}: {
+  related: WordDetail["relatedWords"][number];
+  onSelectRelated?: (wordId: string) => void;
+}) {
   const partOfSpeech = nonEmpty(related.partOfSpeech);
   const pronunciation = nonEmpty(related.pronunciation);
   const pronunciationAudioUrl = nonEmpty(related.pronunciationAudioUrl);
@@ -174,13 +193,21 @@ function RelatedWordCard({ related }: { related: WordDetail["relatedWords"][numb
         </div>
       ) : null}
       {related.linkedWord ? (
-        <Link
-          href={`/words/${related.linkedWord.id}`}
-          className="text-primary inline-flex items-center gap-1 text-base font-semibold underline-offset-4 hover:underline"
-        >
-          <LinkIcon className="size-3.5" />
-          <span className="whitespace-pre-wrap">{related.term}</span>
-        </Link>
+        onSelectRelated ? (
+          <button
+            type="button"
+            onClick={() => onSelectRelated(related.linkedWord!.id)}
+            className={`${relatedLinkClassName} text-left`}
+          >
+            <LinkIcon className="size-3.5 shrink-0" />
+            <span className="whitespace-pre-wrap">{related.term}</span>
+          </button>
+        ) : (
+          <Link href={`/words/${related.linkedWord.id}`} className={relatedLinkClassName}>
+            <LinkIcon className="size-3.5" />
+            <span className="whitespace-pre-wrap">{related.term}</span>
+          </Link>
+        )
       ) : (
         <p className="text-base font-semibold whitespace-pre-wrap">{related.term}</p>
       )}

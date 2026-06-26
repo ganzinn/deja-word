@@ -299,8 +299,10 @@ export function QuizFlow({
     initialDrillRemaining(defaults),
   );
   const [drill, setDrill] = useState<DrillState | null>(null);
-  // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
-  const [dialogWordId, setDialogWordId] = useState<string | null>(null);
+  // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID スタック（空 = 閉。back ガードの最上段の層）。
+  // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
+  const [dialogStack, setDialogStack] = useState<string[]>([]);
+  const dialogWordId = dialogStack.at(-1) ?? null;
   // 出題中、現在の問題の解答が画面に出たか（英→日の上部見出し語に「詳細」ボタンを出すゲート）。
   const [answerShown, setAnswerShown] = useState(false);
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
@@ -434,7 +436,7 @@ export function QuizFlow({
     setMode("TEST");
     setDrill(null);
     setStartInput(null);
-    setDialogWordId(null);
+    setDialogStack([]);
     resetRunState();
     setPhase({ name: "start" });
     // 進行中の定着モード一覧（server 取得）を最新化する（完了・残数進行・新規生成を反映）
@@ -575,16 +577,16 @@ export function QuizFlow({
 
   // ブラウザバックのガード（LIFO・単一オーナー）。/quiz 内で開いている「層」の数だけ
   // ダミー履歴エントリを積み、ブラウザバック 1 回で最上段の層を 1 つだけ閉じる。
-  //   層 = 進行中テスト（phase ≠ start）＋ 単語詳細ダイアログ（dialogWordId ≠ null。result の最上段）。
+  //   層 = 進行中テスト（phase ≠ start）＋ 単語詳細ダイアログのスタック各段（dialogStack の要素数。result の最上段）。
   // 重要: ダミーの新規 push は必ず "コミット phase の effect"（reconcile）で行う。Next 16 は popstate を
   // 監視して router を restore する（app-router.js）ため、popstate ハンドラの "中で" pushState すると
   // その同一イベントの restore に巻き込まれてエントリが確定せず、履歴が壊れる（実機で観測済み）。
   // 一方、back で消費したダミーは forward 側に残るので、「留まる」時はハンドラ内で history.forward() を
   // 使い、既存エントリへ戻して再武装する（pushState のような新規生成をしないため Next と競合しない）。
-  const guardDepth = (phase.name !== "start" ? 1 : 0) + (dialogWordId !== null ? 1 : 0);
+  const guardDepth = (phase.name !== "start" ? 1 : 0) + dialogStack.length;
   // ハンドラからは最新値を latest-ref 経由で読む（render 中に ref を書かず、dep 無し effect で同期）。
   const phaseRef = useRef(phase);
-  const dialogWordIdRef = useRef(dialogWordId);
+  const dialogStackRef = useRef(dialogStack);
   const resetToStartRef = useRef(resetToStart);
   const guardDepthRef = useRef(guardDepth);
   // armedRef: 現在積んでいるダミー数。pendingSelfBackRef: 自前 back/forward 由来で無視する popstate 数。
@@ -592,7 +594,7 @@ export function QuizFlow({
   const pendingSelfBackRef = useRef(0);
   useEffect(() => {
     phaseRef.current = phase;
-    dialogWordIdRef.current = dialogWordId;
+    dialogStackRef.current = dialogStack;
     resetToStartRef.current = resetToStart;
     guardDepthRef.current = guardDepth;
   });
@@ -622,9 +624,10 @@ export function QuizFlow({
       if (guardDepthRef.current === 0) return; // ガード対象の層が無い（開始画面など）
       // ユーザー back: ダミーを 1 つ消費した
       armedRef.current = Math.max(0, armedRef.current - 1);
-      // 最上段: ダイアログが開いていれば確認なしで閉じる（reconcile が depth 減で整合）
-      if (dialogWordIdRef.current !== null) {
-        setDialogWordId(null);
+      // 最上段: ダイアログが開いていれば確認なしで 1 語 pop する（reconcile が depth 減で整合）。
+      // 関連語をたどっていれば 1 語ずつ戻り、最後の 1 語を pop すると空配列＝閉になる。
+      if (dialogStackRef.current.length > 0) {
+        setDialogStack((s) => s.slice(0, -1));
         return;
       }
       // テスト層: phase に応じた文言で中断確認
@@ -730,7 +733,7 @@ export function QuizFlow({
               />
               {/* 英→日は見出し語が常時表示。解答が出た後だけ「詳細」を出す（解答前はネタバレ防止で隠す）。 */}
               {answerShown ? (
-                <WordDetailButton onClick={() => setDialogWordId(question.wordId)} />
+                <WordDetailButton onClick={() => setDialogStack([question.wordId])} />
               ) : null}
             </div>
           </div>
@@ -743,10 +746,14 @@ export function QuizFlow({
           onReveal={handleReveal}
           onAnswerReveal={handleAnswerReveal}
           onAnswerShown={() => setAnswerShown(true)}
-          onShowDetail={() => setDialogWordId(question.wordId)}
+          onShowDetail={() => setDialogStack([question.wordId])}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
-        <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
+        <WordDetailDialog
+          wordId={dialogWordId}
+          onClose={() => setDialogStack([])}
+          onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
+        />
       </main>
     );
   }
@@ -769,10 +776,14 @@ export function QuizFlow({
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}
           drillRemaining={drillRemaining}
           onDrillRemainingChange={setDrillRemaining}
-          onOpenDialog={setDialogWordId}
+          onOpenDialog={(id) => setDialogStack([id])}
         />
         {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
-        <WordDetailDialog wordId={dialogWordId} onClose={() => setDialogWordId(null)} />
+        <WordDetailDialog
+          wordId={dialogWordId}
+          onClose={() => setDialogStack([])}
+          onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
+        />
       </main>
     );
   }

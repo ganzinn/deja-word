@@ -14,12 +14,25 @@ type Props = {
   onComplete: (outcome: QuestionOutcome) => void;
   /** 正誤が確定した瞬間（判定ボタン／時間切れ）に 1 回だけ呼ばれる。 */
   onReveal: (result: QuizResult) => void;
+  /** 解答が可視化された瞬間に 1 回だけ呼ばれる（英→日。上部見出し語の「詳細」ゲート用）。 */
+  onAnswerShown?: () => void;
 };
 
 /** 自己判定（英語→日本語）。問題文は headword（quiz-flow 側）、解答は全 Meaning。 */
-export function QuestionSelfJudge({ question, timeoutSeconds, onComplete, onReveal }: Props) {
+export function QuestionSelfJudge({
+  question,
+  timeoutSeconds,
+  onComplete,
+  onReveal,
+  onAnswerShown,
+}: Props) {
   return (
-    <SelfJudgePanel timeoutSeconds={timeoutSeconds} onComplete={onComplete} onReveal={onReveal}>
+    <SelfJudgePanel
+      timeoutSeconds={timeoutSeconds}
+      onComplete={onComplete}
+      onReveal={onReveal}
+      onAnswerShown={onAnswerShown}
+    >
       <MeaningBlocks meanings={question.answer} />
     </SelfJudgePanel>
   );

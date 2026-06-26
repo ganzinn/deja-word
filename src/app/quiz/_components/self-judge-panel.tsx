@@ -23,6 +23,11 @@ type Props = {
    * 正誤確定（onReveal）より早いことがある（手動表示時）。日→英のみ指定される。
    */
   onAnswerReveal?: () => void;
+  /**
+   * 解答が可視化された瞬間（「解答を表示」クリック／時間切れの両方）に 1 回だけ呼ばれる。
+   * 英→日（上部見出し語の「詳細」ボタン表示ゲート）で指定される。音声には関与しない。
+   */
+  onAnswerShown?: () => void;
   /** 「解答を表示」後に見せる正解（英語→日本語＝意味、日本語→英語＝英単語）。 */
   children: ReactNode;
 };
@@ -39,6 +44,7 @@ export function SelfJudgePanel({
   onComplete,
   onReveal,
   onAnswerReveal,
+  onAnswerShown,
   children,
 }: Props) {
   const [revealed, setRevealed] = useState<Revealed | null>(null);
@@ -61,13 +67,14 @@ export function SelfJudgePanel({
     }
   }, [revealed, onReveal]);
 
-  // 解答が可視化された瞬間（手動表示・時間切れの両方）に発音再生を 1 回だけ要求する。
+  // 解答が可視化された瞬間（手動表示・時間切れの両方）に発音再生と「詳細」ゲート解放を 1 回だけ要求する。
   useEffect(() => {
     if (revealed !== null && !answerRevealedRef.current) {
       answerRevealedRef.current = true;
       onAnswerReveal?.();
+      onAnswerShown?.();
     }
-  }, [revealed, onAnswerReveal]);
+  }, [revealed, onAnswerReveal, onAnswerShown]);
 
   function handleJudge(result: QuestionOutcome["result"]) {
     if (completed) return; // onComplete は 1 回だけ（3 ボタンの連打ガード）

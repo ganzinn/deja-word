@@ -24,8 +24,6 @@ import {
 } from "@/lib/quiz/remaining-options";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
-import { WordDetailDialog } from "./word-detail-dialog";
-
 /** 結果一覧の 1 行分。quiz-flow が問題ごとの解答結果（QuestionOutcome）を収集して組み立てる。 */
 export type ResultRow = {
   wordId: string;
@@ -84,10 +82,8 @@ type Props = {
   /** TEST: 「定着までの回数」の編集テキスト（drill 直前の 1 回だけ設定。各テスト開始でデフォルトへ戻る）。 */
   drillRemaining: DrillRemainingText;
   onDrillRemainingChange: (value: DrillRemainingText) => void;
-  /** 単語詳細ダイアログの状態は親（QuizFlow）が持ち、back ガードの最上段の層として一元管理する。 */
-  dialogWordId: string | null;
+  /** 行タップで単語詳細を開く。ダイアログの状態・描画は親（QuizFlow）が持つ（back ガードの最上段の層）。 */
   onOpenDialog: (wordId: string) => void;
-  onCloseDialog: () => void;
 };
 
 export function ResultList({
@@ -102,9 +98,7 @@ export function ResultList({
   onDrillIncludeCorrectChange,
   drillRemaining,
   onDrillRemainingChange,
-  dialogWordId,
   onOpenDialog,
-  onCloseDialog,
 }: Props) {
   const [wrongOnly, setWrongOnly] = useState(false);
   // 残数が 1..9 の整数のときだけ定着モードを開始できる（空欄・範囲外は開始をゲート）。
@@ -377,8 +371,6 @@ export function ResultList({
           </>
         )}
       </div>
-
-      <WordDetailDialog wordId={dialogWordId} onClose={onCloseDialog} />
     </div>
   );
 }

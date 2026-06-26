@@ -98,9 +98,10 @@ export function QuestionChoice({
             answered !== null &&
             answered.selectedIndex === index &&
             index !== question.correctIndex;
-          // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン
-          const showAudio =
-            isCorrect && showCorrectAudio && question.pronunciationAudioUrl !== null;
+          // 日→英は正解（英単語）の右端に発音ボタンを重ねる。自動再生とは独立した手動ボタン。
+          // 音源が無くても自動音声で聞き直せるよう、描画可否は AudioPlayButton に委ねて常に出す
+          // （RevealedHeadwordCard・英→日の上部見出しと同じ扱い）。
+          const showAudio = isCorrect && showCorrectAudio;
           // 日→英は正解（英単語）の右端に「詳細」ボタンも重ねる（音源の有無に依らず出す）
           const showDetail = isCorrect && onShowDetail !== undefined;
           return (
@@ -116,14 +117,14 @@ export function QuestionChoice({
                     "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
                   isWrongSelected &&
                     "border-red-600 bg-red-50 text-red-700 disabled:opacity-100 dark:bg-red-950 dark:text-red-400",
-                  // 折り返した英単語が発音・詳細ボタンと重ならないよう右側を空ける
-                  (showAudio || showDetail) && "pr-16",
+                  // 折り返した英単語が発音・詳細ボタンと重ならないよう右側を空ける（横並び分を確保）
+                  (showAudio || showDetail) && "pr-28",
                 )}
               >
                 {choice.text}
               </Button>
               {showAudio || showDetail ? (
-                <div className="absolute top-1/2 right-2 flex -translate-y-1/2 flex-col items-end gap-1">
+                <div className="absolute top-1/2 right-2 flex -translate-y-1/2 flex-row items-center gap-1">
                   {showAudio ? (
                     <AudioPlayButton
                       src={question.pronunciationAudioUrl}

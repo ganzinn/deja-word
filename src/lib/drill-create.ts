@@ -3,7 +3,7 @@ import "server-only";
 import type { QuizFormat, QuizResult } from "@/generated/prisma/enums";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { prisma } from "@/lib/prisma";
-import { initialRemaining } from "@/lib/quiz/generation/next-remaining";
+import { type DrillRemainingConfig, initialRemaining } from "@/lib/quiz/generation/next-remaining";
 import { scopedOwnerIds } from "@/lib/system-user";
 
 /**
@@ -34,7 +34,9 @@ export type DrillResultInput = { wordId: string; result: QuizResult };
  *   トグルに関係なく常に投入する（正解後にうろ覚えへ降格した＝復習したい意思表示のため）
  * - rangeFrom / rangeTo は投入対象の単語の occurrenceNumber から実効範囲（min / max）を
  *   サーバーで計算して保存する（同 決定 2）
- * - 初期残数: 元テスト誤答=3 / うろ覚え=2 / 正答=1（正答は投入時のみ。06-drill-mode.md 決定 1）
+ * - 初期残数は Drill の残数設定（誤答=resetRemaining / うろ覚え=vagueRemaining / 正答=
+ *   initialCorrectRemaining。各 1..9。正答は投入時のみ。06-drill-mode.md 決定 1）。テスト開始時の
+ *   設定値を `Drill` 行へ保存し、ラウンド遷移（nextRemaining）でも同じ値を使う
  * - 結果画面表示中に削除された単語は存在確認フィルタで skip する（決定 3 と同形）
  */
 export async function createDrillForUser(
@@ -46,9 +48,18 @@ export async function createDrillForUser(
     choiceFirstMeaningTextOnly: boolean;
     /** false（既定）= 誤答のみ Drill に入れる。true で正答単語も入れる（従来挙動）。 */
     drillIncludeCorrect: boolean;
+    /** 定着までの回数（残数設定）。テスト開始時に解決済みの具体値（各 1..9）。 */
+    resetRemaining: number;
+    vagueRemaining: number;
+    initialCorrectRemaining: number;
     results: DrillResultInput[];
   },
 ): Promise<{ drillId: string }> {
+  const remainingConfig: DrillRemainingConfig = {
+    resetRemaining: input.resetRemaining,
+    vagueRemaining: input.vagueRemaining,
+    initialCorrectRemaining: input.initialCorrectRemaining,
+  };
   const allowed = scopedOwnerIds(userId);
   const occurrence = await prisma.occurrence.findFirst({
     where: { id: input.occurrenceId, ownerId: { in: allowed } },
@@ -91,11 +102,14 @@ export async function createDrillForUser(
         format: input.format,
         timeoutSeconds: input.timeoutSeconds,
         choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+        resetRemaining: input.resetRemaining,
+        vagueRemaining: input.vagueRemaining,
+        initialCorrectRemaining: input.initialCorrectRemaining,
         words: {
           createMany: {
             data: results.map((r) => ({
               wordId: r.wordId,
-              remaining: initialRemaining(r.result),
+              remaining: initialRemaining(r.result, remainingConfig),
             })),
             skipDuplicates: true,
           },

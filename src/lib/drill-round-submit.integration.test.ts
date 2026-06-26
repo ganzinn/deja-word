@@ -10,7 +10,7 @@ import {
 
 import { createOccurrenceRow, createQuizWordRow, createTestUser } from "../../tests/setup/fixtures";
 
-/** 番号付き単語＋drill を一式作る（誤答=3 / 正答=1 は createDrillForUser が担う）。 */
+/** 番号付き単語＋drill を一式作る。残数設定（既定 誤答=3 / うろ覚え=2 / 正答=1）は明示で渡し、初期残数は createDrillForUser が担う。 */
 async function setupDrill(words: { headword: string; number: number; correct: boolean }[]) {
   const user = await createTestUser();
   const occurrence = await createOccurrenceRow(user.id, "本A");
@@ -28,6 +28,9 @@ async function setupDrill(words: { headword: string; number: number; correct: bo
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
     drillIncludeCorrect: true,
+    resetRemaining: 3,
+    vagueRemaining: 2,
+    initialCorrectRemaining: 1,
     results: words.map((w, i) => ({
       wordId: created[i].id,
       result: w.correct ? ("CORRECT" as const) : ("INCORRECT" as const),

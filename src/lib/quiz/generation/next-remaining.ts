@@ -1,31 +1,47 @@
 // drill 残数遷移（06-drill-mode.md 決定 1 / 05-architecture.md 決定 4）。
+// 残数値（誤答リセット / うろ覚え / 正答初期）はテスト開始時にユーザーが設定でき、
+// drill ごとに `Drill` 行へ永続化される。生成時もラウンド遷移時も drill の値を使う。
 
 import type { QuizResult } from "@/generated/prisma/enums";
+import {
+  DEFAULT_INITIAL_CORRECT_REMAINING,
+  DEFAULT_RESET_REMAINING,
+  DEFAULT_VAGUE_REMAINING,
+} from "@/lib/quiz/remaining-options";
 
-/** 定着までの残連続正解数の上限（間違い時のリセット値）。 */
-export const DRILL_RESET_REMAINING = 3;
+/** drill の残数設定（誤答リセット / うろ覚え / 正答初期）。drill ごとに固定。 */
+export type DrillRemainingConfig = {
+  /** 定着までの残連続正解数の上限（誤答・GAVE_UP・TIMEOUT 時のリセット値）。 */
+  resetRemaining: number;
+  /** うろ覚え（VAGUE）のリセット値。正解と不正解の中間。 */
+  vagueRemaining: number;
+  /** テスト正答組の drill 投入時の初期残数。 */
+  initialCorrectRemaining: number;
+};
 
-/** うろ覚え（VAGUE）のリセット値。正解(−1)と不正解(3)の中間。 */
-export const DRILL_VAGUE_REMAINING = 2;
-
-/** テスト正解組の drill 投入時の初期残数（1 回正解すれば定着）。 */
-export const DRILL_INITIAL_REMAINING_CORRECT = 1;
+/** 既定の残数設定（誤答=3 / うろ覚え=2 / 正答=1）。未設定ユーザー・seed・テストの基準。 */
+export const DEFAULT_DRILL_REMAINING_CONFIG: DrillRemainingConfig = {
+  resetRemaining: DEFAULT_RESET_REMAINING,
+  vagueRemaining: DEFAULT_VAGUE_REMAINING,
+  initialCorrectRemaining: DEFAULT_INITIAL_CORRECT_REMAINING,
+};
 
 /**
- * テスト結果から drill へ投入する単語の初期残数（誤答=3 / うろ覚え=2 / 正答=1）。
- * 正答は drillIncludeCorrect=true のときだけ投入されるため、CORRECT の値は ON 時のみ使われる。
- * 投入後のラウンドでの遷移は nextRemaining が担う（初期値と遷移リセット値で意図的に値が異なる）。
+ * テスト結果から drill へ投入する単語の初期残数（誤答=resetRemaining / うろ覚え=vagueRemaining /
+ * 正答=initialCorrectRemaining）。正答は drillIncludeCorrect=true のときだけ投入されるため、
+ * CORRECT の値は ON 時のみ使われる。投入後のラウンドでの遷移は nextRemaining が担う
+ * （初期値と遷移リセット値で意図的に値が異なる）。
  */
-export function initialRemaining(result: QuizResult): number {
+export function initialRemaining(result: QuizResult, config: DrillRemainingConfig): number {
   switch (result) {
     case "CORRECT":
-      return DRILL_INITIAL_REMAINING_CORRECT;
+      return config.initialCorrectRemaining;
     case "VAGUE":
-      return DRILL_VAGUE_REMAINING;
+      return config.vagueRemaining;
     case "INCORRECT":
     case "GAVE_UP":
     case "TIMEOUT":
-      return DRILL_RESET_REMAINING;
+      return config.resetRemaining;
     default: {
       const exhaustive: never = result;
       throw new Error(`Unexpected quiz result: ${String(exhaustive)}`);
@@ -33,17 +49,24 @@ export function initialRemaining(result: QuizResult): number {
   }
 }
 
-/** 正解で −1（下限 0）、うろ覚え（VAGUE）で 2 にリセット、間違い（GAVE_UP / TIMEOUT 含む）で 3 にリセット。0 で定着。 */
-export function nextRemaining(current: number, result: QuizResult): number {
+/**
+ * 正解で −1（下限 0）、うろ覚え（VAGUE）で vagueRemaining にリセット、
+ * 間違い（GAVE_UP / TIMEOUT 含む）で resetRemaining にリセット。0 で定着。
+ */
+export function nextRemaining(
+  current: number,
+  result: QuizResult,
+  config: DrillRemainingConfig,
+): number {
   switch (result) {
     case "CORRECT":
       return Math.max(0, current - 1);
     case "VAGUE":
-      return DRILL_VAGUE_REMAINING;
+      return config.vagueRemaining;
     case "INCORRECT":
     case "GAVE_UP":
     case "TIMEOUT":
-      return DRILL_RESET_REMAINING;
+      return config.resetRemaining;
     default: {
       const exhaustive: never = result;
       throw new Error(`Unexpected quiz result: ${String(exhaustive)}`);

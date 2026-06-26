@@ -26,6 +26,10 @@ export type QuizDefaults = {
   choiceFirstMeaningTextOnly: boolean | null;
   /** 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題。 */
   drillIncludeCorrect: boolean | null;
+  /** 定着までの回数（残数設定）の初期値。各 null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。各 1..9。 */
+  resetRemaining: number | null;
+  vagueRemaining: number | null;
+  initialCorrectRemaining: number | null;
   /** 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）。 */
   saveOnStart: boolean | null;
 };
@@ -117,6 +121,9 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       autoplayAnswerAudioJaEn: null,
       choiceFirstMeaningTextOnly: null,
       drillIncludeCorrect: null,
+      resetRemaining: null,
+      vagueRemaining: null,
+      initialCorrectRemaining: null,
       saveOnStart: null,
     };
   }
@@ -135,6 +142,9 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
     choiceFirstMeaningTextOnly: setting.choiceFirstMeaningTextOnly,
     drillIncludeCorrect: setting.drillIncludeCorrect,
+    resetRemaining: setting.resetRemaining,
+    vagueRemaining: setting.vagueRemaining,
+    initialCorrectRemaining: setting.initialCorrectRemaining,
     saveOnStart: setting.saveOnStart,
   };
 }
@@ -159,7 +169,8 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
 /**
  * 開始画面で設定した内容をデフォルトに上書きする（開始画面トグル ON でテスト開始時）。
  * 開始画面にある項目だけの部分更新: occurrence / range / format / 四択先頭訳語のみ表示
- * （choiceFirstMeaningTextOnly）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
+ * （choiceFirstMeaningTextOnly）/ 定着までの回数（reset/vague/initialCorrect）と、選択中形式の
+ * 制限時間のみを書き換える。他形式の制限時間・
  * カウントダウン/発音/効果音などの挙動設定・saveOnStart 自体は既存値を保持する
  * （upsert の update に開始画面の項目しか渡さないため温存される）。
  *
@@ -182,6 +193,9 @@ export async function saveStartSettingsAsDefaultsForUser(
     rangeTo: input.rangeTo ?? null,
     format: input.format,
     choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+    resetRemaining: input.resetRemaining,
+    vagueRemaining: input.vagueRemaining,
+    initialCorrectRemaining: input.initialCorrectRemaining,
   };
 
   // 初回保存（設定行・timeout 行ともゼロ）の判定。getQuizDefaultsForUser が null を返す状態。

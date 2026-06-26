@@ -4,6 +4,7 @@ import type { DrillResultInput } from "@/lib/drill-create";
 import type { AnswerInput } from "@/lib/quiz/handlers/quiz-answer-handler";
 import type { DrillRoundInput } from "@/lib/quiz/handlers/drill-round-handler";
 import { ALL_QUIZ_FORMATS } from "@/lib/quiz/format-options";
+import { REMAINING_MAX_COUNT, REMAINING_MIN_COUNT } from "@/lib/quiz/remaining-options";
 import { TIMEOUT_MAX_SECONDS, TIMEOUT_MIN_SECONDS } from "@/lib/quiz/timeout-options";
 import type { QuizRangeInput } from "@/lib/quiz-preview";
 import type { QuizFormat } from "@/generated/prisma/enums";
@@ -40,6 +41,13 @@ export const quizTimeoutByFormatSchema = z.object(
   Object.fromEntries(ALL_QUIZ_FORMATS.map((f) => [f, quizTimeoutSecondsSchema.nullable()])),
 ) as unknown as z.ZodType<Record<QuizFormat, number | null>>;
 
+/** 定着までの回数（残数設定の各値）。1..9 の整数。順序のクロスフィールド検証はしない（各独立）。 */
+export const quizRemainingCountSchema = z
+  .number()
+  .int()
+  .min(REMAINING_MIN_COUNT)
+  .max(REMAINING_MAX_COUNT);
+
 /** 解答結果の値。QuizResult enum と同期させる（生成 enum は import 時の値として使えないため列挙）。 */
 export const quizResultSchema = z.enum(["CORRECT", "INCORRECT", "VAGUE", "GAVE_UP", "TIMEOUT"]);
 
@@ -60,6 +68,10 @@ export const startQuizInputSchema = quizRangeInputSchema.extend({
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
   choiceFirstMeaningTextOnly: z.boolean(),
+  // 定着までの回数（残数設定）。drill 生成時に `Drill` 行へ引き継ぐため開始時に受け取る。
+  resetRemaining: quizRemainingCountSchema,
+  vagueRemaining: quizRemainingCountSchema,
+  initialCorrectRemaining: quizRemainingCountSchema,
 });
 
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
@@ -89,13 +101,17 @@ export const saveQuizDefaultsInputSchema = z.object({
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
   choiceFirstMeaningTextOnly: z.boolean().nullable(),
   drillIncludeCorrect: z.boolean().nullable(),
+  // 定着までの回数（残数設定）。null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。
+  resetRemaining: quizRemainingCountSchema.nullable(),
+  vagueRemaining: quizRemainingCountSchema.nullable(),
+  initialCorrectRemaining: quizRemainingCountSchema.nullable(),
   saveOnStart: z.boolean().nullable(),
 });
 
 // ---- drill 系 Server Action の入力スキーマ ----
 
 /** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。
- *  result から投入要否（CORRECT のみトグル依存）と初期残数（誤答3 / うろ覚え2 / 正答1）を導出する。 */
+ *  result から投入要否（CORRECT のみトグル依存）と初期残数（Drill の残数設定由来）を導出する。 */
 export const drillResultInputSchema = z.object({
   wordId: z.string().min(1),
   result: quizResultSchema,
@@ -113,6 +129,10 @@ export const startDrillInputSchema = z.object({
   choiceFirstMeaningTextOnly: z.boolean(),
   // テスト結果画面で解決済みのトグル値。false（既定）= 誤答のみ、true = 正答も出題。
   drillIncludeCorrect: z.boolean(),
+  // 定着までの回数（残数設定）。テスト開始時の値をそのまま受け取り `Drill` 行へ保存する。
+  resetRemaining: quizRemainingCountSchema,
+  vagueRemaining: quizRemainingCountSchema,
+  initialCorrectRemaining: quizRemainingCountSchema,
   results: z.array(drillResultInputSchema).min(1),
 });
 

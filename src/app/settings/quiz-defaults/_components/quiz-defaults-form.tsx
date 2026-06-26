@@ -17,6 +17,13 @@ import {
 import { DEFAULT_QUIZ_SETTINGS } from "@/lib/quiz/default-settings";
 import { ALL_QUIZ_FORMATS, FORMAT_GROUPS } from "@/lib/quiz/format-options";
 import {
+  DEFAULT_INITIAL_CORRECT_REMAINING,
+  DEFAULT_RESET_REMAINING,
+  DEFAULT_VAGUE_REMAINING,
+  REMAINING_MAX_COUNT,
+  REMAINING_MIN_COUNT,
+} from "@/lib/quiz/remaining-options";
+import {
   DEFAULT_TIMEOUT_SECONDS,
   TIMEOUT_MAX_SECONDS,
   TIMEOUT_MIN_SECONDS,
@@ -98,6 +105,16 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(
     defaults.drillIncludeCorrect ?? false,
   );
+  // 定着までの回数（残数設定）。未設定（null）はアプリ既定（誤答3 / うろ覚え2 / 正答1）。空欄保存で null（既定）。
+  const [resetRemainingText, setResetRemainingText] = useState(
+    (defaults.resetRemaining ?? DEFAULT_RESET_REMAINING).toString(),
+  );
+  const [vagueRemainingText, setVagueRemainingText] = useState(
+    (defaults.vagueRemaining ?? DEFAULT_VAGUE_REMAINING).toString(),
+  );
+  const [initialCorrectRemainingText, setInitialCorrectRemainingText] = useState(
+    (defaults.initialCorrectRemaining ?? DEFAULT_INITIAL_CORRECT_REMAINING).toString(),
+  );
   // 開始画面トグルの初期 ON/OFF を決めるメタ設定。未設定（null）は OFF。
   const [saveOnStart, setSaveOnStart] = useState(defaults.saveOnStart ?? false);
   const [isPending, startTransition] = useTransition();
@@ -122,6 +139,9 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         autoplayAnswerAudioJaEn,
         choiceFirstMeaningTextOnly,
         drillIncludeCorrect,
+        resetRemaining: parseRangeValue(resetRemainingText),
+        vagueRemaining: parseRangeValue(vagueRemainingText),
+        initialCorrectRemaining: parseRangeValue(initialCorrectRemainingText),
         saveOnStart,
       });
       if (result.ok) {
@@ -146,6 +166,17 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
     setChoiceFirstMeaningTextOnly(DEFAULT_QUIZ_SETTINGS.choiceFirstMeaningTextOnly ?? true);
     setDrillIncludeCorrect(DEFAULT_QUIZ_SETTINGS.drillIncludeCorrect ?? false);
+    setResetRemainingText(
+      (DEFAULT_QUIZ_SETTINGS.resetRemaining ?? DEFAULT_RESET_REMAINING).toString(),
+    );
+    setVagueRemainingText(
+      (DEFAULT_QUIZ_SETTINGS.vagueRemaining ?? DEFAULT_VAGUE_REMAINING).toString(),
+    );
+    setInitialCorrectRemainingText(
+      (
+        DEFAULT_QUIZ_SETTINGS.initialCorrectRemaining ?? DEFAULT_INITIAL_CORRECT_REMAINING
+      ).toString(),
+    );
     setSaveOnStart(DEFAULT_QUIZ_SETTINGS.saveOnStart ?? false);
     toast.success("デフォルト設定に戻しました（「保存」で確定します）");
   }
@@ -415,6 +446,69 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">テスト結果画面のトグルの初期値です。</p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label>定着までの回数</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="quiz-defaults-remaining-reset"
+              className="text-muted-foreground text-xs font-normal"
+            >
+              間違えた問題
+            </Label>
+            <Input
+              id="quiz-defaults-remaining-reset"
+              type="number"
+              min={REMAINING_MIN_COUNT}
+              max={REMAINING_MAX_COUNT}
+              inputMode="numeric"
+              value={resetRemainingText}
+              onChange={(e) => setResetRemainingText(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="quiz-defaults-remaining-vague"
+              className="text-muted-foreground text-xs font-normal"
+            >
+              うろ覚えの問題
+            </Label>
+            <Input
+              id="quiz-defaults-remaining-vague"
+              type="number"
+              min={REMAINING_MIN_COUNT}
+              max={REMAINING_MAX_COUNT}
+              inputMode="numeric"
+              value={vagueRemainingText}
+              onChange={(e) => setVagueRemainingText(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="quiz-defaults-remaining-correct"
+              className="text-muted-foreground text-xs font-normal"
+            >
+              正解した問題
+            </Label>
+            <Input
+              id="quiz-defaults-remaining-correct"
+              type="number"
+              min={REMAINING_MIN_COUNT}
+              max={REMAINING_MAX_COUNT}
+              inputMode="numeric"
+              value={initialCorrectRemainingText}
+              onChange={(e) => setInitialCorrectRemainingText(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          定着モードで各単語を何回連続正解すれば定着とするか（{REMAINING_MIN_COUNT}〜
+          {REMAINING_MAX_COUNT}
+          ）。元テストの結果（間違い／うろ覚え／正解）ごとに開始回数を設定でき、
+          定着モードで間違えるたびにこの回数に戻ります。
+        </p>
       </section>
 
       <div className="flex flex-col gap-2">

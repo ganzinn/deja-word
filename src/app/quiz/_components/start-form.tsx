@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/select";
 import { FORMAT_GROUPS, formatLabelOf } from "@/lib/quiz/format-options";
 import {
+  DEFAULT_INITIAL_CORRECT_REMAINING,
+  DEFAULT_RESET_REMAINING,
+  DEFAULT_VAGUE_REMAINING,
+  REMAINING_MAX_COUNT,
+  REMAINING_MIN_COUNT,
+} from "@/lib/quiz/remaining-options";
+import {
   DEFAULT_TIMEOUT_SECONDS,
   formatTimeoutLabel,
   TIMEOUT_MAX_SECONDS,
@@ -98,6 +105,13 @@ function parseRangeValue(text: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
+/** 定着までの回数の有効値（1..9 の整数）を返す。範囲外・非整数・空欄は undefined。 */
+function parseRemainingCount(text: string): number | undefined {
+  const n = parseRangeValue(text);
+  if (n === undefined || n < REMAINING_MIN_COUNT || n > REMAINING_MAX_COUNT) return undefined;
+  return n;
+}
+
 export function StartForm({
   occurrences,
   activeDrills,
@@ -119,6 +133,16 @@ export function StartForm({
   // 四択（英→日）の選択肢で先頭の訳語のみ表示する。初期値はデフォルト設定（未設定は ON）。
   const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
     defaults.choiceFirstMeaningTextOnly ?? true,
+  );
+  // 定着までの回数（残数設定）。初期値はデフォルト設定（未設定はアプリ既定 3 / 2 / 1）。
+  const [resetRemainingText, setResetRemainingText] = useState(
+    (defaults.resetRemaining ?? DEFAULT_RESET_REMAINING).toString(),
+  );
+  const [vagueRemainingText, setVagueRemainingText] = useState(
+    (defaults.vagueRemaining ?? DEFAULT_VAGUE_REMAINING).toString(),
+  );
+  const [initialCorrectRemainingText, setInitialCorrectRemainingText] = useState(
+    (defaults.initialCorrectRemaining ?? DEFAULT_INITIAL_CORRECT_REMAINING).toString(),
   );
   // 「この設定をデフォルト設定とする」トグル。初期状態は設定画面のメタ設定由来。
   // ON のままテスト開始すると開始画面の入力でデフォルトを部分上書きする（メタ設定自体は変えない）。
@@ -188,16 +212,32 @@ export function StartForm({
       : null;
   // ON かつ未入力・数値でない場合は開始をゲートする（範囲外は min/max とサーバー zod が弾く）
   const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
+  // 定着までの回数の有効値（1..9）。いずれかが範囲外・空欄なら開始をゲートする。
+  const resetRemaining = parseRemainingCount(resetRemainingText);
+  const vagueRemaining = parseRemainingCount(vagueRemainingText);
+  const initialCorrectRemaining = parseRemainingCount(initialCorrectRemainingText);
   // 形式の成立可否は事前判定しない（開始時に generateQuizForUser が検証しエラー表示）。
   const canStart =
     occurrenceId !== null &&
     format !== null &&
     preview !== null &&
     preview.targetCount > 0 &&
-    (!timeoutEnabled || timeoutSeconds !== undefined);
+    (!timeoutEnabled || timeoutSeconds !== undefined) &&
+    resetRemaining !== undefined &&
+    vagueRemaining !== undefined &&
+    initialCorrectRemaining !== undefined;
 
   function handleStart() {
-    if (!canStart || occurrenceId === null || format === null) return;
+    if (
+      !canStart ||
+      occurrenceId === null ||
+      format === null ||
+      resetRemaining === undefined ||
+      vagueRemaining === undefined ||
+      initialCorrectRemaining === undefined
+    ) {
+      return;
+    }
     const input: StartQuizInput = {
       occurrenceId,
       rangeFrom,
@@ -205,6 +245,9 @@ export function StartForm({
       format,
       timeoutSeconds: timeoutSeconds ?? null,
       choiceFirstMeaningTextOnly,
+      resetRemaining,
+      vagueRemaining,
+      initialCorrectRemaining,
     };
     // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
     if (saveAsDefault) {
@@ -372,6 +415,34 @@ export function StartForm({
       </section>
 
       <section className="flex flex-col gap-2">
+        <Label>定着までの回数</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <RemainingCountInput
+            id="quiz-remaining-reset"
+            label="間違えた問題"
+            value={resetRemainingText}
+            onChange={setResetRemainingText}
+          />
+          <RemainingCountInput
+            id="quiz-remaining-vague"
+            label="うろ覚えの問題"
+            value={vagueRemainingText}
+            onChange={setVagueRemainingText}
+          />
+          <RemainingCountInput
+            id="quiz-remaining-correct"
+            label="正解した問題"
+            value={initialCorrectRemainingText}
+            onChange={setInitialCorrectRemainingText}
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          テスト後の定着モードで、各単語を何回連続正解すれば定着とするか（{REMAINING_MIN_COUNT}〜
+          {REMAINING_MAX_COUNT}）。間違えるたびにこの回数に戻ります。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Checkbox
             id="quiz-save-as-default"
@@ -384,7 +455,7 @@ export function StartForm({
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オンで開始すると、上の掲載箇所・掲載番号範囲・出題形式・制限時間をデフォルト設定として保存します。
+          オンで開始すると、上の掲載箇所・掲載番号範囲・出題形式・制限時間・定着までの回数をデフォルト設定として保存します。
         </p>
       </section>
 
@@ -470,6 +541,37 @@ function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/** 定着までの回数の 1 項目（ラベル＋1..9 の数値入力）。 */
+function RemainingCountInput({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={id} className="text-muted-foreground text-xs font-normal">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        min={REMAINING_MIN_COUNT}
+        max={REMAINING_MAX_COUNT}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-14"
+      />
     </div>
   );
 }

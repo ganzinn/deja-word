@@ -49,6 +49,9 @@ const VALID_INPUT: SaveQuizDefaultsInput = {
   autoplayAnswerAudioJaEn: true,
   choiceFirstMeaningTextOnly: null,
   drillIncludeCorrect: false,
+  resetRemaining: 3,
+  vagueRemaining: 2,
+  initialCorrectRemaining: 1,
   saveOnStart: true,
 };
 
@@ -126,6 +129,9 @@ describe("saveQuizDefaults (Server Action)", () => {
       autoplayAnswerAudioJaEn: null,
       choiceFirstMeaningTextOnly: null,
       drillIncludeCorrect: null,
+      resetRemaining: null,
+      vagueRemaining: null,
+      initialCorrectRemaining: null,
       saveOnStart: null,
     };
     const res = await saveQuizDefaults(input);

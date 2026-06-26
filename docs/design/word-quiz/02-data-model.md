@@ -80,6 +80,10 @@ model Drill {
   rangeTo      Int       @map("range_to")
   format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ（06 確定）
   timeoutSeconds Int?    @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし（2026-06-13 加算改訂）
+  // 定着までの回数（残数設定）。テスト開始時にユーザーが設定し全ラウンドで引き継ぐ（2026-06-26 加算）。各 1..9。@default は既存進行中 drill の backfill 用
+  resetRemaining          Int @default(3) @map("reset_remaining") // 誤答（GAVE_UP / TIMEOUT 含む）のリセット値
+  vagueRemaining          Int @default(2) @map("vague_remaining") // うろ覚え（VAGUE）のリセット値
+  initialCorrectRemaining Int @default(1) @map("initial_correct_remaining") // 正答単語の投入初期値
   roundCount   Int       @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う（05 確定）
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -98,7 +102,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int      // 卒業までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1（正答は「正解も出題する」ON 時のみ投入。06 決定 9）
+  remaining Int      // 卒業までの残連続正解数 (0..max)。初期値・リセット値は Drill の残数設定（reset/vague/initialCorrect, 各 1..9）由来。正答は「正解も出題する」ON 時のみ投入（06 決定 9）
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

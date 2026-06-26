@@ -79,9 +79,22 @@ export async function applyDrillRound(
   // 通常経路（CAS 成功＝このラウンドの適用権を獲得）
   const drill = await tx.drill.findFirst({
     where: { id: input.drillId, ownerId: userId },
-    select: { format: true, completedAt: true },
+    select: {
+      format: true,
+      completedAt: true,
+      resetRemaining: true,
+      vagueRemaining: true,
+      initialCorrectRemaining: true,
+    },
   });
   if (!drill) throw new DrillNotFoundError(); // CAS 成功直後のため通常は到達しない
+
+  // 残数遷移は drill ごとに保存された設定値を使う（生成時と同じ値。06-drill-mode.md 決定 1）。
+  const remainingConfig = {
+    resetRemaining: drill.resetRemaining,
+    vagueRemaining: drill.vagueRemaining,
+    initialCorrectRemaining: drill.initialCorrectRemaining,
+  };
 
   // QuizAnswer.format は Drill.format から導出（06-drill-mode.md 決定 4）。
   // ラウンド中に削除された単語は handler 側で履歴 insert が skip される（決定 3 のフィルタ）。
@@ -104,7 +117,7 @@ export async function applyDrillRound(
     if (skipped.has(answer.wordId)) continue; // 削除された単語は残数更新も skip
     const current = remainingByWordId.get(answer.wordId);
     if (current === undefined) continue; // この drill に属さない単語（DrillWord 行なし）は無視
-    remainingByWordId.set(answer.wordId, nextRemaining(current, answer.result));
+    remainingByWordId.set(answer.wordId, nextRemaining(current, answer.result, remainingConfig));
     updatedWordIds.add(answer.wordId);
   }
   for (const wordId of updatedWordIds) {

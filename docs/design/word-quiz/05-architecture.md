@@ -85,9 +85,9 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | 用途 | Action（`src/app/quiz/actions.ts`） | 入出力 |
 | --- | --- | --- |
 | プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）（決定 8 改訂で形式ごとの成立可否は返さない。成立可否は開始時 `startQuiz` で判定） |
-| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算） |
+| テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算。残数 3 値は drill 生成へ中継するため受け取る。2026-06-26 加算） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
-| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds は `Drill` に保存。timeoutSeconds は 2026-06-13 加算） |
+| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds / 残数 3 値は `Drill` に保存。timeoutSeconds は 2026-06-13・残数 3 値は 2026-06-26 加算） |
 | drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出） |
 | drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
 | drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |
@@ -114,7 +114,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 Drill に `roundCount Int @default(0)` を加算する（**02 改訂済み**）。`submitDrillRoundForUser` のフロー（全体が 1 tx）:
 
 1. `tx.drill.updateMany({ where: { id: drillId, ownerId: userId, roundCount: expectedRoundCount }, data: { roundCount: { increment: 1 } } })`
-2. `count === 1`（通常経路）: `insertQuizAnswers`（mode=DRILL）→ 残数更新（純関数 `nextRemaining(current, result)`: 正解 −1、誤答／GAVE_UP／TIMEOUT は 3 にリセット）→ 全 remaining=0 なら `completedAt` 設定 → 確定残数を返す。単語削除耐性は決定 3 と同じ存在確認フィルタを適用し、ラウンド中に削除された単語は履歴 insert・残数更新とも skip する（DrillWord は Cascade で削除済み。完了判定は残っている DrillWord 行だけで行う）。
+2. `count === 1`（通常経路）: `insertQuizAnswers`（mode=DRILL）→ 残数更新（純関数 `nextRemaining(current, result, config)`: 正解 −1、うろ覚えは `config.vagueRemaining`、誤答／GAVE_UP／TIMEOUT は `config.resetRemaining` にリセット。`config` は `Drill` 行の残数 3 値から復元。2026-06-26 改訂）→ 全 remaining=0 なら `completedAt` 設定 → 確定残数を返す。単語削除耐性は決定 3 と同じ存在確認フィルタを適用し、ラウンド中に削除された単語は履歴 insert・残数更新とも skip する（DrillWord は Cascade で削除済み。完了判定は残っている DrillWord 行だけで行う）。
 3. `count === 0`: drill を再読込。`roundCount === expectedRoundCount + 1` なら適用済みと判断し、現在の DrillWord を読み直して `alreadyApplied: true` で成功応答する。自分の再送だけでなく、**別タブが同一ラウンドを先行送信した場合もここに含まれる**（同一ラウンドは一度だけ適用され、後着には確定残数を返す。残数バッジは 04 確定どおりこの確定値を表示）。roundCount がそれ以外の値（2 ラウンド以上進んでいる古いタブ等）は `DrillRoundConflictError`。
 
 `expectedRoundCount` は `startDrillRound` の応答でクライアントへ渡す。二重クリックは single-flight が一次防御、CAS が最終防御。`roundCount` は「何周したか」の表示にも将来使える。
@@ -165,7 +165,7 @@ src/lib/quiz/generation/
   self-judge.ts / .unit.test.ts     # buildSelfJudgeQuestions(material, rng)
   build-quiz.ts / .unit.test.ts     # buildQuiz ＋ checkFormatAvailability（exhaustive switch）
   material.ts                       # QuizSourceMaterial 型と partitionMaterial 純関数（決定 8）
-  next-remaining.ts / .unit.test.ts # drill 残数遷移 nextRemaining(current, result)
+  next-remaining.ts / .unit.test.ts # drill 残数遷移 nextRemaining(current, result, config) / initialRemaining(result, config)
 ```
 
 `server-only` import は付けない（純関数のため。呼び出し元の UseCase / クエリが server-only）。unit test はシード付き PRNG（mulberry32 等の小さなヘルパを `tests/setup/` に追加）を注入して決定的に検証する。
@@ -237,7 +237,7 @@ src/lib/quiz/generation/
 | `generation/` 全純関数（縮退・重複排除・シャッフル・残数遷移） | unit | シード付き PRNG 注入 |
 | `quiz/handlers/`（insertQuizAnswers、applyDrillRound） | unit | `tests/setup/tx-mock.ts` に quizAnswer / drill / drillWord delegate を追加して流用 |
 | `fetchQuizSource`（可視性スコープ・意味未登録除外・番号なし除外） | integration | 実 DB＋`tests/setup/fixtures.ts` 拡張（番号付き／なし／意味なし単語の fixture） |
-| `submitQuizAnswersForUser`（削除済み単語 skip）／`createDrillForUser`（初期残数 3/1）／`submitDrillRoundForUser`（残数遷移・completedAt・CAS） | integration | UseCase ごとにコロケート（words-create 等と同形） |
+| `submitQuizAnswersForUser`（削除済み単語 skip）／`createDrillForUser`（初期残数は Drill の残数設定由来）／`submitDrillRoundForUser`（残数遷移・completedAt・CAS） | integration | UseCase ごとにコロケート（words-create 等と同形） |
 | `src/app/quiz/actions.ts`（認証なし・zod 不正・エラーマップ） | unit | 既存 actions の unit test と同じモックパターン |
 
 `deleteDrillForUser`（06 決定 7）は `ownerId: userId` 照合＋物理削除のみで特殊ロジックがないため、専用の integration は設けず actions.ts の unit テストパターンでカバーする。

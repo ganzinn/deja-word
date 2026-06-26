@@ -171,6 +171,9 @@ describe("startQuiz (Server Action)", () => {
     format: "CHOICE" as const,
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
+    resetRemaining: 3,
+    vagueRemaining: 2,
+    initialCorrectRemaining: 1,
   };
 
   test("unauthorized: no session", async () => {
@@ -325,6 +328,9 @@ describe("startDrill (Server Action)", () => {
     timeoutSeconds: null,
     choiceFirstMeaningTextOnly: false,
     drillIncludeCorrect: false,
+    resetRemaining: 3,
+    vagueRemaining: 2,
+    initialCorrectRemaining: 1,
     results: [
       { wordId: "w_1", result: "CORRECT" as const },
       { wordId: "w_2", result: "INCORRECT" as const },
@@ -346,6 +352,9 @@ describe("startDrill (Server Action)", () => {
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
       results: [],
     });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });

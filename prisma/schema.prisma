@@ -392,6 +392,10 @@ model QuizDefaultSetting {
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
   choiceFirstMeaningTextOnly Boolean? @map("choice_first_meaning_text_only") // 四択（英→日）の選択肢で先頭の訳語のみ表示。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
   drillIncludeCorrect Boolean? @map("drill_include_correct") // 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題
+  // 定着までの回数（残数設定）の初期値。各 null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。各 1..9
+  resetRemaining          Int? @map("drill_reset_remaining")
+  vagueRemaining          Int? @map("drill_vague_remaining")
+  initialCorrectRemaining Int? @map("drill_initial_correct_remaining")
   saveOnStart    Boolean?    @map("save_on_start") // 開始画面「この設定をデフォルト設定とする」トグルの初期状態。null = OFF（デフォルト）
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -429,6 +433,10 @@ model Drill {
   format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
   timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
   choiceFirstMeaningTextOnly Boolean @default(false) @map("choice_first_meaning_text_only") // 元テストの「四択で先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ
+  // 定着までの残数設定。テスト開始時にユーザーが設定し全ラウンドで引き継ぐ（既存進行中 drill 向けに @default で backfill）
+  resetRemaining          Int @default(3) @map("reset_remaining") // 誤答（GAVE_UP / TIMEOUT 含む）のリセット値
+  vagueRemaining          Int @default(2) @map("vague_remaining") // うろ覚え（VAGUE）のリセット値
+  initialCorrectRemaining Int @default(1) @map("initial_correct_remaining") // 正答単語の投入初期値
   roundCount     Int        @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
@@ -447,7 +455,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int // 定着までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / うろ覚え=2 / 正答=1
+  remaining Int // 定着までの残連続正解数 (0..max)。初期値・リセット値は Drill の残数設定（reset/vague/initialCorrect, 各 1..9）由来
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

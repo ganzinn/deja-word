@@ -26,6 +26,9 @@ describe("createDrillForUser", () => {
       timeoutSeconds: 5,
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: true,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
       results: [
         { wordId: w1.id, result: "INCORRECT" },
         { wordId: w2.id, result: "CORRECT" },
@@ -46,11 +49,58 @@ describe("createDrillForUser", () => {
       timeoutSeconds: 5,
       roundCount: 0,
       completedAt: null,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
     });
     const remainingByWordId = new Map(drill.words.map((w) => [w.wordId, w.remaining]));
     expect(remainingByWordId.get(w1.id)).toBe(3);
     expect(remainingByWordId.get(w2.id)).toBe(1);
     expect(remainingByWordId.get(w3.id)).toBe(3);
+  });
+
+  test("custom remaining config is persisted on Drill and applied to initial remaining", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const wrong = await createQuizWordRow(user.id, "wrong", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+    const vague = await createQuizWordRow(user.id, "vague", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 10 },
+    });
+    const correct = await createQuizWordRow(user.id, "correct", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 15 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: true,
+      resetRemaining: 5,
+      vagueRemaining: 4,
+      initialCorrectRemaining: 2,
+      results: [
+        { wordId: wrong.id, result: "INCORRECT" },
+        { wordId: vague.id, result: "VAGUE" },
+        { wordId: correct.id, result: "CORRECT" },
+      ],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({
+      where: { id: drillId },
+      include: { words: true },
+    });
+    expect(drill).toMatchObject({
+      resetRemaining: 5,
+      vagueRemaining: 4,
+      initialCorrectRemaining: 2,
+    });
+    const remainingByWordId = new Map(drill.words.map((w) => [w.wordId, w.remaining]));
+    expect(remainingByWordId.get(wrong.id)).toBe(5);
+    expect(remainingByWordId.get(vague.id)).toBe(4);
+    expect(remainingByWordId.get(correct.id)).toBe(2);
   });
 
   test("invisible occurrence (another user's) throws OccurrenceNotFoundError", async () => {
@@ -66,6 +116,9 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
+        resetRemaining: 3,
+        vagueRemaining: 2,
+        initialCorrectRemaining: 1,
         results: [{ wordId: word.id, result: "INCORRECT" }],
       }),
     ).rejects.toBeInstanceOf(OccurrenceNotFoundError);
@@ -88,6 +141,9 @@ describe("createDrillForUser", () => {
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
       results: [
         { wordId: alive.id, result: "INCORRECT" },
         { wordId: deleted.id, result: "INCORRECT" },
@@ -119,6 +175,9 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
+        resetRemaining: 3,
+        vagueRemaining: 2,
+        initialCorrectRemaining: 1,
         results: [{ wordId: unnumbered.id, result: "INCORRECT" }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);
@@ -140,6 +199,9 @@ describe("createDrillForUser", () => {
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
       results: [
         { wordId: correct.id, result: "CORRECT" },
         { wordId: wrong.id, result: "INCORRECT" },
@@ -173,6 +235,9 @@ describe("createDrillForUser", () => {
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
       drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
       results: [
         { wordId: correct.id, result: "CORRECT" },
         { wordId: vague.id, result: "VAGUE" },
@@ -204,6 +269,9 @@ describe("createDrillForUser", () => {
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
         drillIncludeCorrect: false,
+        resetRemaining: 3,
+        vagueRemaining: 2,
+        initialCorrectRemaining: 1,
         results: [{ wordId: w.id, result: "CORRECT" }],
       }),
     ).rejects.toBeInstanceOf(EmptyDrillResultsError);

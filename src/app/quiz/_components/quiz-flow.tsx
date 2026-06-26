@@ -326,6 +326,10 @@ export function QuizFlow({
       choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
       // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
       drillIncludeCorrect,
+      // 定着までの回数（残数設定）を Drill に保存し、生成・全ラウンドで引き継ぐ
+      resetRemaining: startInput.resetRemaining,
+      vagueRemaining: startInput.vagueRemaining,
+      initialCorrectRemaining: startInput.initialCorrectRemaining,
       // result をそのまま渡し、投入要否（CORRECT のみトグル依存）と初期残数は drill-create が導出する
       results: rows.map((row) => ({ wordId: row.wordId, result: row.result })),
     };

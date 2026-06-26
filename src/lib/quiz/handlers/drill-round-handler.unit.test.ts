@@ -30,7 +30,13 @@ describe("applyDrillRound", () => {
   test("CAS success: inserts DRILL answers with Drill.format and updates remaining via nextRemaining", async () => {
     const { tx, mock, drillUpdateMany, drillWordFindMany } = makeTx(["w1", "w2"]);
     drillUpdateMany.mockResolvedValueOnce({ count: 1 });
-    mock.drill.findFirst.mockResolvedValueOnce({ format: "CHOICE", completedAt: null });
+    mock.drill.findFirst.mockResolvedValueOnce({
+      format: "CHOICE",
+      completedAt: null,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+    });
     mock.quizAnswer.createMany.mockResolvedValueOnce({ count: 2 });
     drillWordFindMany.mockResolvedValueOnce([
       { wordId: "w1", remaining: 1 },
@@ -76,10 +82,52 @@ describe("applyDrillRound", () => {
     });
   });
 
+  test("CAS success: remaining transitions use the Drill's stored remaining config", async () => {
+    const { tx, mock, drillUpdateMany, drillWordFindMany } = makeTx(["w1", "w2"]);
+    drillUpdateMany.mockResolvedValueOnce({ count: 1 });
+    // この drill は誤答=5 / うろ覚え=4 の設定で生成されている
+    mock.drill.findFirst.mockResolvedValueOnce({
+      format: "CHOICE",
+      completedAt: null,
+      resetRemaining: 5,
+      vagueRemaining: 4,
+      initialCorrectRemaining: 2,
+    });
+    mock.quizAnswer.createMany.mockResolvedValueOnce({ count: 2 });
+    drillWordFindMany.mockResolvedValueOnce([
+      { wordId: "w1", remaining: 1 },
+      { wordId: "w2", remaining: 3 },
+    ]);
+
+    await applyDrillRound(tx, "u1", {
+      drillId: "d1",
+      expectedRoundCount: 0,
+      answers: [
+        { wordId: "w1", result: "INCORRECT" }, // → resetRemaining=5
+        { wordId: "w2", result: "VAGUE" }, // → vagueRemaining=4
+      ],
+    });
+
+    expect(mock.drillWord.update).toHaveBeenCalledWith({
+      where: { drillId_wordId: { drillId: "d1", wordId: "w1" } },
+      data: { remaining: 5 },
+    });
+    expect(mock.drillWord.update).toHaveBeenCalledWith({
+      where: { drillId_wordId: { drillId: "d1", wordId: "w2" } },
+      data: { remaining: 4 },
+    });
+  });
+
   test("CAS success: sets completedAt when all remaining reach 0", async () => {
     const { tx, mock, drillUpdateMany, drillWordFindMany } = makeTx(["w1"]);
     drillUpdateMany.mockResolvedValueOnce({ count: 1 });
-    mock.drill.findFirst.mockResolvedValueOnce({ format: "SELF_JUDGE", completedAt: null });
+    mock.drill.findFirst.mockResolvedValueOnce({
+      format: "SELF_JUDGE",
+      completedAt: null,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+    });
     mock.quizAnswer.createMany.mockResolvedValueOnce({ count: 1 });
     drillWordFindMany.mockResolvedValueOnce([{ wordId: "w1", remaining: 1 }]);
 
@@ -104,7 +152,13 @@ describe("applyDrillRound", () => {
     // w2 は削除済み（word.findMany に現れない → insertQuizAnswers が skip）
     const { tx, mock, drillUpdateMany, drillWordFindMany } = makeTx(["w1"]);
     drillUpdateMany.mockResolvedValueOnce({ count: 1 });
-    mock.drill.findFirst.mockResolvedValueOnce({ format: "CHOICE", completedAt: null });
+    mock.drill.findFirst.mockResolvedValueOnce({
+      format: "CHOICE",
+      completedAt: null,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+    });
     mock.quizAnswer.createMany.mockResolvedValueOnce({ count: 1 });
     drillWordFindMany.mockResolvedValueOnce([
       { wordId: "w1", remaining: 2 },

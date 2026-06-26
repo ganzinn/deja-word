@@ -7,6 +7,7 @@ export type QuestionOutcome = {
   result: QuizResult;
   // 結果一覧の「自分の回答」表示用文字列。
   // 四択＝選んだ選択肢テキスト、多義語選択＝選んだ意味の組（「; 」連結）、
-  // スペル確認＝入力したスペル、自己判定＝null、「わからない」（GAVE_UP）＝null、時間切れ＝null
+  // スペル確認＝入力したスペル、自己判定＝null、「わからない」（GAVE_UP）＝null、時間切れ＝null。
+  // うろ覚え（VAGUE）は降格元の値を引き継ぐ（四択等＝選択テキスト、自己判定＝null）。
   answerDisplay: string | null;
 };

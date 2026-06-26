@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   CircleCheckIcon,
+  CircleDashedIcon,
   CircleHelpIcon,
   CircleXIcon,
   ClockIcon,
@@ -28,7 +29,8 @@ export type ResultRow = {
   /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
   correctDisplay: string;
   result: QuizResult;
-  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT は null）。 */
+  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT は null）。
+   *  うろ覚え（VAGUE）は降格元の回答を保持（四択等＝選択テキスト、自己判定＝null で「うろ覚え」と表示）。 */
   answerDisplay: string | null;
   /** 英単語の発音音源 URL（最初の Meaning）。未登録なら null。 */
   pronunciationAudioUrl: string | null;
@@ -197,6 +199,7 @@ export function ResultList({
                 {row.answerDisplay !== null ||
                 row.result === "GAVE_UP" ||
                 row.result === "TIMEOUT" ||
+                row.result === "VAGUE" ||
                 remainingByWordId !== null ? (
                   <div className="flex w-full items-start gap-2">
                     {row.answerDisplay !== null ? (
@@ -204,6 +207,9 @@ export function ResultList({
                         <span className="text-muted-foreground">自分の回答: </span>
                         {row.answerDisplay}
                       </p>
+                    ) : row.result === "VAGUE" ? (
+                      // 自己判定のうろ覚え（answerDisplay なし）。四択等の降格は answerDisplay を持つので上の分岐。
+                      <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
                     ) : row.result === "GAVE_UP" ? (
                       <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
                     ) : row.result === "TIMEOUT" ? (
@@ -327,6 +333,13 @@ function ResultIcon({ result }: { result: QuizResult }) {
         <CircleXIcon
           aria-label="不正解"
           className="size-4 shrink-0 text-red-600 dark:text-red-400"
+        />
+      );
+    case "VAGUE":
+      return (
+        <CircleDashedIcon
+          aria-label="うろ覚え"
+          className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
         />
       );
     case "GAVE_UP":

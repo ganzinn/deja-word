@@ -351,7 +351,8 @@ enum QuizFormat {
 enum QuizResult {
   CORRECT
   INCORRECT
-  GAVE_UP // 四択・多義語選択の「わからない」、自己判定の「思い浮かばなかった」。drill の残数計算上は INCORRECT と同じ扱い
+  VAGUE // うろ覚え（正解と不正解の中間）。自己判定の中間判定／四択等で正解後に降格して選ぶ。drill 残数は 2 の中間扱い（投入残数 2・リセット 2、drillIncludeCorrect 非依存で必ず投入）
+  GAVE_UP // 四択・多義語選択の回答前「わからない」。drill の残数計算上は INCORRECT と同じ扱い（自己判定の「思い浮かばなかった」は VAGUE へ移行し廃止）
   TIMEOUT // 制限時間切れ。drill の残数計算上は INCORRECT と同じ扱い
 }
 
@@ -446,7 +447,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int // 定着までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / 正答=1
+  remaining Int // 定着までの残連続正解数 (0..3)。初期値: 元テスト誤答=3 / うろ覚え=2 / 正答=1
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

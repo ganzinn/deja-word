@@ -326,7 +326,8 @@ export function QuizFlow({
       choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
       // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
       drillIncludeCorrect,
-      results: rows.map((row) => ({ wordId: row.wordId, correct: row.result === "CORRECT" })),
+      // result をそのまま渡し、投入要否（CORRECT のみトグル依存）と初期残数は drill-create が導出する
+      results: rows.map((row) => ({ wordId: row.wordId, result: row.result })),
     };
     const runId = ++runIdRef.current;
     setMode("DRILL");
@@ -415,7 +416,7 @@ export function QuizFlow({
   /**
    * 正誤が確定した瞬間（onReveal）に中央フラッシュ＋効果音を出す。集中処理にすることで
    * 自己判定の即時 onComplete（次問へ遷移）でもオーバーレイが生き残る。
-   * GAVE_UP（わからない・思い浮かばなかった）は kind=null で表示も音もなし。
+   * GAVE_UP（わからない）・VAGUE（うろ覚え）は kind=null で表示も音もなし。
    * 自己判定形式の本人申告（CORRECT/INCORRECT）も演出なし（本人が正誤を把握済みのため）。
    */
   function handleReveal(result: QuizResult) {

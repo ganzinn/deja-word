@@ -1,12 +1,11 @@
 "use client";
 
-import { AudioPlayButton } from "@/components/audio-play-button";
 import type { SelfJudgeJaEnQuestion } from "@/lib/quiz/payload";
 import type { QuizResult } from "@/generated/prisma/enums";
 
 import type { QuestionOutcome } from "./question-outcome";
+import { RevealedHeadwordCard } from "./revealed-headword-card";
 import { SelfJudgePanel } from "./self-judge-panel";
-import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
   question: SelfJudgeJaEnQuestion;
@@ -37,20 +36,11 @@ export function QuestionSelfJudgeJaEn({
       onReveal={onReveal}
       onAnswerReveal={onAnswerReveal}
     >
-      <div className="border-border bg-card/50 flex flex-col items-center gap-2 rounded-lg border p-4">
-        <span className="text-center text-2xl font-bold tracking-tight break-words">
-          {question.headword}
-        </span>
-        {/* 英単語と分けて、発音・詳細は1段下にまとめて横並びにする。 */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <AudioPlayButton
-            src={question.pronunciationAudioUrl}
-            label="発音"
-            ttsText={question.headword}
-          />
-          {onShowDetail ? <WordDetailButton onClick={onShowDetail} /> : null}
-        </div>
-      </div>
+      <RevealedHeadwordCard
+        headword={question.headword}
+        pronunciationAudioUrl={question.pronunciationAudioUrl}
+        onShowDetail={onShowDetail}
+      />
     </SelfJudgePanel>
   );
 }

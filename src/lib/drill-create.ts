@@ -3,7 +3,7 @@ import "server-only";
 import type { QuizFormat, QuizResult } from "@/generated/prisma/enums";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { prisma } from "@/lib/prisma";
-import { DRILL_RESET_REMAINING, DRILL_VAGUE_REMAINING } from "@/lib/quiz/generation/next-remaining";
+import { initialRemaining } from "@/lib/quiz/generation/next-remaining";
 import { scopedOwnerIds } from "@/lib/system-user";
 
 /**
@@ -23,18 +23,6 @@ export class EmptyDrillResultsError extends Error {
 
 /** 元テスト 1 問分の結果。ownerId は常にセッション由来のためここには含めない。 */
 export type DrillResultInput = { wordId: string; result: QuizResult };
-
-/** 元テスト正解組の初期残数（1 回正解すれば定着）。誤答組は DRILL_RESET_REMAINING、
- *  うろ覚え（VAGUE）組は DRILL_VAGUE_REMAINING。
- *  正解組は drillIncludeCorrect=true のときだけ投入されるため、この値は ON 時のみ使われる。 */
-const INITIAL_REMAINING_CORRECT = 1;
-
-/** result から drill 投入の初期残数を導出する（正答=1 / うろ覚え=2 / それ以外=3）。 */
-function initialRemainingFor(result: QuizResult): number {
-  if (result === "CORRECT") return INITIAL_REMAINING_CORRECT;
-  if (result === "VAGUE") return DRILL_VAGUE_REMAINING;
-  return DRILL_RESET_REMAINING;
-}
 
 /**
  * テスト結果画面の「定着モードへ」起点で drill を生成する（06-drill-mode.md 決定 2）。
@@ -107,7 +95,7 @@ export async function createDrillForUser(
           createMany: {
             data: results.map((r) => ({
               wordId: r.wordId,
-              remaining: initialRemainingFor(r.result),
+              remaining: initialRemaining(r.result),
             })),
             skipDuplicates: true,
           },

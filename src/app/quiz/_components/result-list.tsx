@@ -29,8 +29,8 @@ export type ResultRow = {
   /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
   correctDisplay: string;
   result: QuizResult;
-  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT は null）。
-   *  うろ覚え（VAGUE）は降格元の回答を保持（四択等＝選択テキスト、自己判定＝null で「うろ覚え」と表示）。 */
+  /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT・VAGUE は null）。
+   *  うろ覚え（VAGUE）は全形式とも null で、結果一覧では一律「うろ覚え」と表示する。 */
   answerDisplay: string | null;
   /** 英単語の発音音源 URL（最初の Meaning）。未登録なら null。 */
   pronunciationAudioUrl: string | null;
@@ -202,14 +202,14 @@ export function ResultList({
                 row.result === "VAGUE" ||
                 remainingByWordId !== null ? (
                   <div className="flex w-full items-start gap-2">
-                    {row.answerDisplay !== null ? (
+                    {row.result === "VAGUE" ? (
+                      // うろ覚えは正解時のみ選べる＝回答内容は正解と同じ。全形式とも「うろ覚え」と表示する。
+                      <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
+                    ) : row.answerDisplay !== null ? (
                       <p className="text-sm whitespace-pre-wrap">
                         <span className="text-muted-foreground">自分の回答: </span>
                         {row.answerDisplay}
                       </p>
-                    ) : row.result === "VAGUE" ? (
-                      // 自己判定のうろ覚え（answerDisplay なし）。四択等の降格は answerDisplay を持つので上の分岐。
-                      <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
                     ) : row.result === "GAVE_UP" ? (
                       <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
                     ) : row.result === "TIMEOUT" ? (

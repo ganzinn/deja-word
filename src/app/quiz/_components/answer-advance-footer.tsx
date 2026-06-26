@@ -21,7 +21,8 @@ type Props = {
  * 出題形式（四択・多義語選択・スペル確認）共通の「回答確定後フッター」。
  * 「次へ」は常に先頭（位置固定）に置き、正解で答えた場合のみ「うろ覚えだった」
  * （CORRECT → VAGUE へ降格）ボタンをその下に追加する。こうすることで正誤に依らず
- * 「次へ」の位置がぶれない。降格しても自分の回答（answerDisplay）は保持する。
+ * 「次へ」の位置がぶれない。うろ覚えは正解時しか選べない＝回答内容は正解と同じなので、
+ * 降格時の answerDisplay は持たせず null にする（結果一覧では一律「うろ覚え」と表示する）。
  * 自己判定はこのフッターを使わない（3 ボタンで直接 CORRECT / VAGUE / INCORRECT を申告するため）。
  */
 export function AnswerAdvanceFooter({ outcome, completed, onComplete, nextButtonRef }: Props) {
@@ -43,7 +44,7 @@ export function AnswerAdvanceFooter({ outcome, completed, onComplete, nextButton
           size="lg"
           variant="outline"
           disabled={completed}
-          onClick={() => onComplete({ result: "VAGUE", answerDisplay: outcome.answerDisplay })}
+          onClick={() => onComplete({ result: "VAGUE", answerDisplay: null })}
           className="h-auto min-h-14 border-amber-600 bg-amber-50 py-4 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-400 dark:hover:bg-amber-900"
         >
           うろ覚えだった

@@ -7,6 +7,12 @@ import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { isJaToEnFormat, isSelfJudgeFormat } from "@/lib/quiz/format-options";
+import {
+  DEFAULT_INITIAL_CORRECT_REMAINING,
+  DEFAULT_RESET_REMAINING,
+  DEFAULT_VAGUE_REMAINING,
+  parseRemainingCount,
+} from "@/lib/quiz/remaining-options";
 import { cancelSpeech, speakEnglish } from "@/lib/speech";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 import type { ActiveDrill } from "@/lib/drill-list";
@@ -34,7 +40,12 @@ import type { QuestionOutcome } from "./question-outcome";
 import { QuestionSelfJudge } from "./question-self-judge";
 import { QuestionSelfJudgeJaEn } from "./question-self-judge-ja-en";
 import { QuestionSpelling } from "./question-spelling";
-import { ResultList, type ResultRow, type SubmitState } from "./result-list";
+import {
+  ResultList,
+  type DrillRemainingText,
+  type ResultRow,
+  type SubmitState,
+} from "./result-list";
 import { StartForm, type OccurrenceOption } from "./start-form";
 
 type Props = {
@@ -233,6 +244,17 @@ function QuestionView({
   }
 }
 
+/** 「定着までの回数」編集テキストの初期値（デフォルト設定→未設定はアプリ既定 3 / 2 / 1）。 */
+function initialDrillRemaining(defaults: StartFormDefaults): DrillRemainingText {
+  return {
+    reset: (defaults.resetRemaining ?? DEFAULT_RESET_REMAINING).toString(),
+    vague: (defaults.vagueRemaining ?? DEFAULT_VAGUE_REMAINING).toString(),
+    initialCorrect: (
+      defaults.initialCorrectRemaining ?? DEFAULT_INITIAL_CORRECT_REMAINING
+    ).toString(),
+  };
+}
+
 export function QuizFlow({
   occurrences,
   activeDrills,
@@ -258,6 +280,10 @@ export function QuizFlow({
   const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
   // テスト結果画面「正解した問題も定着モードで出題する」トグル。テスト開始ごとに設定デフォルトへ戻す。
   const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(drillIncludeCorrectInitial);
+  // テスト結果画面「定着までの回数」の編集テキスト。テスト開始ごとに設定デフォルトへ戻す。
+  const [drillRemaining, setDrillRemaining] = useState<DrillRemainingText>(() =>
+    initialDrillRemaining(defaults),
+  );
   const [drill, setDrill] = useState<DrillState | null>(null);
   // 結果一覧で開いている単語詳細ダイアログの単語 ID（null = 閉。back ガードの最上段の層）
   const [dialogWordId, setDialogWordId] = useState<string | null>(null);
@@ -282,8 +308,9 @@ export function QuizFlow({
     setMode("TEST");
     setDrill(null);
     setStartInput(input);
-    // 結果画面トグルは各テスト開始時に設定デフォルトへ戻す（「デフォルト」の意味に忠実にする）
+    // 結果画面の設定（正解も出題トグル・定着までの回数）は各テスト開始時に設定デフォルトへ戻す
     setDrillIncludeCorrect(drillIncludeCorrectInitial);
+    setDrillRemaining(initialDrillRemaining(defaults));
     resetRunState();
     setPhase({ name: "countdown" });
     // カウントダウンの裏で問題データを一括取得し、取得完了後ただちに第 1 問の音声をプリロード
@@ -317,6 +344,22 @@ export function QuizFlow({
     if (quiz === null || startInput === null) return;
     // drill 生成は履歴の確定が前提（result-list 側でも送信成功までボタンを無効化している）
     if (submitState?.status !== "success") return;
+    // 結果画面で入力された「定着までの回数」を 1..9 へ解決する（未確定は result-list 側でもボタン無効）。
+    // 「正解した問題」の回数は出題トグル ON のときだけ必須。OFF では正解語を投入しないため未使用だが、
+    // startDrill は 1..9 を要求するので既定値にフォールバックして必ず有効値を送る。
+    const resetRemaining = parseRemainingCount(drillRemaining.reset);
+    const vagueRemaining = parseRemainingCount(drillRemaining.vague);
+    const parsedCorrect = parseRemainingCount(drillRemaining.initialCorrect);
+    const initialCorrectRemaining = drillIncludeCorrect
+      ? parsedCorrect
+      : (parsedCorrect ?? DEFAULT_INITIAL_CORRECT_REMAINING);
+    if (
+      resetRemaining === undefined ||
+      vagueRemaining === undefined ||
+      initialCorrectRemaining === undefined
+    ) {
+      return;
+    }
     const input = {
       occurrenceId: startInput.occurrenceId,
       format: quiz.format,
@@ -326,10 +369,10 @@ export function QuizFlow({
       choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
       // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
       drillIncludeCorrect,
-      // 定着までの回数（残数設定）を Drill に保存し、生成・全ラウンドで引き継ぐ
-      resetRemaining: startInput.resetRemaining,
-      vagueRemaining: startInput.vagueRemaining,
-      initialCorrectRemaining: startInput.initialCorrectRemaining,
+      // 結果画面で設定した定着までの回数（残数設定）を Drill に保存し、生成・全ラウンドで引き継ぐ
+      resetRemaining,
+      vagueRemaining,
+      initialCorrectRemaining,
       // result をそのまま渡し、投入要否（CORRECT のみトグル依存）と初期残数は drill-create が導出する
       results: rows.map((row) => ({ wordId: row.wordId, result: row.result })),
     };
@@ -692,6 +735,8 @@ export function QuizFlow({
           onNextRound={handleNextRound}
           drillIncludeCorrect={drillIncludeCorrect}
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}
+          drillRemaining={drillRemaining}
+          onDrillRemainingChange={setDrillRemaining}
           dialogWordId={dialogWordId}
           onOpenDialog={setDialogWordId}
           onCloseDialog={() => setDialogWordId(null)}

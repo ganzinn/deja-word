@@ -80,7 +80,7 @@ model Drill {
   rangeTo      Int       @map("range_to")
   format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ（06 確定）
   timeoutSeconds Int?    @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし（2026-06-13 加算改訂）
-  // 定着までの回数（残数設定）。テスト開始時にユーザーが設定し全ラウンドで引き継ぐ（2026-06-26 加算）。各 1..9。@default は既存進行中 drill の backfill 用
+  // 定着までの回数（残数設定）。テスト結果画面でユーザーが設定し（startDrill 経由）全ラウンドで引き継ぐ（2026-06-26 加算）。各 1..9。@default は既存進行中 drill の backfill 用
   resetRemaining          Int @default(3) @map("reset_remaining") // 誤答（GAVE_UP / TIMEOUT 含む）のリセット値
   vagueRemaining          Int @default(2) @map("vague_remaining") // うろ覚え（VAGUE）のリセット値
   initialCorrectRemaining Int @default(1) @map("initial_correct_remaining") // 正答単語の投入初期値

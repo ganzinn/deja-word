@@ -294,9 +294,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       format: "SELF_JUDGE",
       timeoutSeconds: 30,
       choiceFirstMeaningTextOnly: true,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
     });
 
     expect(await getQuizDefaultsForUser(user.id)).toEqual(
@@ -307,11 +304,9 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "SELF_JUDGE",
         // CHOICE の制限時間は温存、SELF_JUDGE は 20→30 に更新
         timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 30 }),
-        // 開始画面項目（四択先頭訳語のみ表示・定着までの回数）は上書きされる
+        // 開始画面項目（四択先頭訳語のみ表示）は上書きされる
         choiceFirstMeaningTextOnly: true,
-        resetRemaining: 3,
-        vagueRemaining: 2,
-        initialCorrectRemaining: 1,
+        // 定着までの回数は開始画面に項目が無いため触らない（null のまま温存）
         // 挙動設定・メタ設定はすべて温存
         showCountdown: true,
         autoplayPronunciation: false,
@@ -333,9 +328,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       format: "CHOICE",
       timeoutSeconds: 8,
       choiceFirstMeaningTextOnly: true,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
     });
 
     // 初回保存なので推奨デフォルトの全形式制限時間が確立され、選択中の CHOICE のみ 8 に上書き。
@@ -346,9 +338,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "CHOICE",
         timeoutByFormat: { ...DEFAULT_QUIZ_SETTINGS.timeoutByFormat, CHOICE: 8 },
         choiceFirstMeaningTextOnly: true,
-        resetRemaining: 3,
-        vagueRemaining: 2,
-        initialCorrectRemaining: 1,
       }),
     );
   });
@@ -366,9 +355,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       format: "CHOICE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: true,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
     });
 
     expect((await getQuizDefaultsForUser(user.id))?.timeoutByFormat).toEqual({
@@ -396,9 +382,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       format: "CHOICE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
     });
 
     const saved = await getQuizDefaultsForUser(user.id);
@@ -418,9 +401,6 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "CHOICE",
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
-        resetRemaining: 3,
-        vagueRemaining: 2,
-        initialCorrectRemaining: 1,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });

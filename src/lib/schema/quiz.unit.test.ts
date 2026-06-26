@@ -114,9 +114,6 @@ describe("startQuizInputSchema", () => {
         format: "CHOICE",
         timeoutSeconds: null,
         choiceFirstMeaningTextOnly: false,
-        resetRemaining: 3,
-        vagueRemaining: 2,
-        initialCorrectRemaining: 1,
       }).success,
     ).toBe(true);
   });
@@ -136,9 +133,6 @@ describe("startQuizInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       choiceFirstMeaningTextOnly: false,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
     } as const;
     for (const timeoutSeconds of [null, 1, 5, 60]) {
       expect(startQuizInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(true);
@@ -149,39 +143,8 @@ describe("startQuizInputSchema", () => {
     expect(startQuizInputSchema.safeParse(base).success).toBe(false);
   });
 
-  test("remaining counts are required integers in 1..9", () => {
-    const base = {
-      occurrenceId: "occ_1",
-      format: "CHOICE",
-      timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
-      resetRemaining: 3,
-      vagueRemaining: 2,
-      initialCorrectRemaining: 1,
-    } as const;
-    expect(startQuizInputSchema.safeParse(base).success).toBe(true);
-    for (const v of [1, 9]) {
-      expect(startQuizInputSchema.safeParse({ ...base, resetRemaining: v }).success).toBe(true);
-    }
-    for (const v of [0, 10, 2.5, null]) {
-      expect(startQuizInputSchema.safeParse({ ...base, resetRemaining: v }).success).toBe(false);
-      expect(startQuizInputSchema.safeParse({ ...base, vagueRemaining: v }).success).toBe(false);
-      expect(startQuizInputSchema.safeParse({ ...base, initialCorrectRemaining: v }).success).toBe(
-        false,
-      );
-    }
-    // 欠落も不正（required）
-    expect(
-      startQuizInputSchema.safeParse({
-        occurrenceId: "occ_1",
-        format: "CHOICE",
-        timeoutSeconds: null,
-        choiceFirstMeaningTextOnly: false,
-        vagueRemaining: 2,
-        initialCorrectRemaining: 1,
-      }).success,
-    ).toBe(false);
-  });
+  // 定着までの回数（残数設定）は startQuiz の入力から外れ、`startDrillInputSchema` で受け取る
+  // （テスト結果画面で設定し drill 開始時に渡す）。検証はそちらの describe を参照。
 });
 
 describe("submitQuizAnswersInputSchema", () => {

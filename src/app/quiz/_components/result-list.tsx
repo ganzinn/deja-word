@@ -15,7 +15,13 @@ import { RowAudioButton } from "@/components/row-audio-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  parseRemainingCount,
+  REMAINING_MAX_COUNT,
+  REMAINING_MIN_COUNT,
+} from "@/lib/quiz/remaining-options";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
 import { WordDetailDialog } from "./word-detail-dialog";
@@ -51,6 +57,16 @@ export type SubmitState =
     }
   | { status: "error"; message: string };
 
+/**
+ * 定着までの回数（残数設定）の編集テキスト。テスト結果画面で編集し、drill 開始時に
+ * `parseRemainingCount` で 1..9 の整数へ解決する（空欄・範囲外は未確定）。state は quiz-flow が持つ。
+ */
+export type DrillRemainingText = {
+  reset: string;
+  vague: string;
+  initialCorrect: string;
+};
+
 type Props = {
   mode: QuizMode;
   rows: ResultRow[];
@@ -65,6 +81,9 @@ type Props = {
   /** TEST: 「正解した問題も定着モードで出題する」トグルの状態（false = 誤答のみ）。 */
   drillIncludeCorrect: boolean;
   onDrillIncludeCorrectChange: (value: boolean) => void;
+  /** TEST: 「定着までの回数」の編集テキスト（drill 直前の 1 回だけ設定。各テスト開始でデフォルトへ戻る）。 */
+  drillRemaining: DrillRemainingText;
+  onDrillRemainingChange: (value: DrillRemainingText) => void;
   /** 単語詳細ダイアログの状態は親（QuizFlow）が持ち、back ガードの最上段の層として一元管理する。 */
   dialogWordId: string | null;
   onOpenDialog: (wordId: string) => void;
@@ -81,11 +100,19 @@ export function ResultList({
   onNextRound,
   drillIncludeCorrect,
   onDrillIncludeCorrectChange,
+  drillRemaining,
+  onDrillRemainingChange,
   dialogWordId,
   onOpenDialog,
   onCloseDialog,
 }: Props) {
   const [wrongOnly, setWrongOnly] = useState(false);
+  // 残数が 1..9 の整数のときだけ定着モードを開始できる（空欄・範囲外は開始をゲート）。
+  // 「正解した問題」の回数は出題トグル ON のときだけ効かせる（OFF は正解語を投入しないため不問）。
+  const remainingValid =
+    parseRemainingCount(drillRemaining.reset) !== undefined &&
+    parseRemainingCount(drillRemaining.vague) !== undefined &&
+    (!drillIncludeCorrect || parseRemainingCount(drillRemaining.initialCorrect) !== undefined);
   const total = rows.length;
   const correctCount = rows.filter((r) => r.result === "CORRECT").length;
   const wrongCount = total - correctCount;
@@ -232,30 +259,81 @@ export function ResultList({
       <div className="flex flex-col gap-2 pt-2">
         {mode === "TEST" ? (
           <>
+            {/* 定着モードの設定（残数・対象）は、定着モードに入る直前のこの結果画面だけで出す
+                （DRILL ラウンド結果には出さない）。各テスト開始でデフォルトへ戻る。 */}
+            <section className="flex flex-col gap-2">
+              <Label>定着までの回数</Label>
+              {/* 「正解した問題」の回数はトグル側のカードに内包する（OFF では出題しないため）。
+                  ここは常に効く「間違えた問題」「うろ覚えの問題」の 2 値のみ。 */}
+              <div className="grid grid-cols-2 gap-2">
+                <RemainingCountInput
+                  id="result-remaining-reset"
+                  label="間違えた問題"
+                  value={drillRemaining.reset}
+                  onChange={(reset) => onDrillRemainingChange({ ...drillRemaining, reset })}
+                />
+                <RemainingCountInput
+                  id="result-remaining-vague"
+                  label="うろ覚えの問題"
+                  value={drillRemaining.vague}
+                  onChange={(vague) => onDrillRemainingChange({ ...drillRemaining, vague })}
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                定着モードで各単語を何回連続正解すれば定着とするか（{REMAINING_MIN_COUNT}〜
+                {REMAINING_MAX_COUNT}）。間違えるたびにこの回数に戻ります。
+              </p>
+            </section>
             {/* 定着モードの対象を「正解も含める / 誤答のみ」で切り替える（既定は誤答のみ）。
-                テスト直後の最初の結果画面だけに出す項目（DRILL ラウンド結果には出さない）。
-                大きなボタン群に並ぶため、カード全体をタップ領域にして存在感を揃える。 */}
-            <Label
-              htmlFor="result-drill-include-correct"
-              className="border-border bg-card/50 hover:bg-muted/60 flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3 font-normal transition-colors"
-            >
-              <Checkbox
-                id="result-drill-include-correct"
-                checked={drillIncludeCorrect}
-                onCheckedChange={(checked) => onDrillIncludeCorrectChange(checked === true)}
-              />
-              正解した問題も定着モードで出題する
-            </Label>
+                ON のときだけ「正解した問題」の定着回数入力をカード内に展開する（OFF では無関係のため隠す）。
+                Input は Label の内側に置けない（クリックでチェックが切り替わる）ため、
+                チェックボックス行（Label）と入力行を兄弟にしてカード <div> でまとめる。 */}
+            <div className="border-border bg-card/50 flex flex-col gap-3 rounded-lg border p-3">
+              <Label
+                htmlFor="result-drill-include-correct"
+                className="flex min-h-8 cursor-pointer items-center gap-3 font-normal"
+              >
+                <Checkbox
+                  id="result-drill-include-correct"
+                  checked={drillIncludeCorrect}
+                  onCheckedChange={(checked) => onDrillIncludeCorrectChange(checked === true)}
+                />
+                正解した問題も定着モードで出題する
+              </Label>
+              {drillIncludeCorrect ? (
+                <div className="flex items-center gap-2 pl-7">
+                  <Label
+                    htmlFor="result-remaining-correct"
+                    className="text-muted-foreground text-sm font-normal"
+                  >
+                    定着までの回数
+                  </Label>
+                  <Input
+                    id="result-remaining-correct"
+                    type="number"
+                    min={REMAINING_MIN_COUNT}
+                    max={REMAINING_MAX_COUNT}
+                    inputMode="numeric"
+                    value={drillRemaining.initialCorrect}
+                    onChange={(e) =>
+                      onDrillRemainingChange({ ...drillRemaining, initialCorrect: e.target.value })
+                    }
+                    className="h-12 w-20"
+                  />
+                </div>
+              ) : null}
+            </div>
             {noDrillWords ? (
               <p className="text-muted-foreground text-sm" role="status">
                 全問正解のため、定着させる単語はありません。
               </p>
             ) : null}
-            {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効 */}
+            {/* drill 生成は履歴の確定が前提のため、履歴送信成功までは無効。
+                残数が未確定（空欄・範囲外）のときも開始させない。 */}
             <Button
               size="lg"
               className="h-auto min-h-14 py-4"
-              disabled={submitState.status !== "success" || noDrillWords}
+              disabled={submitState.status !== "success" || noDrillWords || !remainingValid}
               onClick={onStartDrill}
             >
               定着モードをはじめる
@@ -317,6 +395,37 @@ function DrillRemainingBadge({ remaining }: { remaining: number | undefined }) {
     return <Badge>定着</Badge>;
   }
   return <Badge variant="secondary">あと{remaining}回</Badge>;
+}
+
+/** 定着までの回数の 1 項目（ラベル＋1..9 の数値入力）。 */
+function RemainingCountInput({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={id} className="text-muted-foreground text-xs font-normal">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        min={REMAINING_MIN_COUNT}
+        max={REMAINING_MAX_COUNT}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-14"
+      />
+    </div>
+  );
 }
 
 function ResultIcon({ result }: { result: QuizResult }) {

@@ -35,6 +35,7 @@ type WordFormProps = {
   wordOwnerId?: string;
   isCurrentUserSystem?: boolean;
   linkedHeadwords?: Record<string, string>;
+  aiEnabled?: boolean;
 };
 
 export function WordForm({
@@ -46,6 +47,7 @@ export function WordForm({
   wordOwnerId,
   isCurrentUserSystem = false,
   linkedHeadwords,
+  aiEnabled = false,
 }: WordFormProps) {
   const headwordReadOnly = wordOwnerId === SYSTEM_USER_ID && !isCurrentUserSystem;
   const router = useRouter();
@@ -101,7 +103,11 @@ export function WordForm({
                 className="w-full"
               >
                 <FormSection value="basic" title="基本" required>
-                  <BasicFields readOnly={headwordReadOnly} wordId={isEdit ? wordId : undefined} />
+                  <BasicFields
+                    readOnly={headwordReadOnly}
+                    wordId={isEdit ? wordId : undefined}
+                    aiEnabled={aiEnabled}
+                  />
                 </FormSection>
                 <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
                   <MeaningsFields />

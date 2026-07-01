@@ -10,13 +10,17 @@ import { Input } from "@/components/ui/input";
 import type { HeadwordDuplicate } from "@/lib/words-duplicate";
 import type { WordFormValues } from "@/lib/schema/word-form";
 
+import { AiDraftButton } from "./ai-draft-button";
+
 type BasicFieldsProps = {
   readOnly?: boolean;
   /** 編集時に重複チェックから除外する単語 id。新規時は undefined。 */
   wordId?: string;
+  /** AI 下書き生成が使える環境か（サーバで env を判定して下ろす）。false ならボタン非表示。 */
+  aiEnabled?: boolean;
 };
 
-export function BasicFields({ readOnly = false, wordId }: BasicFieldsProps) {
+export function BasicFields({ readOnly = false, wordId, aiEnabled = false }: BasicFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const [duplicate, setDuplicate] = useState<HeadwordDuplicate | null>(null);
   // 直近のリクエストだけを採用し、古い応答を破棄するためのトークン。
@@ -92,6 +96,7 @@ export function BasicFields({ readOnly = false, wordId }: BasicFieldsProps) {
           </FormItem>
         )}
       />
+      {aiEnabled ? <AiDraftButton /> : null}
     </div>
   );
 }

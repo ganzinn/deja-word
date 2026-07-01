@@ -5,6 +5,7 @@ import { getOccurrencePresetsForUser } from "@/lib/occurrences";
 import { createPresetOccurrence, defaultWordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isWordAiEnabled } from "@/lib/word-ai-draft";
 
 import { WordForm } from "./word-form";
 
@@ -35,6 +36,7 @@ export default async function NewWordPage() {
       occurrencePresets={occurrencePresets}
       autoNumberByOccurrenceId={autoNumberByOccurrenceId}
       isCurrentUserSystem={session.user.id === SYSTEM_USER_ID}
+      aiEnabled={isWordAiEnabled()}
     />
   );
 }

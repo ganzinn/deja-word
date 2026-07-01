@@ -60,6 +60,11 @@ describe("buildWordAiPrompt", () => {
     }
   });
 
+  test("意味は品詞・発音の組み合わせ単位で集約する指示を含む", () => {
+    const prompt = buildWordAiPrompt("keen", ALL_SECTIONS);
+    expect(prompt).toContain("品詞と発音記号の組み合わせごとに 1 件");
+  });
+
   test("非要求セクションの要件（品詞キー含む）はプロンプトに載らない", () => {
     const prompt = buildWordAiPrompt("ephemeral", {
       meanings: false,

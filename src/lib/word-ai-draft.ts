@@ -39,10 +39,10 @@ export function buildWordAiPrompt(headword: string, sections: WordAiSections): s
       .map((p) => `${p.value} (${p.fullLabel})`)
       .join(", ");
     requirements.push(
-      `- meanings: もっともよく使われる意味を頻出順に最大 ${WORD_AI_LIMITS.meanings} 件。
+      `- meanings: 品詞と発音記号の組み合わせごとに 1 件とし、頻出順に最大 ${WORD_AI_LIMITS.meanings} 件。同じ品詞・同じ発音の訳語は要素を分けず、1 つの要素の texts にまとめて頻出順に列挙する（例: keen なら形容詞 kiːn の 1 件に「熱心な」「鋭い」「激しい」…をまとめる）。
   - partOfSpeech: 次のキーのいずれか 1 つ（該当がなければ空文字 ""）: ${partOfSpeechKeys}
   - pronunciation: アメリカ英語の IPA 発音記号。スラッシュや括弧は付けない（例: ɪˈfemərəl）。
-  - texts: その意味の日本語の訳語を 1〜${WORD_AI_LIMITS.textsPerMeaning} 件。`,
+  - texts: その品詞・発音に属する日本語の訳語を 1〜${WORD_AI_LIMITS.textsPerMeaning} 件。`,
     );
   }
   if (sections.phrases) {

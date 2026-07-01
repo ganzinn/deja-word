@@ -5,6 +5,7 @@ import { getOccurrencePresetsForUser } from "@/lib/occurrences";
 import { wordDetailToFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
+import { isWordAiEnabled } from "@/lib/word-ai-draft";
 import { getWordDetailForUser } from "@/lib/words-detail";
 
 import { WordForm } from "../../new/word-form";
@@ -45,6 +46,7 @@ export default async function EditWordPage({ params }: PageProps) {
       linkedHeadwords={linkedHeadwords}
       occurrencePresets={occurrencePresets}
       autoNumberByOccurrenceId={autoNumberByOccurrenceId}
+      aiEnabled={isWordAiEnabled()}
     />
   );
 }

@@ -8,7 +8,7 @@ import {
   type WordFormValues,
 } from "@/lib/schema/word-form";
 
-import { mergeAiDraftIntoFormValues } from "./ai-draft-merge";
+import { computeAiDraftSections, mergeAiDraftIntoFormValues } from "./ai-draft-merge";
 
 function draft(overrides: Partial<WordAiDraft> = {}): WordAiDraft {
   return {
@@ -25,6 +25,48 @@ function draft(overrides: Partial<WordAiDraft> = {}): WordAiDraft {
 function formValues(overrides: Partial<WordFormValues> = {}): WordFormValues {
   return { ...defaultWordFormValues, headword: "ephemeral", ...overrides };
 }
+
+describe("computeAiDraftSections", () => {
+  test("初期フォーム（空意味カード 1 枚・examples なし）は全セクション生成対象", () => {
+    expect(computeAiDraftSections(formValues())).toEqual({
+      meanings: true,
+      phrases: true,
+      sentences: true,
+    });
+  });
+
+  test("入力済みの意味があれば meanings は対象外（空カード混在でも）", () => {
+    const values = formValues({
+      meanings: [{ ...emptyMeaning, texts: [{ text: "儚い" }] }, emptyMeaning],
+    });
+    expect(computeAiDraftSections(values).meanings).toBe(false);
+  });
+
+  test("examples は kind 単位で判定する", () => {
+    const values = formValues({
+      examples: [{ ...emptyExample, kind: "PHRASE", text: "ephemeral beauty" }],
+    });
+    expect(computeAiDraftSections(values)).toEqual({
+      meanings: true,
+      phrases: false,
+      sentences: true,
+    });
+  });
+
+  test("TARGET / MINIMAL の行は phrases / sentences の判定に関与しない", () => {
+    const values = formValues({
+      examples: [{ ...emptyExample, kind: "TARGET", text: "TG の例文" }],
+    });
+    const sections = computeAiDraftSections(values);
+    expect(sections.phrases).toBe(true);
+    expect(sections.sentences).toBe(true);
+  });
+
+  test("空カードだけのセクションは生成対象のまま", () => {
+    const values = formValues({ examples: [emptyExample] });
+    expect(computeAiDraftSections(values).sentences).toBe(true);
+  });
+});
 
 describe("mergeAiDraftIntoFormValues", () => {
   test("初期状態の空意味カードは draft で置換され、残りは追記される", () => {

@@ -1,12 +1,45 @@
 import { describe, expect, test } from "vitest";
 
-import { normalizeWordAiDraft, WORD_AI_LIMITS, type WordAiDraft } from "./word-ai-draft";
+import {
+  normalizeWordAiDraft,
+  WORD_AI_LIMITS,
+  wordAiDraftSchemaFor,
+  type WordAiDraft,
+} from "./word-ai-draft";
 
 function draft(overrides: Partial<WordAiDraft> = {}): WordAiDraft {
   return { meanings: [], phrases: [], sentences: [], ...overrides };
 }
 
+describe("wordAiDraftSchemaFor", () => {
+  test("要求セクションのキーだけを持ち、非要求キーは strip される", () => {
+    const schema = wordAiDraftSchemaFor({ meanings: false, phrases: true, sentences: false });
+    const parsed = schema.safeParse({
+      phrases: [{ text: "in vain", meaning: "無駄に" }],
+      meanings: [{ partOfSpeech: "noun", pronunciation: "", texts: ["訳"] }],
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data).toEqual({ phrases: [{ text: "in vain", meaning: "無駄に" }] });
+  });
+
+  test("要求セクションが応答に無ければ検証失敗", () => {
+    const schema = wordAiDraftSchemaFor({ meanings: true, phrases: false, sentences: false });
+    expect(schema.safeParse({}).success).toBe(false);
+  });
+});
+
 describe("normalizeWordAiDraft", () => {
+  test("欠けたセクションを [] で補完して完全な WordAiDraft を返す", () => {
+    const result = normalizeWordAiDraft({
+      sentences: [{ text: "He tried.", meaning: "彼は試した。" }],
+    });
+    expect(result).toEqual({
+      meanings: [],
+      phrases: [],
+      sentences: [{ text: "He tried.", meaning: "彼は試した。" }],
+    });
+  });
+
   test("各フィールドを trim する", () => {
     const result = normalizeWordAiDraft(
       draft({

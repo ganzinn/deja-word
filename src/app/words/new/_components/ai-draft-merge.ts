@@ -1,5 +1,19 @@
-import type { WordAiDraft } from "@/lib/schema/word-ai-draft";
+import type { WordAiDraft, WordAiSections } from "@/lib/schema/word-ai-draft";
 import type { ExampleValue, MeaningValue, WordFormValues } from "@/lib/schema/word-form";
+
+// フォームの入力状況から生成が必要なセクションを算出する。
+// 「1 件でも入力済みの行があるセクションは生成しない」— AI は頻出順の内容を返すため、
+// 入力済みの行と類似した内容になりがちで、生成トークンの無駄にもなる。
+// 空カード（全フィールド空白）は入力済みに数えない。examples は kind 単位で判定し、
+// TARGET / MINIMAL の行は判定に関与しない。全 false のときは呼び出し側が
+// AI 呼び出し自体をスキップする。
+export function computeAiDraftSections(current: WordFormValues): WordAiSections {
+  return {
+    meanings: !current.meanings.some(meaningHasContent),
+    phrases: !current.examples.some((e) => e.kind === "PHRASE" && exampleHasContent(e)),
+    sentences: !current.examples.some((e) => e.kind === "SENTENCE" && exampleHasContent(e)),
+  };
+}
 
 // AI 下書きをフォーム値へ「空欄のみ埋める・行は追記」でマージする。
 // 原則: 非空値は一切上書きしない。「完全に空 かつ id なし（未保存）」のカードだけ
@@ -21,18 +35,25 @@ function isBlank(value: string | null | undefined): boolean {
   return !value || value.trim().length === 0;
 }
 
-function isEmptyMeaning(m: MeaningValue): boolean {
+function meaningHasContent(m: MeaningValue): boolean {
   return (
-    !m.id &&
-    isBlank(m.partOfSpeech) &&
-    isBlank(m.pronunciation) &&
-    m.texts.every((t) => isBlank(t.text)) &&
-    m.notes.every((n) => isBlank(n.text))
+    !isBlank(m.partOfSpeech) ||
+    !isBlank(m.pronunciation) ||
+    m.texts.some((t) => !isBlank(t.text)) ||
+    m.notes.some((n) => !isBlank(n.text))
   );
 }
 
+function exampleHasContent(e: ExampleValue): boolean {
+  return !isBlank(e.text) || !isBlank(e.meaning) || e.notes.some((n) => !isBlank(n.text));
+}
+
+function isEmptyMeaning(m: MeaningValue): boolean {
+  return !m.id && !meaningHasContent(m);
+}
+
 function isEmptyExample(e: ExampleValue): boolean {
-  return !e.id && isBlank(e.text) && isBlank(e.meaning) && e.notes.every((n) => isBlank(n.text));
+  return !e.id && !exampleHasContent(e);
 }
 
 function mergeMeanings(

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { WordFormValues } from "@/lib/schema/word-form";
 
 import { generateAiDraft } from "../ai-draft-action";
-import { mergeAiDraftIntoFormValues } from "./ai-draft-merge";
+import { computeAiDraftSections, mergeAiDraftIntoFormValues } from "./ai-draft-merge";
 
 export function AiDraftButton() {
   const form = useFormContext<WordFormValues>();
@@ -18,8 +18,14 @@ export function AiDraftButton() {
   const [isPending, startTransition] = useTransition();
 
   function onClick() {
+    // 入力済みセクションは生成対象から外し、全部埋まっていれば AI を呼び出さない。
+    const sections = computeAiDraftSections(form.getValues());
+    if (!Object.values(sections).some(Boolean)) {
+      toast.info("意味・熟語・例文はすべて入力済みのため、生成をスキップしました");
+      return;
+    }
     startTransition(async () => {
-      const result = await generateAiDraft({ headword: headword.trim() });
+      const result = await generateAiDraft({ headword: headword.trim(), sections });
       if (!result.ok) {
         toast.error(result.message);
         return;

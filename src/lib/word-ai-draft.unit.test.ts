@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { commonPartOfSpeechValues } from "@/lib/mock/parts-of-speech";
-import type { WordAiDraft } from "@/lib/schema/word-ai-draft";
+import type { WordAiDraft, WordAiSections } from "@/lib/schema/word-ai-draft";
 
 import {
   buildWordAiPrompt,
@@ -10,6 +10,8 @@ import {
   isWordAiEnabled,
   WordAiInvalidResponseError,
 } from "./word-ai-draft";
+
+const ALL_SECTIONS: WordAiSections = { meanings: true, phrases: true, sentences: true };
 
 function validRaw(): WordAiDraft {
   return {
@@ -47,32 +49,70 @@ describe("isWordAiEnabled", () => {
 });
 
 describe("buildWordAiPrompt", () => {
-  test("見出し語と全品詞キーを含む", () => {
-    const prompt = buildWordAiPrompt("ephemeral");
+  test("全セクション要求時は見出し語と全品詞キーを含む", () => {
+    const prompt = buildWordAiPrompt("ephemeral", ALL_SECTIONS);
     expect(prompt).toContain('"ephemeral"');
+    expect(prompt).toContain("meanings:");
+    expect(prompt).toContain("phrases:");
+    expect(prompt).toContain("sentences:");
     for (const key of commonPartOfSpeechValues) {
       expect(prompt).toContain(key);
     }
   });
+
+  test("非要求セクションの要件（品詞キー含む）はプロンプトに載らない", () => {
+    const prompt = buildWordAiPrompt("ephemeral", {
+      meanings: false,
+      phrases: false,
+      sentences: true,
+    });
+    expect(prompt).not.toContain("meanings:");
+    expect(prompt).not.toContain("phrases:");
+    expect(prompt).toContain("sentences:");
+    expect(prompt).not.toContain("noun");
+  });
 });
 
 describe("generateWordAiDraft", () => {
-  test("正常系: 既定モデルとプロンプトで generate を呼び、normalize 済みを返す", async () => {
+  test("正常系: 既定モデル・プロンプト・動的スキーマで generate を呼び、normalize 済みを返す", async () => {
     vi.stubEnv("WORD_AI_MODEL", "");
     const generate = vi.fn().mockResolvedValue(validRaw());
-    const draft = await generateWordAiDraft("ephemeral", generate);
+    const draft = await generateWordAiDraft("ephemeral", ALL_SECTIONS, generate);
     expect(generate).toHaveBeenCalledWith({
       model: DEFAULT_WORD_AI_MODEL,
-      prompt: buildWordAiPrompt("ephemeral"),
+      prompt: buildWordAiPrompt("ephemeral", ALL_SECTIONS),
+      schema: expect.anything(),
     });
     // normalize の証拠として trim 済みであること
     expect(draft.meanings[0].texts).toEqual(["儚い"]);
   });
 
+  test("部分生成: 欠けたセクションは [] で補完した完全な WordAiDraft を返す", async () => {
+    const sections: WordAiSections = { meanings: false, phrases: false, sentences: true };
+    const generate = vi.fn().mockResolvedValue({
+      sentences: [{ text: "Fame is ephemeral.", meaning: "名声は儚い。" }],
+    });
+    const draft = await generateWordAiDraft("ephemeral", sections, generate);
+    expect(draft).toEqual({
+      meanings: [],
+      phrases: [],
+      sentences: [{ text: "Fame is ephemeral.", meaning: "名声は儚い。" }],
+    });
+  });
+
+  test("部分生成: 応答に非要求セクションが混ざっても strip される", async () => {
+    const sections: WordAiSections = { meanings: false, phrases: false, sentences: true };
+    const generate = vi.fn().mockResolvedValue(validRaw());
+    const draft = await generateWordAiDraft("ephemeral", sections, generate);
+    expect(draft.meanings).toEqual([]);
+    expect(draft.phrases).toEqual([]);
+    expect(draft.sentences).toHaveLength(1);
+  });
+
   test("WORD_AI_MODEL 環境変数でモデルを上書きできる", async () => {
     vi.stubEnv("WORD_AI_MODEL", "anthropic/claude-haiku-4.5");
     const generate = vi.fn().mockResolvedValue(validRaw());
-    await generateWordAiDraft("ephemeral", generate);
+    await generateWordAiDraft("ephemeral", ALL_SECTIONS, generate);
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({ model: "anthropic/claude-haiku-4.5" }),
     );
@@ -80,13 +120,15 @@ describe("generateWordAiDraft", () => {
 
   test("schema 違反の応答は WordAiInvalidResponseError", async () => {
     const generate = vi.fn().mockResolvedValue({ meanings: "not-an-array" });
-    await expect(generateWordAiDraft("ephemeral", generate)).rejects.toBeInstanceOf(
+    await expect(generateWordAiDraft("ephemeral", ALL_SECTIONS, generate)).rejects.toBeInstanceOf(
       WordAiInvalidResponseError,
     );
   });
 
   test("generate の例外はそのまま伝播する", async () => {
     const generate = vi.fn().mockRejectedValue(new Error("timeout"));
-    await expect(generateWordAiDraft("ephemeral", generate)).rejects.toThrow("timeout");
+    await expect(generateWordAiDraft("ephemeral", ALL_SECTIONS, generate)).rejects.toThrow(
+      "timeout",
+    );
   });
 });

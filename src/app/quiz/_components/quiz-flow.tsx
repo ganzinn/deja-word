@@ -523,13 +523,9 @@ export function QuizFlow({
       }).then((result) => {
         if (runId !== runIdRef.current) return;
         if (result.ok) {
-          // 完了（全卒業）は state にも保持し、後続の再テスト結果画面の導線判定に使う
+          // 完了（全卒業）フラグの持ち主はこの state（result-list へは props で渡す）
           setDrillCompleted(result.completed);
-          setSubmitState({
-            status: "drill-success",
-            remaining: result.remaining,
-            completed: result.completed,
-          });
+          setSubmitState({ status: "drill-success", remaining: result.remaining });
         } else {
           setSubmitState({ status: "error", message: result.message });
         }

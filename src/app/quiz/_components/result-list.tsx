@@ -46,6 +46,7 @@ export type ResultRow = {
  * DRILL（`submitDrillRound`）の成功。
  * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない
  * （DRILL_RETRY は残数不変・応答にも含まれないため表示しない）。
+ * drill の完了（全卒業）は quiz-flow の state が持ち、props の `drillCompleted` で受ける。
  */
 export type SubmitState =
   | { status: "sending" }
@@ -53,7 +54,6 @@ export type SubmitState =
   | {
       status: "drill-success";
       remaining: { wordId: string; remaining: number }[];
-      completed: boolean;
     }
   | { status: "error"; message: string };
 

@@ -413,7 +413,11 @@ export function StartForm({
   );
 }
 
-/** 進行中の定着モード 1 行（元テストの範囲・残単語数・最終実施日＋再開・削除）。 */
+/**
+ * 進行中の定着モード 1 行（実効範囲・残単語数・最終実施日＋再開・削除）。
+ * 表示する範囲は実効範囲（`Drill.rangeFrom/rangeTo` = 定着対象の単語が収まる範囲）。
+ * 元テストの範囲（`sourceRangeFrom/To`）とは別物で、こちらは実際に出題される範囲を示す。
+ */
 function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () => void }) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);

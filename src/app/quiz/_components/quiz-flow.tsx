@@ -310,7 +310,9 @@ export function QuizFlow({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rows, setRows] = useState<ResultRow[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState | null>(null);
-  // テスト開始時の入力（drill 生成の occurrenceId に使う）
+  // テスト開始時の入力。drill 生成（occurrenceId・元テスト範囲の申告）と TEST 結果画面の
+  // 「同じ範囲でもう一度テストする」の再開始入力に使う。再開経路の drill では null のまま
+  // （完了画面の再テストは drill.sourceTest を使うため影響しない）
   const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
   // テスト結果画面「正解した問題も定着モードで出題する」トグル。テスト開始ごとに設定デフォルトへ戻す。
   const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(drillIncludeCorrectInitial);

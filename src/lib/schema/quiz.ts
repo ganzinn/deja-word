@@ -155,6 +155,22 @@ export const deleteDrillInputSchema = z.object({
   drillId: z.string().min(1),
 });
 
+/**
+ * `startDrillRetry` の入力（06-drill-mode.md 決定 10）。wordIds は直前ラウンドの出題単語の
+ * クライアント申告（サーバーにラウンドのメンバーシップがなく導出不可。`startDrill` の
+ * results と同じ信頼モデル）。当該 drill の DrillWord との交差はサーバーで検証する。
+ */
+export const startDrillRetryInputSchema = z.object({
+  drillId: z.string().min(1),
+  wordIds: z.array(z.string().min(1)).min(1),
+});
+
+/** `submitDrillRetry` の入力。format は `Drill.format` から導出するため受け取らない。 */
+export const submitDrillRetryInputSchema = z.object({
+  drillId: z.string().min(1),
+  answers: z.array(answerInputSchema).min(1),
+});
+
 export type StartQuizInput = z.infer<typeof startQuizInputSchema>;
 export type SaveQuizDefaultsInput = z.infer<typeof saveQuizDefaultsInputSchema>;
 export type SubmitQuizAnswersInput = z.infer<typeof submitQuizAnswersInputSchema>;
@@ -162,3 +178,5 @@ export type StartDrillInput = z.infer<typeof startDrillInputSchema>;
 export type StartDrillRoundInput = z.infer<typeof startDrillRoundInputSchema>;
 export type SubmitDrillRoundInput = z.infer<typeof submitDrillRoundInputSchema>;
 export type DeleteDrillInput = z.infer<typeof deleteDrillInputSchema>;
+export type StartDrillRetryInput = z.infer<typeof startDrillRetryInputSchema>;
+export type SubmitDrillRetryInput = z.infer<typeof submitDrillRetryInputSchema>;

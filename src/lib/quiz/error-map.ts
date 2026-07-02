@@ -1,4 +1,5 @@
 import { EmptyDrillResultsError } from "@/lib/drill-create";
+import { EmptyDrillRetryError } from "@/lib/drill-retry-generate";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import {
@@ -23,6 +24,7 @@ export type QuizErrorResult = {
  * - `DrillNotFoundError`: drill が不在・不可視（存在を漏らさない）
  * - `EmptyDrillResultsError`: drill 生成の results に有効な単語が 1 件もない
  *   （改ざん入力・極端な削除レースのみ到達。バグではないためログは残さず not_found 扱い）
+ * - `EmptyDrillRetryError`: 再テスト生成の wordIds に当該 drill の単語が 1 件もない（同上の扱い）
  * - `DrillRoundConflictError`: ラウンド送信の競合（別画面で 2 ラウンド以上進んでいる等）
  * - 未知のエラー: `words/error-map.ts` と同じ方針で `unknown` にマップ（ログのみ残す）
  */
@@ -41,6 +43,13 @@ export function mapQuizErrorToResult(e: unknown): QuizErrorResult {
       ok: false,
       error: "not_found",
       message: "定着モードの対象になる単語が見つかりません。",
+    };
+  }
+  if (e instanceof EmptyDrillRetryError) {
+    return {
+      ok: false,
+      error: "not_found",
+      message: "再テストの対象になる単語が見つかりません。",
     };
   }
   if (e instanceof DrillRoundConflictError) {

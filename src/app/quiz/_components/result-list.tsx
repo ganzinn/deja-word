@@ -42,8 +42,11 @@ export type ResultRow = {
 
 /**
  * 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。
- * success は TEST（`submitQuizAnswers`）、drill-success は DRILL（`submitDrillRound`）の成功。
- * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない。
+ * success は TEST（`submitQuizAnswers`）と DRILL_RETRY（`submitDrillRetry`）、drill-success は
+ * DRILL（`submitDrillRound`）の成功。
+ * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない
+ * （DRILL_RETRY は残数不変・応答にも含まれないため表示しない）。
+ * drill の完了（全卒業）は quiz-flow の state が持ち、props の `drillCompleted` で受ける。
  */
 export type SubmitState =
   | { status: "sending" }
@@ -51,7 +54,6 @@ export type SubmitState =
   | {
       status: "drill-success";
       remaining: { wordId: string; remaining: number }[];
-      completed: boolean;
     }
   | { status: "error"; message: string };
 
@@ -70,12 +72,24 @@ type Props = {
   rows: ResultRow[];
   submitState: SubmitState;
   onResend: () => void;
-  /** TEST: 「開始画面に戻る」／DRILL: 「終了」（確定済み残数は保持される）。 */
+  /** TEST: 「開始画面に戻る」／DRILL・DRILL_RETRY: 「終了」（確定済み残数は保持される）。 */
   onBackToStart: () => void;
   /** TEST: 「定着モードをはじめる」。履歴送信成功後のみ有効。 */
   onStartDrill: () => void;
-  /** DRILL: 「次のラウンドへ」。ラウンド送信成功後のみ有効。 */
+  /** DRILL・DRILL_RETRY: 「次のラウンドへ」。送信成功後のみ有効。 */
   onNextRound: () => void;
+  /**
+   * 再テスト導線。TEST: 「同じ範囲でもう一度テストする」（同じ開始入力で新しいテスト）／
+   * DRILL・DRILL_RETRY: 「同じ問題でもう一度テストする」（残数に影響しない再テスト）。
+   * いずれも送信成功後のみ有効。
+   */
+  onStartRetry: () => void;
+  /**
+   * drill が完了（全卒業）したか（quiz-flow がラウンド送信の応答から保持する値）。
+   * DRILL は完了メッセージの表示に、DRILL_RETRY は「次のラウンドへ」を出すかの判定に使う
+   * （再テスト送信の応答には完了情報が含まれないため props で受ける）。
+   */
+  drillCompleted: boolean;
   /** TEST: 「正解した問題も定着モードで出題する」トグルの状態（false = 誤答のみ）。 */
   drillIncludeCorrect: boolean;
   onDrillIncludeCorrectChange: (value: boolean) => void;
@@ -94,6 +108,8 @@ export function ResultList({
   onBackToStart,
   onStartDrill,
   onNextRound,
+  onStartRetry,
+  drillCompleted,
   drillIncludeCorrect,
   onDrillIncludeCorrectChange,
   drillRemaining,
@@ -117,12 +133,12 @@ export function ResultList({
   const noDrillWords = !drillIncludeCorrect && wrongCount === 0;
   const skippedWordIds =
     submitState.status === "success" ? new Set(submitState.skippedWordIds) : null;
-  // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）
+  // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）。
+  // DRILL_RETRY は success 変種のため自動的に null（残数バッジなし）になる。
   const remainingByWordId =
     submitState.status === "drill-success"
       ? new Map(submitState.remaining.map((r) => [r.wordId, r.remaining]))
       : null;
-  const drillCompleted = submitState.status === "drill-success" && submitState.completed;
 
   return (
     <div className="flex flex-col gap-4">
@@ -332,6 +348,17 @@ export function ResultList({
             >
               定着モードをはじめる
             </Button>
+            {/* 同じ開始入力（掲載箇所・範囲・形式・制限時間）で新しいテストを開始する。
+                履歴の確定（送信成功）までは無効（開始すると送信中の履歴が失われるため） */}
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              disabled={submitState.status !== "success"}
+              onClick={onStartRetry}
+            >
+              同じ範囲でもう一度テストする
+            </Button>
             <Button
               size="lg"
               variant="outline"
@@ -341,7 +368,7 @@ export function ResultList({
               開始画面に戻る
             </Button>
           </>
-        ) : (
+        ) : mode === "DRILL" ? (
           <>
             {drillCompleted ? (
               <p className="text-center text-base font-semibold" role="status">
@@ -360,6 +387,47 @@ export function ResultList({
                 次のラウンドへ
               </Button>
             )}
+            {/* 残数に影響しない再テスト（06-drill-mode.md 決定 10）。履歴の確定（送信成功）までは無効 */}
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              disabled={submitState.status !== "drill-success"}
+              onClick={onStartRetry}
+            >
+              同じ問題でもう一度テストする
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              onClick={onBackToStart}
+            >
+              終了
+            </Button>
+          </>
+        ) : (
+          // DRILL_RETRY: 残数バッジ・完了メッセージなし。drill 完了済みなら「次のラウンドへ」も出さない
+          <>
+            {!drillCompleted ? (
+              <Button
+                size="lg"
+                className="h-auto min-h-14 py-4"
+                disabled={submitState.status !== "success"}
+                onClick={onNextRound}
+              >
+                次のラウンドへ
+              </Button>
+            ) : null}
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              disabled={submitState.status !== "success"}
+              onClick={onStartRetry}
+            >
+              同じ問題でもう一度テストする
+            </Button>
             <Button
               size="lg"
               variant="outline"

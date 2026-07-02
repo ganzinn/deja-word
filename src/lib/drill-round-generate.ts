@@ -2,11 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { buildQuiz } from "@/lib/quiz/generation/build-quiz";
-import {
-  partitionMaterial,
-  type QuizSourceMaterial,
-  type QuizWord,
-} from "@/lib/quiz/generation/material";
+import { partitionMaterial, retargetMaterial } from "@/lib/quiz/generation/material";
 import { DrillNotFoundError } from "@/lib/quiz/handlers/drill-round-handler";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
@@ -47,20 +43,7 @@ export async function generateDrillRoundForUser(
     { from: drill.rangeFrom, to: drill.rangeTo },
   );
   const partitioned = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows);
-
-  const unGraduated = new Set(drill.words.map((w) => w.wordId));
-  const isTarget = (w: QuizWord) => unGraduated.has(w.id);
-  const material: QuizSourceMaterial = {
-    targets: [
-      ...partitioned.targets,
-      ...partitioned.sameOccurrencePool,
-      ...partitioned.allWordsPool,
-    ].filter(isTarget),
-    sameOccurrencePool: [...partitioned.targets, ...partitioned.sameOccurrencePool].filter(
-      (w) => !isTarget(w),
-    ),
-    allWordsPool: partitioned.allWordsPool.filter((w) => !isTarget(w)),
-  };
+  const material = retargetMaterial(partitioned, new Set(drill.words.map((w) => w.wordId)));
 
   return {
     quiz: {

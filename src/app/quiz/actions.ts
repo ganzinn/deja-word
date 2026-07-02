@@ -2,6 +2,8 @@
 
 import { createDrillForUser } from "@/lib/drill-create";
 import { deleteDrillForUser } from "@/lib/drill-delete";
+import { generateDrillRetryForUser } from "@/lib/drill-retry-generate";
+import { submitDrillRetryForUser } from "@/lib/drill-retry-submit";
 import { generateDrillRoundForUser } from "@/lib/drill-round-generate";
 import { submitDrillRoundForUser } from "@/lib/drill-round-submit";
 import { submitQuizAnswersForUser } from "@/lib/quiz-answers-submit";
@@ -17,15 +19,19 @@ import {
   deleteDrillInputSchema,
   getQuizPreviewInputSchema,
   startDrillInputSchema,
+  startDrillRetryInputSchema,
   startDrillRoundInputSchema,
   startQuizInputSchema,
+  submitDrillRetryInputSchema,
   submitDrillRoundInputSchema,
   submitQuizAnswersInputSchema,
   wordIdSchema,
   type DeleteDrillInput,
   type StartDrillInput,
+  type StartDrillRetryInput,
   type StartDrillRoundInput,
   type StartQuizInput,
+  type SubmitDrillRetryInput,
   type SubmitDrillRoundInput,
   type SubmitQuizAnswersInput,
 } from "@/lib/schema/quiz";
@@ -206,6 +212,55 @@ export async function submitDrillRound(
       parsed.data,
     );
     return { ok: true, remaining, completed, alreadyApplied };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type StartDrillRetryResult = { ok: true; quiz: QuizPayload } | QuizActionFailure;
+
+/**
+ * 「同じ問題で再テスト」の問題生成（06-drill-mode.md 決定 10）。wordIds は直前ラウンドの
+ * 出題単語のクライアント申告。残数に影響しないため roundCount は返さない。
+ */
+export async function startDrillRetry(input: StartDrillRetryInput): Promise<StartDrillRetryResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = startDrillRetryInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    const { quiz } = await generateDrillRetryForUser(session.user.id, parsed.data);
+    return { ok: true, quiz };
+  } catch (e) {
+    return mapQuizErrorToResult(e);
+  }
+}
+
+export type SubmitDrillRetryResult =
+  | { ok: true; savedCount: number; skippedWordIds: string[] }
+  | QuizActionFailure;
+
+/**
+ * 「同じ問題で再テスト」の履歴一括送信（mode=DRILL_RETRY はサーバーが経路で決める）。
+ * 残数・roundCount・completedAt には触れない（06-drill-mode.md 決定 10）。
+ */
+export async function submitDrillRetry(
+  input: SubmitDrillRetryInput,
+): Promise<SubmitDrillRetryResult> {
+  const session = await getCurrentSession();
+  if (!session) return UNAUTHORIZED;
+
+  const parsed = submitDrillRetryInputSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  try {
+    const { savedCount, skippedWordIds } = await submitDrillRetryForUser(
+      session.user.id,
+      parsed.data,
+    );
+    return { ok: true, savedCount, skippedWordIds };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

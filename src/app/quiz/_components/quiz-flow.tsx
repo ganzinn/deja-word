@@ -22,8 +22,10 @@ import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import {
   startDrill,
+  startDrillRetry,
   startDrillRound,
   startQuiz,
+  submitDrillRetry,
   submitDrillRound,
   submitQuizAnswers,
 } from "../actions";
@@ -283,7 +285,7 @@ export function QuizFlow({
   const router = useRouter();
   // 発音音源が無いとき自動音声で代用する設定（出題時／解答表示時の自動再生に使う）
   const ttsFallbackEnabled = useTtsFallbackEnabled();
-  // TEST と DRILL は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8）
+  // TEST / DRILL / DRILL_RETRY は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8・10）
   const [mode, setMode] = useState<QuizMode>("TEST");
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [quiz, setQuiz] = useState<QuizPayload | null>(null);
@@ -299,6 +301,9 @@ export function QuizFlow({
     initialDrillRemaining(defaults),
   );
   const [drill, setDrill] = useState<DrillState | null>(null);
+  // 直近のラウンド送信で drill が完了（全卒業）したか。再テスト結果画面の「次のラウンドへ」の
+  // 表示判定に使う（再テスト送信の応答には完了情報が含まれないため、ラウンド送信時の値を保持する）。
+  const [drillCompleted, setDrillCompleted] = useState(false);
   // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID スタック（空 = 閉。back ガードの最上段の層）。
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
@@ -327,6 +332,7 @@ export function QuizFlow({
     const runId = ++runIdRef.current;
     setMode("TEST");
     setDrill(null);
+    setDrillCompleted(false);
     setStartInput(input);
     // 結果画面の設定（正解も出題トグル・定着までの回数）は各テスト開始時に設定デフォルトへ戻す
     setDrillIncludeCorrect(drillIncludeCorrectInitial);
@@ -399,6 +405,7 @@ export function QuizFlow({
     const runId = ++runIdRef.current;
     setMode("DRILL");
     setDrill(null);
+    setDrillCompleted(false);
     resetRunState();
     setPhase({ name: "countdown" });
     void startDrill(input).then((result) => {
@@ -416,18 +423,60 @@ export function QuizFlow({
     const runId = ++runIdRef.current;
     setMode("DRILL");
     setDrill(null);
+    setDrillCompleted(false);
     resetRunState();
     setPhase({ name: "countdown" });
     loadDrillRound(drillId, runId);
   }
 
-  /** drill ラウンド結果画面の「次のラウンドへ」: カウントダウンから再開。 */
+  /** drill ラウンド結果画面（再テスト結果画面含む）の「次のラウンドへ」: カウントダウンから再開。 */
   function handleNextRound() {
     if (drill === null) return;
     const runId = ++runIdRef.current;
+    // 再テスト（DRILL_RETRY）結果からも呼ばれるため、通常ラウンドのモードへ戻す
+    setMode("DRILL");
     resetRunState();
     setPhase({ name: "countdown" });
     loadDrillRound(drill.drillId, runId);
+  }
+
+  /**
+   * 結果画面の再テスト導線。
+   * - TEST: 「同じ範囲でもう一度テストする」— 同じ開始入力（掲載箇所・範囲・形式・制限時間）で
+   *   新しい通常テストを開始する（既存の `handleStart` 経路の再利用。履歴も TEST のまま）
+   * - DRILL / DRILL_RETRY: 「同じ問題でもう一度テストする」— 直前のラウンド（または再テスト）と
+   *   同じ単語セットで、残数に影響しない再テストを開始する（06-drill-mode.md 決定 10）。
+   *   wordIds は結果画面の rows（＝直前の出題セット）から拾い、サーバーへクライアント申告する
+   */
+  function handleStartRetry() {
+    // 履歴の確定（送信成功）が前提。result-list 側でもボタンを無効化している
+    if (mode === "TEST") {
+      if (startInput === null || submitState?.status !== "success") return;
+      handleStart(startInput);
+      return;
+    }
+    if (drill === null) return;
+    const submitted =
+      mode === "DRILL"
+        ? submitState?.status === "drill-success"
+        : mode === "DRILL_RETRY" && submitState?.status === "success";
+    if (!submitted) return;
+    // resetRunState() が rows を消すため、先に出題セットを捕捉する
+    const wordIds = rows.map((row) => row.wordId);
+    if (wordIds.length === 0) return;
+    const runId = ++runIdRef.current;
+    setMode("DRILL_RETRY");
+    resetRunState();
+    setPhase({ name: "countdown" });
+    void startDrillRetry({ drillId: drill.drillId, wordIds }).then((result) => {
+      if (runId !== runIdRef.current) return;
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      setQuiz(result.quiz);
+      preloadAudio(audioCacheRef.current, result.quiz.questions[0]?.pronunciationAudioUrl ?? null);
+    });
   }
 
   function resetToStart() {
@@ -435,6 +484,7 @@ export function QuizFlow({
     audioCacheRef.current.clear();
     setMode("TEST");
     setDrill(null);
+    setDrillCompleted(false);
     setStartInput(null);
     setDialogStack([]);
     resetRunState();
@@ -446,6 +496,23 @@ export function QuizFlow({
   function submitAnswers(format: QuizPayload["format"], allRows: ResultRow[]) {
     const runId = runIdRef.current;
     setSubmitState({ status: "sending" });
+    if (mode === "DRILL_RETRY") {
+      // DRILL_RETRY: 履歴保存のみ（残数・roundCount・completedAt に触れない。06-drill-mode.md 決定 10）。
+      // TEST と同じ success 変種を使うことで削除済みバッジ・送信ゲートをそのまま再利用する
+      if (drill === null) return;
+      void submitDrillRetry({
+        drillId: drill.drillId,
+        answers: allRows.map((row) => ({ wordId: row.wordId, result: row.result })),
+      }).then((result) => {
+        if (runId !== runIdRef.current) return;
+        if (result.ok) {
+          setSubmitState({ status: "success", skippedWordIds: result.skippedWordIds });
+        } else {
+          setSubmitState({ status: "error", message: result.message });
+        }
+      });
+      return;
+    }
     if (mode === "DRILL") {
       // DRILL: ラウンド送信（履歴一括保存＋残数更新。roundCount CAS で冪等）
       if (drill === null) return;
@@ -456,11 +523,9 @@ export function QuizFlow({
       }).then((result) => {
         if (runId !== runIdRef.current) return;
         if (result.ok) {
-          setSubmitState({
-            status: "drill-success",
-            remaining: result.remaining,
-            completed: result.completed,
-          });
+          // 完了（全卒業）フラグの持ち主はこの state（result-list へは props で渡す）
+          setDrillCompleted(result.completed);
+          setSubmitState({ status: "drill-success", remaining: result.remaining });
         } else {
           setSubmitState({ status: "error", message: result.message });
         }
@@ -586,6 +651,8 @@ export function QuizFlow({
   const guardDepth = (phase.name !== "start" ? 1 : 0) + dialogStack.length;
   // ハンドラからは最新値を latest-ref 経由で読む（render 中に ref を書かず、dep 無し effect で同期）。
   const phaseRef = useRef(phase);
+  const modeRef = useRef(mode);
+  const drillCompletedRef = useRef(drillCompleted);
   const dialogStackRef = useRef(dialogStack);
   const resetToStartRef = useRef(resetToStart);
   const guardDepthRef = useRef(guardDepth);
@@ -594,6 +661,8 @@ export function QuizFlow({
   const pendingSelfBackRef = useRef(0);
   useEffect(() => {
     phaseRef.current = phase;
+    modeRef.current = mode;
+    drillCompletedRef.current = drillCompleted;
     dialogStackRef.current = dialogStack;
     resetToStartRef.current = resetToStart;
     guardDepthRef.current = guardDepth;
@@ -630,10 +699,16 @@ export function QuizFlow({
         setDialogStack((s) => s.slice(0, -1));
         return;
       }
-      // テスト層: phase に応じた文言で中断確認
+      // テスト層: phase・mode に応じた文言で中断確認。
+      // 「定着モードには入れなくなります」は TEST 結果専用（drill 生成はテスト結果画面からのみ）。
+      // DRILL / DRILL_RETRY の結果では残数は送信確定済みで、未完了なら開始画面の一覧から再開できる。
       const message =
         phaseRef.current.name === "result"
-          ? "結果画面を離れますか？（定着モードには入れなくなります）"
+          ? modeRef.current === "TEST"
+            ? "結果画面を離れますか？（定着モードには入れなくなります）"
+            : drillCompletedRef.current
+              ? "結果画面を離れますか？"
+              : "結果画面を離れて終了しますか？（続きは開始画面の一覧から再開できます）"
           : "テストを中断して開始画面に戻りますか？";
       if (window.confirm(message)) {
         resetToStartRef.current(); // reconcile が depth 0 へ整合（残ダミーを取り消す）
@@ -762,7 +837,7 @@ export function QuizFlow({
     return (
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-4 px-4 pt-6 pb-16 md:max-w-2xl">
         <h1 className="text-xl font-bold tracking-tight">
-          {mode === "TEST" ? "テスト結果" : "ラウンド結果"}
+          {mode === "TEST" ? "テスト結果" : mode === "DRILL" ? "ラウンド結果" : "再テスト結果"}
         </h1>
         <ResultList
           mode={mode}
@@ -772,6 +847,8 @@ export function QuizFlow({
           onBackToStart={resetToStart}
           onStartDrill={handleStartDrill}
           onNextRound={handleNextRound}
+          onStartRetry={handleStartRetry}
+          drillCompleted={drillCompleted}
           drillIncludeCorrect={drillIncludeCorrect}
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}
           drillRemaining={drillRemaining}

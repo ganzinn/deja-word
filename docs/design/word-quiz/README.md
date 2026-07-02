@@ -31,7 +31,9 @@
 - **結果画面には自分の回答内容も表示**（直後のみ。履歴に選択内容は残さない）。→ [01](01-requirements.md)
 - **drill は残数モデル**（元テスト誤答・うろ覚え・正答ごとの開始値から開始、正解で −1、間違いで誤答リセット値に戻し、0 で卒業）。**定着までの回数（残数 3 値）はテスト結果画面（drill 直前の 1 回）で変更可・デフォルトは設定画面で変更可**（既定 誤答=3 / うろ覚え=2 / 正答=1、各 1〜9。`Drill` に保存して全ラウンド引き継ぎ。2026-06-26）。ラウンド制で未卒業の単語を全出題。**既定は誤答のみ投入**で、正答は結果画面トグル「正解した問題も定着モードで出題する」ON 時のみ投入（既定 OFF、設定で変更可。決定 9）。→ [06](06-drill-mode.md)
 - **drill は日をまたいで再開可能**（残数をサーバー永続化）。元テストごとに独立生成（結果画面で開始時のみ）。→ [06](06-drill-mode.md)
-- **drill の履歴は mode 列（TEST / DRILL）で区別**し、各ラウンド終了時に一括送信。→ [06](06-drill-mode.md)
+- **drill の履歴は mode 列（TEST / DRILL / DRILL_RETRY）で区別**し、各ラウンド終了時に一括送信。→ [06](06-drill-mode.md)
+- **drill ラウンド結果画面から「同じ問題で再テスト」（drill retry）を開始できる**（2026-07-03 加算）。直前ラウンドと同じ単語セット（そのラウンドで卒業した単語含む。wordIds はクライアント申告）・出題順と選択肢は再生成・**残数 / roundCount / completedAt に一切影響しない**。履歴は `mode=DRILL_RETRY` で保存、繰り返し可。再テスト結果画面は残数バッジなしで「次のラウンドへ（未完了時）/ もう一度 / 終了」。→ [06](06-drill-mode.md) 決定 10
+- **テスト結果画面からも「同じ範囲でもう一度テストする」で再テストできる**（2026-07-03 加算）。同じ開始入力（掲載箇所・範囲・形式・制限時間）で**新しい通常テストを開始**する（既存 `startQuiz` の再利用・履歴も TEST のまま・スキーマ / Action 変更なし）。→ [04](04-ui.md)
 - **スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ**（QuizFormat / QuizResult / QuizMode）を side table 加算。テストセッションテーブルは持たない。Drill には `roundCount`（ラウンド送信の冪等化用、05 起因で加算改訂）と `format`（元テスト形式の引き継ぎ用、06 起因で加算改訂）を持つ。→ [02](02-data-model.md)
 - **範囲指定の対象は occurrenceNumber 付きの単語のみ**（既存スキーマで nullable のため）。→ [02](02-data-model.md)
 - **意味（MeaningText）未登録の単語も出題対象から除外**（全形式共通。正解選択肢・解答表示が作れないため）。→ [03](03-algorithm.md)
@@ -50,7 +52,7 @@
 - **進行中 drill の再開導線は quiz 開始画面の一覧**（ダッシュボードには置かない）。一覧の各行から削除も可能（確認ダイアログ付き。削除しても解答履歴は残る。06 起因で加算改訂）。→ [04](04-ui.md)・[06](06-drill-mode.md)
 - **MVP では既存画面への解答履歴表示は見送り**（変更はダッシュボードのボタン追加のみ）。→ [04](04-ui.md)
 - **モジュール配置は words の相似形**。UseCase は `src/lib/` 直下フラット（`quiz-*.ts` / `drill-*.ts`）、純関数・クエリ・handler・error-map は `src/lib/quiz/` 配下。単語詳細表示部は `src/components/word-detail-view.tsx` に抽出して共有。→ [05](05-architecture.md)
-- **インターフェースは全部 Server Action**（Route Handler 追加なし）。プレビュー・問題生成・履歴送信・drill 生成／ラウンド生成／ラウンド送信／削除・単語詳細の 8 Action を `src/app/quiz/actions.ts` に集約。mode / ownerId はサーバー側で付与、format は TEST 履歴送信と drill 生成のトップレベルで 1 回だけ受け取り enum 検証（この 2 経路はセッション状態がなくサーバーで導出不可。drill ラウンド系は `Drill.format` から導出）。→ [05](05-architecture.md)
+- **インターフェースは全部 Server Action**（Route Handler 追加なし）。プレビュー・問題生成・デフォルト保存・履歴送信・drill 生成／ラウンド生成／ラウンド送信／削除／再テスト生成／再テスト送信・単語詳細の 11 Action を `src/app/quiz/actions.ts` に集約（当初 8。2026-06-20 デフォルト保存、2026-07-03 drill retry の 2 Action を加算）。mode / ownerId はサーバー側で付与、format は TEST 履歴送信と drill 生成のトップレベルで 1 回だけ受け取り enum 検証（この 2 経路はセッション状態がなくサーバーで導出不可。drill ラウンド系は `Drill.format` から導出）。→ [05](05-architecture.md)
 - **drill ラウンド送信は `Drill.roundCount` の CAS で冪等化**（期待ラウンド数一致で +1。再送は適用済み判定して確定残数を冪等返却）。drill 生成の入力はクライアントから結果（wordId・correct）と format を送る。→ [05](05-architecture.md)
 - **TEST 履歴の多重送信はクライアント single-flight のみで防ぎ、成否不明後の再送による履歴重複は MVP 許容**。送信時に存在確認フィルタで削除済み単語を skip し FK 違反で全件失敗させない。→ [05](05-architecture.md)
 - **素材取得は range を SQL に寄せ、ダミー候補プールを目標件数まで優先順で不足分だけ取得（出題対象＝範囲内は全件、最大3クエリ）＋純関数パーティション**。プレビューは件数のみの軽量経路に分離（形式の成立判定はテスト開始時にサーバー側で実施）。認可は `scopedOwnerIds` の where 句注入（EditorContext / row-policy は使わない）。→ [05](05-architecture.md)
@@ -66,11 +68,11 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定 | 要求・ユースケース・スコープ外を確定（2026-06-12。2026-06-13 制限時間（タイムアウト）を加算改訂） |
-| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12、同日 05 起因で Drill.roundCount を、06 起因で Drill.format を加算改訂。2026-06-13 QuizDefaultSetting と制限時間（QuizResult.TIMEOUT・Drill.timeoutSeconds）を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル QuizDefaultTimeout に分離） |
+| [02-data-model.md](02-data-model.md) | 確定 | QuizAnswer / Drill / DrillWord ＋ enum 3つのスキーマ確定（2026-06-12、同日 05 起因で Drill.roundCount を、06 起因で Drill.format を加算改訂。2026-06-13 QuizDefaultSetting と制限時間（QuizResult.TIMEOUT・Drill.timeoutSeconds）を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル QuizDefaultTimeout に分離。2026-07-03 QuizMode.DRILL_RETRY を加算改訂） |
 | [03-algorithm.md](03-algorithm.md) | 確定 | 選択肢生成・問題データ生成（サーバー生成・RNG注入）を確定（2026-06-12） |
-| [04-ui.md](04-ui.md) | 確定 | 画面遷移・各画面仕様を確定（2026-06-12、同日 06 起因で進行中 drill 一覧に削除ボタンを加算改訂。2026-06-13 開始画面デフォルト設定と制限時間（残り時間バー・時間切れ挙動）を加算改訂。後続改訂でデフォルト制限時間を形式別化＝開始画面は形式選択で自動入力・設定画面は形式ごとに独立設定） |
-| [05-architecture.md](05-architecture.md) | 確定 | モジュール配置・Server Action 統一・冪等性（roundCount CAS）・認可・形式拡張点・テスト戦略を確定（2026-06-12、同日 06 起因で format 引数の整理・deleteDrill 追加を改訂。2026-06-13 制限時間の payload 一本化を加算改訂） |
-| [06-drill-mode.md](06-drill-mode.md) | 確定 | 残数モデル・形式継承・終了条件・削除導線・共有範囲を確定（2026-06-12。2026-06-13 制限時間の引き継ぎ（Drill.timeoutSeconds）を加算改訂） |
+| [04-ui.md](04-ui.md) | 確定 | 画面遷移・各画面仕様を確定（2026-06-12、同日 06 起因で進行中 drill 一覧に削除ボタンを加算改訂。2026-06-13 開始画面デフォルト設定と制限時間（残り時間バー・時間切れ挙動）を加算改訂。後続改訂でデフォルト制限時間を形式別化＝開始画面は形式選択で自動入力・設定画面は形式ごとに独立設定。2026-07-03 drill retry の導線・再テスト結果画面と、テスト結果画面の「同じ範囲でもう一度テストする」を加算改訂） |
+| [05-architecture.md](05-architecture.md) | 確定 | モジュール配置・Server Action 統一・冪等性（roundCount CAS）・認可・形式拡張点・テスト戦略を確定（2026-06-12、同日 06 起因で format 引数の整理・deleteDrill 追加を改訂。2026-06-13 制限時間の payload 一本化を加算改訂。2026-07-03 drill retry の Action・UseCase を加算改訂） |
+| [06-drill-mode.md](06-drill-mode.md) | 確定 | 残数モデル・形式継承・終了条件・削除導線・共有範囲を確定（2026-06-12。2026-06-13 制限時間の引き継ぎ（Drill.timeoutSeconds）を加算改訂。2026-07-03 「同じ問題で再テスト」（drill retry）を決定 10 として加算改訂） |
 
 **全トピック確定（2026-06-12）— 設計完了**。次の工程はチケット分割（`docs/plan/` 管轄、後続スキルで実施）。開始情報は下の「実装への引き継ぎ」を参照。
 

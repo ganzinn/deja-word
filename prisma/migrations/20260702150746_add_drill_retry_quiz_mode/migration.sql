@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "QuizMode" ADD VALUE 'DRILL_RETRY';

@@ -441,13 +441,21 @@ export function QuizFlow({
   }
 
   /**
-   * ラウンド結果画面の「同じ問題でもう一度テストする」: 直前のラウンド（または再テスト）と
-   * 同じ単語セットで、残数に影響しない再テストを開始する（06-drill-mode.md 決定 10）。
-   * wordIds は結果画面の rows（＝直前の出題セット）から拾い、サーバーへクライアント申告する。
+   * 結果画面の再テスト導線。
+   * - TEST: 「同じ範囲でもう一度テストする」— 同じ開始入力（掲載箇所・範囲・形式・制限時間）で
+   *   新しい通常テストを開始する（既存の `handleStart` 経路の再利用。履歴も TEST のまま）
+   * - DRILL / DRILL_RETRY: 「同じ問題でもう一度テストする」— 直前のラウンド（または再テスト）と
+   *   同じ単語セットで、残数に影響しない再テストを開始する（06-drill-mode.md 決定 10）。
+   *   wordIds は結果画面の rows（＝直前の出題セット）から拾い、サーバーへクライアント申告する
    */
   function handleStartRetry() {
+    // 履歴の確定（送信成功）が前提。result-list 側でもボタンを無効化している
+    if (mode === "TEST") {
+      if (startInput === null || submitState?.status !== "success") return;
+      handleStart(startInput);
+      return;
+    }
     if (drill === null) return;
-    // 履歴の確定（ラウンド送信 or 再テスト送信の成功）が前提。result-list 側でもボタンを無効化している
     const submitted =
       mode === "DRILL"
         ? submitState?.status === "drill-success"

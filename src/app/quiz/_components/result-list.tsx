@@ -78,7 +78,11 @@ type Props = {
   onStartDrill: () => void;
   /** DRILL・DRILL_RETRY: 「次のラウンドへ」。送信成功後のみ有効。 */
   onNextRound: () => void;
-  /** DRILL・DRILL_RETRY: 「同じ問題でもう一度テストする」（残数に影響しない再テスト）。送信成功後のみ有効。 */
+  /**
+   * 再テスト導線。TEST: 「同じ範囲でもう一度テストする」（同じ開始入力で新しいテスト）／
+   * DRILL・DRILL_RETRY: 「同じ問題でもう一度テストする」（残数に影響しない再テスト）。
+   * いずれも送信成功後のみ有効。
+   */
   onStartRetry: () => void;
   /**
    * drill が完了（全卒業）したか（quiz-flow がラウンド送信の応答から保持する値）。
@@ -343,6 +347,17 @@ export function ResultList({
               onClick={onStartDrill}
             >
               定着モードをはじめる
+            </Button>
+            {/* 同じ開始入力（掲載箇所・範囲・形式・制限時間）で新しいテストを開始する。
+                履歴の確定（送信成功）までは無効（開始すると送信中の履歴が失われるため） */}
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-14 py-4"
+              disabled={submitState.status !== "success"}
+              onClick={onStartRetry}
+            >
+              同じ範囲でもう一度テストする
             </Button>
             <Button
               size="lg"

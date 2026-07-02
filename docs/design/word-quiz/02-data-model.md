@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂。同日 06 決定 11 を受けて `Drill.sourceRangeFrom / sourceRangeTo` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -79,6 +79,9 @@ model Drill {
   occurrenceId String    @map("occurrence_id")
   rangeFrom    Int       @map("range_from")
   rangeTo      Int       @map("range_to")
+  // 元テストの範囲。null = 元テストが範囲指定なし。完了画面の「同じ範囲でもう一度テストする」に使う（06 決定 11。2026-07-03 加算。既存行は実効範囲で backfill）
+  sourceRangeFrom Int?   @map("source_range_from")
+  sourceRangeTo   Int?   @map("source_range_to")
   format       QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ（06 確定）
   timeoutSeconds Int?    @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし（2026-06-13 加算改訂）
   // 定着までの回数（残数設定）。テスト結果画面でユーザーが設定し（startDrill 経由）全ラウンドで引き継ぐ（2026-06-26 加算）。各 1..9。@default は既存進行中 drill の backfill 用
@@ -128,6 +131,7 @@ model DrillWord {
 - **形式・結果・mode は Prisma enum**。型安全を優先。将来形式（SPELLING 等）は enum 値追加のマイグレーションで対応。
 - **Drill.roundCount（05 起因の加算改訂）**。drill ラウンド送信の冪等化のため、完了ラウンド数を持つ。送信時に「期待ラウンド数と一致したら +1」の compare-and-swap を行い、二重送信で remaining が二重に減るのを防ぐ（詳細は [05](05-architecture.md) の決定 4）。
 - **rangeFrom / rangeTo は drill 生成時の実効範囲を保存する（05 で明確化）**。開始画面の範囲指定は「空欄＝制限なし」があり得るため、drill 生成時は実際に出題された単語の occurrenceNumber の min / max を保存する。列定義の変更はなし（非 null のまま）。
+- **Drill.sourceRangeFrom / sourceRangeTo（06 決定 11 起因の加算改訂。2026-07-03）**。完了画面の「同じ範囲でもう一度テストする」用に元テストの範囲を保存する。`rangeFrom / rangeTo`（投入単語の実効範囲。ダミー候補の絞り込みに使う）とは役割が異なるため別列。NULL = 元テストが範囲指定なし（Occurrence 全体）。既存行は migration で実効範囲を backfill（元テスト範囲が不明のためのフォールバック）。
 - **Drill.format（06 起因の加算改訂）**。drill は元テストの出題形式を全ラウンドで引き継ぐ（[06](06-drill-mode.md) の決定 4）。drill 生成時にクライアントから 1 回だけ受け取って保存し、以降のラウンド生成・QuizAnswer.format の付与はサーバーがこの列から導出する。全 drill が生成時に形式を持つため非 null。QuizAnswer.format は重複して見えるが、QuizAnswer は Drill への FK を持たず Drill 削除後も履歴単独で形式が分かる必要があるため両方持つ。
 - **範囲指定の対象は occurrenceNumber が付与された WordOccurrence のみ**。既存スキーマで `occurrenceNumber` は nullable（`@@unique([occurrenceId, occurrenceNumber])`）であり、既存テーブルは変更しない方針のため、番号なしの単語は quiz の対象外となる。ユーザーへの見せ方は 04、取得クエリの扱いは 05 に引き継ぐ。
 

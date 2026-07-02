@@ -123,6 +123,10 @@ export const drillResultInputSchema = z.object({
  */
 export const startDrillInputSchema = z.object({
   occurrenceId: z.string().min(1),
+  // 元テストの範囲（省略 = 範囲指定なし）。完了画面の「同じ範囲でもう一度テストする」用に
+  // `Drill` へ保存する（実効範囲 rangeFrom/rangeTo とは別物）。
+  sourceRangeFrom: z.number().int().positive().optional(),
+  sourceRangeTo: z.number().int().positive().optional(),
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   choiceFirstMeaningTextOnly: z.boolean(),

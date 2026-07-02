@@ -165,12 +165,20 @@ export async function startDrill(input: StartDrillInput): Promise<StartDrillResu
 }
 
 export type StartDrillRoundResult =
-  | { ok: true; quiz: QuizPayload; roundCount: number }
+  | {
+      ok: true;
+      quiz: QuizPayload;
+      roundCount: number;
+      sourceTest: StartQuizInput;
+      occurrenceName: string;
+    }
   | QuizActionFailure;
 
 /**
  * drill ラウンド 1 回分の問題生成（初回・再開とも同一経路。形式は `Drill.format` から導出）。
  * roundCount はラウンド送信の expectedRoundCount に使う。
+ * sourceTest は完了画面の「同じ範囲でもう一度テストする」の開始入力、occurrenceName は
+ * その範囲表示に使う掲載箇所名（06-drill-mode.md 決定 11）。
  */
 export async function startDrillRound(input: StartDrillRoundInput): Promise<StartDrillRoundResult> {
   const session = await getCurrentSession();
@@ -180,8 +188,11 @@ export async function startDrillRound(input: StartDrillRoundInput): Promise<Star
   if (!parsed.success) return INVALID;
 
   try {
-    const { quiz, roundCount } = await generateDrillRoundForUser(session.user.id, parsed.data);
-    return { ok: true, quiz, roundCount };
+    const { quiz, roundCount, sourceTest, occurrenceName } = await generateDrillRoundForUser(
+      session.user.id,
+      parsed.data,
+    );
+    return { ok: true, quiz, roundCount, sourceTest, occurrenceName };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

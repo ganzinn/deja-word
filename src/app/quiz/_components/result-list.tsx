@@ -58,6 +58,13 @@ export type SubmitState =
   | { status: "error"; message: string };
 
 /**
+ * 完了画面の「同じ範囲でもう一度テストする」直上に出す対象件数の取得結果
+ * （`getQuizPreview` のライブ値。quiz-flow が完了状態の結果画面で取得する）。
+ * 取得前・取得中は null（完了画面では「確認中…」表示になる）。
+ */
+export type SourceTestPreview = { status: "ready"; targetCount: number } | { status: "error" };
+
+/**
  * 定着までの回数（残数設定）の編集テキスト。テスト結果画面で編集し、drill 開始時に
  * `parseRemainingCount` で 1..9 の整数へ解決する（空欄・範囲外は未確定）。state は quiz-flow が持つ。
  */
@@ -85,6 +92,18 @@ type Props = {
    */
   onStartRetry: () => void;
   /**
+   * DRILL・DRILL_RETRY の定着完了時のみ: 「同じ範囲でもう一度テストする」（元テストの範囲・形式で
+   * 新しい通常テストを開始）。送信成功後のみ有効。
+   */
+  onStartSourceTest: () => void;
+  /**
+   * 「同じ範囲でもう一度テストする」直上に出す元テストの範囲ラベル
+   * （例「本A No.1〜100」。進行中一覧と同表記）。drill 未確立時は null。
+   */
+  sourceTestLabel: string | null;
+  /** 同・対象件数の取得状態（quiz-flow が完了状態の結果画面でのみ取得する）。 */
+  sourceTestPreview: SourceTestPreview | null;
+  /**
    * drill が完了（全卒業）したか（quiz-flow がラウンド送信の応答から保持する値）。
    * DRILL は完了メッセージの表示に、DRILL_RETRY は「次のラウンドへ」を出すかの判定に使う
    * （再テスト送信の応答には完了情報が含まれないため props で受ける）。
@@ -109,6 +128,9 @@ export function ResultList({
   onStartDrill,
   onNextRound,
   onStartRetry,
+  onStartSourceTest,
+  sourceTestLabel,
+  sourceTestPreview,
   drillCompleted,
   drillIncludeCorrect,
   onDrillIncludeCorrectChange,
@@ -371,11 +393,25 @@ export function ResultList({
         ) : mode === "DRILL" ? (
           <>
             {drillCompleted ? (
-              <p className="text-center text-base font-semibold" role="status">
-                すべての単語が定着しました！
-                <br />
-                おつかれさまでした！
-              </p>
+              <>
+                <p className="text-center text-base font-semibold" role="status">
+                  すべての単語が定着しました！
+                  <br />
+                  おつかれさまでした！
+                </p>
+                {/* 元テストの範囲・形式で新しい通常テストを開始し、定着を確認する（06-drill-mode.md 決定 11）。
+                    直上に元テストの範囲と対象件数を出し、押す前に確認できるようにする。
+                    履歴の確定（送信成功）までは無効 */}
+                <SourceTestInfo label={sourceTestLabel} preview={sourceTestPreview} />
+                <Button
+                  size="lg"
+                  className="h-auto min-h-14 py-4"
+                  disabled={submitState.status !== "drill-success"}
+                  onClick={onStartSourceTest}
+                >
+                  同じ範囲でもう一度テストする
+                </Button>
+              </>
             ) : (
               // 残数未更新のまま次ラウンドを生成すると不整合になるため、送信成功までは無効
               <Button
@@ -407,7 +443,8 @@ export function ResultList({
             </Button>
           </>
         ) : (
-          // DRILL_RETRY: 残数バッジ・完了メッセージなし。drill 完了済みなら「次のラウンドへ」も出さない
+          // DRILL_RETRY: 残数バッジ・完了メッセージなし。drill 完了済みなら「次のラウンドへ」の
+          // 代わりに「同じ範囲でもう一度テストする」（DRILL 完了画面と同じ前進導線）を出す
           <>
             {!drillCompleted ? (
               <Button
@@ -418,7 +455,19 @@ export function ResultList({
               >
                 次のラウンドへ
               </Button>
-            ) : null}
+            ) : (
+              <>
+                <SourceTestInfo label={sourceTestLabel} preview={sourceTestPreview} />
+                <Button
+                  size="lg"
+                  className="h-auto min-h-14 py-4"
+                  disabled={submitState.status !== "success"}
+                  onClick={onStartSourceTest}
+                >
+                  同じ範囲でもう一度テストする
+                </Button>
+              </>
+            )}
             <Button
               size="lg"
               variant="outline"
@@ -440,6 +489,32 @@ export function ResultList({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * 完了画面の元テスト範囲・対象件数の 1 行表示（「同じ範囲でもう一度テストする」の直上）。
+ * 件数はライブ値のため取得中は「確認中…」、取得失敗時は範囲ラベルのみに落とす（ボタンは影響なし）。
+ */
+function SourceTestInfo({
+  label,
+  preview,
+}: {
+  label: string | null;
+  preview: SourceTestPreview | null;
+}) {
+  if (label === null) return null;
+  const countText =
+    preview === null
+      ? "・対象件数を確認中…"
+      : preview.status === "error"
+        ? ""
+        : `・対象 ${preview.targetCount}語`;
+  return (
+    <p className="text-muted-foreground text-center text-sm">
+      {label}
+      {countText}
+    </p>
   );
 }
 

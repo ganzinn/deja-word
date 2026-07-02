@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -21,7 +21,7 @@
 
 - [x] 解答履歴テーブルの粒度 → 1解答=1行。テストセッションテーブルは持たない
 - [x] 解答行の属性設計 → mode / format / result / createdAt。「わからない」は GAVE_UP として区別
-- [x] drill 由来の解答の区別 → mode 列（TEST / DRILL）
+- [x] drill 由来の解答の区別 → mode 列（TEST / DRILL / DRILL_RETRY）
 - [x] 履歴の紐づけ先 → Word（owner は解答したユーザー）
 - [x] Word 削除時の履歴の扱い → Cascade で削除
 - [x] 出題形式の表現 → Prisma enum（将来形式は値追加）
@@ -49,8 +49,9 @@ enum QuizResult {
 }
 
 enum QuizMode {
-  TEST  // 通常テスト
-  DRILL // 定着モード
+  TEST        // 通常テスト
+  DRILL       // 定着モード
+  DRILL_RETRY // 定着モードの「同じ問題で再テスト」。残数に影響しない練習（06 決定 10。2026-07-03 加算改訂）
 }
 
 // 解答履歴: 1解答=1行。通常テストも drill も同形で保存
@@ -121,7 +122,7 @@ model DrillWord {
 - **テストセッション（1回のテスト実施）テーブルは持たない**。過去テストの結果一覧を見る要求がないため。単語単位の履歴（いつ・何回・どの形式で・正誤）は QuizAnswer の `(ownerId, wordId)` インデックスで追える。必要になれば加算で対応。
 - **履歴の紐づけ先は Word**（Meaning ではない）。出題・正誤の単位が単語のため。`ownerId` は解答したユーザー（システム共通の Word に対する解答でも履歴はユーザー自身の行）。
 - **Word 削除時は履歴・DrillWord とも Cascade で削除**。単語が消えれば履歴・drill 残数も意味を失うため。drill 進行中に単語が消えた場合は出題対象が自然に減る。
-- **mode 列（TEST / DRILL）で drill の解答を区別**。単語ごとの履歴で drill の繰り返し分を見分けるため。Drill 行への FK は持たない（Drill 行が消えても区別が失われないように）。
+- **mode 列（TEST / DRILL / DRILL_RETRY）で解答の由来を区別**。単語ごとの履歴で drill の繰り返し分を見分けるため。DRILL_RETRY は残数に影響しない練習の再テスト（06 決定 10。2026-07-03 加算）で、残数に効いた解答（DRILL）と区別する。Drill 行への FK は持たない（Drill 行が消えても区別が失われないように）。
 - **「わからない」は GAVE_UP として誤答と区別して記録**。情報量が増えコストはほぼゼロ。表示で使うかは 04 で判断。
 - **日時はサーバー受領時刻（createdAt）**。一括送信のため1回のテスト／ラウンド内の解答は同じタイムスタンプになる（1問ごとの解答時刻は残らない）。「単語をいつテストしたか」の粒度としては十分。
 - **形式・結果・mode は Prisma enum**。型安全を優先。将来形式（SPELLING 等）は enum 値追加のマイグレーションで対応。

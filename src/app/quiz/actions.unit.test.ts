@@ -68,6 +68,22 @@ vi.mock("@/lib/drill-delete", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/drill-retry-generate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-retry-generate")>();
+  return {
+    ...actual,
+    generateDrillRetryForUser: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/drill-retry-submit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/drill-retry-submit")>();
+  return {
+    ...actual,
+    submitDrillRetryForUser: vi.fn(),
+  };
+});
+
 const { getCurrentSession } = await import("@/lib/session");
 const { getQuizPreviewForUser } = await import("@/lib/quiz-preview");
 const { generateQuizForUser } = await import("@/lib/quiz-generate");
@@ -77,6 +93,9 @@ const { createDrillForUser, EmptyDrillResultsError } = await import("@/lib/drill
 const { generateDrillRoundForUser } = await import("@/lib/drill-round-generate");
 const { submitDrillRoundForUser } = await import("@/lib/drill-round-submit");
 const { deleteDrillForUser } = await import("@/lib/drill-delete");
+const { generateDrillRetryForUser, EmptyDrillRetryError } =
+  await import("@/lib/drill-retry-generate");
+const { submitDrillRetryForUser } = await import("@/lib/drill-retry-submit");
 const { OccurrenceNotFoundError } = await import("@/lib/occurrences-update");
 const { QuizGenerationError } = await import("@/lib/quiz/generation/dummy-pool");
 const { DrillNotFoundError, DrillRoundConflictError } =
@@ -86,8 +105,10 @@ const {
   getQuizPreview,
   getWordDetailForDialog,
   startDrill,
+  startDrillRetry,
   startDrillRound,
   startQuiz,
+  submitDrillRetry,
   submitDrillRound,
   submitQuizAnswers,
 } = await import("@/app/quiz/actions");
@@ -101,6 +122,8 @@ const mockedDrillCreate = vi.mocked(createDrillForUser);
 const mockedDrillRoundGenerate = vi.mocked(generateDrillRoundForUser);
 const mockedDrillRoundSubmit = vi.mocked(submitDrillRoundForUser);
 const mockedDrillDelete = vi.mocked(deleteDrillForUser);
+const mockedDrillRetryGenerate = vi.mocked(generateDrillRetryForUser);
+const mockedDrillRetrySubmit = vi.mocked(submitDrillRetryForUser);
 
 const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
@@ -114,6 +137,8 @@ beforeEach(() => {
   mockedDrillRoundGenerate.mockReset();
   mockedDrillRoundSubmit.mockReset();
   mockedDrillDelete.mockReset();
+  mockedDrillRetryGenerate.mockReset();
+  mockedDrillRetrySubmit.mockReset();
 });
 
 afterEach(() => {
@@ -507,6 +532,109 @@ describe("submitDrillRound (Server Action)", () => {
       alreadyApplied: false,
     });
     expect(mockedDrillRoundSubmit).toHaveBeenCalledWith("u_1", input);
+  });
+});
+
+describe("startDrillRetry (Server Action)", () => {
+  const input = { drillId: "d_1", wordIds: ["w_1", "w_2"] };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await startDrillRetry(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillRetryGenerate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects an empty drillId", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await startDrillRetry({ ...input, drillId: "" });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRetryGenerate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects empty wordIds", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await startDrillRetry({ ...input, wordIds: [] });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRetryGenerate).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps DrillNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRetryGenerate.mockRejectedValue(new DrillNotFoundError());
+    const res = await startDrillRetry(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("not_found: maps EmptyDrillRetryError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRetryGenerate.mockRejectedValue(new EmptyDrillRetryError());
+    const res = await startDrillRetry(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("ok: returns the retry quiz payload (no roundCount)", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const quiz = {
+      format: "CHOICE" as const,
+      timeoutSeconds: null,
+      questions: [
+        {
+          wordId: "w_1",
+          headword: "ubiquitous",
+          pronunciationAudioUrl: null,
+          choices: [{ text: "a" }, { text: "b" }],
+          correctIndex: 0,
+        },
+      ],
+    };
+    mockedDrillRetryGenerate.mockResolvedValue({ quiz });
+    const res = await startDrillRetry(input);
+    expect(res).toEqual({ ok: true, quiz });
+    expect(mockedDrillRetryGenerate).toHaveBeenCalledWith("u_1", input);
+  });
+});
+
+describe("submitDrillRetry (Server Action)", () => {
+  const input = {
+    drillId: "d_1",
+    answers: [{ wordId: "w_1", result: "CORRECT" as const }],
+  };
+
+  test("unauthorized: no session", async () => {
+    mockedGetSession.mockResolvedValue(null);
+    const res = await submitDrillRetry(input);
+    expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
+    expect(mockedDrillRetrySubmit).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects an empty drillId", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await submitDrillRetry({ ...input, drillId: "" });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRetrySubmit).not.toHaveBeenCalled();
+  });
+
+  test("invalid: schema rejects empty answers", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await submitDrillRetry({ ...input, answers: [] });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedDrillRetrySubmit).not.toHaveBeenCalled();
+  });
+
+  test("not_found: maps DrillNotFoundError", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRetrySubmit.mockRejectedValue(new DrillNotFoundError());
+    const res = await submitDrillRetry(input);
+    expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+  });
+
+  test("ok: returns savedCount / skippedWordIds", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRetrySubmit.mockResolvedValue({ savedCount: 1, skippedWordIds: ["w_2"] });
+    const res = await submitDrillRetry(input);
+    expect(res).toEqual({ ok: true, savedCount: 1, skippedWordIds: ["w_2"] });
+    expect(mockedDrillRetrySubmit).toHaveBeenCalledWith("u_1", input);
   });
 });
 

@@ -359,6 +359,7 @@ enum QuizResult {
 enum QuizMode {
   TEST // 通常テスト
   DRILL // 定着モード
+  DRILL_RETRY // 定着モードの「同じ問題で再テスト」。残数（DrillWord.remaining）に影響しない練習
 }
 
 // 解答履歴: 1解答=1行。通常テストも drill も同形で保存

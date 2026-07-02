@@ -74,6 +74,31 @@ export function partitionMaterial(
   };
 }
 
+/**
+ * 範囲ベースのパーティション結果を、指定 id 集合を出題対象とする素材に再分割する純関数。
+ * drill ラウンド生成（未定着単語のみ）・再テスト生成（直前ラウンドの単語のみ）が使う。
+ *
+ * 出題対象から外れた範囲内の単語（(a) の非 target 分）はダミー候補として
+ * 同一 Occurrence プール (b) 側に回す。(c) は非 target 分のみ残す。
+ */
+export function retargetMaterial(
+  partitioned: QuizSourceMaterial,
+  targetIds: Set<string>,
+): QuizSourceMaterial {
+  const isTarget = (w: QuizWord) => targetIds.has(w.id);
+  return {
+    targets: [
+      ...partitioned.targets,
+      ...partitioned.sameOccurrencePool,
+      ...partitioned.allWordsPool,
+    ].filter(isTarget),
+    sameOccurrencePool: [...partitioned.targets, ...partitioned.sameOccurrencePool].filter(
+      (w) => !isTarget(w),
+    ),
+    allWordsPool: partitioned.allWordsPool.filter((w) => !isTarget(w)),
+  };
+}
+
 /** 全 Meaning 横断の全 MeaningText（trim なしの生テキスト）。 */
 export function allMeaningTexts(word: QuizWord): string[] {
   return word.meanings.flatMap((m) => m.texts);

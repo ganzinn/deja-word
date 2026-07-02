@@ -1,6 +1,6 @@
 # 05. アーキテクチャ（UseCase / handler / API 構成）
 
-状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂）
+状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂。2026-07-03 06 決定 10（drill retry）を受けて `startDrillRetry` / `submitDrillRetry` と UseCase 2 ファイルを加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -48,6 +48,8 @@ src/lib/
   drill-round-submit.ts      # submitDrillRoundForUser（履歴＋残数を同一 tx）
   drill-list.ts              # listActiveDrillsForUser（開始画面の進行中一覧）
   drill-delete.ts            # deleteDrillForUser（進行中一覧からの削除。06 決定 7 起因の加算）
+  drill-retry-generate.ts    # generateDrillRetryForUser（再テスト問題生成。06 決定 10 起因の加算）
+  drill-retry-submit.ts      # submitDrillRetryForUser（mode=DRILL_RETRY 履歴のみ保存。同上）
   quiz/
     payload.ts               # 問題データの discriminated union（クライアントから import 可。server-only を付けない）
     error-map.ts             # mapQuizErrorToResult（words/error-map.ts と同形）
@@ -91,6 +93,8 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出） |
 | drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
 | drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |
+| drill 再テスト生成 | `startDrillRetry` | `{ drillId, wordIds }` → `{ quiz: QuizPayload }`（直前ラウンドの単語セットで再生成。wordIds はクライアント申告＝06 決定 10。形式・制限時間は `Drill` から導出。roundCount は返さない＝送信に CAS なし。2026-07-03 加算） |
+| drill 再テスト送信 | `submitDrillRetry` | `{ drillId, answers }` → `{ savedCount, skippedWordIds }`（mode=DRILL_RETRY・format は `Drill.format` から付与。履歴保存のみで残数・roundCount・completedAt に触れない。冪等化は TEST と同じ single-flight のみ＝決定 3 の方針。2026-07-03 加算） |
 | 単語詳細ダイアログ | `getWordDetailForDialog` | `wordId` → 既存 `getWordDetailForUser` の結果（薄いラッパ） |
 
 共通型: `QuizRangeInput = { occurrenceId: string; rangeFrom?: number; rangeTo?: number }`、`AnswerInput = { wordId: string; result: QuizResult }`。mode と ownerId はサーバー側（経路とセッション）で決まり、クライアント入力には含めない。**format はクライアントが TEST 履歴送信（`submitQuizAnswers`）と drill 生成（`startDrill`）のトップレベルで 1 回だけ送る**（zod の enum で検証。解答ごとの format 指定は許さない）。テストセッションの状態を持たない設計のため、この 2 経路ではサーバー側に format の導出手段がないことによる。drill のラウンド系 Action は `Drill.format` から導出するため format を受け取らない（06 決定 4 起因の改訂）。
@@ -238,6 +242,7 @@ src/lib/quiz/generation/
 | `quiz/handlers/`（insertQuizAnswers、applyDrillRound） | unit | `tests/setup/tx-mock.ts` に quizAnswer / drill / drillWord delegate を追加して流用 |
 | `fetchQuizSource`（可視性スコープ・意味未登録除外・番号なし除外） | integration | 実 DB＋`tests/setup/fixtures.ts` 拡張（番号付き／なし／意味なし単語の fixture） |
 | `submitQuizAnswersForUser`（削除済み単語 skip）／`createDrillForUser`（初期残数は Drill の残数設定由来）／`submitDrillRoundForUser`（残数遷移・completedAt・CAS） | integration | UseCase ごとにコロケート（words-create 等と同形） |
+| `generateDrillRetryForUser`（卒業単語含む指定セット生成・drill 外 wordId 無視）／`submitDrillRetryForUser`（mode=DRILL_RETRY 保存・残数/roundCount/completedAt 不変） | integration | 同上（06 決定 10 起因の加算） |
 | `src/app/quiz/actions.ts`（認証なし・zod 不正・エラーマップ） | unit | 既存 actions の unit test と同じモックパターン |
 
 `deleteDrillForUser`（06 決定 7）は `ownerId: userId` 照合＋物理削除のみで特殊ロジックがないため、専用の integration は設けず actions.ts の unit テストパターンでカバーする。

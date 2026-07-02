@@ -16,6 +16,11 @@ export const DEFAULT_WORD_AI_MODEL = "anthropic/claude-sonnet-5";
 
 const GENERATE_TIMEOUT_MS = 30_000;
 
+// コスト上限の保証。件数キャップはプロンプト指示＋生成後の normalize 刈り込みのため、
+// AI が指示を超えて生成した場合のトークン消費はこの上限でしか止められない。
+// 全セクション満額（意味3×訳語3・熟語3・例文2、和訳付き）でも 1,000 トークン程度なので余裕を持たせて 2,000。
+const GENERATE_MAX_OUTPUT_TOKENS = 2_000;
+
 // AI Gateway の認証手段があるかどうか。Vercel 上（VERCEL / OIDC）はキー不要で動作する。
 // false のときは AI入力ボタン自体を描画しない（Server Component から props で下ろす）。
 export function isWordAiEnabled(): boolean {
@@ -74,6 +79,7 @@ const defaultGenerate: GenerateDraftFn = async ({ model, prompt, schema }) => {
     model,
     output: Output.object({ schema }),
     prompt,
+    maxOutputTokens: GENERATE_MAX_OUTPUT_TOKENS,
     abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
   });
   return result.output;

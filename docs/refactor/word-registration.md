@@ -557,3 +557,6 @@ pnpm lint                     # スタイル
     - 新規 `occurrence-preset.unit.test.ts`（7 ケース、`row-ownership` と同方式の node 純関数テスト）。固定した境界: 未選択→add / 自分の行→remove / **preset トグル ON 直後（ownerId 空）→ 一般ユーザーでも remove 可** / **手動追加行（occurrenceId なし）は preset を押下扱いしない** / **保存済み system 所有行（ownerId === SYSTEM_USER_ID）を一般ユーザー→ロック・noop** / system ユーザーは remove 可 / 複数行で正しい index
     - 背景: サーバ側認可は `word-occurrence-handler.unit.test.ts` / `words-create|update.integration.test.ts` / `row-policy.unit.test.ts` で担保済みのため、追加分はクライアントの UX 判定（特に `"" / SYSTEM_USER_ID / occurrenceId なし` の差）の回帰防止に限定。DOM/操作テスト（testing-library・happy-dom）は方針どおり導入せず、判定を純関数に切り出して node でテスト
     - `pnpm typecheck` / `lint` / `test:unit`（119/119、112 + 新規 7）/ `build`（全 13 route）全 pass
+- [x] 追補（2026-07-02, PR #86）: 単語フォームに AI入力（下書き生成）を追加 — 本ドキュメント前提の更新
+  - 生成専用の zod スキーマ `src/lib/schema/word-ai-draft.ts` を新設した。N1 の「共有スキーマ 1 ファイル（`word-form.ts`）」は**フォーム入力の検証**についての判断であり不変。AI 出力スキーマは「AI 応答の契約」（id/ownerId/notes を持たない、品詞は enum でなく normalize で `""` に落とす）という別の変更理由を持つため意図的に別定義とした。フォーム状態の型（`WordFormValues` / `MeaningValue` / `ExampleValue`）は従来どおり `word-form.ts` を単一ソースとしてマージ純関数（`_components/ai-draft-merge.ts`）が共有する
+  - 追補（2026-07-03）: `generateText` に `maxOutputTokens: 2000` を明示。件数キャップはプロンプト指示＋生成後の normalize 刈り込みのため、AI が指示を超過した場合のトークン消費はこの上限で保証する

@@ -4,7 +4,12 @@ import { prisma } from "@/lib/prisma";
 import type { WordFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createWordForUser } from "@/lib/words-create";
-import { listWordsByOccurrence, listWordsForUser } from "@/lib/words-list";
+import {
+  findAdjacentWordsByOccurrence,
+  findAdjacentWordsByOccurrenceNumber,
+  listWordsByOccurrence,
+  listWordsForUser,
+} from "@/lib/words-list";
 
 import { createTestUser } from "../../tests/setup/fixtures";
 
@@ -381,5 +386,307 @@ describe("listWordsByOccurrence", () => {
     });
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.pronunciationAudioUrl).toBe("/audio/occ.mp3");
+  });
+});
+
+describe("findAdjacentWordsByOccurrence", () => {
+  const LOC = "Book";
+  const base = { match: "contains" as const, order: "asc" as const };
+
+  /** alpha#1 / bravo#5 / charlie#10 / delta#null を登録して各 id と掲載箇所 id を返す。 */
+  async function seedWords(userId: string) {
+    const alpha = await createWordForUser(userId, formWithOccurrence("alpha", LOC, 1));
+    const bravo = await createWordForUser(userId, formWithOccurrence("bravo", LOC, 5));
+    const charlie = await createWordForUser(userId, formWithOccurrence("charlie", LOC, 10));
+    const delta = await createWordForUser(userId, formWithOccurrence("delta", LOC, null));
+    const occurrenceId = await occurrenceIdOf(userId, LOC);
+    return { alpha, bravo, charlie, delta, occurrenceId };
+  }
+
+  test("middle word: prev/next follow occurrenceNumber order", async () => {
+    const user = await createTestUser();
+    const { bravo, occurrenceId } = await seedWords(user.id);
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...base,
+    });
+    expect(nav?.current.occurrenceNumber).toBe(5);
+    expect(nav?.prev?.headword).toBe("alpha");
+    expect(nav?.next?.headword).toBe("charlie");
+  });
+
+  test("edges: first has no prev, last (null number) has no next", async () => {
+    const user = await createTestUser();
+    const { alpha, delta, occurrenceId } = await seedWords(user.id);
+
+    const first = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: alpha.id,
+      ...base,
+    });
+    expect(first?.prev).toBeNull();
+    expect(first?.next?.headword).toBe("bravo");
+
+    const last = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: delta.id,
+      ...base,
+    });
+    expect(last?.current.occurrenceNumber).toBeNull();
+    expect(last?.next).toBeNull();
+  });
+
+  test("null numbers: bridges numbered <-> null and orders nulls by headword", async () => {
+    const user = await createTestUser();
+    const { charlie, delta, occurrenceId } = await seedWords(user.id);
+    const echo = await createWordForUser(user.id, formWithOccurrence("echo", LOC, null));
+
+    // 最後の番号付き → 最初の null（見出し語昇順）
+    const fromNumbered = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: charlie.id,
+      ...base,
+    });
+    expect(fromNumbered?.next?.headword).toBe("delta");
+
+    // null 同士は見出し語順、null の prev は最後の番号付きへ戻る
+    const atNull = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: delta.id,
+      ...base,
+    });
+    expect(atNull?.prev?.headword).toBe("charlie");
+    expect(atNull?.next?.headword).toBe("echo");
+
+    const atLastNull = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: echo.id,
+      ...base,
+    });
+    expect(atLastNull?.prev?.headword).toBe("delta");
+    expect(atLastNull?.next).toBeNull();
+  });
+
+  test("order=desc reverses direction, null still last", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, charlie, delta, occurrenceId } = await seedWords(user.id);
+    const desc = { match: "contains" as const, order: "desc" as const };
+
+    // desc の一覧順: charlie(10), bravo(5), alpha(1), delta(null)
+    const first = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: charlie.id,
+      ...desc,
+    });
+    expect(first?.prev).toBeNull();
+    expect(first?.next?.headword).toBe("bravo");
+
+    const mid = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...desc,
+    });
+    expect(mid?.prev?.headword).toBe("charlie");
+    expect(mid?.next?.headword).toBe("alpha");
+
+    const lastNumbered = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: alpha.id,
+      ...desc,
+    });
+    expect(lastNumbered?.next?.headword).toBe("delta");
+
+    const atNull = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: delta.id,
+      ...desc,
+    });
+    expect(atNull?.prev?.headword).toBe("alpha");
+    expect(atNull?.next).toBeNull();
+  });
+
+  test("q filter: skips non-matching words; current not matching -> null", async () => {
+    const user = await createTestUser();
+    const apple = await createWordForUser(user.id, formWithOccurrence("apple", LOC, 1));
+    const apricot = await createWordForUser(user.id, formWithOccurrence("apricot", LOC, 2));
+    const banana = await createWordForUser(user.id, formWithOccurrence("banana", LOC, 3));
+    await createWordForUser(user.id, formWithOccurrence("avocado", LOC, 4));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    const withQ = { q: "a", match: "prefix" as const, order: "asc" as const };
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: apricot.id,
+      ...withQ,
+    });
+    expect(nav?.prev?.headword).toBe("apple");
+    // banana(#3) は q に不一致なので飛ばして avocado(#4)
+    expect(nav?.next?.headword).toBe("avocado");
+
+    const notMatching = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: banana.id,
+      ...withQ,
+    });
+    expect(notMatching).toBeNull();
+
+    const first = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: apple.id,
+      ...withQ,
+    });
+    expect(first?.prev).toBeNull();
+  });
+
+  test("range: excludes out-of-range and null; current out of range -> null", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, charlie, occurrenceId } = await seedWords(user.id);
+    const ranged = { match: "contains" as const, order: "asc" as const, from: 2, to: 10 };
+
+    const first = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...ranged,
+    });
+    // alpha(#1) は範囲外
+    expect(first?.prev).toBeNull();
+    expect(first?.next?.headword).toBe("charlie");
+
+    const last = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: charlie.id,
+      ...ranged,
+    });
+    // delta(null) は範囲指定で除外
+    expect(last?.next).toBeNull();
+
+    const outOfRange = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: alpha.id,
+      ...ranged,
+    });
+    expect(outOfRange).toBeNull();
+  });
+
+  test("scope: mixes own + system words in a system occurrence, excludes other users", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("sysone", LOC, 1));
+    const sysThree = await createWordForUser(
+      SYSTEM_USER_ID,
+      formWithOccurrence("systhree", LOC, 3),
+    );
+    // location 一致で SYSTEM 掲載箇所へ紐付く（共通掲載箇所では一般ユーザーの番号は強制 null）
+    const mine = await createWordForUser(user.id, formWithOccurrence("minetwo", LOC, 2));
+    const strangerWord = await createWordForUser(
+      stranger.id,
+      formWithOccurrence("strangerfour", LOC, null),
+    );
+    // 番号付きの他ユーザー行は通常パスでは作れないため、スコープ除外の検証用に直接セットする
+    await prisma.wordOccurrence.updateMany({
+      where: { wordId: strangerWord.id },
+      data: { occurrenceNumber: 4 },
+    });
+    const occurrenceId = await occurrenceIdOf(SYSTEM_USER_ID, LOC);
+
+    // 自分の単語は番号 null → null グループ（末尾）に入り、prev は最後の番号付き（SYSTEM）
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: mine.id,
+      ...base,
+    });
+    expect(nav?.current.occurrenceNumber).toBeNull();
+    expect(nav?.prev?.headword).toBe("systhree");
+    expect(nav?.next).toBeNull();
+
+    // 他ユーザーの #4 はスコープ外なので、#3 の次はスコープ内 null グループの先頭（自分の単語）
+    const atSysThree = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: sysThree.id,
+      ...base,
+    });
+    expect(atSysThree?.next?.headword).toBe("minetwo");
+  });
+
+  test("word not in the occurrence -> null", async () => {
+    const user = await createTestUser();
+    const { occurrenceId } = await seedWords(user.id);
+    const plain = await createWordForUser(user.id, form("plain"));
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: plain.id,
+      ...base,
+    });
+    expect(nav).toBeNull();
+  });
+});
+
+describe("findAdjacentWordsByOccurrenceNumber", () => {
+  const LOC = "Book";
+
+  test("ascending by number with edges", async () => {
+    const user = await createTestUser();
+    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
+    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
+    const five = await createWordForUser(user.id, formWithOccurrence("five", LOC, 5));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const mid = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
+    expect(mid?.current.occurrenceNumber).toBe(3);
+    expect(mid?.prev?.headword).toBe("one");
+    expect(mid?.next?.headword).toBe("five");
+
+    const first = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
+    expect(first?.prev).toBeNull();
+
+    const last = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, five.id);
+    expect(last?.next).toBeNull();
+  });
+
+  test("current word without number -> null (not navigable)", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
+    const noNumber = await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, noNumber.id);
+    expect(nav).toBeNull();
+  });
+
+  test("null-numbered words never appear as prev/next", async () => {
+    const user = await createTestUser();
+    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
+    await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
+    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
+    expect(nav?.next?.headword).toBe("three");
+    const back = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
+    expect(back?.prev?.headword).toBe("one");
+  });
+
+  test("excludes other users' words within the same system occurrence", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const sysOne = await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("sysone", LOC, 1));
+    await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("systhree", LOC, 3));
+    const strangerWord = await createWordForUser(
+      stranger.id,
+      formWithOccurrence("strangertwo", LOC, null),
+    );
+    // 番号付きの他ユーザー行は通常パスでは作れないため、スコープ除外の検証用に直接セットする
+    await prisma.wordOccurrence.updateMany({
+      where: { wordId: strangerWord.id },
+      data: { occurrenceNumber: 2 },
+    });
+    const occurrenceId = await occurrenceIdOf(SYSTEM_USER_ID, LOC);
+
+    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, sysOne.id);
+    // 他ユーザーの #2 はスコープ外なので #1 の次は #3
+    expect(nav?.next?.headword).toBe("systhree");
   });
 });

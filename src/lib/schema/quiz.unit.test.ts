@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  adjacentWordsInputSchema,
   answerInputSchema,
   getQuizPreviewInputSchema,
   quizFormatSchema,
@@ -719,5 +720,22 @@ describe("wordIdSchema", () => {
   test("accepts a non-empty id and rejects an empty one", () => {
     expect(wordIdSchema.safeParse("w_1").success).toBe(true);
     expect(wordIdSchema.safeParse("").success).toBe(false);
+  });
+});
+
+describe("adjacentWordsInputSchema", () => {
+  test("accepts non-empty occurrenceId + wordId", () => {
+    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "o_1", wordId: "w_1" }).success).toBe(
+      true,
+    );
+  });
+
+  test("rejects empty ids", () => {
+    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "", wordId: "w_1" }).success).toBe(
+      false,
+    );
+    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "o_1", wordId: "" }).success).toBe(
+      false,
+    );
   });
 });

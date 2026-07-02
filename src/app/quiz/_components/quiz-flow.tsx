@@ -333,6 +333,8 @@ export function QuizFlow({
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
   const dialogWordId = dialogStack.at(-1) ?? null;
+  // 結果画面ダイアログの前後ナビ基準となる掲載箇所（TEST は開始入力、DRILL 系・再開経路は元テスト）
+  const dialogOccurrenceId = drill?.sourceTest.occurrenceId ?? startInput?.occurrenceId ?? null;
   // 出題中、現在の問題の解答が画面に出たか（英→日の上部見出し語に「詳細」ボタンを出すゲート）。
   const [answerShown, setAnswerShown] = useState(false);
   // テスト実行の世代番号。リセット後に届いた古い応答を捨てる
@@ -931,10 +933,13 @@ export function QuizFlow({
           onOpenDialog={(id) => setDialogStack([id])}
         />
         {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
+        {/* 前後ナビはルート単語（スタック深さ 1）のみ。関連語をたどった先は掲載順の文脈外なので出さない */}
         <WordDetailDialog
           wordId={dialogWordId}
           onClose={() => setDialogStack([])}
           onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
+          occurrenceId={dialogStack.length === 1 ? dialogOccurrenceId : null}
+          onNavigate={(id) => setDialogStack([id])}
         />
       </main>
     );

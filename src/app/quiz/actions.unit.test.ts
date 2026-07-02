@@ -453,7 +453,7 @@ describe("startDrillRound (Server Action)", () => {
     });
   });
 
-  test("ok: returns the round quiz payload and roundCount", async () => {
+  test("ok: returns the round quiz payload, roundCount and sourceTest", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     const quiz = {
       format: "CHOICE" as const,
@@ -468,9 +468,23 @@ describe("startDrillRound (Server Action)", () => {
         },
       ],
     };
-    mockedDrillRoundGenerate.mockResolvedValue({ quiz, roundCount: 2 });
+    // 完了画面の「同じ範囲でもう一度テストする」用の元テスト開始入力（06-drill-mode.md 決定 11）
+    const sourceTest = {
+      occurrenceId: "o_1",
+      rangeFrom: 1,
+      rangeTo: 20,
+      format: "CHOICE" as const,
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    };
+    mockedDrillRoundGenerate.mockResolvedValue({
+      quiz,
+      roundCount: 2,
+      sourceTest,
+      occurrenceName: "本A",
+    });
     const res = await startDrillRound(input);
-    expect(res).toEqual({ ok: true, quiz, roundCount: 2 });
+    expect(res).toEqual({ ok: true, quiz, roundCount: 2, sourceTest, occurrenceName: "本A" });
     expect(mockedDrillRoundGenerate).toHaveBeenCalledWith("u_1", input);
   });
 });

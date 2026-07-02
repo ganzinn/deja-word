@@ -1,6 +1,6 @@
 # 05. アーキテクチャ（UseCase / handler / API 構成）
 
-状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂。2026-07-03 06 決定 10（drill retry）を受けて `startDrillRetry` / `submitDrillRetry` と UseCase 2 ファイルを加算改訂）
+状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂。2026-07-03 06 決定 10（drill retry）を受けて `startDrillRetry` / `submitDrillRetry` と UseCase 2 ファイルを加算改訂。同日 06 決定 11 を受けて `startDrill` 入力（sourceRange）と `startDrillRound` 応答（sourceTest）を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -89,8 +89,8 @@ Server Action はクライアントコンポーネントから直接呼べる（
 | プレビュー | `getQuizPreview` | `QuizRangeInput` → 対象件数・除外内訳（番号なし◯語・意味未登録◯語）（決定 8 改訂で形式ごとの成立可否は返さない。成立可否は開始時 `startQuiz` で判定） |
 | テスト開始 | `startQuiz` | `QuizRangeInput & { format: QuizFormat, timeoutSeconds: number \| null, choiceFirstMeaningTextOnly: boolean }` → `{ quiz: QuizPayload }`（timeoutSeconds は payload にエコーバック。2026-06-13 加算。残数 3 値は当初ここで受け取っていたが、結果画面で設定し `startDrill` で渡す方式へ移設。2026-06-26 改訂） |
 | テスト履歴送信 | `submitQuizAnswers` | `{ format: QuizFormat, answers: AnswerInput[] }` → `{ savedCount, skippedWordIds }` |
-| drill 生成 | `startDrill` | `{ occurrenceId, format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds / 残数 3 値は `Drill` に保存。残数 3 値は結果画面で設定して受け取る。timeoutSeconds は 2026-06-13・残数 3 値は 2026-06-26 加算） |
-| drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出） |
+| drill 生成 | `startDrill` | `{ occurrenceId, sourceRangeFrom?, sourceRangeTo?, format: QuizFormat, timeoutSeconds: number \| null, …, resetRemaining, vagueRemaining, initialCorrectRemaining: number, results: { wordId, correct }[] }` → `{ drillId }`（format / timeoutSeconds / 残数 3 値は `Drill` に保存。残数 3 値は結果画面で設定して受け取る。timeoutSeconds は 2026-06-13・残数 3 値は 2026-06-26・sourceRange は 2026-07-03＝06 決定 11 加算） |
+| drill ラウンド生成 | `startDrillRound` | `{ drillId }` → `{ quiz: QuizPayload, roundCount, sourceTest: StartQuizInput, occurrenceName: string }`（初回・再開とも同一経路。形式・制限時間は `Drill` から導出。sourceTest は完了画面の「同じ範囲でもう一度テストする」の開始入力、occurrenceName はその範囲表示用＝06 決定 11。2026-07-03 加算） |
 | drill ラウンド送信 | `submitDrillRound` | `{ drillId, expectedRoundCount, answers }` → `{ remaining: { wordId, remaining }[], completed, alreadyApplied }`（QuizAnswer.format は `Drill.format` から付与） |
 | drill 削除 | `deleteDrill` | `{ drillId }` → 成功のみ（追加 payload なし。進行中一覧の削除ボタン。06 決定 7 起因の加算） |
 | drill 再テスト生成 | `startDrillRetry` | `{ drillId, wordIds }` → `{ quiz: QuizPayload }`（直前ラウンドの単語セットで再生成。wordIds はクライアント申告＝06 決定 10。形式・制限時間は `Drill` から導出。roundCount は返さない＝送信に CAS なし。2026-07-03 加算） |
@@ -100,7 +100,7 @@ Server Action はクライアントコンポーネントから直接呼べる（
 共通型: `QuizRangeInput = { occurrenceId: string; rangeFrom?: number; rangeTo?: number }`、`AnswerInput = { wordId: string; result: QuizResult }`。mode と ownerId はサーバー側（経路とセッション）で決まり、クライアント入力には含めない。**format はクライアントが TEST 履歴送信（`submitQuizAnswers`）と drill 生成（`startDrill`）のトップレベルで 1 回だけ送る**（zod の enum で検証。解答ごとの format 指定は許さない）。テストセッションの状態を持たない設計のため、この 2 経路ではサーバー側に format の導出手段がないことによる。drill のラウンド系 Action は `Drill.format` から導出するため format を受け取らない（06 決定 4 起因の改訂）。
 
 - drill 生成の入力はクライアントから結果（`{ wordId, correct }[]`）を送る。QuizAnswer にはテストセッション ID がなく、サーバー側で「今回のテストの結果」を特定する確実な手段がないため（createdAt の時間窓は複数タブ・連続テストで誤集計し得る）。改ざんは可能だがカンニング許容の方針（03）と整合。
-- `startDrill` に範囲（rangeFrom / rangeTo）は含めない。Drill の rangeFrom / rangeTo は results の単語の occurrenceNumber から実効範囲（min / max）をサーバーで計算して保存する（02 の注記どおり）。ユーザー指定の範囲を受け取ると実効値との二重定義になるため。
+- `startDrill` に実効範囲（rangeFrom / rangeTo）は含めない。Drill の rangeFrom / rangeTo は results の単語の occurrenceNumber から実効範囲（min / max）をサーバーで計算して保存する（02 の注記どおり）。ユーザー指定の範囲を受け取ると実効値との二重定義になるため。**元テストの範囲（sourceRangeFrom / sourceRangeTo）は別概念として受け取る**（2026-07-03＝06 決定 11 加算）: 実効範囲はダミー候補の絞り込み用、元テスト範囲は完了画面からの再テスト用で役割が異なり、後者はサーバーで導出できない（format と同じ理由のクライアント申告）。省略（undefined）= 元テストが範囲指定なし。
 - drill 生成を「生成＋ラウンド1返却」の 1 Action にしない理由: ラウンド生成を初回／再開で単一経路（`startDrillRound`）にし、結果画面→カウントダウンの画面フロー（04）と一致させるため。
 - **制限時間は payload に一本化する**（2026-06-13 加算）: `QuizPayload` に `timeoutSeconds: number | null` を持たせ、TEST は `startQuiz` 入力のエコーバック、DRILL は `Drill.timeoutSeconds` から導出して載せる。play フェーズ（quiz-flow）はモードを区別せず payload の値だけを見る（「TEST と DRILL は同じ状態機械を再利用」の 06 決定 8 と整合）。drill への引き継ぎは `startDrill` 入力 →`Drill.timeoutSeconds` 保存 → ラウンド生成時にサーバーが payload へ載せる（サーバーが権威）。値の検証は zod（1〜60 秒・整数・nullable。定数は `src/lib/quiz/timeout-options.ts` で UI と共有）。
 - 実装メモ: debounce プレビューは応答順逆転に備え、クライアント側でリクエストトークンを比較し古い応答を捨てる。

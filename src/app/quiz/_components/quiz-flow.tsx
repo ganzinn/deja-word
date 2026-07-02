@@ -21,6 +21,7 @@ import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import {
+  getQuizPreview,
   startDrill,
   startDrillRetry,
   startDrillRound,
@@ -46,6 +47,7 @@ import {
   ResultList,
   type DrillRemainingText,
   type ResultRow,
+  type SourceTestPreview,
   type SubmitState,
 } from "./result-list";
 import { StartForm, type OccurrenceOption } from "./start-form";
@@ -83,7 +85,23 @@ type DrillState = {
   drillId: string;
   /** 直近の `startDrillRound` 応答の roundCount（ラウンド送信の CAS 期待値）。 */
   expectedRoundCount: number;
+  /** 元テストの開始入力（完了画面の「同じ範囲でもう一度テストする」に使う。サーバー供給）。 */
+  sourceTest: StartQuizInput;
+  /** 掲載箇所名（完了画面の元テスト範囲表示に使う。サーバー供給）。 */
+  occurrenceName: string;
 };
+
+/**
+ * 完了画面の元テスト範囲ラベル（進行中一覧 `ActiveDrillRow` の表記に合わせる）。
+ * 例: 「本A No.1〜100」「本A No.1〜」「本A（範囲指定なし）」
+ */
+function sourceTestLabelOf(drill: DrillState): string {
+  const { rangeFrom, rangeTo } = drill.sourceTest;
+  if (rangeFrom === undefined && rangeTo === undefined) {
+    return `${drill.occurrenceName}（範囲指定なし）`;
+  }
+  return `${drill.occurrenceName} No.${rangeFrom ?? ""}〜${rangeTo ?? ""}`;
+}
 
 /**
  * 音声プリロード（05-architecture.md 決定 10）: payload 内の発音音源 URL を
@@ -292,7 +310,9 @@ export function QuizFlow({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rows, setRows] = useState<ResultRow[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState | null>(null);
-  // テスト開始時の入力（drill 生成の occurrenceId に使う）
+  // テスト開始時の入力。drill 生成（occurrenceId・元テスト範囲の申告）と TEST 結果画面の
+  // 「同じ範囲でもう一度テストする」の再開始入力に使う。再開経路の drill では null のまま
+  // （完了画面の再テストは drill.sourceTest を使うため影響しない）
   const [startInput, setStartInput] = useState<StartQuizInput | null>(null);
   // テスト結果画面「正解した問題も定着モードで出題する」トグル。テスト開始ごとに設定デフォルトへ戻す。
   const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(drillIncludeCorrectInitial);
@@ -304,6 +324,11 @@ export function QuizFlow({
   // 直近のラウンド送信で drill が完了（全卒業）したか。再テスト結果画面の「次のラウンドへ」の
   // 表示判定に使う（再テスト送信の応答には完了情報が含まれないため、ラウンド送信時の値を保持する）。
   const [drillCompleted, setDrillCompleted] = useState(false);
+  // 完了画面の「同じ範囲でもう一度テストする」直上に出す対象件数（getQuizPreview のライブ値）。
+  // null = 取得前・取得中（完了画面では「確認中…」表示）。
+  const [sourceTestPreview, setSourceTestPreview] = useState<SourceTestPreview | null>(null);
+  // 対象件数の重複取得ガード（実行世代 × drill 単位で 1 回。state を挟まず effect 内で同期判定する）
+  const sourceTestFetchKeyRef = useRef<string | null>(null);
   // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID スタック（空 = 閉。back ガードの最上段の層）。
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
@@ -324,6 +349,8 @@ export function QuizFlow({
     setLoadError(null);
     setRows([]);
     setSubmitState(null);
+    // 完了画面の対象件数は結果画面ごとに取り直す（表示時点のライブ値を出すため）
+    setSourceTestPreview(null);
     // 新しい出題に備えて「詳細」ボタンを解答前の非表示状態へ戻す
     setAnswerShown(false);
   }
@@ -359,7 +386,12 @@ export function QuizFlow({
         setLoadError(result.message);
         return;
       }
-      setDrill({ drillId, expectedRoundCount: result.roundCount });
+      setDrill({
+        drillId,
+        expectedRoundCount: result.roundCount,
+        sourceTest: result.sourceTest,
+        occurrenceName: result.occurrenceName,
+      });
       setQuiz(result.quiz);
       preloadAudio(audioCacheRef.current, result.quiz.questions[0]?.pronunciationAudioUrl ?? null);
     });
@@ -388,6 +420,9 @@ export function QuizFlow({
     }
     const input = {
       occurrenceId: startInput.occurrenceId,
+      // 元テストの範囲を Drill に保存する（完了画面の「同じ範囲でもう一度テストする」用）
+      sourceRangeFrom: startInput.rangeFrom,
+      sourceRangeTo: startInput.rangeTo,
       format: quiz.format,
       // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
       timeoutSeconds: quiz.timeoutSeconds,
@@ -477,6 +512,22 @@ export function QuizFlow({
       setQuiz(result.quiz);
       preloadAudio(audioCacheRef.current, result.quiz.questions[0]?.pronunciationAudioUrl ?? null);
     });
+  }
+
+  /**
+   * 定着完了画面の「同じ範囲でもう一度テストする」: 元テストの開始入力（範囲・形式・制限時間）で
+   * 新しい通常テストを開始する（06-drill-mode.md 決定 11）。TEST の再テストと違い `startInput` は
+   * 再開経路で null のため、`startDrillRound` 応答由来の `drill.sourceTest` を使う。
+   */
+  function handleStartSourceTest() {
+    if (drill === null || !drillCompleted) return;
+    // 履歴の確定（送信成功）が前提。result-list 側でもボタンを無効化している
+    const submitted =
+      mode === "DRILL"
+        ? submitState?.status === "drill-success"
+        : mode === "DRILL_RETRY" && submitState?.status === "success";
+    if (!submitted) return;
+    handleStart(drill.sourceTest);
   }
 
   function resetToStart() {
@@ -590,6 +641,27 @@ export function QuizFlow({
       if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
+
+  // 完了状態の結果画面で「同じ範囲でもう一度テストする」の対象件数を取得する
+  // （表示時点のライブ値。開始画面のプレビューと同じ getQuizPreview を再利用）。
+  // 重複取得は fetchKey（実行世代 × drill）の ref で防ぎ、古い応答は runId で捨てる。
+  // 取得失敗は範囲ラベルのみの表示になるだけでボタンには影響しない。
+  useEffect(() => {
+    if (phase.name !== "result" || !drillCompleted || drill === null) return;
+    const runId = runIdRef.current;
+    const fetchKey = `${runId}:${drill.drillId}`;
+    if (sourceTestFetchKeyRef.current === fetchKey) return;
+    sourceTestFetchKeyRef.current = fetchKey;
+    const { occurrenceId, rangeFrom, rangeTo } = drill.sourceTest;
+    void getQuizPreview({ occurrenceId, rangeFrom, rangeTo }).then((result) => {
+      if (runId !== runIdRef.current) return;
+      setSourceTestPreview(
+        result.ok
+          ? { status: "ready", targetCount: result.preview.targetCount }
+          : { status: "error" },
+      );
+    });
+  }, [phase.name, drillCompleted, drill]);
 
   function handleQuestionComplete(outcome: QuestionOutcome) {
     if (phase.name !== "play" || quiz === null) return;
@@ -848,6 +920,9 @@ export function QuizFlow({
           onStartDrill={handleStartDrill}
           onNextRound={handleNextRound}
           onStartRetry={handleStartRetry}
+          onStartSourceTest={handleStartSourceTest}
+          sourceTestLabel={drill !== null ? sourceTestLabelOf(drill) : null}
+          sourceTestPreview={sourceTestPreview}
           drillCompleted={drillCompleted}
           drillIncludeCorrect={drillIncludeCorrect}
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}

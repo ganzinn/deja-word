@@ -22,6 +22,8 @@ describe("createDrillForUser", () => {
 
     const { drillId } = await createDrillForUser(user.id, {
       occurrenceId: occurrence.id,
+      sourceRangeFrom: 1,
+      sourceRangeTo: 100,
       format: "CHOICE",
       timeoutSeconds: 5,
       choiceFirstMeaningTextOnly: false,
@@ -45,6 +47,9 @@ describe("createDrillForUser", () => {
       occurrenceId: occurrence.id,
       rangeFrom: 5,
       rangeTo: 30,
+      // 元テストの範囲は実効範囲と独立に保存される（同じ範囲での再テスト用）
+      sourceRangeFrom: 1,
+      sourceRangeTo: 100,
       format: "CHOICE",
       timeoutSeconds: 5,
       roundCount: 0,
@@ -57,6 +62,31 @@ describe("createDrillForUser", () => {
     expect(remainingByWordId.get(w1.id)).toBe(3);
     expect(remainingByWordId.get(w2.id)).toBe(1);
     expect(remainingByWordId.get(w3.id)).toBe(3);
+  });
+
+  test("omitted sourceRange is persisted as null (source test had no range)", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const w = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [{ wordId: w.id, result: "INCORRECT" }],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    // NULL = 元テストが範囲指定なし（Occurrence 全体）
+    expect(drill.sourceRangeFrom).toBeNull();
+    expect(drill.sourceRangeTo).toBeNull();
   });
 
   test("custom remaining config is persisted on Drill and applied to initial remaining", async () => {

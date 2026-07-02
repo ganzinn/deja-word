@@ -431,6 +431,10 @@ model Drill {
   occurrenceId   String     @map("occurrence_id")
   rangeFrom      Int        @map("range_from")
   rangeTo        Int        @map("range_to")
+  // 元テストの範囲。null = 元テストが範囲指定なし（Occurrence 全体）。完了画面の
+  // 「同じ範囲でもう一度テストする」に使う（既存行は実効範囲 range_from/to で backfill 済み）
+  sourceRangeFrom Int? @map("source_range_from")
+  sourceRangeTo   Int? @map("source_range_to")
   format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
   timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
   choiceFirstMeaningTextOnly Boolean @default(false) @map("choice_first_meaning_text_only") // 元テストの「四択で先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ

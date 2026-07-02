@@ -6,6 +6,7 @@ import { partitionMaterial, retargetMaterial } from "@/lib/quiz/generation/mater
 import { DrillNotFoundError } from "@/lib/quiz/handlers/drill-round-handler";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
+import type { StartQuizInput } from "@/lib/schema/quiz";
 
 /**
  * drill ラウンド 1 回分の問題を再生成する（初回・再開とも単一経路。06-drill-mode.md 決定 6）。
@@ -17,20 +18,31 @@ import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
  *   他単語は同一 Occurrence プール（ダミー候補）側に回す
  * - 現在の `roundCount` を返し、クライアントはラウンド送信の `expectedRoundCount` に使う
  *   （05-architecture.md 決定 4）
+ * - `sourceTest`（元テストの開始入力）と `occurrenceName` を返し、完了画面の
+ *   「同じ範囲でもう一度テストする」とその範囲表示に使う（06-drill-mode.md 決定 11。
+ *   再開経路では `startInput` がクライアントに無いためサーバーから供給する）
  */
 export async function generateDrillRoundForUser(
   userId: string,
   input: { drillId: string },
-): Promise<{ quiz: QuizPayload; roundCount: number }> {
+): Promise<{
+  quiz: QuizPayload;
+  roundCount: number;
+  sourceTest: StartQuizInput;
+  occurrenceName: string;
+}> {
   const drill = await prisma.drill.findFirst({
     where: { id: input.drillId, ownerId: userId },
     select: {
       occurrenceId: true,
+      occurrence: { select: { location: true } },
       format: true,
       timeoutSeconds: true,
       choiceFirstMeaningTextOnly: true,
       rangeFrom: true,
       rangeTo: true,
+      sourceRangeFrom: true,
+      sourceRangeTo: true,
       roundCount: true,
       words: { where: { remaining: { gt: 0 } }, select: { wordId: true } },
     },
@@ -53,5 +65,15 @@ export async function generateDrillRoundForUser(
       timeoutSeconds: drill.timeoutSeconds,
     },
     roundCount: drill.roundCount,
+    sourceTest: {
+      occurrenceId: drill.occurrenceId,
+      // NULL = 元テストが範囲指定なし（Occurrence 全体）。StartQuizInput の optional に合わせる
+      rangeFrom: drill.sourceRangeFrom ?? undefined,
+      rangeTo: drill.sourceRangeTo ?? undefined,
+      format: drill.format,
+      timeoutSeconds: drill.timeoutSeconds,
+      choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+    },
+    occurrenceName: drill.occurrence.location,
   };
 }

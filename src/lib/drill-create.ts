@@ -43,6 +43,9 @@ export async function createDrillForUser(
   userId: string,
   input: {
     occurrenceId: string;
+    /** 元テストの範囲（undefined = 範囲指定なし）。完了画面の「同じ範囲でもう一度テストする」に使う。 */
+    sourceRangeFrom?: number;
+    sourceRangeTo?: number;
     format: QuizFormat;
     timeoutSeconds: number | null;
     choiceFirstMeaningTextOnly: boolean;
@@ -99,6 +102,8 @@ export async function createDrillForUser(
         occurrenceId: input.occurrenceId,
         rangeFrom: Math.min(...numbers),
         rangeTo: Math.max(...numbers),
+        sourceRangeFrom: input.sourceRangeFrom ?? null,
+        sourceRangeTo: input.sourceRangeTo ?? null,
         format: input.format,
         timeoutSeconds: input.timeoutSeconds,
         choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,

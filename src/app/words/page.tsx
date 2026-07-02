@@ -15,15 +15,20 @@ import { cn } from "@/lib/utils";
 import {
   listWordsByOccurrence,
   listWordsForUser,
-  type OccurrenceNumberOrder,
   type WordListItem,
   type WordListSort,
-  type WordMatchMode,
 } from "@/lib/words-list";
 
 import { OccurrenceFilterToolbar } from "./_components/occurrence-filter-toolbar";
 import { ViewModeToggle, type WordsViewMode } from "./_components/view-mode-toggle";
 import { WordListToolbar } from "./_components/word-list-toolbar";
+import {
+  buildWordDetailHref,
+  buildWordsHref,
+  parseMatch,
+  parseOrder,
+  parseRangeNumber,
+} from "./_lib/search-params";
 
 const PAGE_SIZE = 20;
 
@@ -77,7 +82,7 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   });
 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
-  const hrefForPage = (p: number) => buildHref("word", { q, sort, match, page: p });
+  const hrefForPage = (p: number) => buildWordsHref("word", { q, sort, match, page: p });
 
   if (page > totalPages && total > 0) {
     redirect(hrefForPage(totalPages));
@@ -110,7 +115,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
   const match = parseMatch(params.match);
   const from = parseRangeNumber(params.from);
   const to = parseRangeNumber(params.to);
-  const order: OccurrenceNumberOrder = params.order === "desc" ? "desc" : "asc";
+  const order = parseOrder(params.order);
   const page = parsePage(params.page);
 
   const toolbar = (
@@ -154,7 +159,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
   const hrefForPage = (p: number) =>
-    buildHref("occurrence", {
+    buildWordsHref("occurrence", {
       q,
       match,
       occ: occurrenceId,
@@ -162,6 +167,16 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
       to: params.to,
       order,
       page: p,
+    });
+  // 詳細画面に絞り込みコンテキストを引き継ぎ、掲載番号順の前後ナビと「戻る」を成立させる
+  const hrefForWord = (wordId: string) =>
+    buildWordDetailHref(wordId, {
+      occ: occurrenceId,
+      q,
+      match,
+      from: params.from,
+      to: params.to,
+      order,
     });
 
   if (page > totalPages && total > 0) {
@@ -181,7 +196,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
           該当する単語はありません
         </div>
       ) : (
-        <WordRows items={items} showOccurrenceNumber />
+        <WordRows items={items} showOccurrenceNumber hrefForWord={hrefForWord} />
       )}
 
       {totalPages > 1 ? (
@@ -224,9 +239,11 @@ function ResultCount({ label, total }: { label: string; total: number }) {
 function WordRows({
   items,
   showOccurrenceNumber = false,
+  hrefForWord,
 }: {
   items: WordListItem[] | (WordListItem & { occurrenceNumber: number | null })[];
   showOccurrenceNumber?: boolean;
+  hrefForWord?: (wordId: string) => string;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -237,6 +254,7 @@ function WordRows({
             occurrenceNumber={
               showOccurrenceNumber && "occurrenceNumber" in item ? item.occurrenceNumber : undefined
             }
+            hrefForWord={hrefForWord}
           />
         </li>
       ))}
@@ -251,28 +269,18 @@ function parsePage(value: string | undefined): number {
   return n;
 }
 
-function parseMatch(value: string | undefined): WordMatchMode {
-  return value === "contains" ? "contains" : value === "suffix" ? "suffix" : "prefix";
-}
-
-/** 掲載番号レンジ用。1 以上の整数のみ採用し、それ以外は未指定(undefined)扱い。 */
-function parseRangeNumber(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n < 1) return undefined;
-  return n;
-}
-
 function WordRow({
   item,
   occurrenceNumber,
+  hrefForWord,
 }: {
   item: WordListItem;
   occurrenceNumber?: number | null;
+  hrefForWord?: (wordId: string) => string;
 }) {
   return (
     <Link
-      href={`/words/${item.id}`}
+      href={hrefForWord?.(item.id) ?? `/words/${item.id}`}
       className="border-border bg-card/50 hover:bg-muted/60 flex flex-col gap-1.5 rounded-lg border p-3 transition-colors"
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -384,32 +392,4 @@ function Pagination({
       )}
     </nav>
   );
-}
-
-/** view 別のクエリ文字列を構築する。デフォルト値は URL に含めない。 */
-function buildHref(
-  view: WordsViewMode,
-  opts: {
-    q?: string;
-    sort?: WordListSort;
-    match?: WordMatchMode;
-    occ?: string;
-    from?: string;
-    to?: string;
-    order?: OccurrenceNumberOrder;
-    page: number;
-  },
-): string {
-  const params = new URLSearchParams();
-  if (view === "occurrence") params.set("view", "occurrence");
-  if (opts.occ) params.set("occ", opts.occ);
-  if (opts.q && opts.q.length > 0) params.set("q", opts.q);
-  if (opts.match && opts.match !== "prefix") params.set("match", opts.match);
-  if (opts.sort && opts.sort !== "recent") params.set("sort", opts.sort);
-  if (opts.from) params.set("from", opts.from);
-  if (opts.to) params.set("to", opts.to);
-  if (opts.order && opts.order !== "asc") params.set("order", opts.order);
-  if (opts.page > 1) params.set("page", String(opts.page));
-  const qs = params.toString();
-  return qs.length > 0 ? `/words?${qs}` : "/words";
 }

@@ -13,6 +13,7 @@ function word(
   return {
     id,
     headword: `hw-${id}`,
+    tgExample: null,
     meanings: meaningTexts.map((texts, i) => ({
       partOfSpeech: null,
       pronunciationAudioUrl: i === 0 ? (options.audio ?? null) : null,
@@ -61,16 +62,19 @@ describe("buildChoiceJaEnQuestions", () => {
     const target: QuizWord = {
       id: "t",
       headword: "run",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["走る"] }],
     };
     const dupe: QuizWord = {
       id: "d1",
       headword: " run ",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["駆ける"] }],
     };
     const ok: QuizWord = {
       id: "d2",
       headword: "walk",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["歩く"] }],
     };
     const m = material({ targets: [target], sameOccurrencePool: [dupe, ok] });
@@ -93,11 +97,13 @@ describe("buildChoiceJaEnQuestions", () => {
     const target: QuizWord = {
       id: "t",
       headword: "run",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["走る"] }],
     };
     const onlyDupe: QuizWord = {
       id: "d1",
       headword: "run",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["駆ける"] }],
     };
     const m = material({ targets: [target], sameOccurrencePool: [onlyDupe] });

@@ -2,6 +2,7 @@ import { LinkIcon } from "lucide-react";
 import Link from "next/link";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
+import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
 import { exampleKindLabels, type ExampleKind } from "@/lib/mock/example-kinds";
 import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
@@ -152,53 +153,21 @@ function MeaningCard({
 
 const exampleSectionOrder: ExampleKind[] = ["TARGET", "PHRASE", "MINIMAL", "SENTENCE"];
 
-// テキストを正規表現で分割し、一致部分だけを span で包んで返す。pattern は global フラグ必須。
-function renderHighlighted(
-  text: string,
-  pattern: RegExp,
-  classFor: (token: string) => string,
-): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  for (const m of text.matchAll(pattern)) {
-    const token = m[0];
-    const start = m.index ?? 0;
-    if (start > last) nodes.push(text.slice(last, start));
-    nodes.push(
-      <span key={start} className={classFor(token)}>
-        {token}
-      </span>,
-    );
-    last = start + token.length;
-  }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
-}
-
-// TG 例文の英文（ベース = 青太字）で体裁を変えるプレースホルダ記号。
-// A/B/do/doing は非太字＋斜体、括弧・チルダは非太字。
-const TG_TEXT_PATTERN = /\bdoing\b|\bdo\b|\bA\b|\bB\b|[[\]()〜]/g;
-const tgTextClass = (token: string) =>
-  /^(?:A|B|do|doing)$/.test(token) ? "font-normal italic" : "font-normal";
-
-// TG 例文の意味（ベース = 赤）で青にするプレースホルダ記号。
-const TG_MEANING_PATTERN = /\.\.\.|\bA\b|\bB\b|〜/g;
-
 function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   const meaning = nonEmpty(example.meaning);
   const isTarget = example.kind === "TARGET";
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      <p className={`text-sm whitespace-pre-wrap ${isTarget ? "font-bold text-blue-500" : ""}`}>
-        {isTarget ? renderHighlighted(example.text, TG_TEXT_PATTERN, tgTextClass) : example.text}
+      <p className="text-sm whitespace-pre-wrap">
+        {isTarget ? <TgExampleText text={example.text} /> : example.text}
       </p>
       {meaning ? (
-        <p
-          className={`text-sm whitespace-pre-wrap ${isTarget ? "text-red-500" : "text-muted-foreground"}`}
-        >
-          {isTarget
-            ? renderHighlighted(meaning, TG_MEANING_PATTERN, () => "text-blue-500")
-            : meaning}
+        <p className="text-sm whitespace-pre-wrap">
+          {isTarget ? (
+            <TgExampleMeaning text={meaning} />
+          ) : (
+            <span className="text-muted-foreground">{meaning}</span>
+          )}
         </p>
       ) : null}
       <NotesView notes={example.notes} />

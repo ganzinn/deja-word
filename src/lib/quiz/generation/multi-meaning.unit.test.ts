@@ -10,6 +10,7 @@ function word(id: string, meaningTexts: string[][]): QuizWord {
   return {
     id,
     headword: `hw-${id}`,
+    tgExample: null,
     meanings: meaningTexts.map((texts) => ({
       partOfSpeech: null,
       pronunciationAudioUrl: null,

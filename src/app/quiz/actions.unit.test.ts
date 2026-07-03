@@ -181,7 +181,7 @@ describe("getQuizPreview (Server Action)", () => {
     mockedGetSession.mockResolvedValue(SESSION);
     const preview = {
       targetCount: 10,
-      excluded: { noNumber: 2, noMeaning: 1 },
+      excluded: { noNumber: 2, noMeaning: 1, noTgExample: null },
     };
     mockedPreview.mockResolvedValue(preview);
     const res = await getQuizPreview(input);

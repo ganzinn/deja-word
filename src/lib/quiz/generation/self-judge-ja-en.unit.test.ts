@@ -11,6 +11,7 @@ function material(targets: QuizWord[]): QuizSourceMaterial {
 const target: QuizWord = {
   id: "t",
   headword: "run",
+  tgExample: null,
   meanings: [
     { partOfSpeech: "動詞", pronunciationAudioUrl: "https://audio/run", texts: ["走る", "駆ける"] },
     { partOfSpeech: null, pronunciationAudioUrl: null, texts: ["経営する"] },
@@ -31,6 +32,7 @@ describe("buildSelfJudgeJaEnQuestions", () => {
     const targets = ["a", "b", "c"].map((id) => ({
       id,
       headword: id,
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [id] }],
     }));
     const first = buildSelfJudgeJaEnQuestions(material(targets), seededRng(7));

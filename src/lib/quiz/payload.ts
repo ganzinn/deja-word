@@ -44,6 +44,23 @@ export type SelfJudgeJaEnQuestion = QuestionBase & JaEnPrompt;
 /** スペル確認（日本語→英語）。入力したスペルを headword と照合して自動採点する。 */
 export type SpellingQuestion = QuestionBase & JaEnPrompt;
 
+/**
+ * 例文四択（英語→日本語）。prompt は TG 例文の英文、choices は各単語の TG 例文の意味。
+ * 出題画面は headword の代わりに英文を表示する（headword は英文中に含まれるため出さない）。
+ */
+export type ChoiceTgQuestion = QuestionBase & {
+  prompt: string;
+  choices: { text: string }[];
+  correctIndex: number;
+};
+
+/** 例文四択（日本語→英語）。prompt は TG 例文の意味、choices は各単語の TG 例文の英文。 */
+export type ChoiceTgJaEnQuestion = QuestionBase & {
+  prompt: string;
+  choices: { text: string }[];
+  correctIndex: number;
+};
+
 /** 形式別の問題一式（`buildQuiz` の戻り値）。 */
 export type QuizQuestionsPayload =
   | { format: "CHOICE"; questions: ChoiceQuestion[] }
@@ -51,7 +68,9 @@ export type QuizQuestionsPayload =
   | { format: "MULTI_MEANING"; questions: MultiMeaningQuestion[] }
   | { format: "CHOICE_JA_EN"; questions: ChoiceJaEnQuestion[] }
   | { format: "SELF_JUDGE_JA_EN"; questions: SelfJudgeJaEnQuestion[] }
-  | { format: "SPELLING"; questions: SpellingQuestion[] };
+  | { format: "SPELLING"; questions: SpellingQuestion[] }
+  | { format: "CHOICE_TG"; questions: ChoiceTgQuestion[] }
+  | { format: "CHOICE_TG_JA_EN"; questions: ChoiceTgJaEnQuestion[] };
 
 /**
  * クライアントへ渡す問題データ一式。timeoutSeconds（null = 制限なし）は

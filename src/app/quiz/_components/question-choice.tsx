@@ -29,6 +29,8 @@ type Props = {
   onShowDetail?: () => void;
   /** 正解選択肢の右端に発音ボタンを出すか。発音＝解答になる日→英のみ true。 */
   showCorrectAudio?: boolean;
+  /** 選択肢テキストの描画差し替え（例文四択の TG ハイライト用）。未指定はプレーン表示。 */
+  renderChoiceText?: (text: string) => React.ReactNode;
 };
 
 // 解答確定状態。selectedIndex: 選んだ選択肢の index、null =「わからない」または時間切れ
@@ -54,6 +56,7 @@ export function QuestionChoice({
   onAnswerShown,
   onShowDetail,
   showCorrectAudio = false,
+  renderChoiceText,
 }: Props) {
   const [answered, setAnswered] = useState<Answered | null>(null);
   const [completed, setCompleted] = useState(false);
@@ -121,7 +124,7 @@ export function QuestionChoice({
                   (showAudio || showDetail) && "pr-28",
                 )}
               >
-                {choice.text}
+                {renderChoiceText ? renderChoiceText(choice.text) : choice.text}
               </Button>
               {showAudio || showDetail ? (
                 <div className="absolute top-1/2 right-2 flex -translate-y-1/2 flex-row items-center gap-1">

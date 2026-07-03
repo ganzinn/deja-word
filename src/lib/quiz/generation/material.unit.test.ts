@@ -1,11 +1,18 @@
 import { describe, expect, test } from "vitest";
 
-import { retargetMaterial, type QuizSourceMaterial, type QuizWord } from "./material";
+import {
+  partitionMaterial,
+  retargetMaterial,
+  type QuizSourceMaterial,
+  type QuizSourceRow,
+  type QuizWord,
+} from "./material";
 
 function word(id: string): QuizWord {
   return {
     id,
     headword: id,
+    tgExample: null,
     meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [`${id}の意味`] }],
   };
 }
@@ -13,6 +20,45 @@ function word(id: string): QuizWord {
 function ids(words: QuizWord[]): string[] {
   return words.map((w) => w.id);
 }
+
+function row(id: string): QuizSourceRow {
+  return {
+    id,
+    headword: id,
+    meanings: [
+      { partOfSpeech: null, pronunciationAudioUrl: null, texts: [{ text: `${id}の意味` }] },
+    ],
+  };
+}
+
+describe("partitionMaterial", () => {
+  test("attaches the TG example row to the matching word across all three partitions", () => {
+    const material = partitionMaterial(
+      [row("t1"), row("t2")],
+      [row("s1")],
+      [row("f1")],
+      [
+        { wordId: "t1", text: "sentence t1", meaning: "例文t1" },
+        { wordId: "s1", text: "sentence s1", meaning: "例文s1" },
+        { wordId: "f1", text: "sentence f1", meaning: "例文f1" },
+      ],
+    );
+    expect(material.targets[0].tgExample).toEqual({ text: "sentence t1", meaning: "例文t1" });
+    // 使える TG 例文が無い単語は null
+    expect(material.targets[1].tgExample).toBeNull();
+    expect(material.sameOccurrencePool[0].tgExample).toEqual({
+      text: "sentence s1",
+      meaning: "例文s1",
+    });
+    expect(material.allWordsPool[0].tgExample).toEqual({ text: "sentence f1", meaning: "例文f1" });
+  });
+
+  test("defaults every tgExample to null when TG rows are not fetched (non-TG formats)", () => {
+    const material = partitionMaterial([row("t1")], [row("s1")], []);
+    expect(material.targets[0].tgExample).toBeNull();
+    expect(material.sameOccurrencePool[0].tgExample).toBeNull();
+  });
+});
 
 describe("retargetMaterial", () => {
   const base: QuizSourceMaterial = {
@@ -55,5 +101,17 @@ describe("retargetMaterial", () => {
     expect(material.targets).toEqual([]);
     expect(ids(material.sameOccurrencePool)).toEqual(["t1", "t2", "t3", "s1", "s2"]);
     expect(ids(material.allWordsPool)).toEqual(["f1", "f2"]);
+  });
+
+  test("preserves tgExample through retargeting (drill rounds keep TG material)", () => {
+    const tg = { text: "sentence t1", meaning: "例文t1" };
+    const withTg: QuizSourceMaterial = {
+      targets: [{ ...word("t1"), tgExample: tg }],
+      sameOccurrencePool: [word("s1")],
+      allWordsPool: [],
+    };
+    const material = retargetMaterial(withTg, new Set(["s1"]));
+    // t1 はダミー候補側へ回っても tgExample を保持する
+    expect(material.sameOccurrencePool[0].tgExample).toEqual(tg);
   });
 });

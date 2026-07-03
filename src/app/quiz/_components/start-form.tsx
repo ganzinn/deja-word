@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_GROUPS, formatLabelOf } from "@/lib/quiz/format-options";
+import { FORMAT_GROUPS, formatLabelOf, isTgExampleFormat } from "@/lib/quiz/format-options";
 import {
   DEFAULT_TIMEOUT_SECONDS,
   formatTimeoutLabel,
@@ -86,8 +86,15 @@ type PreviewResponse =
   | { key: string; ok: true; preview: QuizPreview }
   | { key: string; ok: false; message: string };
 
-function previewKeyOf(occurrenceId: string, rangeFrom?: number, rangeTo?: number): string {
-  return `${occurrenceId}:${rangeFrom ?? ""}:${rangeTo ?? ""}`;
+function previewKeyOf(
+  occurrenceId: string,
+  rangeFrom: number | undefined,
+  rangeTo: number | undefined,
+  tgFormat: boolean,
+): string {
+  // TG 例文形式は対象件数・除外内訳が形式依存になるため、TG⇔非 TG の切替をキーに含めて
+  // 再取得する（TG 形式同士は件数が同じため区別しない）。
+  return `${occurrenceId}:${rangeFrom ?? ""}:${rangeTo ?? ""}:${tgFormat ? "tg" : ""}`;
 }
 
 const PREVIEW_DEBOUNCE_MS = 300;
@@ -139,25 +146,32 @@ export function StartForm({
 
   const rangeFrom = parseRangeValue(rangeFromText);
   const rangeTo = parseRangeValue(rangeToText);
-  const requestKey = occurrenceId === null ? null : previewKeyOf(occurrenceId, rangeFrom, rangeTo);
+  // TG 例文形式のときだけ format をプレビューへ渡す（対象件数が TG 例文の有無で絞られる）
+  const tgPreviewFormat = format !== null && isTgExampleFormat(format) ? format : undefined;
+  const requestKey =
+    occurrenceId === null
+      ? null
+      : previewKeyOf(occurrenceId, rangeFrom, rangeTo, tgPreviewFormat !== undefined);
 
   useEffect(() => {
     if (occurrenceId === null || requestKey === null) return;
     // debounce: 入力が続く間は cleanup がタイマーを破棄して発火させない
     const timer = setTimeout(() => {
       const token = ++previewTokenRef.current;
-      void getQuizPreview({ occurrenceId, rangeFrom, rangeTo }).then((result) => {
-        // 自分のトークン ≠ 最新トークンなら古い応答として捨てる
-        if (token !== previewTokenRef.current) return;
-        if (result.ok) {
-          setPreviewResponse({ key: requestKey, ok: true, preview: result.preview });
-        } else {
-          setPreviewResponse({ key: requestKey, ok: false, message: result.message });
-        }
-      });
+      void getQuizPreview({ occurrenceId, rangeFrom, rangeTo, format: tgPreviewFormat }).then(
+        (result) => {
+          // 自分のトークン ≠ 最新トークンなら古い応答として捨てる
+          if (token !== previewTokenRef.current) return;
+          if (result.ok) {
+            setPreviewResponse({ key: requestKey, ok: true, preview: result.preview });
+          } else {
+            setPreviewResponse({ key: requestKey, ok: false, message: result.message });
+          }
+        },
+      );
     }, PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [occurrenceId, rangeFrom, rangeTo, requestKey]);
+  }, [occurrenceId, rangeFrom, rangeTo, requestKey, tgPreviewFormat]);
 
   // 現在の入力に対する応答だけを採用（入力変更直後の古い応答は loading 扱い）
   const previewState: PreviewState =
@@ -483,10 +497,14 @@ function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () 
 }
 
 function ExcludedNote({ excluded }: { excluded: QuizPreview["excluded"] }) {
-  // noNumber / noMeaning は独立カウントのため合算・恒等式の表示はしない（重複があり得る）
+  // 各件数は独立カウントのため合算・恒等式の表示はしない（重複があり得る）
   const parts: string[] = [];
   if (excluded.noNumber > 0) parts.push(`掲載番号なしの単語 ${excluded.noNumber}語`);
   if (excluded.noMeaning > 0) parts.push(`意味未登録の単語 ${excluded.noMeaning}語`);
+  // TG 例文形式のときのみ非 null（形式非依存のプレビューでは表示しない）
+  if (excluded.noTgExample !== null && excluded.noTgExample > 0) {
+    parts.push(`TG例文なしの単語 ${excluded.noTgExample}語`);
+  }
   if (parts.length === 0) return null;
   return <p className="text-muted-foreground text-xs">{parts.join("・")}は対象外</p>;
 }

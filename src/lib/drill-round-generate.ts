@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import { buildQuiz } from "@/lib/quiz/generation/build-quiz";
 import { partitionMaterial, retargetMaterial } from "@/lib/quiz/generation/material";
 import { DrillNotFoundError } from "@/lib/quiz/handlers/drill-round-handler";
@@ -49,12 +50,18 @@ export async function generateDrillRoundForUser(
   });
   if (!drill) throw new DrillNotFoundError();
 
-  const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+  const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
     drill.occurrenceId,
     { from: drill.rangeFrom, to: drill.rangeTo },
+    { includeTgExamples: isTgExampleFormat(drill.format) },
   );
-  const partitioned = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows);
+  const partitioned = partitionMaterial(
+    targetRows,
+    sameOccurrenceRows,
+    fallbackRows,
+    tgExampleRows,
+  );
   const material = retargetMaterial(partitioned, new Set(drill.words.map((w) => w.wordId)));
 
   return {

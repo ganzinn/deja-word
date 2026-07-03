@@ -40,6 +40,7 @@ import {
 import { getCurrentSession } from "@/lib/session";
 import { getWordDetailForUser, type WordDetail } from "@/lib/words-detail";
 import { findAdjacentWordsByOccurrenceNumber, type AdjacentWordsResult } from "@/lib/words-list";
+import type { QuizFormat } from "@/generated/prisma/enums";
 
 export type QuizActionError = "unauthorized" | "invalid" | QuizErrorCode;
 
@@ -59,8 +60,13 @@ const INVALID: QuizActionFailure = {
 
 export type GetQuizPreviewResult = { ok: true; preview: QuizPreview } | QuizActionFailure;
 
-/** テスト開始前のプレビュー（対象件数・除外内訳）。 */
-export async function getQuizPreview(input: QuizRangeInput): Promise<GetQuizPreviewResult> {
+/**
+ * テスト開始前のプレビュー（対象件数・除外内訳）。format は任意で、TG 例文形式のときだけ
+ * 対象件数・除外内訳が形式依存（TG 例文の有無で絞る）になる。
+ */
+export async function getQuizPreview(
+  input: QuizRangeInput & { format?: QuizFormat },
+): Promise<GetQuizPreviewResult> {
   const session = await getCurrentSession();
   if (!session) return UNAUTHORIZED;
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
+import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { isJaToEnFormat, isSelfJudgeFormat } from "@/lib/quiz/format-options";
 import {
@@ -125,7 +126,11 @@ function preloadAudio(
 /** 結果一覧の「正解」表示文字列を payload から導出する。 */
 function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
   switch (quiz.format) {
-    case "CHOICE": {
+    case "CHOICE":
+    case "CHOICE_JA_EN":
+    case "CHOICE_TG":
+    case "CHOICE_TG_JA_EN": {
+      // 四択系の正解は正解選択肢のテキスト（訳語 / 英単語 / TG 例文の意味 / TG 例文の英文）
       const question = quiz.questions[index];
       return question.choices[question.correctIndex]?.text ?? "";
     }
@@ -142,10 +147,6 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
         .map((option) => option.text)
         .join("; ");
     }
-    case "CHOICE_JA_EN": {
-      const question = quiz.questions[index];
-      return question.choices[question.correctIndex]?.text ?? "";
-    }
     case "SELF_JUDGE_JA_EN":
     case "SPELLING":
       // 日本語→英語の正解は英単語（headword）
@@ -153,19 +154,40 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
   }
 }
 
-/** 日本語→英語の問題文（最初の Meaning を「; 」連結した文字列）。英語→日本語形式は null（問題文は headword）。 */
+/**
+ * 結果一覧の主見出しに使う問題文（日本語の意味）。`promptViewOf` から導出し、意味を問題文に
+ * 出す形式（ja-plain / tg-meaning）はその文字列、headword が主見出しになる形式は null を返す
+ * （tg-text＝CHOICE_TG は問題文が英文で headword を含むため headword 側に倒す）。
+ */
 function jaEnPromptOf(quiz: QuizPayload, index: number): string | null {
-  // 全形式を列挙し default を置かないことで、形式追加時の更新漏れを型で検出する
-  // （英語→日本語は問題文が headword のため null）。
+  const view = promptViewOf(quiz, index);
+  return view.kind === "ja-plain" || view.kind === "tg-meaning" ? view.text : null;
+}
+
+/** 出題画面の見出し表示の種別（形式網羅 switch。形式追加時の更新漏れを型で検出する）。 */
+type PromptView =
+  | { kind: "headword" }
+  /** 日本語→英語（意味のプレーン表示。headword・発音は解答のため伏せる）。 */
+  | { kind: "ja-plain"; text: string }
+  /** 例文四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。 */
+  | { kind: "tg-text"; text: string }
+  /** 例文四択（日→英）: TG 例文の意味をハイライト表示（headword・発音は解答のため伏せる）。 */
+  | { kind: "tg-meaning"; text: string };
+
+function promptViewOf(quiz: QuizPayload, index: number): PromptView {
   switch (quiz.format) {
     case "CHOICE":
     case "SELF_JUDGE":
     case "MULTI_MEANING":
-      return null;
+      return { kind: "headword" };
     case "CHOICE_JA_EN":
     case "SELF_JUDGE_JA_EN":
     case "SPELLING":
-      return quiz.questions[index].prompt;
+      return { kind: "ja-plain", text: quiz.questions[index].prompt };
+    case "CHOICE_TG":
+      return { kind: "tg-text", text: quiz.questions[index].prompt };
+    case "CHOICE_TG_JA_EN":
+      return { kind: "tg-meaning", text: quiz.questions[index].prompt };
   }
 }
 
@@ -272,6 +294,38 @@ function QuestionView({
           onReveal={onReveal}
           onAnswerReveal={onAnswerReveal}
           onShowDetail={onShowDetail}
+        />
+      );
+    }
+    case "CHOICE_TG": {
+      // 挙動は四択（英→日）と同一。選択肢（TG 例文の意味）の描画だけハイライトに差し替える
+      const question = quiz.questions[index];
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerShown={onAnswerShown}
+          renderChoiceText={(text) => <TgExampleMeaning text={text} />}
+        />
+      );
+    }
+    case "CHOICE_TG_JA_EN": {
+      // 選択肢が TG 例文の英文になる四択。正解選択肢の発音・詳細ボタンは日→英四択と同じ配線
+      const question = quiz.questions[index];
+      return (
+        <QuestionChoice
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
+          onShowDetail={onShowDetail}
+          showCorrectAudio
+          renderChoiceText={(text) => <TgExampleText text={text} />}
         />
       );
     }
@@ -654,8 +708,9 @@ export function QuizFlow({
     const fetchKey = `${runId}:${drill.drillId}`;
     if (sourceTestFetchKeyRef.current === fetchKey) return;
     sourceTestFetchKeyRef.current = fetchKey;
-    const { occurrenceId, rangeFrom, rangeTo } = drill.sourceTest;
-    void getQuizPreview({ occurrenceId, rangeFrom, rangeTo }).then((result) => {
+    const { occurrenceId, rangeFrom, rangeTo, format } = drill.sourceTest;
+    // TG 例文形式は対象件数が形式依存のため format を渡す（他形式では無視される）
+    void getQuizPreview({ occurrenceId, rangeFrom, rangeTo, format }).then((result) => {
       if (runId !== runIdRef.current) return;
       setSourceTestPreview(
         result.ok
@@ -839,8 +894,8 @@ export function QuizFlow({
     const total = quiz.questions.length;
     const current = phase.index + 1;
     const question = quiz.questions[phase.index];
-    // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
-    const jaEnPrompt = jaEnPromptOf(quiz, phase.index);
+    // 見出しの表示種別（headword / 意味プレーン / TG 例文ハイライト）を形式から導出する
+    const promptView = promptViewOf(quiz, phase.index);
     return (
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-6 px-4 pt-6 pb-16 md:max-w-2xl">
         <div className="flex flex-col gap-1.5">
@@ -862,11 +917,38 @@ export function QuizFlow({
           </p>
         </div>
 
-        {jaEnPrompt !== null ? (
+        {promptView.kind === "ja-plain" ? (
+          // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
           <div className="flex flex-wrap items-center justify-center py-4">
             <h1 className="text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
-              {jaEnPrompt}
+              {promptView.text}
             </h1>
+          </div>
+        ) : promptView.kind === "tg-meaning" ? (
+          // 例文四択（日→英）: TG 例文の意味をハイライト表示。headword・発音は解答のため伏せる。
+          // 例文は長いため見出しは一段小さくする（tg-text と同じ text-2xl）
+          <div className="flex flex-wrap items-center justify-center py-4">
+            <h1 className="text-2xl font-bold tracking-tight break-words">
+              <TgExampleMeaning text={promptView.text} />
+            </h1>
+          </div>
+        ) : promptView.kind === "tg-text" ? (
+          // 例文四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。
+          // 発音・詳細ボタンの配線は headword 見出しと同じ（詳細は解答後のみ）
+          <div className="flex flex-col items-center gap-2 py-4">
+            <h1 className="text-center text-2xl font-bold tracking-tight break-words">
+              <TgExampleText text={promptView.text} />
+            </h1>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <AudioPlayButton
+                src={question.pronunciationAudioUrl}
+                label="発音"
+                ttsText={question.headword}
+              />
+              {answerShown ? (
+                <WordDetailButton onClick={() => setDialogStack([question.wordId])} />
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-4">

@@ -5,11 +5,16 @@
 import type { QuizFormat } from "@/generated/prisma/enums";
 import { buildChoiceQuestions, choiceCandidateTexts } from "@/lib/quiz/generation/choice";
 import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
+import { buildChoiceTgQuestions, NO_TG_TARGET_REASON } from "@/lib/quiz/generation/choice-tg";
+import { buildChoiceTgJaEnQuestions } from "@/lib/quiz/generation/choice-tg-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
   allMeaningTexts,
+  hasTgExample,
+  tgTargetsOf,
   type QuizSourceMaterial,
   type QuizWord,
+  type TgQuizWord,
 } from "@/lib/quiz/generation/material";
 import { buildMultiMeaningQuestions } from "@/lib/quiz/generation/multi-meaning";
 import { buildSelfJudgeQuestions } from "@/lib/quiz/generation/self-judge";
@@ -51,6 +56,10 @@ export function buildQuiz(
       return { format: "SELF_JUDGE_JA_EN", questions: buildSelfJudgeJaEnQuestions(material, rng) };
     case "SPELLING":
       return { format: "SPELLING", questions: buildSpellingQuestions(material, rng) };
+    case "CHOICE_TG":
+      return { format: "CHOICE_TG", questions: buildChoiceTgQuestions(material, rng) };
+    case "CHOICE_TG_JA_EN":
+      return { format: "CHOICE_TG_JA_EN", questions: buildChoiceTgJaEnQuestions(material, rng) };
     default:
       return assertNever(format);
   }
@@ -71,8 +80,10 @@ function findDummylessTarget(
   material: QuizSourceMaterial,
   toCandidates: (word: QuizWord) => DummyCandidate<unknown>[],
   correctTextsOf: (word: QuizWord) => string[] = allMeaningTexts,
+  // TG 例文形式のように出題対象が targets の部分集合になる形式は、その部分集合を渡す
+  targets: QuizWord[] = material.targets,
 ): QuizWord | undefined {
-  return material.targets.find((target) => {
+  return targets.find((target) => {
     const candidates = [
       ...material.targets,
       ...material.sameOccurrencePool,
@@ -82,6 +93,33 @@ function findDummylessTarget(
       .flatMap(toCandidates);
     return !hasValidDummyCandidate(correctTextsOf(target), candidates);
   });
+}
+
+/**
+ * 例文四択（両向き共通）の成立可否。`textOf` は選択肢側テキスト（英→日 = TG 例文の意味、
+ * 日→英 = TG 例文の英文）。生成器（buildChoiceTg*Questions）と同じキーで判定する:
+ * 出題対象は使える TG 例文を持つ単語のみ、ダミー候補も TG 例文を持つ単語のみ。
+ */
+function checkTgChoiceAvailability(
+  material: QuizSourceMaterial,
+  textOf: (word: TgQuizWord) => string,
+): FormatAvailability {
+  const tgTargets = tgTargetsOf(material);
+  if (tgTargets.length === 0) {
+    return { available: false, reason: NO_TG_TARGET_REASON };
+  }
+  const dummyless = findDummylessTarget(
+    material,
+    (word) => (hasTgExample(word) ? [{ value: word, texts: [textOf(word)] }] : []),
+    (word) => (hasTgExample(word) ? [textOf(word)] : []),
+    tgTargets,
+  );
+  return dummyless === undefined
+    ? AVAILABLE
+    : {
+        available: false,
+        reason: `ダミー選択肢を確保できない単語があります（${dummyless.headword}）`,
+      };
 }
 
 /** 1 形式分の成立可否を返す。テスト開始時（`generateQuizForUser`）が選択形式について呼ぶ。 */
@@ -136,6 +174,10 @@ export function checkFormatAvailability(
     case "SELF_JUDGE_JA_EN":
     case "SPELLING":
       return AVAILABLE;
+    case "CHOICE_TG":
+      return checkTgChoiceAvailability(material, (word) => word.tgExample.meaning);
+    case "CHOICE_TG_JA_EN":
+      return checkTgChoiceAvailability(material, (word) => word.tgExample.text);
     default:
       return assertNever(format);
   }

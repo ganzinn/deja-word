@@ -13,6 +13,7 @@ describe("buildSelfJudgeQuestions", () => {
     const target: QuizWord = {
       id: "t",
       headword: "run",
+      tgExample: null,
       meanings: [
         {
           partOfSpeech: "動詞",
@@ -36,6 +37,7 @@ describe("buildSelfJudgeQuestions", () => {
     const target: QuizWord = {
       id: "t",
       headword: "walk",
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["歩く"] }],
     };
     const [q] = buildSelfJudgeQuestions(material([target]), seededRng(1));
@@ -46,6 +48,7 @@ describe("buildSelfJudgeQuestions", () => {
     const targets = ["w1", "w2", "w3"].map((id) => ({
       id,
       headword: id,
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [id] }],
     }));
     // rng=0 固定の Fisher–Yates: [w1, w2, w3] → [w2, w3, w1]
@@ -57,6 +60,7 @@ describe("buildSelfJudgeQuestions", () => {
     const targets = ["a", "b", "c", "d"].map((id) => ({
       id,
       headword: id,
+      tgExample: null,
       meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [id] }],
     }));
     const first = buildSelfJudgeQuestions(material(targets), seededRng(7));

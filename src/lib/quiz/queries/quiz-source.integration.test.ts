@@ -247,7 +247,7 @@ describe("countQuizSourceExclusions", () => {
     });
 
     const counts = await countQuizSourceExclusions(user.id, occurrence.id);
-    expect(counts).toEqual({ noNumber: 2, noMeaning: 2 });
+    expect(counts).toEqual({ noNumber: 2, noMeaning: 2, noTgExample: null });
   });
 
   test("counts a word lacking both number and meaning in both buckets", async () => {
@@ -259,7 +259,7 @@ describe("countQuizSourceExclusions", () => {
     });
 
     const counts = await countQuizSourceExclusions(user.id, occurrence.id);
-    expect(counts).toEqual({ noNumber: 1, noMeaning: 1 });
+    expect(counts).toEqual({ noNumber: 1, noMeaning: 1, noTgExample: null });
   });
 
   test("does not count foreign users' words, and counts words outside the occurrence in neither bucket", async () => {
@@ -275,7 +275,7 @@ describe("countQuizSourceExclusions", () => {
     await createQuizWordRow(user.id, "unlinked", { meanings: [] });
 
     const counts = await countQuizSourceExclusions(user.id, occurrence.id);
-    expect(counts).toEqual({ noNumber: 0, noMeaning: 0 });
+    expect(counts).toEqual({ noNumber: 0, noMeaning: 0, noTgExample: null });
   });
 });
 
@@ -336,5 +336,179 @@ describe("countQuizTargets", () => {
     });
 
     expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(1);
+  });
+});
+
+describe("fetchQuizSource: TG examples (includeTgExamples)", () => {
+  test("returns the first usable TG example per word (skips meaning-less TG rows)", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG例文テスト帳");
+    const word = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [
+        // 先頭（sortOrder 0）は意味なし → 使えないのでスキップされる
+        { text: "sentence without meaning", meaning: null },
+        { text: "first usable sentence", meaning: "最初の使える例文" },
+        { text: "second usable sentence", meaning: "二番目の例文" },
+      ],
+    });
+
+    const { tgExampleRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      {},
+      {
+        includeTgExamples: true,
+      },
+    );
+    expect(tgExampleRows).toEqual([
+      { wordId: word.id, text: "first usable sentence", meaning: "最初の使える例文" },
+    ]);
+  });
+
+  test("excludes non-TARGET kinds and empty-string meanings", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG種別テスト帳");
+    await createQuizWordRow(user.id, "beta", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [
+        { kind: "SENTENCE", text: "plain sentence", meaning: "普通の例文" },
+        { kind: "PHRASE", text: "a phrase", meaning: "成句" },
+        { text: "tg with empty meaning", meaning: "" },
+      ],
+    });
+
+    const { tgExampleRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      {},
+      {
+        includeTgExamples: true,
+      },
+    );
+    expect(tgExampleRows).toEqual([]);
+  });
+
+  test("covers dummy-pool words too, and returns [] when not requested", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TGプールテスト帳");
+    const target = await createQuizWordRow(user.id, "target", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [{ text: "target sentence", meaning: "対象の例文" }],
+    });
+    // 範囲外（ダミープール側）の単語の TG 例文も取得される
+    const pooled = await createQuizWordRow(user.id, "pooled", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 99 },
+      examples: [{ text: "pooled sentence", meaning: "プールの例文" }],
+    });
+
+    const withTg = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: 50 },
+      {
+        includeTgExamples: true,
+      },
+    );
+    expect(withTg.tgExampleRows.map((r) => r.wordId).sort()).toEqual([target.id, pooled.id].sort());
+
+    // 未指定（非 TG 形式）では TG 例文クエリを発行せず空配列
+    const withoutTg = await fetchQuizSource(user.id, occurrence.id, { from: 1, to: 50 });
+    expect(withoutTg.tgExampleRows).toEqual([]);
+  });
+
+  test("does not leak another user's TG examples", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const occurrence = await getSystemOccurrence(SYSTEM_OCCURRENCE_LOCATIONS[0]);
+    await createQuizWordRow(stranger.id, "foreign", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [{ text: "foreign sentence", meaning: "他人の例文" }],
+    });
+    await createQuizWordRow(user.id, "own", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+      examples: [{ text: "own sentence", meaning: "自分の例文" }],
+    });
+
+    const { tgExampleRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      {},
+      {
+        includeTgExamples: true,
+      },
+    );
+    expect(tgExampleRows.map((r) => r.text)).toEqual(["own sentence"]);
+  });
+});
+
+describe("countQuizTargets / countQuizSourceExclusions: TG example options", () => {
+  test("requireTgExample narrows the target count to words with a usable TG example", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG対象件数テスト帳");
+    await createQuizWordRow(user.id, "withtg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [{ text: "sentence", meaning: "例文の意味" }],
+    });
+    await createQuizWordRow(user.id, "meaningless-tg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+      examples: [{ text: "sentence", meaning: null }],
+    });
+    await createQuizWordRow(user.id, "notg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 3 },
+    });
+
+    // 形式非依存（従来）: 3 件、TG 形式: 使える TG 例文つきの 1 件のみ
+    expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(3);
+    expect(await countQuizTargets(user.id, occurrence.id, {}, { requireTgExample: true })).toBe(1);
+  });
+
+  test("requireTgExample matches the usable targets of the generation path", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG整合テスト帳");
+    for (const [i, hasTg] of [true, false, true, true].entries()) {
+      await createQuizWordRow(user.id, `w${i}`, {
+        occurrence: { id: occurrence.id, occurrenceNumber: i + 1 },
+        examples: hasTg ? [{ text: `sentence ${i}`, meaning: `例文${i}` }] : [],
+      });
+    }
+
+    const counted = await countQuizTargets(user.id, occurrence.id, {}, { requireTgExample: true });
+    const { targetRows, tgExampleRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      {},
+      {
+        includeTgExamples: true,
+      },
+    );
+    const usable = new Set(tgExampleRows.map((r) => r.wordId));
+    const usableTargets = targetRows.filter((r) => usable.has(r.id));
+    expect(counted).toBe(usableTargets.length);
+    expect(counted).toBe(3);
+  });
+
+  test("countTgExample adds the no-TG bucket (independent of other buckets)", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG除外テスト帳");
+    // 使える TG あり → noTgExample に数えない
+    await createQuizWordRow(user.id, "withtg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [{ text: "sentence", meaning: "例文の意味" }],
+    });
+    // TG なし（番号あり・意味あり）
+    await createQuizWordRow(user.id, "notg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    // 意味なし TG のみ（番号なし）→ noNumber と noTgExample の両方に数える（独立カウント）
+    await createQuizWordRow(user.id, "nonum-meaningless-tg", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+      examples: [{ text: "sentence", meaning: null }],
+    });
+
+    const counts = await countQuizSourceExclusions(user.id, occurrence.id, {
+      countTgExample: true,
+    });
+    expect(counts).toEqual({ noNumber: 1, noMeaning: 0, noTgExample: 2 });
   });
 });

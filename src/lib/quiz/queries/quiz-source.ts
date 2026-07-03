@@ -3,6 +3,7 @@ import "server-only";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
+import type { TgExampleRow } from "@/lib/quiz/generation/material";
 
 /**
  * 対象 Occurrence がユーザーに可視であることを確認する（不在・不可視なら
@@ -30,6 +31,22 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
 export const DUMMY_POOL_SIZE = 50;
 
 /**
+ * 「使える TG 例文」の共有述語: `kind=TARGET` かつ `meaning` が非 null かつ空文字でない Example。
+ * TG 例文形式（CHOICE_TG / CHOICE_TG_JA_EN）の出題にはこのうち sortOrder 最小の 1 件を使う。
+ *
+ * count（`some`）と取得（`fetchTgExampleRows`）で同じ述語を使い、プレビューの対象件数と
+ * 実出題数を完全一致させる。空白のみの meaning は SQL で判別できないため「使える」扱いで統一する
+ * （JS 側も trim しない同一判定。件数乖離ゼロを優先し、空白のみはデータ入力異常として許容）。
+ */
+function usableTgExampleWhere(allowed: string[]) {
+  return {
+    kind: "TARGET" as const,
+    ownerId: { in: allowed },
+    AND: [{ meaning: { not: null } }, { meaning: { not: "" } }],
+  };
+}
+
+/**
  * 問題生成・drill ラウンド生成の素材を取得する。
  *
  * 範囲（range）判定を SQL に寄せ、ダミー候補プールを {@link DUMMY_POOL_SIZE} 件まで優先順で
@@ -41,6 +58,9 @@ export const DUMMY_POOL_SIZE = 50;
  *   残りの不足分 `DUMMY_POOL_SIZE - targets - sameOccurrence` 件だけ取得（0 なら取得しない）。
  * 行→素材（targets / sameOccurrencePool / allWordsPool）の対応は純関数 partitionMaterial に委ねる。
  *
+ * TG 例文形式（`includeTgExamples: true`）のときだけ、収集済み全単語の使える TG 例文を
+ * 追加の 1 クエリで取得して `tgExampleRows` に返す（非 TG 形式は追加コストゼロ）。
+ *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
  * `countQuizSourceExclusions` で取得する（05-architecture.md 決定 8 改訂）。
  */
@@ -48,6 +68,7 @@ export async function fetchQuizSource(
   userId: string,
   occurrenceId: string,
   range: { from?: number; to?: number },
+  options: { includeTgExamples?: boolean } = {},
 ) {
   const allowed = scopedOwnerIds(userId);
   await assertOccurrenceVisible(userId, occurrenceId);
@@ -125,23 +146,57 @@ export async function fetchQuizSource(
           take: fallbackTake,
         });
 
-  return { targetRows, sameOccurrenceRows, fallbackRows };
+  // TG 例文形式のときだけ、収集済み全単語（targets ＋ダミー候補プール）の使える TG 例文を
+  // 1 クエリで取得し、単語ごとに sortOrder 最小の 1 件へ選抜する（`Example` は wordId インデックス済み）。
+  const tgExampleRows = !options.includeTgExamples
+    ? []
+    : pickFirstTgExamples(
+        await prisma.example.findMany({
+          where: {
+            wordId: {
+              in: [...targetRows, ...sameOccurrenceRows, ...fallbackRows].map((w) => w.id),
+            },
+            ...usableTgExampleWhere(allowed),
+          },
+          orderBy: { sortOrder: "asc" },
+          select: { wordId: true, text: true, meaning: true },
+        }),
+      );
+
+  return { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows };
+}
+
+// sortOrder 昇順の取得行から単語ごとに先頭 1 件を選抜する（meaning 非 null は where 済みだが型を絞る）。
+function pickFirstTgExamples(
+  rows: { wordId: string; text: string; meaning: string | null }[],
+): TgExampleRow[] {
+  const picked = new Map<string, TgExampleRow>();
+  for (const row of rows) {
+    if (row.meaning === null || row.meaning === "") continue;
+    if (!picked.has(row.wordId)) {
+      picked.set(row.wordId, { wordId: row.wordId, text: row.text, meaning: row.meaning });
+    }
+  }
+  return [...picked.values()];
 }
 
 export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["targetRows"][number];
 
 /**
- * 対象 Occurrence 内の除外内訳（番号なし・意味未登録）を count クエリで返す。
+ * 対象 Occurrence 内の除外内訳（番号なし・意味未登録・TG例文なし）を count クエリで返す。
  *
  * 意味未登録の単語は fetchQuizSource の結果に現れないため、別途カウントする。
- * 2 つの件数は独立にカウントする（番号なしかつ意味未登録の単語は両方に数えられる）。
+ * 各件数は独立にカウントする（番号なしかつ意味未登録の単語は両方に数えられる）。
+ * `noTgExample`（使える TG 例文を持たない単語）は TG 例文形式のときだけカウントし、
+ * それ以外は null（count クエリを発行せず、UI も表示しない）。
  */
 export async function countQuizSourceExclusions(
   userId: string,
   occurrenceId: string,
-): Promise<{ noNumber: number; noMeaning: number }> {
+  options: { countTgExample?: boolean } = {},
+): Promise<{ noNumber: number; noMeaning: number; noTgExample: number | null }> {
   const allowed = scopedOwnerIds(userId);
-  const [noNumber, noMeaning] = await Promise.all([
+  const [noNumber, noMeaning, noTgExample] = await Promise.all([
     prisma.wordOccurrence.count({
       where: {
         occurrenceId,
@@ -157,8 +212,17 @@ export async function countQuizSourceExclusions(
         NOT: { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } },
       },
     }),
+    options.countTgExample
+      ? prisma.word.count({
+          where: {
+            ownerId: { in: allowed },
+            wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+            NOT: { examples: { some: usableTgExampleWhere(allowed) } },
+          },
+        })
+      : Promise.resolve(null),
   ]);
-  return { noNumber, noMeaning };
+  return { noNumber, noMeaning, noTgExample };
 }
 
 /**
@@ -167,11 +231,15 @@ export async function countQuizSourceExclusions(
  * partitionMaterial の target 定義と一致させる: 可視 MeaningText を 1 件以上持ち、かつ
  * 対象 Occurrence に occurrenceNumber 非 null かつ範囲内の wordOccurrence を持つ単語。
  * 範囲（from/to）は未指定なら制限なし。
+ *
+ * TG 例文形式（`requireTgExample: true`）は出題対象が「使える TG 例文を持つ単語」に絞られる
+ * ため、同じ述語を AND して生成側（buildChoiceTgQuestions の usable targets）と件数を一致させる。
  */
 export async function countQuizTargets(
   userId: string,
   occurrenceId: string,
   range: { from?: number; to?: number },
+  options: { requireTgExample?: boolean } = {},
 ): Promise<number> {
   const allowed = scopedOwnerIds(userId);
   return prisma.word.count({
@@ -189,6 +257,7 @@ export async function countQuizTargets(
           },
         },
       },
+      ...(options.requireTgExample ? { examples: { some: usableTgExampleWhere(allowed) } } : {}),
     },
   });
 }

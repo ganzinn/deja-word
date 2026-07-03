@@ -59,8 +59,13 @@ export const answerInputSchema = z.object({
 
 // ---- 各 Server Action の入力スキーマ ----
 
-/** `getQuizPreview` の入力。 */
-export const getQuizPreviewInputSchema = quizRangeInputSchema;
+/**
+ * `getQuizPreview` の入力。format は任意（未選択・非 TG 形式ではプレビューが形式非依存のため）。
+ * TG 例文形式のときだけ対象件数・除外内訳が TG 例文の有無で絞られる。
+ */
+export const getQuizPreviewInputSchema = quizRangeInputSchema.extend({
+  format: quizFormatSchema.optional(),
+});
 
 /**
  * `startQuiz` の入力。定着までの回数（残数設定）はテスト結果画面で受け取り `startDrill` に渡すため

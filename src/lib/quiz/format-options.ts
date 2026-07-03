@@ -15,6 +15,11 @@ export const FORMAT_GROUPS: {
       { value: "CHOICE", label: "四択", description: "4 つの選択肢から正しい意味を選ぶ" },
       { value: "SELF_JUDGE", label: "自己判定", description: "解答を見て自分で正誤を判定する" },
       { value: "MULTI_MEANING", label: "多義語選択", description: "正しい意味をすべて選ぶ" },
+      {
+        value: "CHOICE_TG",
+        label: "例文四択",
+        description: "TG例文の英文に合う意味を 4 つの選択肢から選ぶ",
+      },
     ],
   },
   {
@@ -27,6 +32,11 @@ export const FORMAT_GROUPS: {
         description: "解答を見て自分で正誤を判定する",
       },
       { value: "SPELLING", label: "スペル確認", description: "英単語のスペルを入力して答える" },
+      {
+        value: "CHOICE_TG_JA_EN",
+        label: "例文四択",
+        description: "TG例文の意味に合う英文を 4 つの選択肢から選ぶ",
+      },
     ],
   },
 ];
@@ -41,14 +51,34 @@ export const ALL_QUIZ_FORMATS: QuizFormat[] = FORMAT_GROUPS.flatMap((g) =>
 );
 
 /**
- * 日本語→英語（出題が日本語の意味、解答が英単語）の出題形式。
- * 出題画面の問題文表示（headword か意味か）と問題生成の正解側がこの向きで反転する。
+ * 日本語→英語（出題が日本語の意味、解答が英語）の出題形式。
+ * 発音（headword）が解答を漏らす向きのため、出題時の発音自動再生を抑止する（quiz-flow）。
+ * 見出しの表示出し分けはここではなく quiz-flow の `promptViewOf`（形式網羅 switch）が担う。
+ * CHOICE_TG（英→日）は英文が問題文に見えているため含めない（自動再生あり）。
  */
-const JA_TO_EN_FORMATS = new Set<QuizFormat>(["CHOICE_JA_EN", "SELF_JUDGE_JA_EN", "SPELLING"]);
+const JA_TO_EN_FORMATS = new Set<QuizFormat>([
+  "CHOICE_JA_EN",
+  "SELF_JUDGE_JA_EN",
+  "SPELLING",
+  // 例文四択（日→英）は選択肢の英文に headword が含まれ、発音が解答漏れになる
+  "CHOICE_TG_JA_EN",
+]);
 
-/** 日本語→英語の出題形式か（問題文に意味を表示し、英単語を解答とする向き）。 */
+/** 日本語→英語の出題形式か（発音＝解答漏れになるため、出題時の発音自動再生を抑止する向き）。 */
 export function isJaToEnFormat(format: QuizFormat): boolean {
   return JA_TO_EN_FORMATS.has(format);
+}
+
+/**
+ * TG 例文（Example.kind=TARGET）を素材とする出題形式。
+ * 出題対象が「使える TG 例文（意味つき）を持つ単語」に絞られるため、
+ * プレビューの対象件数・除外内訳がこの判定で format 依存になる。
+ */
+const TG_EXAMPLE_FORMATS = new Set<QuizFormat>(["CHOICE_TG", "CHOICE_TG_JA_EN"]);
+
+/** TG 例文を素材とする出題形式か（対象件数のカウントが TG 例文の有無で絞られる）。 */
+export function isTgExampleFormat(format: QuizFormat): boolean {
+  return TG_EXAMPLE_FORMATS.has(format);
 }
 
 /** 自己判定（解答を見て本人が正誤を申告する）の出題形式。 */

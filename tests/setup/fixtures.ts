@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
+import type { ExampleKind } from "@/generated/prisma/enums";
 
 export const SYSTEM_OCCURRENCE_LOCATIONS = ["ターゲット1900", "システム英単語"];
 
@@ -82,6 +83,8 @@ export async function createOccurrenceRow(
  * - 番号付き単語: `{ occurrence: { id, occurrenceNumber: 1 } }`
  * - 番号なし単語: `{ occurrence: { id, occurrenceNumber: null } }`
  * - 意味なし単語: `{ meanings: [] }`（Meaning 自体なし）または `{ meanings: [{ texts: [] }] }`（MeaningText 0 件）
+ * - 例文つき単語: `{ examples: [{ kind: "TARGET", text: "...", meaning: "..." }] }`
+ *   （sortOrder は配列順。kind 省略時は TARGET、meaning 省略時は null）
  */
 export async function createQuizWordRow(
   ownerId: string,
@@ -89,6 +92,7 @@ export async function createQuizWordRow(
   options: {
     meanings?: { texts: string[] }[];
     occurrence?: { id: string; occurrenceNumber: number | null };
+    examples?: { kind?: ExampleKind; text: string; meaning?: string | null }[];
   } = {},
 ) {
   const word = await prisma.word.create({
@@ -106,6 +110,18 @@ export async function createQuizWordRow(
           create: meaning.texts.map((text, j) => ({ ownerId, text, sortOrder: j })),
         },
       },
+    });
+  }
+  if (options.examples && options.examples.length > 0) {
+    await prisma.example.createMany({
+      data: options.examples.map((example, i) => ({
+        wordId: word.id,
+        ownerId,
+        kind: example.kind ?? "TARGET",
+        text: example.text,
+        meaning: example.meaning ?? null,
+        sortOrder: i,
+      })),
     });
   }
   if (options.occurrence) {

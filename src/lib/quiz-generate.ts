@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { QuizFormat } from "@/generated/prisma/enums";
+import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import { buildQuiz, checkFormatAvailability } from "@/lib/quiz/generation/build-quiz";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import { partitionMaterial } from "@/lib/quiz/generation/material";
@@ -27,12 +28,13 @@ export async function generateQuizForUser(
     choiceFirstMeaningTextOnly: boolean;
   },
 ): Promise<QuizPayload> {
-  const { targetRows, sameOccurrenceRows, fallbackRows } = await fetchQuizSource(
+  const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
     input.occurrenceId,
     { from: input.rangeFrom, to: input.rangeTo },
+    { includeTgExamples: isTgExampleFormat(input.format) },
   );
-  const material = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows);
+  const material = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows);
 
   const buildOptions = { choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly };
   const availability = checkFormatAvailability(input.format, material, buildOptions);

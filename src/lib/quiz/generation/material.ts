@@ -22,11 +22,19 @@ export type QuizMeaning = {
   texts: string[];
 };
 
+/**
+ * 使える TG 例文の取得行（単語ごとに sortOrder 最小の 1 件へ選抜済み。`fetchQuizSource` の
+ * `tgExampleRows`）。text = 英文、meaning = 意味（非 null・非空へ取得側で選抜済み）。
+ */
+export type TgExampleRow = { wordId: string; text: string; meaning: string };
+
 export type QuizWord = {
   id: string;
   headword: string;
   /** sortOrder 順。先頭が「最初の Meaning」。各単語は意味 1 件以上が入力前提。 */
   meanings: QuizMeaning[];
+  /** 使える TG 例文（sortOrder 最小の 1 件）。TG 例文形式以外の生成時・未登録の単語は null。 */
+  tgExample: { text: string; meaning: string } | null;
 };
 
 /**
@@ -42,7 +50,8 @@ export type QuizSourceMaterial = {
   allWordsPool: QuizWord[];
 };
 
-function toQuizWord(row: QuizSourceRow): QuizWord {
+function toQuizWord(row: QuizSourceRow, tgExampleByWordId: Map<string, TgExampleRow>): QuizWord {
+  const tgExample = tgExampleByWordId.get(row.id);
   return {
     id: row.id,
     headword: row.headword,
@@ -51,6 +60,7 @@ function toQuizWord(row: QuizSourceRow): QuizWord {
       pronunciationAudioUrl: m.pronunciationAudioUrl,
       texts: m.texts.map((t) => t.text),
     })),
+    tgExample: tgExample ? { text: tgExample.text, meaning: tgExample.meaning } : null,
   };
 }
 
@@ -61,16 +71,19 @@ function toQuizWord(row: QuizSourceRow): QuizWord {
  * SQL で済ませているため、ここでは `QuizWord` への変換のみを行う:
  * `targetRows`→(a) 出題対象、`sameOccurrenceRows`→(b) 同一 Occurrence プール、
  * `fallbackRows`→(c) 全登録プール。
+ * `tgExampleRows`（TG 例文形式のみ取得される）は wordId で各 `QuizWord.tgExample` に対応づける。
  */
 export function partitionMaterial(
   targetRows: QuizSourceRow[],
   sameOccurrenceRows: QuizSourceRow[],
   fallbackRows: QuizSourceRow[],
+  tgExampleRows: TgExampleRow[] = [],
 ): QuizSourceMaterial {
+  const tgExampleByWordId = new Map(tgExampleRows.map((r) => [r.wordId, r]));
   return {
-    targets: targetRows.map(toQuizWord),
-    sameOccurrencePool: sameOccurrenceRows.map(toQuizWord),
-    allWordsPool: fallbackRows.map(toQuizWord),
+    targets: targetRows.map((row) => toQuizWord(row, tgExampleByWordId)),
+    sameOccurrencePool: sameOccurrenceRows.map((row) => toQuizWord(row, tgExampleByWordId)),
+    allWordsPool: fallbackRows.map((row) => toQuizWord(row, tgExampleByWordId)),
   };
 }
 
@@ -102,6 +115,19 @@ export function retargetMaterial(
 /** 全 Meaning 横断の全 MeaningText（trim なしの生テキスト）。 */
 export function allMeaningTexts(word: QuizWord): string[] {
   return word.meanings.flatMap((m) => m.texts);
+}
+
+/** 使える TG 例文を持つことが型で保証された単語（TG 例文形式の出題対象・ダミー）。 */
+export type TgQuizWord = QuizWord & { tgExample: NonNullable<QuizWord["tgExample"]> };
+
+/** 使える TG 例文（意味つき）を持つ単語か。TG 例文形式の出題対象・ダミー候補の絞り込みに使う。 */
+export function hasTgExample(word: QuizWord): word is TgQuizWord {
+  return word.tgExample !== null;
+}
+
+/** TG 例文形式の出題対象（使える TG 例文を持つ target のみ）。生成と成立判定で共用する。 */
+export function tgTargetsOf(material: QuizSourceMaterial): TgQuizWord[] {
+  return material.targets.filter(hasTgExample);
 }
 
 /**

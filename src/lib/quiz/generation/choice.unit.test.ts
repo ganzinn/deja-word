@@ -13,6 +13,7 @@ function word(
   return {
     id,
     headword: `hw-${id}`,
+    tgExample: null,
     meanings: meaningTexts.map((texts, i) => ({
       partOfSpeech: null,
       pronunciationAudioUrl: i === 0 ? (options.audio ?? null) : null,

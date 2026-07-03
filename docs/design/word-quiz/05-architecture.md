@@ -1,6 +1,6 @@
 # 05. アーキテクチャ（UseCase / handler / API 構成）
 
-状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂。2026-07-03 06 決定 10（drill retry）を受けて `startDrillRetry` / `submitDrillRetry` と UseCase 2 ファイルを加算改訂。同日 06 決定 11 を受けて `startDrill` 入力（sourceRange）と `startDrillRound` 応答（sourceTest）を加算改訂。同日 例文四択（TG）の素材取得・プレビュー format 依存化を決定 6 追記・決定 8 追補として加算改訂）
+状態: **確定**（2026-06-12。同日 06 の決定を受けて Action シグネチャ（format 引数の整理・`deleteDrill` 追加）を改訂。2026-07-03 06 決定 10（drill retry）を受けて `startDrillRetry` / `submitDrillRetry` と UseCase 2 ファイルを加算改訂。同日 06 決定 11 を受けて `startDrill` 入力（sourceRange）と `startDrillRound` 応答（sourceTest）を加算改訂。同日 TG四択（TG）の素材取得・プレビュー format 依存化を決定 6 追記・決定 8 追補として加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -14,7 +14,7 @@
 - drill ラウンド終了時は履歴一括送信と残数（DrillWord.remaining）更新を同一トランザクションで行う（06 確定）。
 - drill の生成はテスト結果画面起点（「定着モードへ」押下時。元テスト結果から DrillWord の初期残数を作る）（06 確定）。
 - 中断は破棄（途中状態のサーバー保存なし。drill の確定済み残数は保持）（01・06 確定）。
-- 出題形式は3形式＋将来形式4・5（日→英）。形式追加に耐える拡張点を設計すること（01 確定。注記: その後日→英 3 形式＋例文四択 2 形式が加算され現在は計 8 形式）。
+- 出題形式は3形式＋将来形式4・5（日→英）。形式追加に耐える拡張点を設計すること（01 確定。注記: その後日→英 3 形式＋TG四択 2 形式が加算され現在は計 8 形式）。
 - スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ（02 確定。本トピックの決定により Drill へ `roundCount` を、06 の決定により `format` を加算 → 02 改訂済み）。範囲指定の対象は occurrenceNumber 付きの WordOccurrence のみ（02 確定）。意味（MeaningText）未登録の単語は出題対象から除外する（03 確定。取得クエリに効く）。
 - 問題データ（選択肢構成・シャッフル済み）はサーバーで全問生成し一括返却する。採点はクライアントで行うため正解情報も payload に含む（カンニングは許容）。drill も各ラウンド開始時に同じロジックでサーバー再生成（03 確定）。
 - 選択肢生成・シャッフルは RNG（`() => number`）を引数に取る純関数として実装し、unit test はシード付き PRNG を注入する（03 確定）。
@@ -155,7 +155,7 @@ export type QuizPayload = QuizQuestionsPayload & { timeoutSeconds: number | null
 
 素材型 `QuizSourceMaterial`（対象単語の headword＋全 Meaning/MeaningText＋音源 URL、ダミープール）は日→英 2 形式（綴り＝headword、日→英自己判定＝Meaning を問題文に）も既に賄えるため、クエリ・素材型は将来形式でも無変更で済む見込み。投機的フィールドは足さない。
 
-> **2026-07-03 追記（形式7・8＝例文四択の実績）**: TG 例文形式もこの拡張点（enum 値＋生成器＋payload union＋UI switch）で追加した。ただし例文は素材型に無かったため、`QuizWord.tgExample`（使える TG 例文 1 件）を加算し、**TG 形式のときだけ**追加 1 クエリで取得する（決定 8 追補）。「素材型は将来形式でも無変更」の見込みは、素材そのものが増える形式には当てはまらない（新素材は必要時のみ取得のオプトイン方式で加算する）。
+> **2026-07-03 追記（形式7・8＝TG四択の実績）**: TG 例文形式もこの拡張点（enum 値＋生成器＋payload union＋UI switch）で追加した。ただし例文は素材型に無かったため、`QuizWord.tgExample`（使える TG 例文 1 件）を加算し、**TG 形式のときだけ**追加 1 クエリで取得する（決定 8 追補）。「素材型は将来形式でも無変更」の見込みは、素材そのものが増える形式には当てはまらない（新素材は必要時のみ取得のオプトイン方式で加算する）。
 
 - 却下案（生成器レジストリ `Map<QuizFormat, Generator>`）: 形式は多くて 5。switch の網羅性チェックの方が漏れ検知が強く、間接層が 1 枚減る。
 - 却下案（payload を非判別の共通形）: クライアントの形式別 UI 出し分けで型の絞り込みが効かない。
@@ -236,7 +236,7 @@ src/lib/quiz/generation/
     （`selectDummies`）が担う（「純関数内で 03 をそのまま実装」は維持）。よってこの却下理由には当たらない。
 - 却下案（raw SQL の UNION＋優先度フラグ）: Prisma の型を捨てる早すぎる最適化。性能課題が実測されてから。
 
-> **2026-07-03 追補（TG 例文形式の素材取得とプレビューの format 依存化）**: 例文四択
+> **2026-07-03 追補（TG 例文形式の素材取得とプレビューの format 依存化）**: TG四択
 > （CHOICE_TG / CHOICE_TG_JA_EN）は出題対象そのものが「**使える TG 例文**（`kind=TARGET`・
 > `meaning` 非 null かつ非空）を持つ単語」に絞られるため、次の 2 点をこの決定に加算する。
 >

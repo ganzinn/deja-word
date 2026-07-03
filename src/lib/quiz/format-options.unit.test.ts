@@ -12,8 +12,8 @@ describe("formatLabelOf", () => {
   test("向き（category）とラベルを併記する", () => {
     expect(formatLabelOf("CHOICE")).toBe("英語→日本語・四択");
     expect(formatLabelOf("SPELLING")).toBe("日本語→英語・スペル確認");
-    expect(formatLabelOf("CHOICE_TG")).toBe("英語→日本語・例文四択");
-    expect(formatLabelOf("CHOICE_TG_JA_EN")).toBe("日本語→英語・例文四択");
+    expect(formatLabelOf("CHOICE_TG")).toBe("英語→日本語・TG四択");
+    expect(formatLabelOf("CHOICE_TG_JA_EN")).toBe("日本語→英語・TG四択");
   });
 
   test("全形式でフォールバック（enum 値そのまま）に落ちない", () => {
@@ -41,7 +41,7 @@ describe("isSelfJudgeFormat", () => {
 });
 
 describe("isJaToEnFormat", () => {
-  test("例文四択は日→英のみ true（英→日は英文が問題文に見えるため発音自動再生を抑止しない）", () => {
+  test("TG四択は日→英のみ true（英→日は英文が問題文に見えるため発音自動再生を抑止しない）", () => {
     expect(isJaToEnFormat("CHOICE_TG_JA_EN")).toBe(true);
     expect(isJaToEnFormat("CHOICE_TG")).toBe(false);
   });

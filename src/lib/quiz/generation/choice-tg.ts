@@ -1,4 +1,4 @@
-// 例文四択（CHOICE_TG / 英語→日本語）の問題生成。
+// TG四択（CHOICE_TG / 英語→日本語）の問題生成。
 // 問題文は target の TG 例文の英文、選択肢は各単語の TG 例文の意味。
 // 出題対象は使える TG 例文（意味つき）を持つ単語のみ（1 単語 1 問・sortOrder 最小の 1 件）。
 
@@ -23,7 +23,7 @@ const CHOICE_DUMMY_COUNT = 3;
 /** 出題対象に使える TG 例文の単語が 1 件もないときの理由（生成・成立判定で共用）。 */
 export const NO_TG_TARGET_REASON = "TG例文（意味つき）が登録された出題対象の単語がありません";
 
-/** 例文四択（英→日）のダミー候補（1 候補 = 1 単語）。重複排除・表示は TG 例文の意味で行う。 */
+/** TG四択（英→日）のダミー候補（1 候補 = 1 単語）。重複排除・表示は TG 例文の意味で行う。 */
 function toTgMeaningCandidate(word: QuizWord): DummyCandidate<QuizWord>[] {
   return word.tgExample === null ? [] : [{ value: word, texts: [word.tgExample.meaning] }];
 }

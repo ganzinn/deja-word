@@ -1,5 +1,5 @@
 // TG 例文（Example.kind=TARGET）のハイライト描画。
-// 単語詳細（word-detail-view）とクイズの例文四択（問題文・選択肢）で共用し、
+// 単語詳細（word-detail-view）とクイズのTG四択（問題文・選択肢）で共用し、
 // プレースホルダ記号の体裁のドリフトを防ぐ。フックなしの純描画のためサーバー/クライアント両用。
 
 import { cn } from "@/lib/utils";

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { RowAudioButton } from "@/components/row-audio-button";
+import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,11 +25,21 @@ import {
 } from "@/lib/quiz/remaining-options";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
+/**
+ * 結果一覧の見出し種別（quiz-flow の `promptViewOf` 由来）。主見出しの内容・TG ハイライトの
+ * 適用・発音ボタンの行（英語がある行に置く）をこの種別から導出する。
+ * headword = 英→日（見出しは英単語）/ ja-plain = 日→英（見出しは意味のプレーン表示）/
+ * tg-text = TG四択 英→日（見出しは TG 例文の英文）/ tg-meaning = TG四択 日→英（見出しは TG 例文の意味）。
+ */
+export type PromptKind = "headword" | "ja-plain" | "tg-text" | "tg-meaning";
+
 /** 結果一覧の 1 行分。quiz-flow が問題ごとの解答結果（QuestionOutcome）を収集して組み立てる。 */
 export type ResultRow = {
   wordId: string;
   headword: string;
-  /** 日本語→英語の問題文（最初の Meaning の「; 」連結）。英語→日本語は null。主見出しは prompt があればそれ、無ければ headword。 */
+  /** 見出しの種別。headword 以外は prompt（問題文）を主見出しにする。 */
+  promptKind: PromptKind;
+  /** 問題文（ja-plain=意味の「; 」連結、tg-text=TG 例文の英文、tg-meaning=TG 例文の意味）。headword では null。 */
   prompt: string | null;
   /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
   correctDisplay: string;
@@ -39,6 +50,30 @@ export type ResultRow = {
   /** 英単語の発音音源 URL（最初の Meaning）。未登録なら null。 */
   pronunciationAudioUrl: string | null;
 };
+
+/** 主見出しの内容。TG四択は出題画面・単語詳細と同じ TG ハイライトを再現する。 */
+function promptDisplayOf(row: ResultRow): React.ReactNode {
+  switch (row.promptKind) {
+    case "headword":
+      return row.headword;
+    case "ja-plain":
+      return row.prompt;
+    case "tg-text":
+      return <TgExampleText text={row.prompt ?? ""} />;
+    case "tg-meaning":
+      return <TgExampleMeaning text={row.prompt ?? ""} />;
+  }
+}
+
+/**
+ * 解答側（正解・自分の回答）テキストの表示。TG四択は解答側も TG ハイライトを再現する
+ * （英→日 tg-text の解答側は TG 例文の意味、日→英 tg-meaning の解答側は TG 例文の英文）。
+ */
+function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
+  if (kind === "tg-text") return <TgExampleMeaning text={text} />;
+  if (kind === "tg-meaning") return <TgExampleText text={text} />;
+  return text;
+}
 
 /**
  * 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。
@@ -206,7 +241,11 @@ export function ResultList({
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {visibleRows.map((row) => (
+          {visibleRows.map((row) => {
+            // 発音ボタンは英語（headword / TG 英文）が見出し行にある形式では見出し行の右端、
+            // 英語が正解行に出る形式（日→英）では正解行の右端に置く。
+            const audioOnHeading = row.promptKind === "headword" || row.promptKind === "tg-text";
+            return (
             <li key={row.wordId}>
               <div
                 role="button"
@@ -223,14 +262,13 @@ export function ResultList({
                 <div className="flex w-full flex-wrap items-center gap-2">
                   <ResultIcon result={row.result} />
                   <span className="text-sm font-semibold break-words whitespace-pre-wrap">
-                    {row.prompt ?? row.headword}
+                    {promptDisplayOf(row)}
                   </span>
                   <div className="ml-auto flex items-center gap-2">
                     {skippedWordIds?.has(row.wordId) ? (
                       <Badge variant="secondary">削除済み</Badge>
                     ) : null}
-                    {/* 英→日は見出し行が英単語。その右端に発音ボタン。 */}
-                    {row.prompt === null ? (
+                    {audioOnHeading ? (
                       <RowAudioButton
                         src={row.pronunciationAudioUrl}
                         label="発音"
@@ -242,10 +280,11 @@ export function ResultList({
                 <div className="flex w-full items-start gap-2">
                   <p className="text-sm whitespace-pre-wrap">
                     <span className="text-muted-foreground">正解: </span>
-                    <span className="font-semibold">{row.correctDisplay}</span>
+                    <span className="font-semibold">
+                      {answerSideDisplayOf(row.promptKind, row.correctDisplay)}
+                    </span>
                   </p>
-                  {/* 日→英は正解行が英単語。その右端に発音ボタン。 */}
-                  {row.prompt !== null ? (
+                  {!audioOnHeading ? (
                     <div className="ml-auto shrink-0">
                       <RowAudioButton
                         src={row.pronunciationAudioUrl}
@@ -267,7 +306,7 @@ export function ResultList({
                     ) : row.answerDisplay !== null ? (
                       <p className="text-sm whitespace-pre-wrap">
                         <span className="text-muted-foreground">自分の回答: </span>
-                        {row.answerDisplay}
+                        {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
                       </p>
                     ) : row.result === "GAVE_UP" ? (
                       <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
@@ -284,7 +323,8 @@ export function ResultList({
                 ) : null}
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

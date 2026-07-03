@@ -47,6 +47,7 @@ import { QuestionSpelling } from "./question-spelling";
 import {
   ResultList,
   type DrillRemainingText,
+  type PromptKind,
   type ResultRow,
   type SourceTestPreview,
   type SubmitState,
@@ -155,23 +156,17 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
 }
 
 /**
- * 結果一覧の主見出しに使う問題文（日本語の意味）。`promptViewOf` から導出し、意味を問題文に
- * 出す形式（ja-plain / tg-meaning）はその文字列、headword が主見出しになる形式は null を返す
- * （tg-text＝CHOICE_TG は問題文が英文で headword を含むため headword 側に倒す）。
+ * 出題画面の見出し表示の種別（形式網羅 switch。形式追加時の更新漏れを型で検出する）。
+ * kind は結果一覧の `PromptKind`（result-list）と共有し、結果一覧の主見出し・TG ハイライト・
+ * 発音ボタンの行もこの種別から導出される（`ResultRow.promptKind`）。
  */
-function jaEnPromptOf(quiz: QuizPayload, index: number): string | null {
-  const view = promptViewOf(quiz, index);
-  return view.kind === "ja-plain" || view.kind === "tg-meaning" ? view.text : null;
-}
-
-/** 出題画面の見出し表示の種別（形式網羅 switch。形式追加時の更新漏れを型で検出する）。 */
 type PromptView =
   | { kind: "headword" }
   /** 日本語→英語（意味のプレーン表示。headword・発音は解答のため伏せる）。 */
   | { kind: "ja-plain"; text: string }
-  /** 例文四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。 */
+  /** TG四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。 */
   | { kind: "tg-text"; text: string }
-  /** 例文四択（日→英）: TG 例文の意味をハイライト表示（headword・発音は解答のため伏せる）。 */
+  /** TG四択（日→英）: TG 例文の意味をハイライト表示（headword・発音は解答のため伏せる）。 */
   | { kind: "tg-meaning"; text: string };
 
 function promptViewOf(quiz: QuizPayload, index: number): PromptView {
@@ -724,12 +719,15 @@ export function QuizFlow({
     if (phase.name !== "play" || quiz === null) return;
     const index = phase.index;
     const question = quiz.questions[index];
+    // 結果一覧の主見出し・TG ハイライト・発音ボタン配置は出題見出しと同じ種別（PromptKind）から導出する
+    const promptView = promptViewOf(quiz, index);
     const nextRows: ResultRow[] = [
       ...rows,
       {
         wordId: question.wordId,
         headword: question.headword,
-        prompt: jaEnPromptOf(quiz, index),
+        promptKind: promptView.kind satisfies PromptKind,
+        prompt: promptView.kind === "headword" ? null : promptView.text,
         correctDisplay: correctAnswerDisplay(quiz, index),
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,
@@ -925,7 +923,7 @@ export function QuizFlow({
             </h1>
           </div>
         ) : promptView.kind === "tg-meaning" ? (
-          // 例文四択（日→英）: TG 例文の意味をハイライト表示。headword・発音は解答のため伏せる。
+          // TG四択（日→英）: TG 例文の意味をハイライト表示。headword・発音は解答のため伏せる。
           // 例文は長いため見出しは一段小さくする（tg-text と同じ text-2xl）
           <div className="flex flex-wrap items-center justify-center py-4">
             <h1 className="text-2xl font-bold tracking-tight break-words">
@@ -933,7 +931,7 @@ export function QuizFlow({
             </h1>
           </div>
         ) : promptView.kind === "tg-text" ? (
-          // 例文四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。
+          // TG四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。
           // 発音・詳細ボタンの配線は headword 見出しと同じ（詳細は解答後のみ）
           <div className="flex flex-col items-center gap-2 py-4">
             <h1 className="text-center text-2xl font-bold tracking-tight break-words">

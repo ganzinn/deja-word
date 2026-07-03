@@ -17,7 +17,7 @@ export const FORMAT_GROUPS: {
       { value: "MULTI_MEANING", label: "多義語選択", description: "正しい意味をすべて選ぶ" },
       {
         value: "CHOICE_TG",
-        label: "例文四択",
+        label: "TG四択",
         description: "TG例文の英文に合う意味を 4 つの選択肢から選ぶ",
       },
     ],
@@ -34,7 +34,7 @@ export const FORMAT_GROUPS: {
       { value: "SPELLING", label: "スペル確認", description: "英単語のスペルを入力して答える" },
       {
         value: "CHOICE_TG_JA_EN",
-        label: "例文四択",
+        label: "TG四択",
         description: "TG例文の意味に合う英文を 4 つの選択肢から選ぶ",
       },
     ],
@@ -60,7 +60,7 @@ const JA_TO_EN_FORMATS = new Set<QuizFormat>([
   "CHOICE_JA_EN",
   "SELF_JUDGE_JA_EN",
   "SPELLING",
-  // 例文四択（日→英）は選択肢の英文に headword が含まれ、発音が解答漏れになる
+  // TG四択（日→英）は選択肢の英文に headword が含まれ、発音が解答漏れになる
   "CHOICE_TG_JA_EN",
 ]);
 

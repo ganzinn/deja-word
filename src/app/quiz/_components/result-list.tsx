@@ -246,83 +246,83 @@ export function ResultList({
             // 英語が正解行に出る形式（日→英）では正解行の右端に置く。
             const audioOnHeading = row.promptKind === "headword" || row.promptKind === "tg-text";
             return (
-            <li key={row.wordId}>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onOpenDialog(row.wordId)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onOpenDialog(row.wordId);
-                  }
-                }}
-                className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
-              >
-                <div className="flex w-full flex-wrap items-center gap-2">
-                  <ResultIcon result={row.result} />
-                  <span className="text-sm font-semibold break-words whitespace-pre-wrap">
-                    {promptDisplayOf(row)}
-                  </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    {skippedWordIds?.has(row.wordId) ? (
-                      <Badge variant="secondary">削除済み</Badge>
-                    ) : null}
-                    {audioOnHeading ? (
-                      <RowAudioButton
-                        src={row.pronunciationAudioUrl}
-                        label="発音"
-                        ttsText={row.headword}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex w-full items-start gap-2">
-                  <p className="text-sm whitespace-pre-wrap">
-                    <span className="text-muted-foreground">正解: </span>
-                    <span className="font-semibold">
-                      {answerSideDisplayOf(row.promptKind, row.correctDisplay)}
+              <li key={row.wordId}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onOpenDialog(row.wordId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenDialog(row.wordId);
+                    }
+                  }}
+                  className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"
+                >
+                  <div className="flex w-full flex-wrap items-center gap-2">
+                    <ResultIcon result={row.result} />
+                    <span className="text-sm font-semibold break-words whitespace-pre-wrap">
+                      {promptDisplayOf(row)}
                     </span>
-                  </p>
-                  {!audioOnHeading ? (
-                    <div className="ml-auto shrink-0">
-                      <RowAudioButton
-                        src={row.pronunciationAudioUrl}
-                        label="発音"
-                        ttsText={row.headword}
-                      />
+                    <div className="ml-auto flex items-center gap-2">
+                      {skippedWordIds?.has(row.wordId) ? (
+                        <Badge variant="secondary">削除済み</Badge>
+                      ) : null}
+                      {audioOnHeading ? (
+                        <RowAudioButton
+                          src={row.pronunciationAudioUrl}
+                          label="発音"
+                          ttsText={row.headword}
+                        />
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
-                {row.answerDisplay !== null ||
-                row.result === "GAVE_UP" ||
-                row.result === "TIMEOUT" ||
-                row.result === "VAGUE" ||
-                remainingByWordId !== null ? (
+                  </div>
                   <div className="flex w-full items-start gap-2">
-                    {row.result === "VAGUE" ? (
-                      // うろ覚えは正解時のみ選べる＝回答内容は正解と同じ。全形式とも「うろ覚え」と表示する。
-                      <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
-                    ) : row.answerDisplay !== null ? (
-                      <p className="text-sm whitespace-pre-wrap">
-                        <span className="text-muted-foreground">自分の回答: </span>
-                        {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
-                      </p>
-                    ) : row.result === "GAVE_UP" ? (
-                      <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
-                    ) : row.result === "TIMEOUT" ? (
-                      <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
-                    ) : null}
-                    {/* 定着モードの残数バッジ（あと◯回 / 定着 / 削除済み）。自分の回答の右端に置く。 */}
-                    {remainingByWordId !== null ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      <span className="text-muted-foreground">正解: </span>
+                      <span className="font-semibold">
+                        {answerSideDisplayOf(row.promptKind, row.correctDisplay)}
+                      </span>
+                    </p>
+                    {!audioOnHeading ? (
                       <div className="ml-auto shrink-0">
-                        <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                        <RowAudioButton
+                          src={row.pronunciationAudioUrl}
+                          label="発音"
+                          ttsText={row.headword}
+                        />
                       </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-            </li>
+                  {row.answerDisplay !== null ||
+                  row.result === "GAVE_UP" ||
+                  row.result === "TIMEOUT" ||
+                  row.result === "VAGUE" ||
+                  remainingByWordId !== null ? (
+                    <div className="flex w-full items-start gap-2">
+                      {row.result === "VAGUE" ? (
+                        // うろ覚えは正解時のみ選べる＝回答内容は正解と同じ。全形式とも「うろ覚え」と表示する。
+                        <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
+                      ) : row.answerDisplay !== null ? (
+                        <p className="text-sm whitespace-pre-wrap">
+                          <span className="text-muted-foreground">自分の回答: </span>
+                          {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
+                        </p>
+                      ) : row.result === "GAVE_UP" ? (
+                        <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>
+                      ) : row.result === "TIMEOUT" ? (
+                        <p className="text-muted-foreground text-sm">自分の回答: 時間切れ</p>
+                      ) : null}
+                      {/* 定着モードの残数バッジ（あと◯回 / 定着 / 削除済み）。自分の回答の右端に置く。 */}
+                      {remainingByWordId !== null ? (
+                        <div className="ml-auto shrink-0">
+                          <DrillRemainingBadge remaining={remainingByWordId.get(row.wordId)} />
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </li>
             );
           })}
         </ul>

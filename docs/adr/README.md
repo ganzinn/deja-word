@@ -1,0 +1,141 @@
+# ADR（Architecture Decision Records）
+
+このコードベースに埋まっている設計判断を、AI エージェント・開発者が設計判断に迷ったときに参照できるよう ADR として書き出したもの。
+
+> **全 ADR 共通の免責**: 各 ADR はコード・コミット履歴・既存ドキュメントからの**事後的な推定**であり、当時の意思決定の記録ではない。当時を知るメンバーのレビューを経てステータスを更新すること。捏造防止のため、全 ADR は根拠となるコード・コミット・文書への参照を必ず持ち、記録に無い理由は「（推定）」と明記している。
+
+## ステータス定義
+
+| ステータス | 意味 |
+| --- | --- |
+| 提案 | 起票済み・レビュー待ち（**現在すべての ADR がこの状態**） |
+| 承認 | 当時を知るメンバーが内容を確認し、確定した決定として扱ってよい |
+| 却下 | レビューの結果、事実と異なる・決定として存在しなかったと判断された |
+| 廃止 | かつて有効だったが、後続の決定に置き換えられた（置換先を明記する） |
+
+## 運用ルール
+
+- 1 ADR = 1 判断。新しい設計判断をしたら新規 ADR を起票する（今後は事後推定ではなくリアルタイムの記録として）
+- 既存の決定を覆す場合は、旧 ADR を「廃止」にして新 ADR から参照する（本文の書き換えで上書きしない）
+- `docs/design/` は実装済みの設計文書を削除していく運用のため、design/ 由来の決定は該当 ADR が長期の引き継ぎ先になる
+- 用語は `docs/reference/naming-book.md` に準拠する
+
+## 一覧（確信度リスト）
+
+確信度: **高** = 理由が記録に残っている / **中** = 決定は明確だが理由の記録が部分的 / **低** = 事実の痕跡のみで理由が未記録（→ 確認質問あり）
+
+### A. 基盤・スタック
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0001](0001-nextjs-app-router-stack.md) | Next.js 16 App Router + React 19 + Tailwind v4 スタック採用 | **低** | あり |
+| [0002](0002-exact-version-pinning.md) | mise + engines + packageManager の3点同期による exact pin | 中 | あり |
+| [0003](0003-prisma7-driver-adapter-generated-client.md) | Prisma 7 + driver adapter、client 生成先 src/generated | 高 | — |
+| [0004](0004-better-auth-two-stage-session-check.md) | Better Auth、proxy 楽観チェック + DB 正検証 | 高 | — |
+| [0005](0005-zod-v3-subpath.md) | zod v4 パッケージを zod/v3 サブパス API で統一使用 | 中 | あり |
+
+### B. データモデル
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0006](0006-owner-vs-user-table-families.md) | コンテンツ系 ownerId / 設定系 userId のテーブル2ファミリー | 高 | — |
+| [0007](0007-system-user-as-admin.md) | system ユーザー = 共有マスタ所有者 = 管理者（role 不採用） | 高 | — |
+| [0008](0008-side-table-addition.md) | スキーマ進化は side table 加算 | 高 | — |
+| [0009](0009-cascade-default-setnull-exceptions.md) | onDelete Cascade 既定 + SetNull 2箇所の意図的例外 | 高 | — |
+| [0010](0010-no-soft-delete.md) | ソフトデリート不採用（物理削除のみ） | **低** | あり |
+| [0011](0011-occurrence-concept-many-to-many.md) | 掲載箇所（Occurrence）概念と WordOccurrence 多対多 | 中 | あり |
+| [0012](0012-note-child-tables.md) | note 単一カラム → *Note 子テーブル化 | 中 | — |
+| [0013](0013-enum-addition-backfill-migration.md) | enum 値追加時は推奨デフォルトの backfill migration | 高 | — |
+
+### C. アーキテクチャ・レイヤリング
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0014](0014-three-layer-architecture.md) | 3層構成、Repository/DDD 不採用 | 高 | — |
+| [0015](0015-usecase-owns-transaction.md) | UseCase がトランザクション所有、handler は tx 受領 | 高 | — |
+| [0016](0016-server-action-result-type.md) | Server Action は throw せず Result 型（error-map 境界） | 高 | — |
+| [0017](0017-server-actions-over-route-handlers.md) | インターフェースは Server Action 統一（Route Handler は例外4件） | 高 | — |
+| [0018](0018-scoped-owner-ids-read-scope.md) | 読み取り認可は scopedOwnerIds の where 注入 | 高 | — |
+| [0019](0019-two-layer-write-authorization.md) | words の二層書き込み認可、quiz は意図的に不適用 | 高 | — |
+
+### D. quiz 機能
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0020](0020-feature-named-quiz.md) | 機能名は quiz（「テスト」回避） | 高 | — |
+| [0021](0021-voluntary-self-test-no-srs.md) | 任意起動の腕試しモデル（SRS スコープ外） | 高 | — |
+| [0022](0022-quiz-source-occurrence-range.md) | 出題対象は掲載箇所 + 番号範囲、範囲内全件出題 | 高 | — |
+| [0023](0023-batch-submit-discard-on-abort.md) | 履歴は終了時一括送信、中断 = 破棄 | 高 | — |
+| [0024](0024-no-quiz-session-table.md) | テストセッションテーブル非採用（append-only） | 高 | — |
+| [0025](0025-server-side-generation-cheating-accepted.md) | サーバ側全生成・正答同梱（カンニング許容） | 高 | — |
+| [0026](0026-dummy-choices-same-occurrence-first.md) | ダミーは同一掲載箇所優先 → 全単語補充 | 高 | — |
+| [0027](0027-meaningless-words-excluded-tg-exception.md) | 意味未登録語は対象外（TG 形式のみ例外） | 高 | — |
+| [0028](0028-rng-injected-pure-generation.md) | RNG 注入の純関数生成 + Fisher–Yates、シード非永続 | 高 | — |
+| [0029](0029-format-extension-exhaustive-switch.md) | 形式拡張は exhaustive switch 方式 | 高 | — |
+| [0030](0030-dummy-pool-bounded-fetch.md) | dummy-pool 上限フェッチ + プレビュー軽量化（実測駆動改訂） | 高 | — |
+| [0031](0031-client-state-screen-flow.md) | /quiz 内クライアント状態遷移（URL 分割なし） | 高 | — |
+| [0032](0032-history-submit-single-flight.md) | 履歴送信 single-flight + 存在フィルタ、TEST 重複は MVP 許容 | 高 | — |
+| [0033](0033-drill-round-count-cas.md) | drill ラウンド冪等性は roundCount の CAS | 高 | — |
+| [0034](0034-per-format-timeout-setting.md) | 制限時間は形式別オプション設定 | 高 | — |
+| [0035](0035-vague-self-judge-option.md) | 自己判定に「うろ覚え」導入、GAVE_UP 転用 | 高 | — |
+
+### E. drill（定着モード）
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0036](0036-drill-remaining-count-model.md) | 残数モデル | 高 | — |
+| [0037](0037-drill-per-source-test.md) | 元テスト単位の独立 drill、都度生成 | 高 | — |
+| [0038](0038-drill-inherits-format-timeout.md) | 形式・制限時間は元テストから継承 | 高 | — |
+| [0039](0039-drill-reshuffle-each-round.md) | 毎ラウンド再シャッフル | 高 | — |
+| [0040](0040-drill-default-wrong-only.md) | 既定は誤答のみ、正解含むはオプトイン | 高 | — |
+| [0041](0041-drill-retry.md) | DRILL_RETRY（残数無影響の再演習） | 高 | — |
+| [0042](0042-retest-same-range.md) | 「同じ範囲でもう一度テストする」（sourceRange 保持） | 高 | — |
+
+### F. 音源
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0043](0043-blob-di-driver-switching.md) | Blob DI 境界 + env による driver 切替（dev はローカルディスク） | 高 | — |
+| [0044](0044-blob-best-effort-delete.md) | put → update → del 順序、削除ベストエフォート（DB が真実源） | 高 | — |
+| [0045](0045-remove-translation-audio.md) | 意味読み上げ音源の廃止 | 高 | — |
+| [0046](0046-tts-fallback.md) | TTS フォールバック（mp3 優先） | 高 | — |
+| [0047](0047-quiz-audio-autoplay-preload.md) | quiz 中の自動再生 + プリロード、失敗非ブロック | 高 | — |
+
+### G. 認証・デプロイ・運用
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0048](0048-admin-invite-without-email.md) | サインアップ無効 + 管理者招待（メール送信なし） | 高 | — |
+| [0049](0049-staged-email-change-accepted-risk.md) | ステージング型メール変更、リスク許容 + requireEmailVerification 禁止 | 高 | — |
+| [0050](0050-vercel-managed-integration.md) | Vercel-Managed Integration（Terraform 撤回） | 高 | — |
+| [0051](0051-release-tag-triggered-deploy.md) | Release タグトリガー本番デプロイ + Preview 抑止 | 高 | — |
+| [0052](0052-ops-scripts-di-core.md) | Ops スクリプト規約（tsx + DI コア + dry-run 既定） | 高 | — |
+| [0053](0053-intermediate-csv-import.md) | 中間 CSV 分解パイプラインでの取り込み | 高 | — |
+| [0054](0054-worktree-shared-db-blob.md) | worktree 並行開発（DB・.dev-blob 共有） | 高 | — |
+| [0055](0055-occurrence-presets-opt-in.md) | 共有掲載箇所プリセット既定 OFF（オプトイン） | 高 | — |
+
+### H. テスト・開発プロセス
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0056](0056-test-split-unit-integration.md) | unit/integration 拡張子分割 + 専用 DB + truncate/reseed | 高 | — |
+| [0057](0057-integration-tests-not-in-ci.md) | integration テストは CI で走らせない | **低** | あり |
+| [0058](0058-nested-claude-md.md) | 規約はネスト CLAUDE.md に配置、AGENTS.md スリム化 | 高 | — |
+| [0059](0059-naming-book-and-issue-backlog.md) | naming-book が用語の権威、バックログは GitHub Issues | 高 | — |
+| [0060](0060-two-layer-format-enforcement.md) | 整形強制は Stop hook + CI の二層 | 高 | — |
+
+## 人間への確認質問（レビュー時にまとめて回答用）
+
+回答は issue #101 で追跡する。回答が得られ次第、該当 ADR へ反映して確信度を更新する。
+
+確信度「低」（必須）:
+
+- **[0001](0001-nextjs-app-router-stack.md)** スタック採用: Next.js を選んだ動機は？比較した候補（Remix、Rails 等）はあったか？
+- **[0010](0010-no-soft-delete.md)** ソフトデリート不採用: 意図的な判断か？履歴保全・誤削除復旧の要求が将来も無い前提でよいか？
+- **[0057](0057-integration-tests-not-in-ci.md)** integration の CI 除外: 主因は DB 用意コスト / 実行時間 / secrets 管理のどれか？将来 CI に載せる意向は？
+
+確信度「中」（任意の補足）:
+
+- **[0002](0002-exact-version-pinning.md)** exact pin の動機（再現性以外の背景があれば）
+- **[0005](0005-zod-v3-subpath.md)** zod v3 API に留まるのは暫定か恒久か
+- **[0011](0011-occurrence-concept-many-to-many.md)** タグ → 掲載箇所刷新時に他に検討した概念モデルがあれば

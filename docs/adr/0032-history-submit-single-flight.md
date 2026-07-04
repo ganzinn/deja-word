@@ -1,0 +1,32 @@
+# ADR-0032: 履歴送信は single-flight + 存在フィルタ、TEST の再送重複は MVP 許容
+
+- ステータス: 提案
+- 確信度: 高
+- 起票日: 2026-07-04
+
+> **注意**: 本 ADR はコード・コミット履歴からの事後的な推定であり、当時の意思決定の記録ではない。
+> 当時を知るメンバーのレビューを経てステータスを更新すること。
+
+## 背景
+
+テスト終了時の一括送信（[ADR-0023](0023-batch-submit-discard-on-abort.md)）には、(a) 二重クリック等による二重送信、(b) テスト中に単語が削除された場合の FK エラー、という整合性問題がある。QuizAnswer は append-only でセッションテーブルが無く（[ADR-0024](0024-no-quiz-session-table.md)）、冪等キーを紐づける先が無い。
+
+## 決定内容
+
+- クライアント側 **single-flight**（送信中の再送信抑止）+ サーバ側**存在フィルタ**（削除済み単語の解答行を落として登録）で担保する
+- それでも防げない **TEST モードの再送重複（リトライで同じ解答が二重登録される可能性）は MVP の許容事項**とする（設計に明記）
+- drill は残数が壊れると実害があるため、別途 roundCount CAS で冪等化する（[ADR-0033](0033-drill-round-count-cas.md)）
+
+## 採らなかった代替案
+
+- **idempotency key の導入** — セッションテーブルを持たない決定（quiz-02）と衝突するため却下（quiz-05 決定 3 の却下案）
+
+## 影響
+
+- TEST 履歴は稀に重複し得る前提で扱う（集計を厳密に使う機能を足す場合は再検討が必要）
+- 「整合性の要求水準を TEST と drill で分ける」という非対称な設計が明文化された
+
+## 根拠（コード・コミット・文書参照）
+
+- `docs/design/word-quiz/05-architecture.md` 決定 3 — single-flight + 存在フィルタ、MVP 許容の明記（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- `src/lib/quiz-answers-submit.ts` / `src/lib/quiz/handlers/quiz-answer-handler.ts`

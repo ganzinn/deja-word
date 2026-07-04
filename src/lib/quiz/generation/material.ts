@@ -4,7 +4,11 @@
 
 import type { MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
 
-/** `fetchQuizSource` が返す 1 行（ユーザーの可視単語。MeaningText 1 件以上が前提）。 */
+/**
+ * `fetchQuizSource` が返す 1 行（ユーザーの可視単語）。
+ * 非 TG 形式は MeaningText 1 件以上が前提だが、TG 例文形式では meaning 空の単語（meanings=[]）も
+ * 「使える TG 例文を持つ」なら出題対象になりうる。表示は tgExample と headword で完結する。
+ */
 export type QuizSourceRow = {
   id: string;
   headword: string;
@@ -31,7 +35,10 @@ export type TgExampleRow = { wordId: string; text: string; meaning: string };
 export type QuizWord = {
   id: string;
   headword: string;
-  /** sortOrder 順。先頭が「最初の Meaning」。各単語は意味 1 件以上が入力前提。 */
+  /**
+   * sortOrder 順。先頭が「最初の Meaning」。非 TG 形式は意味 1 件以上が前提だが、
+   * TG 例文形式の対象・ダミーでは空配列でありうる（tgExample だけで成立するため）。
+   */
   meanings: QuizMeaning[];
   /** 使える TG 例文（sortOrder 最小の 1 件）。TG 例文形式以外の生成時・未登録の単語は null。 */
   tgExample: { text: string; meaning: string } | null;

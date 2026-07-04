@@ -76,6 +76,12 @@ export async function fetchQuizSource(
   const hasVisibleMeaning = {
     meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
   } as const;
+  // 出題対象・ダミー候補の適格述語。TG 例文形式は「使える TG 例文を持つ単語」で判定し、
+  // 単語自身の可視 MeaningText の有無は問わない（TG 四択は Example の text/meaning だけで成立する）。
+  // 非 TG 形式は従来どおり可視 MeaningText 1 件以上を要求する。
+  const eligibleWord = options.includeTgExamples
+    ? { examples: { some: usableTgExampleWhere(allowed) } }
+    : hasVisibleMeaning;
   const linkedToOccurrence = {
     wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
   } as const;
@@ -113,7 +119,7 @@ export async function fetchQuizSource(
 
   // 出題対象は全件取得。
   const targetRows = await prisma.word.findMany({
-    where: { ownerId: { in: allowed }, ...hasVisibleMeaning, ...inRangeWordOccurrence },
+    where: { ownerId: { in: allowed }, ...eligibleWord, ...inRangeWordOccurrence },
     select,
   });
 
@@ -126,7 +132,7 @@ export async function fetchQuizSource(
       : await prisma.word.findMany({
           where: {
             ownerId: { in: allowed },
-            ...hasVisibleMeaning,
+            ...eligibleWord,
             ...linkedToOccurrence,
             NOT: inRangeWordOccurrence,
           },
@@ -140,7 +146,7 @@ export async function fetchQuizSource(
     fallbackTake === 0
       ? []
       : await prisma.word.findMany({
-          where: { ownerId: { in: allowed }, ...hasVisibleMeaning, NOT: linkedToOccurrence },
+          where: { ownerId: { in: allowed }, ...eligibleWord, NOT: linkedToOccurrence },
           select,
           orderBy: { createdAt: "desc" },
           take: fallbackTake,
@@ -185,16 +191,18 @@ export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["targetR
 /**
  * 対象 Occurrence 内の除外内訳（番号なし・意味未登録・TG例文なし）を count クエリで返す。
  *
- * 意味未登録の単語は fetchQuizSource の結果に現れないため、別途カウントする。
- * 各件数は独立にカウントする（番号なしかつ意味未登録の単語は両方に数えられる）。
- * `noTgExample`（使える TG 例文を持たない単語）は TG 例文形式のときだけカウントし、
- * それ以外は null（count クエリを発行せず、UI も表示しない）。
+ * `noMeaning`（意味未登録）と `noTgExample`（使える TG 例文を持たない）は形式で排他:
+ * - 非 TG 形式（`countTgExample: false`）: 意味未登録が除外理由なので `noMeaning` を数え、`noTgExample` は null。
+ * - TG 例文形式（`countTgExample: true`）: 意味は問わず TG 例文の有無が除外理由なので `noTgExample` を数え、
+ *   `noMeaning` は null（count クエリを発行せず、UI も表示しない）。
+ * `noNumber` は両形式共通（範囲指定に番号が要る）。各件数は独立カウント（番号なしの単語は
+ * `noNumber` と `noMeaning`/`noTgExample` の両方に数えられうる）。
  */
 export async function countQuizSourceExclusions(
   userId: string,
   occurrenceId: string,
   options: { countTgExample?: boolean } = {},
-): Promise<{ noNumber: number; noMeaning: number; noTgExample: number | null }> {
+): Promise<{ noNumber: number; noMeaning: number | null; noTgExample: number | null }> {
   const allowed = scopedOwnerIds(userId);
   const [noNumber, noMeaning, noTgExample] = await Promise.all([
     prisma.wordOccurrence.count({
@@ -205,13 +213,17 @@ export async function countQuizSourceExclusions(
         word: { ownerId: { in: allowed } },
       },
     }),
-    prisma.word.count({
-      where: {
-        ownerId: { in: allowed },
-        wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
-        NOT: { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } },
-      },
-    }),
+    // 意味未登録は非 TG 形式の除外理由。TG 形式では meaning を問わないため数えず null を返す
+    // （TG の除外は noTgExample が捕捉する）。noTgExample とちょうど排他になる。
+    options.countTgExample
+      ? Promise.resolve(null)
+      : prisma.word.count({
+          where: {
+            ownerId: { in: allowed },
+            wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+            NOT: { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } },
+          },
+        }),
     options.countTgExample
       ? prisma.word.count({
           where: {
@@ -228,12 +240,15 @@ export async function countQuizSourceExclusions(
 /**
  * 出題対象（target）の件数を count クエリで返す。プレビューの軽量経路用。
  *
- * partitionMaterial の target 定義と一致させる: 可視 MeaningText を 1 件以上持ち、かつ
- * 対象 Occurrence に occurrenceNumber 非 null かつ範囲内の wordOccurrence を持つ単語。
+ * partitionMaterial の target 定義と一致させる: 対象 Occurrence に occurrenceNumber 非 null かつ
+ * 範囲内の wordOccurrence を持ち、かつ形式ごとの適格述語（下記）を満たす単語。
  * 範囲（from/to）は未指定なら制限なし。
  *
- * TG 例文形式（`requireTgExample: true`）は出題対象が「使える TG 例文を持つ単語」に絞られる
- * ため、同じ述語を AND して生成側（buildChoiceTgQuestions の usable targets）と件数を一致させる。
+ * 適格述語（fetchQuizSource の eligibleWord と一致）:
+ * - 非 TG 形式: 可視 MeaningText を 1 件以上持つ。
+ * - TG 例文形式（`requireTgExample: true`）: 「使える TG 例文を持つ」。可視 MeaningText は問わない
+ *   （TG 四択は Example の text/meaning だけで成立するため）。生成側（buildChoiceTgQuestions の
+ *   usable targets）と件数を一致させる。
  */
 export async function countQuizTargets(
   userId: string,
@@ -245,7 +260,6 @@ export async function countQuizTargets(
   return prisma.word.count({
     where: {
       ownerId: { in: allowed },
-      meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
       wordOccurrences: {
         some: {
           occurrenceId,
@@ -257,7 +271,11 @@ export async function countQuizTargets(
           },
         },
       },
-      ...(options.requireTgExample ? { examples: { some: usableTgExampleWhere(allowed) } } : {}),
+      // TG 例文形式は「使える TG 例文を持つ単語」だけを対象とし可視 MeaningText は問わない。
+      // 非 TG 形式は可視 MeaningText 1 件以上を要求する。fetchQuizSource の eligibleWord と一致。
+      ...(options.requireTgExample
+        ? { examples: { some: usableTgExampleWhere(allowed) } }
+        : { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } }),
     },
   });
 }

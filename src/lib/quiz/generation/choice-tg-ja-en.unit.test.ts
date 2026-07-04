@@ -51,6 +51,26 @@ describe("buildChoiceTgJaEnQuestions", () => {
     expect([...dummyTexts].sort()).toEqual(["sentence d1", "sentence d2", "sentence d3"]);
   });
 
+  test("builds a question for a target with no word meanings (meanings: []) — TG payload is meaning-independent", () => {
+    // 単語自身の意味が未登録でも、使える TG 例文があれば TG 四択（日→英）は成立する。
+    const meaninglessTarget: QuizWord = {
+      id: "mt",
+      headword: "hw-mt",
+      tgExample: tg("mt"),
+      meanings: [],
+    };
+    const m = material({
+      targets: [meaninglessTarget],
+      sameOccurrencePool: [word("d1", tg("d1")), word("d2", tg("d2")), word("d3", tg("d3"))],
+    });
+    const [q] = buildChoiceTgJaEnQuestions(m, seededRng(1));
+    expect(q.wordId).toBe("mt");
+    expect(q.headword).toBe("hw-mt");
+    expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.prompt).toBe("例文mtの意味");
+    expect(q.choices[q.correctIndex].text).toBe("sentence mt");
+  });
+
   test("asks only targets that have a usable TG example (one question per usable word)", () => {
     const m = material({
       targets: [word("t1", tg("t1")), word("t2", null), word("t3", tg("t3"))],

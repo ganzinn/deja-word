@@ -500,7 +500,10 @@ function ExcludedNote({ excluded }: { excluded: QuizPreview["excluded"] }) {
   // 各件数は独立カウントのため合算・恒等式の表示はしない（重複があり得る）
   const parts: string[] = [];
   if (excluded.noNumber > 0) parts.push(`掲載番号なしの単語 ${excluded.noNumber}語`);
-  if (excluded.noMeaning > 0) parts.push(`意味未登録の単語 ${excluded.noMeaning}語`);
+  // noMeaning は非 TG 形式のときのみ非 null（TG 形式では意味を問わないため表示しない）
+  if (excluded.noMeaning !== null && excluded.noMeaning > 0) {
+    parts.push(`意味未登録の単語 ${excluded.noMeaning}語`);
+  }
   // TG 例文形式のときのみ非 null（形式非依存のプレビューでは表示しない）
   if (excluded.noTgExample !== null && excluded.noTgExample > 0) {
     parts.push(`TG例文なしの単語 ${excluded.noTgExample}語`);

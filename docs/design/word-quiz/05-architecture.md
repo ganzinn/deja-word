@@ -15,7 +15,7 @@
 - drill の生成はテスト結果画面起点（「定着モードへ」押下時。元テスト結果から DrillWord の初期残数を作る）（06 確定）。
 - 中断は破棄（途中状態のサーバー保存なし。drill の確定済み残数は保持）（01・06 確定）。
 - 出題形式は3形式＋将来形式4・5（日→英）。形式追加に耐える拡張点を設計すること（01 確定。注記: その後日→英 3 形式＋TG四択 2 形式が加算され現在は計 8 形式）。
-- スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ（02 確定。本トピックの決定により Drill へ `roundCount` を、06 の決定により `format` を加算 → 02 改訂済み）。範囲指定の対象は occurrenceNumber 付きの WordOccurrence のみ（02 確定）。意味（MeaningText）未登録の単語は出題対象から除外する（03 確定。取得クエリに効く）。
+- スキーマは QuizAnswer / Drill / DrillWord ＋ enum 3つ（02 確定。本トピックの決定により Drill へ `roundCount` を、06 の決定により `format` を加算 → 02 改訂済み）。範囲指定の対象は occurrenceNumber 付きの WordOccurrence のみ（02 確定）。意味（MeaningText）未登録の単語は出題対象から除外する（03 確定。取得クエリに効く）。**ただし TG 例文形式（CHOICE_TG / CHOICE_TG_JA_EN）は例外**で、意味未登録でも使える TG 例文があれば対象とする（meaning 非依存化。取得・件数クエリの適格述語が TG 形式で切り替わる。後述「TG のプレビュー件数」参照）。
 - 問題データ（選択肢構成・シャッフル済み）はサーバーで全問生成し一括返却する。採点はクライアントで行うため正解情報も payload に含む（カンニングは許容）。drill も各ラウンド開始時に同じロジックでサーバー再生成（03 確定）。
 - 選択肢生成・シャッフルは RNG（`() => number`）を引数に取る純関数として実装し、unit test はシード付き PRNG を注入する（03 確定）。
 
@@ -178,7 +178,7 @@ src/lib/quiz/generation/
 
 ### 決定 8: ダミープール取得 — 出題対象（範囲内）は全件・ダミー候補プールは目標件数まで優先順で不足分だけ取得し、純関数でパーティション
 
-`src/lib/quiz/queries/quiz-source.ts` の `fetchQuizSource(userId, occurrenceId)` が、ユーザーの全可視単語（MeaningText 1 件以上）を一括取得する:
+`src/lib/quiz/queries/quiz-source.ts` の `fetchQuizSource(userId, occurrenceId)` が、ユーザーの適格単語を一括取得する（適格述語 `eligibleWord`: 非 TG 形式 = MeaningText 1 件以上、TG 例文形式 = 使える TG 例文を持つ。後述「TG のプレビュー件数」参照）:
 
 ```ts
 // prisma.word.findMany({
@@ -188,7 +188,7 @@ src/lib/quiz/generation/
 //     wordOccurrences: { where: { occurrenceId, ownerId: { in: allowed } }, select: { occurrenceNumber } } } })
 ```
 
-純関数 `partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（範囲外・番号なしの他単語）、(c) 全登録プール（Occurrence 外の補完単語）に対応づけて `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。
+純関数 `partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows)` が (a) 出題対象（occurrenceNumber が範囲内）、(b) 同一 Occurrence プール（範囲外・番号なしの他単語）、(c) 全登録プール（Occurrence 外の補完単語）に対応づけて `QuizSourceMaterial` を作る。(a)〜(c) は互いに素な分割であり、**ある問題のダミー候補は (a)∪(b) から出題中の単語自身を除いたもの**（03 の「同一 Occurrence の他単語」には他の出題対象も含む）。(c) は不足時の補完用。除外内訳（番号なし・意味未登録）のカウントだけは別途 count クエリで取る（意味未登録の単語は上記クエリに現れないため）。TG 形式では意味未登録が除外理由でなくなるため、`noMeaning` は数えず代わりに `noTgExample` を数える（後述「TG のプレビュー件数」）。
 
 > **2026-06-21 追補（生成経路の取得量を上限化）**: 当初は全可視単語を 1 クエリで取得する設計
 > だったが、`where` に Occurrence 絞り込みが無く、テスト開始のたびに全コーパスを読み込んでいた
@@ -246,12 +246,24 @@ src/lib/quiz/generation/
 >   `tgExampleRows` に返す。`partitionMaterial` が `QuizWord.tgExample` へ対応づける。
 >   既存 6 形式の取得経路（select・クエリ本数・行型）は無変更＝**非 TG 形式の追加コストはゼロ**。
 > - **プレビューの format 依存化（本決定の「形式非依存プレビュー」の限定緩和）**: `getQuizPreview` に
->   optional `format` を追加し、**TG 形式のときに限り** `countQuizTargets` に TG 述語を AND、
->   `countQuizSourceExclusions` に第 3 カウント `noTgExample`（使える TG 例文なし。他の除外と同じく
->   独立カウント）を加える。形式非依存の件数のままでは開始ゲート（`targetCount > 0`）と実出題数が
->   乖離するため。非 TG 形式は従来どおり形式非依存（追加 count なし・`noTgExample: null`）。
->   **形式の成立可否（ダミー確保）を事前判定しない方針は変えない**。
+>   optional `format` を追加し、**TG 形式のときに限り** `countQuizTargets` の適格述語を TG 述語へ
+>   切り替え、`countQuizSourceExclusions` の除外内訳を TG 用に切り替える（下記追補参照）。形式非依存の
+>   件数のままでは開始ゲート（`targetCount > 0`）と実出題数が乖離するため。非 TG 形式は従来どおり
+>   形式非依存（`noTgExample: null`）。**形式の成立可否（ダミー確保）を事前判定しない方針は変えない**。
 > - count と取得は同一述語（`usableTgExampleWhere`）を共有し、プレビュー件数と実出題数の乖離を防ぐ。
+
+> **2026-07-04 追補（TG 四択の meaning 非依存化）**: 上記追補の当初実装は「`countQuizTargets` に TG 述語を
+> **AND**」「`noTgExample` を `noMeaning` と**独立に加算**」だったが、TG 四択は Example の text/meaning だけで
+> 成立し単語自身の MeaningText を使わない（`questionBaseOf` の発音音源のみ、null 許容）ため、meaning 必須は
+> 過剰除外だった。次のとおり改める。
+>
+> - **適格述語の切替（AND ではなく置換）**: `fetchQuizSource` に `eligibleWord` を導入し、targets/ダミー
+>   両プールとも TG 形式では「使える TG 例文を持つ」で判定（可視 MeaningText は問わない）、非 TG 形式は
+>   従来の MeaningText 1 件以上。`countQuizTargets` も同様に述語を置換する（meaning 述語は非 TG 形式のみ）。
+>   → 意味未登録でも使える TG 例文があれば TG 四択の対象・ダミーになる。
+> - **除外内訳は形式で排他**: `countQuizSourceExclusions` は TG 形式で `noMeaning` を数えず（null）、代わりに
+>   `noTgExample` を数える。非 TG 形式は逆（`noMeaning` のみ・`noTgExample: null`）。`noNumber` は両形式共通。
+>   UI（開始画面の除外注記）も各形式で実際の除外理由だけを出す（04 参照）。
 
 ### 決定 9: テスト戦略
 

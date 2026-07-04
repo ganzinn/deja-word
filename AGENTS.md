@@ -13,6 +13,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `*.unit.test.ts` — DB なし。`pnpm test:unit` で実行（高速、env 非依存、CI でも走る）。
 - `*.integration.test.ts` — docker-compose の Postgres 上の **別 DB `dejaword_test`** を使う。`pnpm test:integration` で実行（ローカルのみ、CI では走らせない）。
 
+include は `.ts` のみ（`src/**/*.unit.test.ts` / `src/**/*.integration.test.ts`）。`.test.tsx` を作っても実行されない。
+
 初回セットアップ:
 
 ```sh
@@ -44,24 +46,4 @@ scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 
 ## Ops スクリプト（運用ツール）
 
-DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する
-（例: `db:seed` / `db:create-user` / `db:purge-occurrence` / `db:import-words`）。接続先は
-`DIRECT_URL → DATABASE_URL_UNPOOLED → DATABASE_URL` の順で解決し（`$transaction` のため直結を優先）、
-`PrismaClient` はスクリプトで生成して注入する。`docs/ops/` に各ツールのドキュメントを置く。
-
-**アプリ本体のサービス関数を tsx から直接 import してはいけない。** 単語登録の正規パス
-（`createWordForUser` → `writeWordChildren` → `src/lib/words/handlers/*`）や `@/lib/prisma` などは
-グラフ全体が `import "server-only"` を持ち、実行時に `@/` エイリアス import を使う。tsx はこのどちらも
-解決できず、import 時点で落ちる。
-
-→ ops ツールのコアロジックは **server-only 非依存・DI 対応のモジュール**として `src/lib/` に新設する
-（`occurrence-purge.ts` / `bulk-word-import.ts` が手本）。具体的には:
-
-- `prisma`（必要なら `blob` も）は**引数注入**。シングルトン `@/lib/prisma` を import しない。
-- `@/` 参照は **`import type` のみ**（型は実行時に消えるので tsx でも安全）。実行時に値が要るものは
-  相対 import（例 `./system-user`）で、かつその依存先も server-only / `@/` 実行時 import を持たないこと
-  （`./prisma-errors` は内部で `@/generated` を実行時 import するので、tsx から使うコアでは使わない）。
-- 書き込みは正規パスを再利用できないぶん、`prisma/seed.ts` の raw ネスト create を手本に最小限を書く。
-
-スクリプト側（`scripts/*.ts`）は CSV 読込・引数解析・対話プロンプト（`node:readline/promises`、
-`stdin.isTTY` で対話/非対話を分岐）・レポート整形を担い、既定はドライラン、`--execute` で実行する。
+DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する。実装規約は `scripts/CLAUDE.md` と `src/lib/CLAUDE.md`（ops コアモジュール節）にある。ドキュメントは `docs/ops/`。

@@ -1,8 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-import { buildChoiceTgQuestions, NO_TG_TARGET_REASON } from "@/lib/quiz/generation/choice-tg";
+import { buildChoiceTgQuestions } from "@/lib/quiz/generation/choice-tg";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
-import type { QuizSourceMaterial, QuizWord } from "@/lib/quiz/generation/material";
+import {
+  NO_TG_TARGET_REASON,
+  type QuizSourceMaterial,
+  type QuizWord,
+} from "@/lib/quiz/generation/material";
 import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function word(

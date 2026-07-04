@@ -43,6 +43,8 @@ import { QuestionMultiMeaning } from "./question-multi-meaning";
 import type { QuestionOutcome } from "./question-outcome";
 import { QuestionSelfJudge } from "./question-self-judge";
 import { QuestionSelfJudgeJaEn } from "./question-self-judge-ja-en";
+import { QuestionSelfJudgeTg } from "./question-self-judge-tg";
+import { QuestionSelfJudgeTgJaEn } from "./question-self-judge-tg-ja-en";
 import { QuestionSpelling } from "./question-spelling";
 import {
   ResultList,
@@ -152,6 +154,10 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
     case "SPELLING":
       // 日本語→英語の正解は英単語（headword）
       return quiz.questions[index].headword;
+    case "SELF_JUDGE_TG":
+    case "SELF_JUDGE_TG_JA_EN":
+      // TG自己判定の正解は解答表示と同じ（TG 例文の意味 / 英文）
+      return quiz.questions[index].answer;
   }
 }
 
@@ -180,8 +186,10 @@ function promptViewOf(quiz: QuizPayload, index: number): PromptView {
     case "SPELLING":
       return { kind: "ja-plain", text: quiz.questions[index].prompt };
     case "CHOICE_TG":
+    case "SELF_JUDGE_TG":
       return { kind: "tg-text", text: quiz.questions[index].prompt };
     case "CHOICE_TG_JA_EN":
+    case "SELF_JUDGE_TG_JA_EN":
       return { kind: "tg-meaning", text: quiz.questions[index].prompt };
   }
 }
@@ -321,6 +329,35 @@ function QuestionView({
           onShowDetail={onShowDetail}
           showCorrectAudio
           renderChoiceText={(text) => <TgExampleText text={text} />}
+        />
+      );
+    }
+    case "SELF_JUDGE_TG": {
+      // 挙動は自己判定（英→日）と同一。解答表示が TG 例文の意味（ハイライト）になる
+      const question = quiz.questions[index];
+      return (
+        <QuestionSelfJudgeTg
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerShown={onAnswerShown}
+        />
+      );
+    }
+    case "SELF_JUDGE_TG_JA_EN": {
+      // 挙動は自己判定（日→英）と同一。解答表示が TG 例文の英文（ハイライト＋発音・詳細）になる
+      const question = quiz.questions[index];
+      return (
+        <QuestionSelfJudgeTgJaEn
+          key={question.wordId}
+          question={question}
+          timeoutSeconds={quiz.timeoutSeconds}
+          onComplete={onComplete}
+          onReveal={onReveal}
+          onAnswerReveal={onAnswerReveal}
+          onShowDetail={onShowDetail}
         />
       );
     }

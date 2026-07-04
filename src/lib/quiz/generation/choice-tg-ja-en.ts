@@ -2,7 +2,6 @@
 // 問題文は target の TG 例文の意味、選択肢は各単語の TG 例文の英文。
 // 出題対象は使える TG 例文（意味つき）を持つ単語のみ（1 単語 1 問・sortOrder 最小の 1 件）。
 
-import { NO_TG_TARGET_REASON } from "@/lib/quiz/generation/choice-tg";
 import {
   QuizGenerationError,
   selectDummies,
@@ -10,6 +9,7 @@ import {
 } from "@/lib/quiz/generation/dummy-pool";
 import {
   hasTgExample,
+  NO_TG_TARGET_REASON,
   questionBaseOf,
   tgTargetsOf,
   type QuizSourceMaterial,

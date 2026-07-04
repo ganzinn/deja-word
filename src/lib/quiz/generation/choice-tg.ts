@@ -9,6 +9,7 @@ import {
 } from "@/lib/quiz/generation/dummy-pool";
 import {
   hasTgExample,
+  NO_TG_TARGET_REASON,
   questionBaseOf,
   tgTargetsOf,
   type QuizSourceMaterial,
@@ -19,9 +20,6 @@ import type { ChoiceTgQuestion } from "@/lib/quiz/payload";
 
 /** ダミーの基本数（正解 1 ＋ダミー 3 ＝四択）。不足時は縮退（最低 2 択＝ダミー 1 件）。 */
 const CHOICE_DUMMY_COUNT = 3;
-
-/** 出題対象に使える TG 例文の単語が 1 件もないときの理由（生成・成立判定で共用）。 */
-export const NO_TG_TARGET_REASON = "TG例文（意味つき）が登録された出題対象の単語がありません";
 
 /** TG四択（英→日）のダミー候補（1 候補 = 1 単語）。重複排除・表示は TG 例文の意味で行う。 */
 function toTgMeaningCandidate(word: QuizWord): DummyCandidate<QuizWord>[] {

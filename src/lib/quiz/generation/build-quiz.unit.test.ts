@@ -105,6 +105,26 @@ describe("buildQuiz", () => {
       expect(q.prompt).toMatch(/^例文/);
       expect(q.choices[q.correctIndex].text).toMatch(/^sentence /);
     }
+
+    const selfJudgeTg = buildQuiz("SELF_JUDGE_TG", richTgMaterial, seededRng(1));
+    expect(selfJudgeTg.format).toBe("SELF_JUDGE_TG");
+    expect(selfJudgeTg.questions).toHaveLength(2);
+    if (selfJudgeTg.format === "SELF_JUDGE_TG") {
+      const q = selfJudgeTg.questions[0];
+      // 問題文は TG 例文の英文、解答は TG 例文の意味
+      expect(q.prompt).toMatch(/^sentence /);
+      expect(q.answer).toMatch(/^例文/);
+    }
+
+    const selfJudgeTgJaEn = buildQuiz("SELF_JUDGE_TG_JA_EN", richTgMaterial, seededRng(1));
+    expect(selfJudgeTgJaEn.format).toBe("SELF_JUDGE_TG_JA_EN");
+    expect(selfJudgeTgJaEn.questions).toHaveLength(2);
+    if (selfJudgeTgJaEn.format === "SELF_JUDGE_TG_JA_EN") {
+      const q = selfJudgeTgJaEn.questions[0];
+      // 問題文は TG 例文の意味、解答は TG 例文の英文
+      expect(q.prompt).toMatch(/^例文/);
+      expect(q.answer).toMatch(/^sentence /);
+    }
   });
 
   test("forwards choiceFirstMeaningTextOnly to the CHOICE generator", () => {
@@ -136,6 +156,8 @@ describe("checkFormatAvailability", () => {
       "SPELLING",
       "CHOICE_TG",
       "CHOICE_TG_JA_EN",
+      "SELF_JUDGE_TG",
+      "SELF_JUDGE_TG_JA_EN",
     ] as const) {
       const r = checkFormatAvailability(format, empty);
       expect(r.available).toBe(false);
@@ -213,17 +235,34 @@ describe("checkFormatAvailability", () => {
     });
   });
 
-  test("TG choice formats are unavailable when no target has a usable TG example", () => {
-    // 出題対象はあるが、どれも使える TG 例文を持たない（両向きとも同じ理由で不成立）
+  test("TG formats are unavailable when no target has a usable TG example", () => {
+    // 出題対象はあるが、どれも使える TG 例文を持たない（四択・自己判定とも同じ理由で不成立）
     const m = material({
       targets: [word("t1", [["走る"]])],
       sameOccurrencePool: [tgWord("d1", [["読む"]])],
     });
-    for (const format of ["CHOICE_TG", "CHOICE_TG_JA_EN"] as const) {
+    for (const format of [
+      "CHOICE_TG",
+      "CHOICE_TG_JA_EN",
+      "SELF_JUDGE_TG",
+      "SELF_JUDGE_TG_JA_EN",
+    ] as const) {
       const r = checkFormatAvailability(format, m);
       expect(r.available).toBe(false);
       expect(r.reason).toBe("TG例文（意味つき）が登録された出題対象の単語がありません");
     }
+  });
+
+  test("TG self-judge formats are available without any dummy word (unlike TG choice)", () => {
+    // 自己判定はダミー不要のため、TG 例文つきの出題対象が 1 件あれば成立する
+    const m = material({ targets: [tgWord("t", [["走る"]])] });
+    expect(checkFormatAvailability("SELF_JUDGE_TG", m)).toEqual({ available: true, reason: null });
+    expect(checkFormatAvailability("SELF_JUDGE_TG_JA_EN", m)).toEqual({
+      available: true,
+      reason: null,
+    });
+    // 一方、TG四択はダミーを確保できず不成立
+    expect(checkFormatAvailability("CHOICE_TG", m).available).toBe(false);
   });
 
   test("TG choice availability requires a TG-example dummy (words without TG don't count)", () => {
@@ -271,6 +310,13 @@ describe("checkFormatAvailability", () => {
     });
     expect(() => buildQuiz("CHOICE_TG", m, seededRng(1))).not.toThrow();
     expect(() => buildQuiz("CHOICE_TG_JA_EN", m, seededRng(1))).not.toThrow();
+    expect(checkFormatAvailability("SELF_JUDGE_TG", m)).toEqual({ available: true, reason: null });
+    expect(checkFormatAvailability("SELF_JUDGE_TG_JA_EN", m)).toEqual({
+      available: true,
+      reason: null,
+    });
+    expect(() => buildQuiz("SELF_JUDGE_TG", m, seededRng(1))).not.toThrow();
+    expect(() => buildQuiz("SELF_JUDGE_TG_JA_EN", m, seededRng(1))).not.toThrow();
   });
 
   test("availability agrees with generation success for TG material", () => {
@@ -280,11 +326,19 @@ describe("checkFormatAvailability", () => {
     });
     expect(checkFormatAvailability("CHOICE_TG", noTgTargets).available).toBe(false);
     expect(() => buildQuiz("CHOICE_TG", noTgTargets, seededRng(1))).toThrow();
+    expect(checkFormatAvailability("SELF_JUDGE_TG", noTgTargets).available).toBe(false);
+    expect(() => buildQuiz("SELF_JUDGE_TG", noTgTargets, seededRng(1))).toThrow();
+    expect(checkFormatAvailability("SELF_JUDGE_TG_JA_EN", noTgTargets).available).toBe(false);
+    expect(() => buildQuiz("SELF_JUDGE_TG_JA_EN", noTgTargets, seededRng(1))).toThrow();
 
     expect(checkFormatAvailability("CHOICE_TG", richTgMaterial).available).toBe(true);
     expect(() => buildQuiz("CHOICE_TG", richTgMaterial, seededRng(1))).not.toThrow();
     expect(checkFormatAvailability("CHOICE_TG_JA_EN", richTgMaterial).available).toBe(true);
     expect(() => buildQuiz("CHOICE_TG_JA_EN", richTgMaterial, seededRng(1))).not.toThrow();
+    expect(checkFormatAvailability("SELF_JUDGE_TG", richTgMaterial).available).toBe(true);
+    expect(() => buildQuiz("SELF_JUDGE_TG", richTgMaterial, seededRng(1))).not.toThrow();
+    expect(checkFormatAvailability("SELF_JUDGE_TG_JA_EN", richTgMaterial).available).toBe(true);
+    expect(() => buildQuiz("SELF_JUDGE_TG_JA_EN", richTgMaterial, seededRng(1))).not.toThrow();
   });
 
   test("availability agrees with generation success for dummy-starved material", () => {

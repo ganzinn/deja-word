@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂。同日 06 決定 11 を受けて `Drill.sourceRangeFrom / sourceRangeTo` を加算改訂。同日 TG四択の `QuizFormat` 値（CHOICE_TG / CHOICE_TG_JA_EN）を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂。同日 06 決定 11 を受けて `Drill.sourceRangeFrom / sourceRangeTo` を加算改訂。同日 TG四択の `QuizFormat` 値（CHOICE_TG / CHOICE_TG_JA_EN）を加算改訂。2026-07-04 TG自己判定の `QuizFormat` 値（SELF_JUDGE_TG / SELF_JUDGE_TG_JA_EN）を加算改訂。同日 形式追加時の推奨デフォルト制限時間 backfill 運用を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -43,6 +43,8 @@ enum QuizFormat {
   SPELLING         // 形式6: スペル確認（日本語→英語）
   CHOICE_TG        // 形式7: TG四択（英語→日本語）。TG 例文（Example.kind=TARGET）が素材（2026-07-03 加算）
   CHOICE_TG_JA_EN  // 形式8: TG四択（日本語→英語）。同上（2026-07-03 加算）
+  SELF_JUDGE_TG        // 形式9: TG自己判定（英語→日本語）。TG 例文が素材（2026-07-04 加算）
+  SELF_JUDGE_TG_JA_EN  // 形式10: TG自己判定（日本語→英語）。同上（2026-07-04 加算）
 }
 // 形式追加は enum の値追加のみ（カラム変更なし）。QuizAnswer / Drill / QuizDefaultTimeout へは
 // enum 参照で自動波及する（02 決定「形式追加は QuizFormat の値追加だけで対応」どおり）。
@@ -192,6 +194,7 @@ model QuizDefaultTimeout {
 - **デフォルト設定の制限時間は出題形式ごとに保持する（後続改訂）**。当初は `QuizDefaultSetting.timeoutSeconds Int?`（単一値）だったが、形式によって必要な回答時間が異なるため、形式別の子テーブル **`QuizDefaultTimeout(userId, format, timeoutSeconds)`** に置き換えた。`QuizDefaultSetting.timeoutSeconds` は廃止。
   - **PK は `(userId, format)`**（`OccurrencePresetSetting` と同じ複合 PK 様式）。**「制限なし」= 行が存在しない**で表現するため `timeoutSeconds` は非 null。`getQuizDefaultsForUser` は全形式キーを持つ `Record<QuizFormat, number | null>` に組み立てて返す（行なしの形式は null）。
   - **形式追加は `QuizFormat` の値追加だけで対応**（カラム増設・マイグレーション不要）。形式リストは `ALL_QUIZ_FORMATS`（`src/lib/quiz/format-options.ts`）を単一の出どころとする。
+  - **形式追加時は、デフォルト確立済みユーザーへ新形式の推奨デフォルト行を migration で backfill する（2026-07-04 加算）**。推奨デフォルトの行が確立されるのは初回保存時のみ（下記「開始画面からの部分上書き」の初回保存例外）のため、確立済みユーザー（設定行または timeout 行あり = `getQuizDefaultsForUser` が非 null）は新形式が「行なし＝制限なし」に見え、新規ユーザーとの非対称が生じる。形式追加の migration に `ON CONFLICT DO NOTHING` の INSERT を添えて推奨値を補完する（既存行＝ユーザー設定値は上書きしない。未保存ユーザーは対象外＝初回保存経路が引き続き担当）。TG 4 形式（形式7〜10）で実施（`20260704025822_backfill_tg_format_default_timeouts`）。
   - **occurrence リレーションを持たない**。制限時間は occurrence に従属しないため、`QuizDefaultSetting` の occurrence `SetNull` と完全に独立（occurrence 削除が制限時間に影響しない）。
 - **`Drill.timeoutSeconds Int?`**。元テスト開始時の制限時間（選択された 1 形式分の単一値）を drill 生成時に 1 回だけ受け取って保存し、全ラウンドで引き継ぐ（`format` と同じパターン。[06](06-drill-mode.md) の決定 4 と同形）。null = 制限なし。クイズは 1 回 1 形式のため、実行時に流れる制限時間は形式別化後も単一値のまま（→ [05](05-architecture.md)）。
 - 値の範囲（1〜60 秒・整数）は zod スキーマ（`src/lib/schema/quiz.ts`）で検証し、DB には制約を置かない（既存の rangeFrom / rangeTo と同方針）。デフォルト設定の保存入力は全形式キーを必須に持つ map（`quizTimeoutByFormatSchema`）。

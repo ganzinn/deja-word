@@ -20,6 +20,8 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
     SPELLING: null,
     CHOICE_TG: 5,
     CHOICE_TG_JA_EN: 5,
+    SELF_JUDGE_TG: 3,
+    SELF_JUDGE_TG_JA_EN: 3,
   },
   showCountdown: false,
   autoplayPronunciation: true,

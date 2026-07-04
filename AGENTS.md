@@ -6,6 +6,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 <!-- END:nextjs-agent-rules -->
 
+ドメイン用語（英語コード名⇔日本語名・定義・使ってはいけない類義語）は `docs/reference/naming-book.md` を参照。
+
 ## Testing
 
 テストは Vitest。SUT の隣にコロケートし、拡張子で種類を分ける。
@@ -47,3 +49,9 @@ scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 ## Ops スクリプト（運用ツール）
 
 DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する。実装規約は `scripts/CLAUDE.md` と `src/lib/CLAUDE.md`（ops コアモジュール節）にある。ドキュメントは `docs/ops/`。
+
+## バックログ（GitHub Issues）
+
+着手未定の対応意向・アイデアは GitHub issue に起票する（`gh issue list` で参照可能）。**作業中に別の対応が見つかった場合も、その場で直さず issue 化して現在の作業に戻る**（スコープ肥大の防止）。着手が決まったら issue から `docs/design/` / `docs/plan/` へ落とす。
+
+線引き: ドキュメントの理解に必須な情報（用語の定義・確定した経緯）は issue に逃がさずリポジトリ内のドキュメント本文に残す。issue に置くのは「やる意向」と着手時のタスクだけ（issue はクローンに含まれず、閉じると見えにくくなるため）。

@@ -1,6 +1,6 @@
 # 02. データモデル
 
-状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂。同日 06 決定 11 を受けて `Drill.sourceRangeFrom / sourceRangeTo` を加算改訂。同日 TG四択の `QuizFormat` 値（CHOICE_TG / CHOICE_TG_JA_EN）を加算改訂）
+状態: **確定**（2026-06-12。同日 05 の決定を受けて `Drill.roundCount` を、06 の決定を受けて `Drill.format` を加算改訂。2026-06-13 開始画面デフォルト設定機能の `QuizDefaultSetting` を加算改訂。同日カウントダウン表示設定の `showCountdown` を加算改訂。後続改訂でデフォルト制限時間を形式別の子テーブル `QuizDefaultTimeout` に分離し `QuizDefaultSetting.timeoutSeconds` を廃止。2026-06-20 開始画面設定のデフォルト保存メタ設定 `saveOnStart` を加算改訂。2026-07-03 06 決定 10 を受けて `QuizMode.DRILL_RETRY` を加算改訂。同日 06 決定 11 を受けて `Drill.sourceRangeFrom / sourceRangeTo` を加算改訂。同日 TG四択の `QuizFormat` 値（CHOICE_TG / CHOICE_TG_JA_EN）を加算改訂。2026-07-04 TG自己判定の `QuizFormat` 値（SELF_JUDGE_TG / SELF_JUDGE_TG_JA_EN）を加算改訂）
 
 ## 前提（確定事項の再掲）
 
@@ -43,6 +43,8 @@ enum QuizFormat {
   SPELLING         // 形式6: スペル確認（日本語→英語）
   CHOICE_TG        // 形式7: TG四択（英語→日本語）。TG 例文（Example.kind=TARGET）が素材（2026-07-03 加算）
   CHOICE_TG_JA_EN  // 形式8: TG四択（日本語→英語）。同上（2026-07-03 加算）
+  SELF_JUDGE_TG        // 形式9: TG自己判定（英語→日本語）。TG 例文が素材（2026-07-04 加算）
+  SELF_JUDGE_TG_JA_EN  // 形式10: TG自己判定（日本語→英語）。同上（2026-07-04 加算）
 }
 // 形式追加は enum の値追加のみ（カラム変更なし）。QuizAnswer / Drill / QuizDefaultTimeout へは
 // enum 参照で自動波及する（02 決定「形式追加は QuizFormat の値追加だけで対応」どおり）。

@@ -17,8 +17,11 @@ export type QuizRangeInput = {
 
 export type QuizPreview = {
   targetCount: number;
-  /** noTgExample は TG 例文形式のときのみ数値（それ以外は null = カウントせず表示しない）。 */
-  excluded: { noNumber: number; noMeaning: number; noTgExample: number | null };
+  /**
+   * noMeaning と noTgExample は形式で排他（非 TG 形式は noMeaning のみ数値・noTgExample=null、
+   * TG 例文形式は noTgExample のみ数値・noMeaning=null）。null 側はカウントせず表示もしない。
+   */
+  excluded: { noNumber: number; noMeaning: number | null; noTgExample: number | null };
 };
 
 /**

@@ -248,6 +248,31 @@ describe("checkFormatAvailability", () => {
     });
   });
 
+  test("TG formats are available for a target with no word meanings (meanings: [])", () => {
+    // 単語自身の意味が未登録でも、使える TG 例文があれば TG 四択は成立・生成できる。
+    const meaninglessTarget: QuizWord = {
+      id: "mt",
+      headword: "hw-mt",
+      tgExample: { text: "sentence mt", meaning: "例文mt" },
+      meanings: [],
+    };
+    const m = material({
+      targets: [meaninglessTarget],
+      sameOccurrencePool: [
+        tgWord("d1", [["読む"]]),
+        tgWord("d2", [["書く"]]),
+        tgWord("d3", [["話す"]]),
+      ],
+    });
+    expect(checkFormatAvailability("CHOICE_TG", m)).toEqual({ available: true, reason: null });
+    expect(checkFormatAvailability("CHOICE_TG_JA_EN", m)).toEqual({
+      available: true,
+      reason: null,
+    });
+    expect(() => buildQuiz("CHOICE_TG", m, seededRng(1))).not.toThrow();
+    expect(() => buildQuiz("CHOICE_TG_JA_EN", m, seededRng(1))).not.toThrow();
+  });
+
   test("availability agrees with generation success for TG material", () => {
     const noTgTargets = material({
       targets: [word("t1", [["走る"]])],

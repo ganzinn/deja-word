@@ -509,6 +509,43 @@ describe("countQuizTargets / countQuizSourceExclusions: TG example options", () 
     const counts = await countQuizSourceExclusions(user.id, occurrence.id, {
       countTgExample: true,
     });
-    expect(counts).toEqual({ noNumber: 1, noMeaning: 0, noTgExample: 2 });
+    // TG 形式では意味を問わないため noMeaning は数えず null（noTgExample が除外を捕捉する）
+    expect(counts).toEqual({ noNumber: 1, noMeaning: null, noTgExample: 2 });
+  });
+
+  test("TG format includes a meaning-less word that has a usable TG example", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "TG意味なしテスト帳");
+    // 単語自身の意味は未登録だが、使える TG 例文（意味つき）を持つ → TG 四択の出題対象になる
+    const meaninglessWithTg = await createQuizWordRow(user.id, "no-word-meaning", {
+      meanings: [],
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+      examples: [{ text: "usable tg sentence", meaning: "使える例文の意味" }],
+    });
+
+    // fetchQuizSource（TG 経路）: targetRows に残り、tgExample も引ける
+    const { targetRows, tgExampleRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      {},
+      { includeTgExamples: true },
+    );
+    expect(targetRows.map((r) => r.id)).toContain(meaninglessWithTg.id);
+    expect(tgExampleRows.map((r) => r.wordId)).toContain(meaninglessWithTg.id);
+
+    // 対象件数: TG 形式では 1 件（意味未登録でも数える）。非 TG 形式では意味必須なので 0 件。
+    expect(await countQuizTargets(user.id, occurrence.id, {}, { requireTgExample: true })).toBe(1);
+    expect(await countQuizTargets(user.id, occurrence.id, {})).toBe(0);
+
+    // 除外内訳: TG 形式では noTgExample にも数えず（使える TG あり）、noMeaning は null。
+    expect(
+      await countQuizSourceExclusions(user.id, occurrence.id, { countTgExample: true }),
+    ).toEqual({ noNumber: 0, noMeaning: null, noTgExample: 0 });
+    // 非 TG 形式では意味未登録として noMeaning に数える（従来どおり）。
+    expect(await countQuizSourceExclusions(user.id, occurrence.id, {})).toEqual({
+      noNumber: 0,
+      noMeaning: 1,
+      noTgExample: null,
+    });
   });
 });

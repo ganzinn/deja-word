@@ -137,6 +137,9 @@ export function tgTargetsOf(material: QuizSourceMaterial): TgQuizWord[] {
   return material.targets.filter(hasTgExample);
 }
 
+/** 出題対象に使える TG 例文の単語が 1 件もないときの理由（TG 例文形式の生成・成立判定で共用）。 */
+export const NO_TG_TARGET_REASON = "TG例文（意味つき）が登録された出題対象の単語がありません";
+
 /**
  * sortOrder 順の全 Meaning の表示用データ（品詞＋テキスト）。
  * 自己判定（英語→日本語）の解答表示で使う。

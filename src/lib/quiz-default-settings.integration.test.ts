@@ -27,6 +27,8 @@ function timeoutMap(
     SPELLING: partial.SPELLING ?? null,
     CHOICE_TG: partial.CHOICE_TG ?? null,
     CHOICE_TG_JA_EN: partial.CHOICE_TG_JA_EN ?? null,
+    SELF_JUDGE_TG: partial.SELF_JUDGE_TG ?? null,
+    SELF_JUDGE_TG_JA_EN: partial.SELF_JUDGE_TG_JA_EN ?? null,
   };
 }
 

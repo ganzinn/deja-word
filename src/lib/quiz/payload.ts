@@ -61,6 +61,12 @@ export type ChoiceTgJaEnQuestion = QuestionBase & {
   correctIndex: number;
 };
 
+/** TG自己判定（英語→日本語）。prompt は TG 例文の英文、answer は TG 例文の意味。 */
+export type SelfJudgeTgQuestion = QuestionBase & { prompt: string; answer: string };
+
+/** TG自己判定（日本語→英語）。prompt は TG 例文の意味、answer は TG 例文の英文。 */
+export type SelfJudgeTgJaEnQuestion = QuestionBase & { prompt: string; answer: string };
+
 /** 形式別の問題一式（`buildQuiz` の戻り値）。 */
 export type QuizQuestionsPayload =
   | { format: "CHOICE"; questions: ChoiceQuestion[] }
@@ -70,7 +76,9 @@ export type QuizQuestionsPayload =
   | { format: "SELF_JUDGE_JA_EN"; questions: SelfJudgeJaEnQuestion[] }
   | { format: "SPELLING"; questions: SpellingQuestion[] }
   | { format: "CHOICE_TG"; questions: ChoiceTgQuestion[] }
-  | { format: "CHOICE_TG_JA_EN"; questions: ChoiceTgJaEnQuestion[] };
+  | { format: "CHOICE_TG_JA_EN"; questions: ChoiceTgJaEnQuestion[] }
+  | { format: "SELF_JUDGE_TG"; questions: SelfJudgeTgQuestion[] }
+  | { format: "SELF_JUDGE_TG_JA_EN"; questions: SelfJudgeTgJaEnQuestion[] };
 
 /**
  * クライアントへ渡す問題データ一式。timeoutSeconds（null = 制限なし）は

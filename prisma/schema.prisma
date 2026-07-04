@@ -348,6 +348,8 @@ enum QuizFormat {
   SPELLING // 形式6: スペル確認（日本語→英語）
   CHOICE_TG // 形式7: 例文四択（英語→日本語）。TG 例文（Example.kind=TARGET）が素材
   CHOICE_TG_JA_EN // 形式8: 例文四択（日本語→英語）。TG 例文（Example.kind=TARGET）が素材
+  SELF_JUDGE_TG // 形式9: TG自己判定（英語→日本語）。TG 例文（Example.kind=TARGET）が素材
+  SELF_JUDGE_TG_JA_EN // 形式10: TG自己判定（日本語→英語）。TG 例文（Example.kind=TARGET）が素材
 }
 
 enum QuizResult {

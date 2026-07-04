@@ -20,6 +20,11 @@ export const FORMAT_GROUPS: {
         label: "TG四択",
         description: "TG例文の英文に合う意味を 4 つの選択肢から選ぶ",
       },
+      {
+        value: "SELF_JUDGE_TG",
+        label: "TG自己判定",
+        description: "TG例文の英文を見て意味を思い出し、自分で正誤を判定する",
+      },
     ],
   },
   {
@@ -36,6 +41,11 @@ export const FORMAT_GROUPS: {
         value: "CHOICE_TG_JA_EN",
         label: "TG四択",
         description: "TG例文の意味に合う英文を 4 つの選択肢から選ぶ",
+      },
+      {
+        value: "SELF_JUDGE_TG_JA_EN",
+        label: "TG自己判定",
+        description: "TG例文の意味を見て英文を思い出し、自分で正誤を判定する",
       },
     ],
   },
@@ -62,6 +72,8 @@ const JA_TO_EN_FORMATS = new Set<QuizFormat>([
   "SPELLING",
   // TG四択（日→英）は選択肢の英文に headword が含まれ、発音が解答漏れになる
   "CHOICE_TG_JA_EN",
+  // TG自己判定（日→英）は解答の英文に headword が含まれ、発音が解答漏れになる
+  "SELF_JUDGE_TG_JA_EN",
 ]);
 
 /** 日本語→英語の出題形式か（発音＝解答漏れになるため、出題時の発音自動再生を抑止する向き）。 */
@@ -74,7 +86,12 @@ export function isJaToEnFormat(format: QuizFormat): boolean {
  * 出題対象が「使える TG 例文（意味つき）を持つ単語」に絞られるため、
  * プレビューの対象件数・除外内訳がこの判定で format 依存になる。
  */
-const TG_EXAMPLE_FORMATS = new Set<QuizFormat>(["CHOICE_TG", "CHOICE_TG_JA_EN"]);
+const TG_EXAMPLE_FORMATS = new Set<QuizFormat>([
+  "CHOICE_TG",
+  "CHOICE_TG_JA_EN",
+  "SELF_JUDGE_TG",
+  "SELF_JUDGE_TG_JA_EN",
+]);
 
 /** TG 例文を素材とする出題形式か（対象件数のカウントが TG 例文の有無で絞られる）。 */
 export function isTgExampleFormat(format: QuizFormat): boolean {
@@ -82,7 +99,12 @@ export function isTgExampleFormat(format: QuizFormat): boolean {
 }
 
 /** 自己判定（解答を見て本人が正誤を申告する）の出題形式。 */
-const SELF_JUDGE_FORMATS = new Set<QuizFormat>(["SELF_JUDGE", "SELF_JUDGE_JA_EN"]);
+const SELF_JUDGE_FORMATS = new Set<QuizFormat>([
+  "SELF_JUDGE",
+  "SELF_JUDGE_JA_EN",
+  "SELF_JUDGE_TG",
+  "SELF_JUDGE_TG_JA_EN",
+]);
 
 /** 自己判定の出題形式か（本人が正誤を申告するため正誤フラッシュ・効果音を出さない）。 */
 export function isSelfJudgeFormat(format: QuizFormat): boolean {

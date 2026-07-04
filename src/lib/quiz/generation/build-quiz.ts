@@ -5,12 +5,13 @@
 import type { QuizFormat } from "@/generated/prisma/enums";
 import { buildChoiceQuestions, choiceCandidateTexts } from "@/lib/quiz/generation/choice";
 import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
-import { buildChoiceTgQuestions, NO_TG_TARGET_REASON } from "@/lib/quiz/generation/choice-tg";
+import { buildChoiceTgQuestions } from "@/lib/quiz/generation/choice-tg";
 import { buildChoiceTgJaEnQuestions } from "@/lib/quiz/generation/choice-tg-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
   allMeaningTexts,
   hasTgExample,
+  NO_TG_TARGET_REASON,
   tgTargetsOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -19,6 +20,8 @@ import {
 import { buildMultiMeaningQuestions } from "@/lib/quiz/generation/multi-meaning";
 import { buildSelfJudgeQuestions } from "@/lib/quiz/generation/self-judge";
 import { buildSelfJudgeJaEnQuestions } from "@/lib/quiz/generation/self-judge-ja-en";
+import { buildSelfJudgeTgQuestions } from "@/lib/quiz/generation/self-judge-tg";
+import { buildSelfJudgeTgJaEnQuestions } from "@/lib/quiz/generation/self-judge-tg-ja-en";
 import { buildSpellingQuestions } from "@/lib/quiz/generation/spelling";
 import type { Rng } from "@/lib/quiz/generation/shuffle";
 import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
@@ -60,6 +63,13 @@ export function buildQuiz(
       return { format: "CHOICE_TG", questions: buildChoiceTgQuestions(material, rng) };
     case "CHOICE_TG_JA_EN":
       return { format: "CHOICE_TG_JA_EN", questions: buildChoiceTgJaEnQuestions(material, rng) };
+    case "SELF_JUDGE_TG":
+      return { format: "SELF_JUDGE_TG", questions: buildSelfJudgeTgQuestions(material, rng) };
+    case "SELF_JUDGE_TG_JA_EN":
+      return {
+        format: "SELF_JUDGE_TG_JA_EN",
+        questions: buildSelfJudgeTgJaEnQuestions(material, rng),
+      };
     default:
       return assertNever(format);
   }
@@ -178,6 +188,12 @@ export function checkFormatAvailability(
       return checkTgChoiceAvailability(material, (word) => word.tgExample.meaning);
     case "CHOICE_TG_JA_EN":
       return checkTgChoiceAvailability(material, (word) => word.tgExample.text);
+    case "SELF_JUDGE_TG":
+    case "SELF_JUDGE_TG_JA_EN":
+      // 自己判定はダミー不要。ただし TG 素材のため使える TG 例文つきの対象が 1 件は必要
+      return tgTargetsOf(material).length === 0
+        ? { available: false, reason: NO_TG_TARGET_REASON }
+        : AVAILABLE;
     default:
       return assertNever(format);
   }

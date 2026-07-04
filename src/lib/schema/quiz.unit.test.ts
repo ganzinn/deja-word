@@ -68,6 +68,8 @@ describe("quizFormatSchema", () => {
       "SPELLING",
       "CHOICE_TG",
       "CHOICE_TG_JA_EN",
+      "SELF_JUDGE_TG",
+      "SELF_JUDGE_TG_JA_EN",
     ]) {
       expect(quizFormatSchema.safeParse(f).success).toBe(true);
     }
@@ -199,6 +201,8 @@ describe("saveQuizDefaultsInputSchema", () => {
     SPELLING: null,
     CHOICE_TG: null,
     CHOICE_TG_JA_EN: null,
+    SELF_JUDGE_TG: null,
+    SELF_JUDGE_TG_JA_EN: null,
     ...partial,
   });
   const ALL_NULL = timeoutMap({});

@@ -96,7 +96,7 @@ function findDummylessTarget(
 }
 
 /**
- * 例文四択（両向き共通）の成立可否。`textOf` は選択肢側テキスト（英→日 = TG 例文の意味、
+ * TG四択（両向き共通）の成立可否。`textOf` は選択肢側テキスト（英→日 = TG 例文の意味、
  * 日→英 = TG 例文の英文）。生成器（buildChoiceTg*Questions）と同じキーで判定する:
  * 出題対象は使える TG 例文を持つ単語のみ、ダミー候補も TG 例文を持つ単語のみ。
  */

@@ -29,7 +29,7 @@ type Props = {
   onShowDetail?: () => void;
   /** 正解選択肢の右端に発音ボタンを出すか。発音＝解答になる日→英のみ true。 */
   showCorrectAudio?: boolean;
-  /** 選択肢テキストの描画差し替え（例文四択の TG ハイライト用）。未指定はプレーン表示。 */
+  /** 選択肢テキストの描画差し替え（TG四択の TG ハイライト用）。未指定はプレーン表示。 */
   renderChoiceText?: (text: string) => React.ReactNode;
 };
 

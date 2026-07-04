@@ -45,7 +45,7 @@ export type SelfJudgeJaEnQuestion = QuestionBase & JaEnPrompt;
 export type SpellingQuestion = QuestionBase & JaEnPrompt;
 
 /**
- * 例文四択（英語→日本語）。prompt は TG 例文の英文、choices は各単語の TG 例文の意味。
+ * TG四択（英語→日本語）。prompt は TG 例文の英文、choices は各単語の TG 例文の意味。
  * 出題画面は headword の代わりに英文を表示する（headword は英文中に含まれるため出さない）。
  */
 export type ChoiceTgQuestion = QuestionBase & {
@@ -54,7 +54,7 @@ export type ChoiceTgQuestion = QuestionBase & {
   correctIndex: number;
 };
 
-/** 例文四択（日本語→英語）。prompt は TG 例文の意味、choices は各単語の TG 例文の英文。 */
+/** TG四択（日本語→英語）。prompt は TG 例文の意味、choices は各単語の TG 例文の英文。 */
 export type ChoiceTgJaEnQuestion = QuestionBase & {
   prompt: string;
   choices: { text: string }[];

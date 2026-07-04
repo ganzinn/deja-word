@@ -1,4 +1,4 @@
-// 例文四択（CHOICE_TG_JA_EN / 日本語→英語）の問題生成。
+// TG四択（CHOICE_TG_JA_EN / 日本語→英語）の問題生成。
 // 問題文は target の TG 例文の意味、選択肢は各単語の TG 例文の英文。
 // 出題対象は使える TG 例文（意味つき）を持つ単語のみ（1 単語 1 問・sortOrder 最小の 1 件）。
 
@@ -21,7 +21,7 @@ import type { ChoiceTgJaEnQuestion } from "@/lib/quiz/payload";
 /** ダミーの基本数（正解 1 ＋ダミー 3 ＝四択）。不足時は縮退（最低 2 択＝ダミー 1 件）。 */
 const CHOICE_DUMMY_COUNT = 3;
 
-/** 例文四択（日→英）のダミー候補（1 候補 = 1 単語）。重複排除・表示は TG 例文の英文で行う。 */
+/** TG四択（日→英）のダミー候補（1 候補 = 1 単語）。重複排除・表示は TG 例文の英文で行う。 */
 function toTgTextCandidate(word: QuizWord): DummyCandidate<QuizWord>[] {
   return word.tgExample === null ? [] : [{ value: word, texts: [word.tgExample.text] }];
 }

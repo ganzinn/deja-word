@@ -17,7 +17,7 @@ function word(id: string, meaningTexts: string[][]): QuizWord {
   };
 }
 
-/** 使える TG 例文つきの単語（例文四択の素材用）。 */
+/** 使える TG 例文つきの単語（TG四択の素材用）。 */
 function tgWord(id: string, meaningTexts: string[][]): QuizWord {
   return { ...word(id, meaningTexts), tgExample: { text: `sentence ${id}`, meaning: `例文${id}` } };
 }

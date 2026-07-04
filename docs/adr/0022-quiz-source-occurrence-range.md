@@ -1,0 +1,31 @@
+# ADR-0022: 出題対象は掲載箇所 + 番号範囲の選択、範囲内全件出題
+
+- ステータス: 提案
+- 確信度: 高
+- 起票日: 2026-07-04
+
+> **注意**: 本 ADR はコード・コミット履歴からの事後的な推定であり、当時の意思決定の記録ではない。
+> 当時を知るメンバーのレビューを経てステータスを更新すること。
+
+## 背景
+
+quiz の出題対象をどう選ばせるか。教材（ターゲット1900 等）を範囲で区切って腕試しする使い方が想定された。
+
+## 決定内容
+
+出題対象は**掲載箇所（Occurrence）+ 掲載番号の範囲（from–to）**で指定し、範囲内の対象を**全件出題**する（アルゴリズムによる自動選定はしない）。実効範囲は `rangeFrom/To` として履歴側に保存する。
+
+## 採らなかった代替案
+
+- **全単語からの自動選定のみ（範囲指定なし）** — 「読んだ本のこの範囲を腕試しする」という使い方に合わないため却下（`docs/design/word-quiz/01-requirements.md` の却下案）
+
+## 影響
+
+- 掲載番号（`WordOccurrence.occurrenceNumber`、[ADR-0011](0011-occurrence-concept-many-to-many.md)）が quiz の範囲指定の基盤になる。番号なし単語の扱いが設計上の考慮点になる
+- 出題対象数が範囲次第で大きくなり得ることが、後の生成クエリ性能問題（[ADR-0030](0030-dummy-pool-bounded-fetch.md)）の遠因になった
+
+## 根拠（コード・コミット・文書参照）
+
+- `docs/design/word-quiz/01-requirements.md` — 出題対象の決定と却下案（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- `src/lib/quiz/queries/quiz-source.ts` — 範囲指定の実装
+- `prisma/schema.prisma` — QuizAnswer / Drill の rangeFrom/To

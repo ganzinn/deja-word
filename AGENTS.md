@@ -8,6 +8,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ドメイン用語（英語コード名⇔日本語名・定義・使ってはいけない類義語）は `docs/reference/naming-book.md` を参照。
 
+設計判断（採用理由・却下した代替案・影響）は `docs/adr/` を参照。設計判断に迷ったら該当 ADR を読み、新しい判断をしたら ADR を起票する。
+
 ## Testing
 
 テストは Vitest。SUT の隣にコロケートし、拡張子で種類を分ける。

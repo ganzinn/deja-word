@@ -124,6 +124,17 @@
 | [0059](0059-naming-book-and-issue-backlog.md) | naming-book が用語の権威、バックログは GitHub Issues | 高 | — |
 | [0060](0060-two-layer-format-enforcement.md) | 整形強制は Stop hook + CI の二層 | 高 | — |
 
+### I. コード監査起票（2026-07-04）
+
+0062 は事後推定、0061 / 0063 / 0064 はコード監査からの**改善提案**（既存決定の記録ではなく、これから決める判断）。
+
+| ID | タイトル | 確信度 | 確認質問 |
+| --- | --- | --- | --- |
+| [0061](0061-destructive-ops-confirmation-gate.md) | 破壊的 ops スクリプトの確認ゲート統一（TTY + 対象名確認） | **低** | あり |
+| [0062](0062-system-word-promotion-merge.md) | system 単語作成時の「昇格マージ」（暗黙統合と所有権移譲） | 中 | あり |
+| [0063](0063-error-map-boundary.md) | エラー→Result 変換の集約線引き | **低** | あり |
+| [0064](0064-db-check-constraints.md) | 数値不変条件の DB CHECK 制約（raw SQL migration 規約化） | **低** | あり |
+
 ## 人間への確認質問（レビュー時にまとめて回答用）
 
 回答は issue #101 で追跡する。回答が得られ次第、該当 ADR へ反映して確信度を更新する。
@@ -133,9 +144,13 @@
 - **[0001](0001-nextjs-app-router-stack.md)** スタック採用: Next.js を選んだ動機は？比較した候補（Remix、Rails 等）はあったか？
 - **[0010](0010-no-soft-delete.md)** ソフトデリート不採用: 意図的な判断か？履歴保全・誤削除復旧の要求が将来も無い前提でよいか？
 - **[0057](0057-integration-tests-not-in-ci.md)** integration の CI 除外: 主因は DB 用意コスト / 実行時間 / secrets 管理のどれか？将来 CI に載せる意向は？
+- **[0061](0061-destructive-ops-confirmation-gate.md)** 破壊的 ops の確認ゲート: 非対話 `--execute` 前提の運用（CI・自動化）は実在するか？
+- **[0063](0063-error-map-boundary.md)** error-map の線引き: 「共有ドメインエラーのみ集約」でよいか、全集約に倒すか？
+- **[0064](0064-db-check-constraints.md)** CHECK 制約: raw migration と drift 検出の折り合いを許容するか？対象カラムの過不足は？
 
 確信度「中」（任意の補足）:
 
 - **[0002](0002-exact-version-pinning.md)** exact pin の動機（再現性以外の背景があれば）
 - **[0005](0005-zod-v3-subpath.md)** zod v3 API に留まるのは暫定か恒久か
 - **[0011](0011-occurrence-concept-many-to-many.md)** タグ → 掲載箇所刷新時に他に検討した概念モデルがあれば
+- **[0062](0062-system-word-promotion-merge.md)** 昇格マージ: 無通知の統合は意図的か？「昇格マージ」の用語で naming-book に収録してよいか？

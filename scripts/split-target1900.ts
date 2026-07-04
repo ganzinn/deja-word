@@ -1,4 +1,4 @@
-// 【使い捨て】vivid treasure「ターゲット1900」の元 CSV（tmp/target1900.csv）を、取り込み用の 2 ファイルに分解する。
+// 【使い捨て】「ターゲット1900」の元 CSV（tmp/target1900.csv）を、取り込み用の 2 ファイルに分解する。
 //   - <out>.words.csv   : headword,part_of_speech,meaning_text（関連語注記を除去・意味は ; 連結）
 //                         → 既存 `pnpm db:import-words` でそのまま取り込める
 //   - <out>.related.csv : headword,kind,term,meaning,link_number（関連語 1 件＝1 行）

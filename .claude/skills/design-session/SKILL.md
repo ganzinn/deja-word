@@ -62,6 +62,8 @@ disable-model-invocation: true
 - **曖昧なシグネチャ・未定義の用語**: 引数の有無・戻り値・呼び出し回数が一意に読めるか。正常系しか書いていない処理がないか（例: 削除耐性が片方の経路にしか書かれていない）
 - **昇格漏れ・反映漏れ**: ハブのサマリ・状態表・他ファイルの「前提」が今回の決定と一致しているか
 
+セキュリティ境界（認証・認可・データ所有・外部入出力）に触れるトピックでは、上記に加えて [docs/reference/security-design-checklist.md](../../../docs/reference/security-design-checklist.md) を通し、前提を破る設計は明示的な決定として記録する。
+
 ## 後続工程との接続
 
 設計完了後は「ticket-split スキル（PR 単位のチケットを `docs/plan/<機能名>/` に生成、優先順位・依存関係を記載）→ ticket-implement スキル（worktree 並行実装）」へ続く。design-session が後続スキルに保証する成果物の契約:

@@ -67,5 +67,5 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 ## 関連
 
-- quiz 系の自動化ノウハウ（範囲・出題形式のセレクタ、自己判定形式が最易 等）は個人メモ `project-e2e-verify-recipe` に蓄積がある。
+- quiz 系の自動化ノウハウ（開始/進行中/結果のセレクタ、出題形式一覧、自己判定形式が最易、出題データの事情）は [references/quiz.md](references/quiz.md) にまとめてある（リポジトリ内・共有可能な一次情報）。
 - 認可・テナント分離の規約は skill `sec-review` と `src/app/CLAUDE.md`。削除ガードの設計は `docs/adr/0066-system-word-deletion-guard.md`、共存は `0065`、pass-through 編集は `0019`。

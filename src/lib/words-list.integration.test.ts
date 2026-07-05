@@ -1,15 +1,17 @@
 import { describe, expect, test } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import type { WordFormValues } from "@/lib/schema/word-form";
+import { type WordFormValues, wordDetailToFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createWordForUser } from "@/lib/words-create";
+import { getWordDetailForUser } from "@/lib/words-detail";
 import {
   findAdjacentWordsByOccurrence,
   findAdjacentWordsByOccurrenceNumber,
   listWordsByOccurrence,
   listWordsForUser,
 } from "@/lib/words-list";
+import { updateWordForUser } from "@/lib/words-update";
 
 import { createTestUser } from "../../tests/setup/fixtures";
 
@@ -114,6 +116,51 @@ describe("listWordsForUser", () => {
       take: 50,
     });
     expect(result.items.map((i) => i.headword)).toEqual(["public"]);
+  });
+
+  // #103 回帰: 共有(system)単語に別ユーザーが pass-through で付加した Meaning が sortOrder 先頭に
+  // 来ても、meanings の owner 再スコープにより一覧カードへ他人の意味・品詞・音源が漏れないこと。
+  test("does not leak a foreign user's meaning sorted first on a shared system word", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, form("shared"));
+
+    // stranger が pass-through で自分の Meaning を付加する（末尾 sortOrder に付く）
+    const detail = await getWordDetailForUser(stranger.id, sysWord.id);
+    const strangerForm = wordDetailToFormValues(detail!);
+    strangerForm.meanings.push({
+      partOfSpeech: "verb",
+      pronunciation: "",
+      texts: [{ text: "他人の私的な意味" }],
+      notes: [],
+    });
+    await updateWordForUser(stranger.id, sysWord.id, strangerForm);
+
+    // stranger の Meaning を sortOrder 先頭へ並べ替え、識別用に音源も付ける
+    // （並べ替えは pass-through で許される操作。ここでは結果の DB 状態を直接構成する）
+    const meanings = await prisma.meaning.findMany({
+      where: { wordId: sysWord.id },
+      select: { id: true, ownerId: true },
+    });
+    const systemMeaning = meanings.find((m) => m.ownerId === SYSTEM_USER_ID)!;
+    const strangerMeaning = meanings.find((m) => m.ownerId === stranger.id)!;
+    await prisma.meaning.update({ where: { id: systemMeaning.id }, data: { sortOrder: 1 } });
+    await prisma.meaning.update({
+      where: { id: strangerMeaning.id },
+      data: { sortOrder: 0, pronunciationAudioUrl: "stranger-audio-key" },
+    });
+
+    // 第三者 user から一覧を引くと、見えるのは system Meaning のみで stranger の情報は含まれない
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    const item = result.items.find((i) => i.headword === "shared");
+    expect(item?.meaningTexts).toEqual(["意味:shared"]);
+    expect(item?.partOfSpeech).toBe("noun");
+    expect(item?.pronunciationAudioUrl).toBeNull();
   });
 
   test("q filter is case-insensitive (substring match on headword)", async () => {

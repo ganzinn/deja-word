@@ -55,24 +55,33 @@ export type WordsByOccurrenceResult = {
   total: number;
 };
 
-/** 単語一覧の表示に必要な Word の select（listWordsForUser / listWordsByOccurrence で共有）。 */
-const wordListSelect = {
-  id: true,
-  headword: true,
-  ownerId: true,
-  meanings: {
-    orderBy: { sortOrder: "asc" as const },
-    take: 1,
-    select: {
-      partOfSpeech: true,
-      pronunciationAudioUrl: true,
-      texts: {
-        orderBy: { sortOrder: "asc" as const },
-        select: { text: true },
+/**
+ * 単語一覧の表示に必要な Word の select（listWordsForUser / listWordsByOccurrence で共有）。
+ * ネストした meanings / texts は親 Word と別 owner の行を含みうる（pass-through で共有単語に
+ * 他ユーザーが自分の Meaning / text を付加できる）ため、words-detail.ts と同形に owner で再スコープする。
+ * これを怠ると take: 1 が他ユーザー所有の先頭 Meaning を拾い、私的な意味・音源が漏れる。
+ */
+function wordListSelect(allowed: string[]) {
+  return {
+    id: true,
+    headword: true,
+    ownerId: true,
+    meanings: {
+      where: { ownerId: { in: allowed } },
+      orderBy: { sortOrder: "asc" as const },
+      take: 1,
+      select: {
+        partOfSpeech: true,
+        pronunciationAudioUrl: true,
+        texts: {
+          where: { ownerId: { in: allowed } },
+          orderBy: { sortOrder: "asc" as const },
+          select: { text: true },
+        },
       },
     },
-  },
-};
+  };
+}
 
 type WordListRow = {
   id: string;
@@ -109,8 +118,9 @@ export async function listWordsForUser(
   params: WordListParams,
 ): Promise<WordListResult> {
   const q = params.q?.trim() ?? "";
+  const allowed = scopedOwnerIds(userId);
   const where = {
-    ownerId: { in: scopedOwnerIds(userId) },
+    ownerId: { in: allowed },
     ...(q.length > 0 ? { headword: headwordCondition(q, params.match) } : {}),
   };
 
@@ -122,7 +132,7 @@ export async function listWordsForUser(
   const [rows, total] = await Promise.all([
     prisma.word.findMany({
       where,
-      select: wordListSelect,
+      select: wordListSelect(allowed),
       orderBy,
       skip: params.skip,
       take: params.take,
@@ -161,6 +171,7 @@ export async function listWordsByOccurrence(
   userId: string,
   params: WordsByOccurrenceParams,
 ): Promise<WordsByOccurrenceResult> {
+  const allowed = scopedOwnerIds(userId);
   const where = buildWordsByOccurrenceWhere(userId, params);
 
   const orderBy = [
@@ -173,7 +184,7 @@ export async function listWordsByOccurrence(
       where,
       select: {
         occurrenceNumber: true,
-        word: { select: wordListSelect },
+        word: { select: wordListSelect(allowed) },
       },
       orderBy,
       skip: params.skip,

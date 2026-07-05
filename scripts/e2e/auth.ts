@@ -17,6 +17,14 @@ export const TEST_USER_EMAIL = "test@example.com";
 export const TEST_USER_PASSWORD = "testtest"; // MIN_PASSWORD_LENGTH(8) を満たす固定値
 
 /**
+ * 2 人目の使い回す一般ユーザー。テナント分離・pass-through の「他者役」に使う
+ * （viewer と別人格の stranger が要る検証で、①と組にする）。fresh-account 観点ではないので
+ * throwaway にはせず常設し、**削除しない**（テストデータのみ prefix 掃除）。preflight で ensureUser する。
+ */
+export const TEST_USER2_EMAIL = "test1@example.com";
+export const TEST_USER2_PASSWORD = "testtest"; // MIN_PASSWORD_LENGTH(8) を満たす固定値
+
+/**
  * `/sign-in` を UI 操作してログインする。成功で `/menu`（等）へ遷移するのを待って Page を返す。
  * 失敗時はサインインページの role=alert 文言を添えて throw する。
  */

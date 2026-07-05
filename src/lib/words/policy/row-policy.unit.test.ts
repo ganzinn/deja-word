@@ -5,7 +5,9 @@ import { defaultWordFormValues, type WordFormValues } from "@/lib/schema/word-fo
 import {
   assertHeadwordChangeAllowed,
   assertRowsAllowed,
+  assertWordDeletable,
   assertWordUpdateAllowed,
+  ForbiddenDeleteError,
   ForbiddenUpdateError,
   isPassThroughSystemRow,
   isSystemOwned,
@@ -50,6 +52,23 @@ describe("isSystemOwned / isPassThroughSystemRow", () => {
   test("an unset owner (new row) is neither system nor pass-through", () => {
     expect(isSystemOwned(undefined)).toBe(false);
     expect(isPassThroughSystemRow(editor, undefined)).toBe(false);
+  });
+});
+
+describe("assertWordDeletable", () => {
+  test("allows deletion when all descendants share the word owner", () => {
+    expect(() =>
+      assertWordDeletable(SYSTEM_USER_ID, [SYSTEM_USER_ID, SYSTEM_USER_ID]),
+    ).not.toThrow();
+    expect(() => assertWordDeletable("u1", ["u1"])).not.toThrow();
+    expect(() => assertWordDeletable("u1", [])).not.toThrow();
+  });
+
+  test("blocks deletion when a descendant is owned by someone else (pass-through)", () => {
+    // system 単語に一般ユーザーが付けた子孫がある
+    expect(() => assertWordDeletable(SYSTEM_USER_ID, [SYSTEM_USER_ID, "u1"])).toThrow(
+      ForbiddenDeleteError,
+    );
   });
 });
 

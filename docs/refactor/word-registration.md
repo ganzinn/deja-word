@@ -74,7 +74,7 @@ UI:
 |---|---|---|---|
 | N1 | クライアント zod + サーバ zod の二重バリデーション | **やらない**（共有スキーマのまま） | 1 ファイル（`src/lib/schema/word-form.ts`）を両側で参照しているため重複ではなく「共有 + 信頼境界での再検証」。サーバで再 parse するのは正しい設計 |
 | N2 | `FormMessage` + `toast.error` のエラー二重表示 | **やらない**（フェーズ 2 で見た目は変えない） | UX の方針変更に踏み込むため、リファクタとは別タスク。必要ならフェーズ 5 以降で別途検討 |
-| N3 | `createWordAsSystem` のマージ＆所有権移譲ロジックをファイル分離 | **やらない** | 30 行で完結している純粋関数。これ以上の分割は過剰 |
+| N3 | `createWordAsSystem` のマージ＆所有権移譲ロジックをファイル分離 | **やらない**（→ 後日その挙動自体を廃止） | 30 行で完結している純粋関数。これ以上の分割は過剰。※本リファクタは「昇格マージ」を既存挙動として温存しただけで正当化はしていない。この挙動は 2026-07-05 に設計根拠なしの不整合として**廃止**（ADR-0062）。`createWordAsSystem` / `words-merge.ts` は削除済み |
 | N4 | Prisma の上に Repository 抽象を被せる | **やらない** | 既存テストが Prisma 直叩きの integration。薄い抽象は屋上屋。Prisma 自体を Repository とみなす |
 | N5 | DDD 風 Entity クラス階層 | **やらない** | zod 型 + Prisma 型で十分。値オブジェクト化の旨味なし |
 | N6 | `scopedOwnerIds()` のメモ化 | **やらない**（先送り） | 効果が小さい。実測でホットスポットになってから対応 |
@@ -411,7 +411,7 @@ export function assertHeadwordChangeAllowed(ctx, existing, newHeadword): void { 
 - zod スキーマをサーバ専用に分離（共有スキーマで OK）
 - エラーメッセージ i18n 化（日本語固定で先送り）
 - Server Action を route handler 化
-- `createWordAsSystem` のマージロジックをファイル分離（30 行で完結しているため過剰）
+- ~~`createWordAsSystem` のマージロジックをファイル分離（30 行で完結しているため過剰）~~ → 分離ではなく**廃止**した（2026-07-05, ADR-0062。設計根拠のない不整合・データ損失のため）
 - Optimistic update / RSC streaming 等の機能追加
 - **Prisma スキーマ変更**（`User.isSystem` 追加 / Meaning⇔MeaningText 統合 / `ownerId` 別表化など）。検討したが、現状の「per-row `ownerId` + マジック文字列 `SYSTEM_USER_ID`」は Policy 化後（フェーズ 4）に影響範囲が `policy/` と `system-user.ts` に閉じるため、マイグレーションを伴う変更に踏み切る利得が小さいと判断した
 

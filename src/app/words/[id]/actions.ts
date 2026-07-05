@@ -1,7 +1,12 @@
 "use server";
 
 import { getCurrentSession } from "@/lib/session";
-import { WordNotFoundError, deleteWordForUser, type DeleteWordError } from "@/lib/words-delete";
+import {
+  ForbiddenDeleteError,
+  WordNotFoundError,
+  deleteWordForUser,
+  type DeleteWordError,
+} from "@/lib/words-delete";
 
 export type DeleteWordResult =
   | { ok: true }
@@ -26,6 +31,13 @@ export async function deleteWord(wordId: string): Promise<DeleteWordResult> {
         ok: false,
         error: "not_found",
         message: "対象の単語が見つかりません。",
+      };
+    }
+    if (e instanceof ForbiddenDeleteError) {
+      return {
+        ok: false,
+        error: "forbidden",
+        message: "他のユーザーが追記した項目があるため、この単語は削除できません。",
       };
     }
     console.error("[words/[id]] deleteWord failed", e);

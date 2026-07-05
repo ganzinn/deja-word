@@ -1,5 +1,7 @@
 // ブラウザでのログイン・ユーザー種別のヘルパ。
 // 3 パターン: system(admin) / 使い回しの一般(test@example.com) / 使い捨ての一般。
+// 一般ユーザーは test@example.com を既定にして使い回す（事前データもこれで作る）。
+// 使い捨ては「新規ユーザーの観点」が本質的に必要なときのみ（ユーザー削除検証の残骸チェックは副次用途）。
 import type { BrowserContext, Page } from "playwright-core";
 
 /** system(admin) ユーザー。id/email は固定（src/lib/system-user.ts）。 */

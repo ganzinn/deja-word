@@ -2,7 +2,7 @@
 //   本命 : admin(system) が、一般ユーザー(test@example.com)が pass-through 追記した system 単語を
 //          削除しようとすると、ガードで拒否される（赤トースト・詳細ページに留まる）。
 //   対照+: admin が自分の子行だけの system 単語を削除 → 成功（ガードは無反応）。
-//   対照0: 使い捨ての一般ユーザーが自分の私有単語を削除 → 成功（ガードは無反応）。
+//   対照0: 一般ユーザー(test@example.com)が自分の私有単語を削除 → 成功（ガードは無反応）。
 //
 // 前提: dev サーバ稼働・DB seed 済み・system パスワード設定済み（未整備なら分かりやすく中断する）。
 // 実行: pnpm e2e:guard   （GUI で見るなら E2E_HEADED=1 pnpm e2e:guard）
@@ -11,13 +11,7 @@ import type { BrowserContext, Page } from "playwright-core";
 
 import { baseUrl, launchBrowser, newContext, waitForToast, waitForWordDetail } from "./harness";
 import { SYSTEM_EMAIL, systemPassword, TEST_USER_EMAIL, TEST_USER_PASSWORD, login } from "./auth";
-import {
-  assertSystemUserReady,
-  cleanupWordsByPrefix,
-  deleteUserByEmail,
-  ensureUser,
-  makePrisma,
-} from "./db";
+import { assertSystemUserReady, cleanupWordsByPrefix, ensureUser, makePrisma } from "./db";
 
 const MEANING_PLACEHOLDER = "例: 短命の、つかの間の";
 const HEADWORD_PLACEHOLDER = "例: ephemeral";
@@ -50,7 +44,6 @@ async function clickDelete(page: Page, wordId: string): Promise<void> {
 async function main(): Promise<void> {
   const prisma = makePrisma();
   const prefix = `e2e-guard-${Date.now()}`;
-  const throwawayEmail = `e2e-throwaway-${Date.now()}@example.com`;
 
   console.log(`\n[e2e:guard] base=${baseUrl()} prefix=${prefix}\n`);
 
@@ -99,22 +92,21 @@ async function main(): Promise<void> {
     await adminPage.waitForURL(/\/words$/, { timeout: 15_000 });
     console.log("PASS ✅ 対照+: admin は自分の子行だけの system 単語を削除できた");
 
-    // ===== 対照0: 使い捨て一般ユーザーは自分の私有単語を削除できる（ガード無反応） =====
-    const throwaway = await ensureUser(prisma, throwawayEmail, TEST_USER_PASSWORD, "E2E 使い捨て");
-    const tCtx = await newContext(browser);
-    const tPage = await login(tCtx, throwaway.email, throwaway.password);
-    const privId = await createWord(tPage, `${prefix}-priv`, "使い捨てユーザーの私有単語");
-    await clickDelete(tPage, privId);
-    const ok2 = await waitForToast(tPage, { contains: "削除しました" });
+    // ===== 対照0: 一般ユーザー(test@example.com)は自分の私有単語を削除できる（ガード無反応） =====
+    // 新規ユーザーの観点は不要なので、既存の使い回しユーザー(userPage)をそのまま使う。
+    const privId = await createWord(userPage, `${prefix}-priv`, "test@example.com の私有単語");
+    await clickDelete(userPage, privId);
+    const ok2 = await waitForToast(userPage, { contains: "削除しました" });
     assert(ok2.includes("削除しました"), `expected success toast, got: ${ok2}`);
-    await tPage.waitForURL(/\/words$/, { timeout: 15_000 });
-    console.log("PASS ✅ 対照0: 一般ユーザーは自分の私有単語を削除できた（ガード無反応）");
+    await userPage.waitForURL(/\/words$/, { timeout: 15_000 });
+    console.log(
+      "PASS ✅ 対照0: 一般ユーザー(test@example.com)は自分の私有単語を削除できた（ガード無反応）",
+    );
   } finally {
     await browser.close();
     // --- 後始末: テスト単語は prefix で掃除（cascade で追記メモも消える）。test@example.com は残す。 ---
     const removed = await cleanupWordsByPrefix(prisma, "e2e-guard-");
     log(`cleanup: removed ${removed} test word(s) by prefix "e2e-guard-"`);
-    await deleteUserByEmail(prisma, throwawayEmail); // 使い捨てユーザーを削除
     await prisma.$disconnect();
   }
 

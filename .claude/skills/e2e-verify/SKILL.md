@@ -1,6 +1,6 @@
 ---
 name: e2e-verify
-description: deja-word のブラウザ E2E 動作確認を定型手順で行う。system(admin) ログイン・一般ユーザーの用意（使い回し test@example.com／ユーザー削除検証は使い捨て）・playwright-core + system Chrome のハーネスを提供し、削除ガード等の end-to-end 検証を再現する。UI 挙動の動作確認・E2E 実施時に参照する。
+description: deja-word のブラウザ E2E 動作確認を定型手順で行う。system(admin) ログイン・一般ユーザーの用意（既定は使い回し test@example.com／新規ユーザーの観点が要るときだけ使い捨て）・playwright-core + system Chrome のハーネスを提供し、削除ガード等の end-to-end 検証を再現する。UI 挙動の動作確認・E2E 実施時に参照する。
 argument-hint: "[検証対象（省略時は削除ガード）]"
 ---
 
@@ -25,13 +25,13 @@ DB レベルの検証は integration テスト（`pnpm test:integration`）で�
 
 ヘルパは `scripts/e2e/auth.ts`（ログイン）と `scripts/e2e/db.ts`（用意・後始末）にある。
 
-| パターン | 用途 | 用意 | 後始末 |
+| パターン | いつ使うか | 用意 | 後始末 |
 |---|---|---|---|
-| **system（admin）** | 管理機能・system 単語の作成/削除。admin 判定は `session.user.id === "system"` のみ | 前提セットアップ済み前提で `login(ctx, SYSTEM_EMAIL, systemPassword())`。`SYSTEM_EMAIL="system@deja-word.internal"` | 不要（共有シード。**削除しない**） |
-| **一般（使い回し）** | 破壊を伴わない一般ユーザー検証。動作確認コスト最小化のため使い回す | `ensureUser(prisma, TEST_USER_EMAIL, TEST_USER_PASSWORD, ...)` で冪等に用意（`test@example.com` / `testtest`）→ `login(ctx, ...)` | 生成したテストデータのみ prefix 掃除。**ユーザー自体は残す** |
-| **一般（使い捨て）** | **ユーザー削除そのものを伴う検証**（admin の `/admin/users` `deleteUser`、アカウント自削除 等） | `ensureUser(prisma, "e2e-throwaway-<Date.now()>@example.com", ...)` で都度作成 | 検証後に `deleteUserByEmail` で削除 |
+| **system（admin）** | 管理機能・system 所有単語の観点。admin 判定は `session.user.id === "system"` のみ | 前提セットアップ済み前提で `login(ctx, SYSTEM_EMAIL, systemPassword())`。`SYSTEM_EMAIL="system@deja-word.internal"` | 不要（共有シード。**削除しない**） |
+| **一般（使い回し）＝ test@example.com【既定】** | 新規ユーザーの観点が不要な一般ユーザー検証すべて。**事前データが要る検証でも、まず test@example.com でデータを作ってから確認する**（既存ユーザーの観点） | `ensureUser(prisma, TEST_USER_EMAIL, TEST_USER_PASSWORD, ...)` で冪等に用意（`test@example.com` / `testtest`）→ `login(ctx, ...)` | 生成したテストデータのみ prefix 掃除。**ユーザー自体は残す** |
+| **一般（使い捨て）＝ 新規ユーザー** | **新規ユーザーの観点がメイン**（サインアップ直後の空状態・空リスト・初回導線など、fresh account でないと再現できない観点）。ユーザー削除を伴う検証でも作るが、そちらは「残骸が残らないか」の副次確認 | `ensureUser(prisma, "e2e-throwaway-<Date.now()>@example.com", ...)`（またはサインアップ UI）で都度作成 | 検証後に `deleteUserByEmail` で削除 |
 
-**原則**: 一般ユーザーは `test@example.com` を使い回す（作成コストを避ける）。ただし**検証そのものがユーザー削除を行う**場合だけ、`test@example.com` を消さずに済むよう使い捨てユーザーを新規作成する。
+**原則**: 一般ユーザー検証は **`test@example.com` を既定**とし、事前データが必要でもまず `test@example.com` で作ってから確認する（作成コストを避ける）。使い捨てユーザーは **新規ユーザーの観点が本質的に必要なとき**に作る。ユーザー削除を伴う検証でも使い捨てを使うが、それは残骸チェックのための副次用途であってメインではない。
 
 ## ハーネスの使い方
 
@@ -52,8 +52,8 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 1. **preflight**: system 整備を確認（未整備は remediation 付きで中断）→ `test@example.com` を冪等用意。
 2. **本命**: admin(system) で `/words/new` に単語 `e2e-guard-<ts>` を作成 → 別 context で `test@example.com` が `/words/{id}/edit` を開き「メモを追加」→ 保存（test ユーザー owner の子孫が付く）→ admin が `/words/{id}` で削除（`aria-label=削除` → `削除する`）→ **赤トースト「他のユーザーが追記した項目があるため…」が出て詳細ページに留まる**ことをアサート、DB に単語が残ることも確認。
 3. **対照+**: admin が自分の子行だけの system 単語を削除 → 「削除しました」+ `/words` 遷移。
-4. **対照0**: 使い捨て一般ユーザーが自分の私有単語を削除 → 成功（ガード無反応）。
-5. **後始末**: `cleanupWordsByPrefix("e2e-guard-")`（追記メモも cascade で消える。`test@example.com` は残す）＋使い捨てユーザー削除。
+4. **対照0**: `test@example.com`（本命でログイン済みの使い回しユーザー）が自分の私有単語を作成→削除 → 成功（ガード無反応。全子孫が自分所有なのでガードは働かない）。新規ユーザーの観点は不要なので使い捨てユーザーは使わない。
+5. **後始末**: `cleanupWordsByPrefix("e2e-guard-")`（追記メモも cascade で消える。`test@example.com` は残す）。
 
 セレクタ参照（新しい検証を書くとき用）: 単語 headword = placeholder `例: ephemeral`、意味テキスト = placeholder `例: 短命の、つかの間の`、登録/更新 = ボタン `登録する`/`更新する`、メモ追加 = ボタン `メモを追加`（textarea placeholder `メモ N`）、削除 = ボタン `削除`（`aria-label`）→ 確認 `削除する`、sign-in = `#email`/`#password`/ボタン `ログイン`。
 
@@ -61,7 +61,7 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 1. `scripts/e2e/verify-<対象>.ts` を作り、`harness.ts` / `auth.ts` / `db.ts` のヘルパを使う。
 2. テストデータ headword / email は `e2e-<対象>-*` にし、`finally` で prefix 掃除する（クラッシュ時も次回に持ち越さない）。
-3. `test@example.com` を使い回す。ユーザー削除を伴う検証だけ使い捨てユーザーを作って消す。
+3. 一般ユーザーは `test@example.com` を既定にする（事前データも test@example.com で作る）。**新規ユーザーの観点が本質的に必要なとき**だけ使い捨てユーザー（`e2e-throwaway-*`）を作り、検証後に消す（ユーザー削除検証での残骸チェックも同様）。
 4. `package.json` に `"e2e:<対象>": "tsx scripts/e2e/verify-<対象>.ts"` を追加。
 5. UI セレクタは対象の component / form（`src/app/.../*.tsx`）を読んで確定する（placeholder / `aria-label` / ボタン文言が安定）。
 

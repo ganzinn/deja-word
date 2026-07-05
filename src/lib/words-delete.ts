@@ -21,7 +21,7 @@ export async function deleteWordForUser(
   });
   if (!existing) throw new WordNotFoundError();
 
-  // 削除ガード（ADR-0062）: pass-through で他ユーザーが付けた子孫があると、
+  // 削除ガード（ADR-0066）: pass-through で他ユーザーが付けた子孫があると、
   // Cascade でその私物が巻き添えに消える。word の owner 以外が所有する子孫が
   // 1 件でもあれば削除を拒否する。owner 系の 10 テーブルを distinct owner で走査。
   const descendantOwnerRows = await Promise.all([

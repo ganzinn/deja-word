@@ -23,7 +23,7 @@ export class ForbiddenDeleteError extends Error {
  * 単語削除の可否を判定する純関数。削除は Word 配下の全子孫を onDelete: Cascade で
  * 消すため、word の owner 以外が所有する子孫（pass-through で付いた他ユーザーの行）が
  * 1 件でもあれば、その owner の私物が巻き添えで消える。これを拒否する（共存モデルの
- * 削除ガード、ADR-0062）。DB 読み取りは呼び出し側（UseCase）が行い、取得済みの
+ * 削除ガード、ADR-0066）。DB 読み取りは呼び出し側（UseCase）が行い、取得済みの
  * 子孫 owner を渡す。
  */
 export function assertWordDeletable(

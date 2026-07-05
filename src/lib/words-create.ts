@@ -22,7 +22,7 @@ export class DuplicateOccurrenceNumberError extends Error {
 }
 
 // system・一般ともに単語は「単独作成」する。同名の system 単語と私有単語が
-// 共存できるのは意図的な仕様であり（ADR-0062）、作成時に他 owner の単語へ触れない。
+// 共存できるのは意図的な仕様であり（ADR-0065）、作成時に他 owner の単語へ触れない。
 // ownerId は編集者自身（system principal のときは SYSTEM_USER_ID が userId として渡る）。
 export async function createWordForUser(
   userId: string,

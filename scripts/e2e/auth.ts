@@ -1,6 +1,6 @@
 // ブラウザでのログイン・ユーザー種別のヘルパ。
-// 3 パターン: system(admin) / 使い回しの一般(test@example.com) / 使い捨ての一般。
-// 一般ユーザーは test@example.com を既定にして使い回す（事前データもこれで作る）。
+// 3 パターン: system(admin) / 使い回しの一般(test1@example.com) / 使い捨ての一般。
+// 一般ユーザーは test1@example.com を既定にして使い回す（事前データもこれで作る）。
 // 使い捨ては「新規ユーザーの観点」が本質的に必要なときのみ（ユーザー削除検証の残骸チェックは副次用途）。
 import type { BrowserContext, Page } from "playwright-core";
 
@@ -13,8 +13,16 @@ export function systemPassword(): string {
 }
 
 /** 使い回す一般ユーザー。破壊を伴わない検証はこれを再利用する（動作確認コスト最小化）。 */
-export const TEST_USER_EMAIL = "test@example.com";
-export const TEST_USER_PASSWORD = "testtest"; // MIN_PASSWORD_LENGTH(8) を満たす固定値
+export const TEST_USER1_EMAIL = "test1@example.com";
+export const TEST_USER1_PASSWORD = "testtest"; // MIN_PASSWORD_LENGTH(8) を満たす固定値
+
+/**
+ * 2 人目の使い回す一般ユーザー。テナント分離・pass-through の「他者役」に使う
+ * （viewer と別人格の stranger が要る検証で、①と組にする）。fresh-account 観点ではないので
+ * throwaway にはせず常設し、**削除しない**（テストデータのみ prefix 掃除）。preflight で ensureUser する。
+ */
+export const TEST_USER2_EMAIL = "test2@example.com";
+export const TEST_USER2_PASSWORD = "testtest"; // MIN_PASSWORD_LENGTH(8) を満たす固定値
 
 /**
  * `/sign-in` を UI 操作してログインする。成功で `/menu`（等）へ遷移するのを待って Page を返す。

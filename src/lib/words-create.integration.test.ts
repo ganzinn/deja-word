@@ -164,7 +164,7 @@ describe("createWordForUser", () => {
     expect(owners).toEqual([userA.id, userB.id].sort());
   });
 
-  test("system register transfers existing single regular-user word; children stay with original owner", async () => {
+  test("system register coexists with an existing regular-user word (no absorption)", async () => {
     const userA = await createTestUser();
     const aWord = await createWordForUser(
       userA.id,
@@ -195,46 +195,56 @@ describe("createWordForUser", () => {
       }),
     );
 
-    expect(created.id).toBe(aWord.id);
+    // 私有単語と別行として共存する（吸収されない）
+    expect(created.id).not.toBe(aWord.id);
 
-    const word = await prisma.word.findUnique({
+    const all = await prisma.word.findMany({ where: { headword: "apple" } });
+    expect(all).toHaveLength(2);
+    expect(all.map((w) => w.ownerId).sort()).toEqual([SYSTEM_USER_ID, userA.id].sort());
+
+    // userA の単語は無改変（owner・子行そのまま）
+    const aStill = await prisma.word.findUnique({
       where: { id: aWord.id },
       include: {
         meanings: { include: { texts: true }, orderBy: { sortOrder: "asc" } },
         examples: true,
       },
     });
-    expect(word).not.toBeNull();
-    expect(word!.ownerId).toBe(SYSTEM_USER_ID);
+    expect(aStill!.ownerId).toBe(userA.id);
+    expect(aStill!.meanings).toHaveLength(1);
+    expect(aStill!.meanings[0].ownerId).toBe(userA.id);
+    expect(aStill!.meanings[0].texts.map((t) => t.text)).toEqual(["りんご (A)"]);
+    expect(aStill!.examples).toHaveLength(1);
+    expect(aStill!.examples[0].ownerId).toBe(userA.id);
 
-    expect(word!.meanings).toHaveLength(2);
-    const ownersOfMeanings = word!.meanings.map((m) => m.ownerId).sort();
-    expect(ownersOfMeanings).toEqual([SYSTEM_USER_ID, userA.id].sort());
-
-    expect(word!.examples).toHaveLength(1);
-    expect(word!.examples[0].ownerId).toBe(userA.id);
-
-    const all = await prisma.word.findMany({ where: { headword: "apple" } });
-    expect(all).toHaveLength(1);
+    // system 単語は自分の子行のみを持つ
+    const sysWord = await prisma.word.findUnique({
+      where: { id: created.id },
+      include: { meanings: { include: { texts: true } } },
+    });
+    expect(sysWord!.ownerId).toBe(SYSTEM_USER_ID);
+    expect(sysWord!.meanings).toHaveLength(1);
+    expect(sysWord!.meanings[0].ownerId).toBe(SYSTEM_USER_ID);
+    expect(sysWord!.meanings[0].texts.map((t) => t.text)).toEqual(["りんご (system)"]);
   });
 
-  test("system register absorbs all regular-user rows when multiple users hold the headword", async () => {
+  test("system register coexists with multiple users holding the headword (no absorption)", async () => {
     const userA = await createTestUser();
     const userB = await createTestUser();
-    await createWordForUser(
+    const aWord = await createWordForUser(
       userA.id,
       emptyForm("shared", {
         meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 A" }], notes: [] }],
       }),
     );
-    await createWordForUser(
+    const bWord = await createWordForUser(
       userB.id,
       emptyForm("shared", {
         meanings: [{ partOfSpeech: "", pronunciation: "", texts: [{ text: "意味 B" }], notes: [] }],
       }),
     );
 
-    await createWordForUser(
+    const sysWord = await createWordForUser(
       SYSTEM_USER_ID,
       emptyForm("shared", {
         meanings: [
@@ -247,14 +257,21 @@ describe("createWordForUser", () => {
       where: { headword: "shared" },
       include: { meanings: { include: { texts: true } } },
     });
-    expect(rows).toHaveLength(1);
-    expect(rows[0].ownerId).toBe(SYSTEM_USER_ID);
+    // 3 行が共存（吸収なし）
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.ownerId).sort()).toEqual([SYSTEM_USER_ID, userA.id, userB.id].sort());
 
-    const meaningOwners = rows[0].meanings.map((m) => m.ownerId).sort();
-    expect(meaningOwners).toEqual([SYSTEM_USER_ID, userA.id, userB.id].sort());
-
-    const allTexts = rows[0].meanings.flatMap((m) => m.texts.map((t) => t.text)).sort();
-    expect(allTexts).toEqual(["意味 A", "意味 B", "意味 system"].sort());
+    // 各単語は自分の子行のみを持つ
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const aRow = byId.get(aWord.id)!;
+    expect(aRow.ownerId).toBe(userA.id);
+    expect(aRow.meanings.flatMap((m) => m.texts.map((t) => t.text))).toEqual(["意味 A"]);
+    const bRow = byId.get(bWord.id)!;
+    expect(bRow.ownerId).toBe(userB.id);
+    expect(bRow.meanings.flatMap((m) => m.texts.map((t) => t.text))).toEqual(["意味 B"]);
+    const sRow = byId.get(sysWord.id)!;
+    expect(sRow.ownerId).toBe(SYSTEM_USER_ID);
+    expect(sRow.meanings.flatMap((m) => m.texts.map((t) => t.text))).toEqual(["意味 system"]);
   });
 
   test("system register throws DuplicateHeadwordError when (system, X) already exists", async () => {
@@ -274,12 +291,12 @@ describe("createWordForUser", () => {
     expect(aStill!.ownerId).toBe(userA.id);
   });
 
-  test("system register dedups WordOccurrence when multiple regular users reference the same system occurrence", async () => {
+  test("system register leaves users' references to a system occurrence untouched (coexist)", async () => {
     const userA = await createTestUser();
     const userB = await createTestUser();
     const sysOcc = await getSystemOccurrence("ターゲット1900");
 
-    await createWordForUser(
+    const aWord = await createWordForUser(
       userA.id,
       emptyForm("shared", {
         occurrences: [
@@ -294,7 +311,7 @@ describe("createWordForUser", () => {
         ],
       }),
     );
-    await createWordForUser(
+    const bWord = await createWordForUser(
       userB.id,
       emptyForm("shared", {
         occurrences: [
@@ -310,22 +327,29 @@ describe("createWordForUser", () => {
       }),
     );
 
-    await createWordForUser(SYSTEM_USER_ID, emptyForm("shared"));
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, emptyForm("shared"));
 
-    const word = await prisma.word.findFirst({
+    const rows = await prisma.word.findMany({
       where: { headword: "shared" },
-      include: {
-        wordOccurrences: { include: { details: true } },
-      },
+      include: { wordOccurrences: { include: { details: true } } },
     });
-    expect(word).not.toBeNull();
-    expect(word!.ownerId).toBe(SYSTEM_USER_ID);
-    expect(word!.wordOccurrences).toHaveLength(1);
-    const details = word!.wordOccurrences[0].details.map((d) => d.detail).sort();
-    expect(details).toEqual(["A の詳細", "B の詳細"].sort());
+    // 3 行が共存し、各ユーザーの WordOccurrence は無改変
+    expect(rows).toHaveLength(3);
+
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const aRow = byId.get(aWord.id)!;
+    expect(aRow.wordOccurrences).toHaveLength(1);
+    expect(aRow.wordOccurrences[0].details.map((d) => d.detail)).toEqual(["A の詳細"]);
+    const bRow = byId.get(bWord.id)!;
+    expect(bRow.wordOccurrences).toHaveLength(1);
+    expect(bRow.wordOccurrences[0].details.map((d) => d.detail)).toEqual(["B の詳細"]);
+    // system 単語はフォーム未指定なので掲載箇所を持たない
+    const sRow = byId.get(sysWord.id)!;
+    expect(sRow.ownerId).toBe(SYSTEM_USER_ID);
+    expect(sRow.wordOccurrences).toHaveLength(0);
   });
 
-  test("system register repoints linkedWordId from other words to the surviving primary id", async () => {
+  test("system register does not repoint linkedWordId of users' related words (coexist)", async () => {
     const userA = await createTestUser();
     const userB = await createTestUser();
 
@@ -365,24 +389,21 @@ describe("createWordForUser", () => {
       }),
     );
 
-    await createWordForUser(SYSTEM_USER_ID, emptyForm("apple"));
+    const sysApple = await createWordForUser(SYSTEM_USER_ID, emptyForm("apple"));
 
-    const surviving = await prisma.word.findFirst({
-      where: { headword: "apple" },
-      select: { id: true, ownerId: true },
-    });
-    expect(surviving).not.toBeNull();
-    expect(surviving!.ownerId).toBe(SYSTEM_USER_ID);
-    expect(surviving!.id).toBe(aApple.id);
+    // 3 行が共存し、既存の linkedWordId は元の単語を指したまま（repoint しない）
+    const apples = await prisma.word.findMany({ where: { headword: "apple" } });
+    expect(apples).toHaveLength(3);
 
     const relatedRows = await prisma.relatedWord.findMany({
       where: { term: { in: ["apple-syn-a", "apple-syn-b"] } },
       select: { term: true, linkedWordId: true },
     });
-    expect(relatedRows).toHaveLength(2);
-    for (const r of relatedRows) {
-      expect(r.linkedWordId).toBe(surviving!.id);
-    }
+    const byTerm = new Map(relatedRows.map((r) => [r.term, r.linkedWordId]));
+    expect(byTerm.get("apple-syn-a")).toBe(aApple.id);
+    expect(byTerm.get("apple-syn-b")).toBe(bApple.id);
+    // system の apple は誰からもリンクされていない
+    expect(relatedRows.every((r) => r.linkedWordId !== sysApple.id)).toBe(true);
   });
 
   test("regular user supplied occurrenceNumber on a system Occurrence is silently nulled", async () => {

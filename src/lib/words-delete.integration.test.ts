@@ -5,6 +5,7 @@ import type { WordFormValues } from "@/lib/schema/word-form";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { createWordForUser } from "@/lib/words-create";
 import {
+  ForbiddenDeleteError,
   WordNotFoundError,
   countIncomingLinksForUser,
   deleteWordForUser,
@@ -64,6 +65,51 @@ describe("deleteWordForUser", () => {
     const sysWord = await createWordForUser(SYSTEM_USER_ID, form("system-immutable"));
     const user = await createTestUser();
     await expect(deleteWordForUser(user.id, sysWord.id)).rejects.toBeInstanceOf(WordNotFoundError);
+    expect(await prisma.word.findUnique({ where: { id: sysWord.id } })).not.toBeNull();
+  });
+
+  test("system word with only its own children can be deleted", async () => {
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, form("sys-solo"));
+    await deleteWordForUser(SYSTEM_USER_ID, sysWord.id);
+    expect(await prisma.word.findUnique({ where: { id: sysWord.id } })).toBeNull();
+  });
+
+  test("delete guard: system word with a user's pass-through child is not deletable; child survives", async () => {
+    const user = await createTestUser();
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, form("guarded"));
+    // 一般ユーザーが pass-through で system 単語に自分の意味を追加した状態
+    const userMeaning = await prisma.meaning.create({
+      data: {
+        wordId: sysWord.id,
+        ownerId: user.id,
+        texts: { create: [{ ownerId: user.id, text: "私の意味" }] },
+      },
+      select: { id: true },
+    });
+
+    await expect(deleteWordForUser(SYSTEM_USER_ID, sysWord.id)).rejects.toBeInstanceOf(
+      ForbiddenDeleteError,
+    );
+
+    // 単語もユーザーの意味も残る
+    expect(await prisma.word.findUnique({ where: { id: sysWord.id } })).not.toBeNull();
+    expect(await prisma.meaning.findUnique({ where: { id: userMeaning.id } })).not.toBeNull();
+  });
+
+  test("delete guard: even a foreign-owned grandchild (user text on a system meaning) blocks deletion", async () => {
+    const user = await createTestUser();
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, form("guarded-grand"));
+    const sysMeaning = await prisma.meaning.findFirst({
+      where: { wordId: sysWord.id },
+      select: { id: true },
+    });
+    await prisma.meaningText.create({
+      data: { meaningId: sysMeaning!.id, ownerId: user.id, text: "私の訳" },
+    });
+
+    await expect(deleteWordForUser(SYSTEM_USER_ID, sysWord.id)).rejects.toBeInstanceOf(
+      ForbiddenDeleteError,
+    );
     expect(await prisma.word.findUnique({ where: { id: sysWord.id } })).not.toBeNull();
   });
 });

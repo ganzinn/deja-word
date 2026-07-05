@@ -1,8 +1,8 @@
 // PR #110 / ADR-0066 の「削除ガード」を E2E で検証する。
-//   本命 : admin(system) が、一般ユーザー(test@example.com)が pass-through 追記した system 単語を
+//   本命 : admin(system) が、一般ユーザー(test1@example.com)が pass-through 追記した system 単語を
 //          削除しようとすると、ガードで拒否される（赤トースト・詳細ページに留まる）。
 //   対照+: admin が自分の子行だけの system 単語を削除 → 成功（ガードは無反応）。
-//   対照0: 一般ユーザー(test@example.com)が自分の私有単語を削除 → 成功（ガードは無反応）。
+//   対照0: 一般ユーザー(test1@example.com)が自分の私有単語を削除 → 成功（ガードは無反応）。
 //
 // 前提: dev サーバ稼働・DB seed 済み・system パスワード設定済み（未整備なら分かりやすく中断する）。
 // 実行: pnpm e2e:guard   （GUI で見るなら E2E_HEADED=1 pnpm e2e:guard）
@@ -10,7 +10,7 @@ import "dotenv/config";
 import type { BrowserContext, Page } from "playwright-core";
 
 import { baseUrl, launchBrowser, newContext, waitForToast, waitForWordDetail } from "./harness";
-import { SYSTEM_EMAIL, systemPassword, TEST_USER_EMAIL, TEST_USER_PASSWORD, login } from "./auth";
+import { SYSTEM_EMAIL, systemPassword, TEST_USER1_EMAIL, TEST_USER1_PASSWORD, login } from "./auth";
 import { assertSystemUserReady, cleanupWordsByPrefix, ensureUser, makePrisma } from "./db";
 
 const MEANING_PLACEHOLDER = "例: 短命の、つかの間の";
@@ -49,8 +49,8 @@ async function main(): Promise<void> {
 
   // --- preflight ---
   await assertSystemUserReady(prisma);
-  await ensureUser(prisma, TEST_USER_EMAIL, TEST_USER_PASSWORD, "E2E テスト（使い回し）");
-  log("preflight OK: system ready / test@example.com ready");
+  await ensureUser(prisma, TEST_USER1_EMAIL, TEST_USER1_PASSWORD, "E2E テスト（使い回し）");
+  log("preflight OK: system ready / test1@example.com ready");
 
   const browser = await launchBrowser();
   let adminCtx: BrowserContext | undefined;
@@ -62,13 +62,13 @@ async function main(): Promise<void> {
     log(`admin(system) created word ${prefix} id=${wordId}`);
 
     const userCtx = await newContext(browser);
-    const userPage = await login(userCtx, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+    const userPage = await login(userCtx, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
     await userPage.goto(`/words/${wordId}/edit`);
     await userPage.getByRole("button", { name: "メモを追加", exact: true }).click();
-    await userPage.getByPlaceholder("メモ 1").fill("test@example.com の追記メモ（pass-through）");
+    await userPage.getByPlaceholder("メモ 1").fill("test1@example.com の追記メモ（pass-through）");
     await userPage.getByRole("button", { name: "更新する", exact: true }).click();
     await userPage.waitForURL(new RegExp(`/words/${wordId}$`), { timeout: 15_000 });
-    log("test@example.com added a pass-through memo (cross-owner descendant)");
+    log("test1@example.com added a pass-through memo (cross-owner descendant)");
 
     await clickDelete(adminPage, wordId);
     const toast = await waitForToast(adminPage, { contains: GUARD_MESSAGE });
@@ -92,19 +92,19 @@ async function main(): Promise<void> {
     await adminPage.waitForURL(/\/words$/, { timeout: 15_000 });
     console.log("PASS ✅ 対照+: admin は自分の子行だけの system 単語を削除できた");
 
-    // ===== 対照0: 一般ユーザー(test@example.com)は自分の私有単語を削除できる（ガード無反応） =====
+    // ===== 対照0: 一般ユーザー(test1@example.com)は自分の私有単語を削除できる（ガード無反応） =====
     // 新規ユーザーの観点は不要なので、既存の使い回しユーザー(userPage)をそのまま使う。
-    const privId = await createWord(userPage, `${prefix}-priv`, "test@example.com の私有単語");
+    const privId = await createWord(userPage, `${prefix}-priv`, "test1@example.com の私有単語");
     await clickDelete(userPage, privId);
     const ok2 = await waitForToast(userPage, { contains: "削除しました" });
     assert(ok2.includes("削除しました"), `expected success toast, got: ${ok2}`);
     await userPage.waitForURL(/\/words$/, { timeout: 15_000 });
     console.log(
-      "PASS ✅ 対照0: 一般ユーザー(test@example.com)は自分の私有単語を削除できた（ガード無反応）",
+      "PASS ✅ 対照0: 一般ユーザー(test1@example.com)は自分の私有単語を削除できた（ガード無反応）",
     );
   } finally {
     await browser.close();
-    // --- 後始末: テスト単語は prefix で掃除（cascade で追記メモも消える）。test@example.com は残す。 ---
+    // --- 後始末: テスト単語は prefix で掃除（cascade で追記メモも消える）。test1@example.com は残す。 ---
     const removed = await cleanupWordsByPrefix(prisma, "e2e-guard-");
     log(`cleanup: removed ${removed} test word(s) by prefix "e2e-guard-"`);
     await prisma.$disconnect();

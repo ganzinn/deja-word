@@ -1,0 +1,7 @@
+date: 2026-07-08T00:28:13
+claude: 2.1.202 (Claude Code)
+model: claude-opus-4-8
+scenario: s3-overturn-word-bookmark
+base: 9fb45d07f507f2aaf3dbd215b2abbc22bde1e322
+skill_sha1: 5c6fa1fdaeb833ee8e0f3bdd0b53ddf1aaea0283
+exec_exit: 0

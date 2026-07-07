@@ -1,0 +1,6 @@
+---- transcript checks ----
+result_subtype: success
+askuserquestion_count: 0
+permission_denials: 3
+cost_usd: 3.4107537500000005
+FAIL t3_permission_denials (INFRA)

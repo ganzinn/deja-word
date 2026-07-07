@@ -1,0 +1,125 @@
+# design-session skill eval（凍結資産）
+
+design-session スキルを「新しいコンテキストの実行エージェントが、人間の介在なしに完走できるか」で機械的に評価するための資産。改善（skill 本文の修正）と評価（本ディレクトリ）を分離するため、**評価側は改善ループ中に緩める方向へ変更しない**。
+
+## 構成
+
+```
+evals/
+├── README.md                  # 本ファイル（完走の凍結定義・運用手順・監査マップ）
+├── criteria/                  # judge サブエージェントに渡す判定基準（凍結）
+├── bin/
+│   ├── run-scenario.sh        # 1 シナリオを隔離 worktree で実行し判定材料を収集
+│   └── summarize-transcript.sh # stream-json transcript の人間可読要約
+├── scenarios/
+│   ├── s1-new-word-tags/           # 新規立ち上げ（典型）
+│   ├── s2-continue-word-memo/      # セッション継続（典型）
+│   ├── s3-overturn-word-bookmark/  # 確定事項を覆す（エッジ）
+│   └── holdout-complete-word-export/ # 設計完了セッション（封印ホールドアウト）
+└── runs/                      # 各周回の実行記録（transcript.jsonl は gitignore）
+```
+
+各シナリオ: `feature.txt`（機能名）・`prompt.txt`（executor へ渡す入力全文 = スラッシュコマンド + ユーザー事前指示）・`checks.sh`（機械判定）・`fixture/`（事前状態、継続系のみ）。
+
+## 完走の定義（凍結 2026-07-08）
+
+シナリオ 1 実行が「完走」であるのは、以下**すべて**を満たす場合に限る:
+
+1. executor（`claude -p`）が exit 0、かつ transcript の最終 `result` イベントが `subtype: success`
+2. `checks.sh <worktree> <base_sha>` が exit 0（シナリオ固有の成果物・コミット条件）
+3. transcript 上で `AskUserQuestion` の呼び出しが 0 件、`permission_denials` が 0 件
+4. judge-artifact / judge-hesitation の両判定が `OVERALL: PASS`
+
+**INFRA 失敗**（ラウンドを消費しない。ハーネスを修正して再実行する）: permission 拒否・予算上限到達（`--max-budget-usd 15`）・CLI エラー。skill 本文の欠陥ではなくハーネスの欠陥として扱う。
+
+## 質問せず進めてよい範囲（裁量範囲、凍結 2026-07-08）
+
+executor は以下を**質問せずに**進めてよい:
+
+- (i) prompt.txt の事前指示が明示的に回答・許可している事項
+- (ii) skill が「技術的に明確な答えがあるものは推奨で進めてよい」とする事項
+- (iii) テンプレート内の文言・整形の範囲の判断
+
+以下は**違反（fail）**:
+
+- (a) 事前指示が回答済みの事項をユーザーに問い返す・確認待ちで停止する
+- (b) skill がユーザー判断と定める事項のうち、事前指示が回答していないものを無断で決める
+- (c) `docs/design/<機能名>/` の外のファイルを変更する
+
+## 引き締めルール（凍結 2026-07-08）
+
+- 基準・check は**追加・強化のみ可**（緩和は不可）
+- 変更した場合はコミットに残し、次ラウンドで s1〜s3 を全再実行する
+
+## 新規立ち上げセッション（S1）のコミット要件について
+
+SKILL.md の新規立ち上げモードにはコミット手順が明記されていないが、本 eval では S1 でもコミットを完走条件とする。根拠: (1) セッション継続モードは終了処理にコミットを含み、ドキュメントを未コミットのまま終わるセッションは引き継ぎとして成立しない (2) 後続の ticket-split はコミット済みの設計ドキュメントを前提とする。この非対称は skill 本文の曖昧さであり、ループでの観測対象。
+
+## 実行手順
+
+```sh
+# 1 シナリオ実行（リポジトリ直下で）
+.claude/skills/design-session/evals/bin/run-scenario.sh \
+  .claude/skills/design-session/evals/scenarios/s1-new-word-tags \
+  .claude/skills/design-session/evals/runs/round-1/s1
+```
+
+run-scenario.sh の動作: main から worktree を作成 → 改善候補の SKILL.md + templates/ を上書きコピー → fixture を配置してコミット（ここまでがセットアップコミット。BASE はこの後の HEAD）→ `claude -p`（claude-opus-4-8）で prompt.txt を実行 → checks.sh + transcript 検査 → 成果物スナップショット・commits.txt・要約を run-dir に収集 → worktree を撤去。
+
+executor には「本番同等のリポジトリ + 改善候補 skill + prompt.txt」だけが見える（evals/ や改善履歴は見えない）。
+
+judge の起動（改善側セッションから、シナリオごとに 2 本・新しいコンテキストで）:
+
+- judge-artifact: `criteria/judge-artifact.md` の基準に従い、`runs/<round>/<s>/artifact/` と `scenarios/<s>/prompt.txt` **だけ**を読んで判定させる
+- judge-hesitation: `criteria/judge-hesitation.md` の基準に従い、`runs/<round>/<s>/transcript-summary.md` と `scenarios/<s>/prompt.txt` **だけ**を読んで判定させる
+- いずれにも skill の diff・周回履歴・他シナリオの結果を渡さない
+
+各ラウンドの記録は `runs/round-N/summary.md`（pass/fail 表・fail 詳細・迷い記録・修正方針）。raw transcript（transcript.jsonl）はローカル保管のみ（gitignore）。コミットするのは要約・判定・成果物スナップショット・commits.txt・meta.txt。
+
+## preflight 検証記録（2026-07-07〜08）
+
+| # | 検証項目 | 結果 |
+| --- | --- | --- |
+| 1 | `claude -p --model claude-opus-4-8` + `--output-format stream-json` | 動作確認。`result` イベントに `subtype` / `total_cost_usd` / `permission_denials` が含まれる（claude CLI v2.1.202） |
+| 2 | `-p` モードでのスラッシュコマンド展開 | 展開される。`$ARGUMENTS` には**コマンド名以降の全文**（機能名 + 空行 + 事前指示）が入る → skill の引数節に「1 行目の最初のトークンが機能名、以降は事前指示」を凍結前に追記（ベースライン v0） |
+| 3 | `--permission-mode acceptEdits` + allowedTools（Read/Write/Edit/Glob/Grep/Task/TodoWrite/Bash(git status/log/diff/add/commit/ls)） | Write と `git commit` が denials 0 で通過（Haiku での安価な probe で確認） |
+| 4 | ハーネス改訂（2026-07-08、round-2 初回試行の INFRA を受けて）: executor を `bypassPermissions` + disallowedTools に変更 | allowlist 方式では heredoc + コマンド置換の複数行 `git commit`（Claude Code の標準手法）・`kill`・`&&` 連結内の `rm` が拒否され INFRA ノイズになる。probe で「bypass でも disallowedTools（touch）は拒否される」「heredoc commit は成功する」を確認。隔離 worktree + `--max-budget-usd 15` + disallow(git push / Web*) を安全層として維持 |
+
+## G1 ゲート記録（凍結前の健全性確認、2026-07-08）
+
+1. **check の弁別性**: 全シナリオの checks.sh を「実行前の fixture 状態」に対して実行し、成果物系 check が全て名前付きで FAIL することを確認（常時 pass する check の検出）。初回実行で 4 件の非弁別的 check（テンプレートのプレースホルダ文にマッチする採用/却下 check、状態表の要約列にマッチする引き継ぎ check）を検出し、決定セクション・引き継ぎセクション内にスコープを絞って強化した。ガード系 check（clean tree / 変更スコープ）が pre-run で pass するのは想定どおり（実行後の逸脱を検出する向きの check のため）。
+2. **fixture の整合性**: 新しいコンテキストのサブエージェントに 3 fixture セット + prompt.txt の噛み合わせをレビューさせ、「3 セットとも内部矛盾・転記ずれ・不成立の記述なし、使用可」の判定を得た。
+3. **機能名の product source 衝突チェック**（2026-07-08 追加。round-2 で word-memo が実在の `Memo` 機能と衝突していたことが発覚したため）: シナリオの機能が `src/` / `prisma/` に存在しないことを grep で確認する。確認結果: memo は `model Memo` と衝突（→ s2 を word-reminder に差し替え、G1 再実施済み）。tags / bookmark / export / reminder は衝突なし。シナリオ差し替えは pass 条件の緩和ではなく前提バグの修正であり、実施時は 3 シナリオ全再実行を伴う。
+
+## 制約検証メモ
+
+- SKILL.md にモデル名指定が存在しないことを確認（2026-07-07、grep）。「モデル名指定の削除」対応は不要（no-op）
+- eval ハーネス側のモデル指定: executor = claude-opus-4-8（評価対象モデルのため固定）、preflight の機械的 probe = Haiku（下請け工程のため許容）
+
+## 最終結果（2026-07-08 受け入れ成立）
+
+改善ループ（3 ラウンド以内で s1〜s3 全 pass）+ ホールドアウト（3 本目で pass）により終了条件を満たした。skill 本文への改善は全て観測された fail・迷いに対応するもの:
+
+| # | 改善（SKILL.md / templates） | 起因となった観測 |
+| --- | --- | --- |
+| v0 | 引数の複数行対応（1 行目 = 機能名、以降 = 事前指示） | preflight #2（`$ARGUMENTS` に全文が入る） |
+| r1 | 状態行の確定表記 `状態: **確定**（YYYY-MM-DD）` を統一 | round-1 s2 c1 fail |
+| r1 | 前提再掲の出典表記 `（NN 確定）` を統一 | round-1 s2 c6 fail |
+| r1 | 委譲した調査の二重実施をしない旨を明記 | round-1 s1/s3 迷い観測 |
+| r2 | 覆し履歴は元トピックのみ・サマリと前提は現行結論のみ | round-2 s3 c1/c3 fail |
+| h1 | サマリ昇格の除外対象に「採用理由」を明記 + 逃がし先 | holdout1 A2 fail |
+| h2 | 決定本文のラベル形式「採用理由:」「却下した代替案:」を手順とテンプレートに明記 | holdout2 c4 fail |
+
+## 監査マップ
+
+どの run がどの主張を裏付けるか（各 run ディレクトリに checks-output.txt / judge-*.md / artifact/ / commits.txt / meta.txt がある）:
+
+- **新規立ち上げの完走**: `runs/round-3/s1`, `runs/holdout-retry-rerun/s1`, `runs/holdout3-retry-rerun/s1`
+- **セッション継続（典型）の完走**: `runs/round-3/s2` ほか同上の各 s2
+- **確定事項の覆し + 伝播の完走**: `runs/round-3/s3` ほか同上の各 s3
+- **設計完了セッション + ticket-split 下流契約**: `runs/holdout3`（全判定 pass）。補助証跡: `runs/holdout`（A2 以外 pass、旧 skill）
+- **新規立ち上げ→01 確定のモード遷移**: `runs/holdout2`（c4 以外 pass、旧 skill。修正後の同モード再実行は未実施 — holdout は使い捨てのため。ラベル形式の効果は `runs/holdout3` の c3 pass が裏付ける）
+- **INFRA / eval 欠陥の処理過程**: `runs/round-2-infra`（permission 拒否）, `runs/round-2-eval-defect`（word-memo の実在機能衝突）, `runs/holdout`, `runs/holdout2`（失敗 holdout の保全）
+- **判定の非改変**: シナリオ checks.sh は Phase 0 凍結後、s2 差し替え（前提バグ修正、G1 再実施）を除き変更していない。judge 基準（criteria/）は一度も変更していない。git log -- .claude/skills/design-session/evals/ で追跡可能
+
+raw transcript（.jsonl）はローカル保管のみ（ユーザー決定）。コミット済みの transcript-summary.md が人間可読の証跡で、内容の疑義があれば再実行で再現する。

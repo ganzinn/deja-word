@@ -1,0 +1,3 @@
+# raw transcript はローカル保管のみ（要約 transcript-summary.md をコミットする）
+*.jsonl
+stderr.txt

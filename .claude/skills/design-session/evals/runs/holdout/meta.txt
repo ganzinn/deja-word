@@ -1,0 +1,7 @@
+date: 2026-07-08T01:43:10
+claude: 2.1.202 (Claude Code)
+model: claude-opus-4-8
+scenario: holdout-complete-word-export
+base: c74acf1d512cdc8275b68d6612c26ab92a3fa8c0
+skill_sha1: f65c2adf2f8e5b41132ff2e53ca6665f4a6d5d90
+exec_exit: 0

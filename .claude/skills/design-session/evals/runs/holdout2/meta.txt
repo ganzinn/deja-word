@@ -1,0 +1,7 @@
+date: 2026-07-08T07:11:22
+claude: 2.1.203 (Claude Code)
+model: claude-opus-4-8
+scenario: holdout2-launch01-word-goal
+base: 4702bb4828f4a920d99f01a3fd26fb6558718d1f
+skill_sha1: 117d3890eec2c5998585d95b0af7bfca00421c1a
+exec_exit: 0

@@ -1,0 +1,5 @@
+このシナリオは 3 本目のホールドアウト（holdout1 word-export が A2 fail、holdout2 word-goal が c4 fail となり作り直したもの）。
+
+- s1〜s3 の再実行が全て pass するまで実行禁止。
+- skill 修正の参考として本ディレクトリの内容を参照することも禁止。
+- fail した場合は再挑戦を打ち切り、skill の分割・前提見直しを提案して停止する。

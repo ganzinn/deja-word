@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# s2-continue-word-memo 機械判定（凍結 2026-07-08）
+# s2-continue-word-reminder 機械判定（2026-07-08。word-memo が実在機能と衝突していたため差し替え。判定構造は同等）
 # usage: checks.sh <worktree> <base_sha>   exit 0 = pass
 set -u
 WT=$1
 BASE=$2
-DIR="$WT/docs/design/word-memo"
+DIR="$WT/docs/design/word-reminder"
 HUB="$DIR/README.md"
 T02="$DIR/02-data-model.md"
 T03="$DIR/03-ui.md"
@@ -40,14 +40,14 @@ awk '/^## 前提/,/^## 検討事項リスト/' "$T03" | grep -q '02 確定' || f
 # c7: 次セッションの推奨トピックが 03 に更新されている
 grep -q '次セッションの推奨トピック: 03' "$HUB" || fail "c7_next_topic_03"
 
-# c8: コミットが存在し、メッセージが「word-memo 設計: 02 …確定」型
-git -C "$WT" log --format=%s "$BASE"..HEAD | grep -Eq '^word-memo 設計: 02.*確定' || fail "c8_commit_subject"
+# c8: コミットが存在し、メッセージが「word-reminder 設計: 02 …確定」型
+git -C "$WT" log --format=%s "$BASE"..HEAD | grep -Eq '^word-reminder 設計: 02.*確定' || fail "c8_commit_subject"
 
 # c9: 作業ツリーがクリーン
 [ -z "$(git -C "$WT" status --porcelain)" ] || fail "c9_clean_tree"
 
-# c10: 変更が docs/design/word-memo/ に限定されている
-OUT=$(git -C "$WT" diff --name-only "$BASE"..HEAD | grep -v '^docs/design/word-memo/')
+# c10: 変更が docs/design/word-reminder/ に限定されている
+OUT=$(git -C "$WT" diff --name-only "$BASE"..HEAD | grep -v '^docs/design/word-reminder/')
 [ -z "$OUT" ] || fail "c10_scope:$OUT"
 
 exit $F

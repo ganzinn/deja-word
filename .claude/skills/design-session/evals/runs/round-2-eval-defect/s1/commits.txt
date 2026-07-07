@@ -1,0 +1,228 @@
+commit 4fd1c0fefe09ec89fa2071cd940915ceb2fe86a1
+Author: ganzinn <shusuke-urata@c-fo.com>
+Date:   Wed Jul 8 00:59:09 2026 +0900
+
+    word-tags 設計: ドキュメント群を立ち上げ（標準5トピック分割を確定）
+    
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ docs/design/word-tags/01-requirements.md | 25 +++++++++++++++++++
+ docs/design/word-tags/02-data-model.md   | 27 ++++++++++++++++++++
+ docs/design/word-tags/03-filtering.md    | 26 +++++++++++++++++++
+ docs/design/word-tags/04-ui.md           | 27 ++++++++++++++++++++
+ docs/design/word-tags/05-architecture.md | 28 +++++++++++++++++++++
+ docs/design/word-tags/README.md          | 43 ++++++++++++++++++++++++++++++++
+ 6 files changed, 176 insertions(+)
+
+diff --git a/docs/design/word-tags/01-requirements.md b/docs/design/word-tags/01-requirements.md
+new file mode 100644
+index 0000000..98d7f1c
+--- /dev/null
++++ b/docs/design/word-tags/01-requirements.md
+@@ -0,0 +1,25 @@
++# 01. 要求・ユースケース
++
++状態: **未着手**
++
++## 前提（確定事項の再掲）
++
++このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
++
++- 機能名は word-tags（タグ = ユーザー定義の自由な分類ラベル。既存の note / Memo とは別概念）。
++- アプリのコンセプトは「一度忘れた単語との再会」による定着支援。タグはその整理を助ける補助機能。
++- MVP はタグの作成・単語への付け外し・一覧のタグ絞り込みまで。共有・色分け・並び替えはスコープ外（ユーザー事前指示）。
++
++## 検討事項リスト
++
++- [ ] タグで解決したいユーザーの課題は何か（覚えにくい単語のグルーピング等、コンセプト「再会」との関係）
++- [ ] タグを付けられる対象: 本人所有単語のみか、system 共有マスタ単語にも付けられるか（pass-through と同型の論点。02・05 に波及）
++- [ ] タグ作成の導線: 専用の管理画面で作るか、単語への付与時にインラインで新規作成するか
++- [ ] 単語への付け外しのユースケース（1 単語に複数タグ、1 タグに複数単語の前提でよいか）
++- [ ] 一覧のタグ絞り込みの要求（単一タグか複数タグ選択か、既存の検索・並び順との併用可否）
++- [ ] タグ自体のリネーム・削除を MVP に含めるか（作成・付け外しに閉じるか、ライフサイクル管理まで見るか）
++- [ ] スコープ外として明示するもの（共有・色分け・並び替え、および上記で MVP 外にした項目）
++
++## 議論・決定
++
++（未着手。採用理由と却下した代替案もここに残す。見出しは「決定 N: タイトル」形式で番号を振る。）
+diff --git a/docs/design/word-tags/02-data-model.md b/docs/design/word-tags/02-data-model.md
+new file mode 100644
+index 0000000..e48c60b
+--- /dev/null
++++ b/docs/design/word-tags/02-data-model.md
+@@ -0,0 +1,27 @@
++# 02. データモデル
++
++状態: **未着手**
++
++## 前提（確定事項の再掲）
++
++このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
++
++（依存する決定が確定したら、ここに 1 行ずつ再掲する。形式: 「- {依存する決定の要約}（{NN} 確定）。」）
++
++参考（確定ではなく既存コード規約。詳細は 05 で扱う）:
++- コンテンツ系テーブルは全行が `ownerId` を持ち、`ownerId == "system"` が全ユーザー共有マスタ（`src/lib/system-user.ts`）。
++- 既存の子テーブル・中間テーブルの手本: `WordOccurrence`（`@@unique([wordId, occurrenceId])`）、子行は `ownerId` + `@@index([ownerId])` + `@@map` snake_case、`onDelete: Cascade` が既定（`prisma/schema.prisma`）。
++- 既存テーブルは変更せず side table 加算で拡張する規約（`prisma/CLAUDE.md`）。
++
++## 検討事項リスト
++
++- [ ] `Tag` テーブルの構造（`id` / `ownerId` / `name` / `createdAt` / `updatedAt`）と一意制約（`@@unique([ownerId, name])` でユーザー内一意）
++- [ ] 単語×タグの中間テーブル `WordTag`（`wordId` / `tagId` / `ownerId`、`@@unique([wordId, tagId])`）の形と複合主キーの要否
++- [ ] system 共有マスタ単語に本人タグを付ける場合の所有構図（親 `Word` = system・`WordTag` = 本人 owner）と孤児防止（01 で「system 単語にも付与可」と決めた場合のみ）
++- [ ] `onDelete` 挙動（`Word` 削除 → `WordTag` cascade、`Tag` 削除 → `WordTag` cascade、`Occurrence` は無関係）
++- [ ] タグ名の格納形（正規化後の値を保存するか。正規化ルール自体は 03 の管轄）
++- [ ] 既存テーブルへの影響範囲（`Word` / `User` にリレーションフィールドのみ追加、本文は無変更で済むか）
++
++## 議論・決定
++
++（未着手。採用理由と却下した代替案もここに残す。見出しは「決定 N: タイトル」形式で番号を振る。）
+diff --git a/docs/design/word-tags/03-filtering.md b/docs/design/word-tags/03-filtering.md
+new file mode 100644
+index 0000000..62d8e19
+--- /dev/null
++++ b/docs/design/word-tags/03-filtering.md
+@@ -0,0 +1,26 @@
++# 03. タグ名の正規化・絞り込みロジック
++
++状態: **未着手**
++
++## 前提（確定事項の再掲）
++
++このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
++
++（依存する決定が確定したら、ここに 1 行ずつ再掲する。形式: 「- {依存する決定の要約}（{NN} 確定）。」）
++
++参考（確定ではなく既存コード事実。詳細は該当トピックで扱う）:
++- 単語一覧の既存絞り込みはすべて URL クエリ駆動（検索 `q` + `match`（prefix/contains/suffix）、並び順 `sort`、掲載箇所モードのみ `occ` / `from` / `to`）。実装は `src/lib/words-list.ts` と `src/app/words/_lib/search-params.ts`（04・05 で扱う）。
++- 読み取りは `ownerId: { in: scopedOwnerIds(userId) }`（system + 本人）。
++
++## 検討事項リスト
++
++- [ ] タグ名の正規化ルール（前後空白の trim・空文字禁止・最大長・大文字小文字/全角半角の同一視の有無）と、それに基づく重複判定（`@@unique([ownerId, name])` とどう対応させるか）
++- [ ] 絞り込みのセマンティクス（複数タグ選択時の AND / OR、既定はどちらか。単一タグに限定するかも含む）
++- [ ] 「タグなし（未分類）」での絞り込みを提供するか
++- [ ] 既存の検索（`q` / `match`）・並び順（`sort`）・掲載箇所絞り込み（`occ` / `from` / `to`）との併用可否と直交性
++- [ ] タグ一覧（絞り込み UI に出す候補）の並び順（名前順 / 使用数 / 最近使用）
++- [ ] タグ絞り込みの Prisma 条件化（`WordTag` 経由の where 句、`scopedOwnerIds` との結合、AND 時の件数評価）
++
++## 議論・決定
++
++（未着手。採用理由と却下した代替案もここに残す。見出しは「決定 N: タイトル」形式で番号を振る。）
+diff --git a/docs/design/word-tags/04-ui.md b/docs/design/word-tags/04-ui.md
+new file mode 100644
+index 0000000..fc29f78
+--- /dev/null
++++ b/docs/design/word-tags/04-ui.md
+@@ -0,0 +1,27 @@
++# 04. UI
++
++状態: **未着手**
++
++## 前提（確定事項の再掲）
++
++このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
++
++（依存する決定が確定したら、ここに 1 行ずつ再掲する。形式: 「- {依存する決定の要約}（{NN} 確定）。」）
++
++参考（確定ではなく既存コード事実。詳細は 05 で扱う）:
++- 単語一覧 `/words`（`src/app/words/page.tsx`）は Server Component で、`?view=` により単語モード（既定）と掲載箇所モードを切替。既存絞り込みは掲載箇所モードのみ。
++- ツールバーはクライアント（`src/app/words/_components/word-list-toolbar.tsx` ほか）で、URL 更新は `_components/toolbar-url.ts`（debounce commit + `setParam`）。
++
++## 検討事項リスト
++
++- [ ] タグ管理の入口（専用画面を設けるか、単語詳細画面内で完結させるか）
++- [ ] 単語への付け外し UI（単語詳細でのタグピッカー、未存在タグのインライン新規作成の見せ方）
++- [ ] 一覧のタグ絞り込み UI（`word-list-toolbar` への追加、URL クエリ（例 `tag=`）の設計、複数選択の見せ方）
++- [ ] 単語一覧の各行でのタグ表示有無・表示形式
++- [ ] タグ絞り込みを単語モード・掲載箇所モードのどちらに出すか（現状の絞り込みは掲載箇所モードのみ）
++- [ ] 空状態（タグ 0 件・絞り込み結果 0 件）の見せ方
++- [ ] タグのリネーム・削除 UI（01 で MVP に含めた場合のみ）
++
++## 議論・決定
++
++（未着手。採用理由と却下した代替案もここに残す。見出しは「決定 N: タイトル」形式で番号を振る。）
+diff --git a/docs/design/word-tags/05-architecture.md b/docs/design/word-tags/05-architecture.md
+new file mode 100644
+index 0000000..03c15b1
+--- /dev/null
++++ b/docs/design/word-tags/05-architecture.md
+@@ -0,0 +1,28 @@
++# 05. アーキテクチャ
++
++状態: **未着手**
++
++## 前提（確定事項の再掲）
++
++このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
++
++（依存する決定が確定したら、ここに 1 行ずつ再掲する。形式: 「- {依存する決定の要約}（{NN} 確定）。」）
++
++参考（確定ではなく既存コード規約。words 機能を手本とする）:
++- UseCase は `src/lib/*.ts` 直下フラット（`words-create.ts` 等の相似形で `tags-*.ts`）。機能サブディレクトリ `src/lib/tags/` に query / handler / policy を置く。
++- Server Action は `src/app/words/**/actions.ts`（`"use server"`）で throw せず Result 型を返す。読み取り一覧は Server Component が UseCase を直接 await。
++- zod スキーマは `src/lib/schema/`（`zod/v3` から import）。認可は「読み取り = `scopedOwnerIds`、所有検証 = 素の `ownerId: userId`」の非対称（`src/lib/CLAUDE.md`）。row-policy は `src/lib/words/policy/`。
++- 認証・認可境界に触れるため、整合性レビューでは `docs/reference/security-design-checklist.md` を通す。
++
++## 検討事項リスト
++
++- [ ] モジュール配置（UseCase `src/lib/tags-*.ts` の分割単位、`src/lib/tags/` 配下の query / handler / policy）
++- [ ] インターフェース（作成・付与・解除・削除の Server Action と、一覧絞り込み読み取りの経路）
++- [ ] 認可: 読み取り `scopedOwnerIds` / 書き込み 素の `ownerId: userId` の非対称の適用。system 共有マスタ単語へのタグ付与を許す場合のガードと孤児防止（row-policy 拡張の要否）
++- [ ] zod スキーマの置き場・粒度（`src/lib/schema/tag*.ts`）とタグ名バリデーション（03 の正規化ルールとの責務分担）
++- [ ] マイグレーション（side table 加算、命名 `add_word_tags` 系。既存テーブル無変更で済むか）
++- [ ] テスト戦略（正規化・絞り込み条件化は unit、所有スコープ・system 単語付与・孤児防止は integration。`tx-mock` / fixtures 拡張の要否）
++
++## 議論・決定
++
++（未着手。採用理由と却下した代替案もここに残す。見出しは「決定 N: タイトル」形式で番号を振る。）
+diff --git a/docs/design/word-tags/README.md b/docs/design/word-tags/README.md
+new file mode 100644
+index 0000000..6642f96
+--- /dev/null
++++ b/docs/design/word-tags/README.md
+@@ -0,0 +1,43 @@
++# word-tags 設計ドキュメント（ハブ）
++
++登録済みの単語にユーザー定義のタグを付け、単語一覧をタグで絞り込めるようにする機能（word-tags）の設計ドキュメント群の入口。
++**word-tags の設計に関わるセッションは、必ずこのファイルから読み始めること。**
++
++## 目的・スコープ
++
++ユーザーが登録済みの単語に自由なタグを付け、単語一覧をそのタグで絞り込めるようにする。
++覚えにくい単語のグルーピングなど、学習の整理を助ける補助機能（アプリのコンセプト「一度忘れた単語との再会」を、ユーザー自身の観点で束ねて支える位置づけ）。
++
++MVP の範囲はタグの作成・単語への付け外し・一覧のタグ絞り込みまで。タグの共有・色分け・並び替えはスコープ外。
++スコープの詳細（何をやる / やらない）は [01-requirements.md](01-requirements.md) で定義する。
++
++## 確定事項サマリ
++
++結論のみを記載する。採用理由・却下した代替案は各トピックファイルを参照。
++
++（まだ確定事項はない。確定したら「- **結論（太字で要点）**。補足 1〜2 行。→ [NN](NN-xxx.md)」の形式で追記する）
++
++## トピック状態表
++
++状態: `未着手` → `議論中` → `確定`
++
++| ファイル | 状態 | 要約 |
++| --- | --- | --- |
++| [01-requirements.md](01-requirements.md) | 未着手 | 要求・ユースケース・スコープ外 |
++| [02-data-model.md](02-data-model.md) | 未着手 | Tag / WordTag スキーマ・所有・制約 |
++| [03-filtering.md](03-filtering.md) | 未着手 | タグ名の正規化・重複判定・絞り込みセマンティクス |
++| [04-ui.md](04-ui.md) | 未着手 | タグ管理・単語への付け外し・一覧のタグ絞り込み UI |
++| [05-architecture.md](05-architecture.md) | 未着手 | モジュール配置・Server Action・認可・テスト戦略 |
++
++想定順序（残り）: 01 → 02 → 03 → 04 → 05。要求次第で入れ替え可。
++
++**次セッションの推奨トピック: 01（要求）**。まず「タグで解決したいユーザーの課題」と「タグを付けられる対象（本人所有単語のみか、system 共有マスタ単語にも付けられるか）」を固め、スコープ外の線（タグ自体のリネーム・削除を MVP に含めるか）を確定する。
++
++## セッション運用ルール
++
++1. **読み込みは「ハブ + 対象トピック1ファイル」に限定する**。他のトピックファイルは原則読まない。依存する決定は各ファイル冒頭の「前提」に再掲されている。
++2. **仕様書・設計書に記載した後は、毎回必ず整合性レビューを実施する**（成立しない記述・二重定義・決定間の矛盾・曖昧なシグネチャ等。観点は design-session スキル参照）。修正してから次へ進む。
++3. **セッション終了（クリア）前に、このファイルの状態表と確定事項サマリを必ず更新する**。これが次セッションへの引き継ぎとなる。
++4. **議論の過程・却下案・採用理由はトピックファイルに残し、ハブには昇格させない**。ハブには結論のみ（各1〜3行）を書く。
++5. **既存の確定事項を覆す場合は、ハブのサマリと元トピックファイルの両方を更新する**。あわせて、その決定を「前提」に再掲している他ファイルも更新する。
++6. 全トピック確定後、ハブに「実装への引き継ぎ」セクションを追記して設計を閉じる。実装フェーズの分割計画は別途 `docs/plan/` で扱う（このディレクトリは設計のみ）。

@@ -83,11 +83,13 @@ judge の起動（改善側セッションから、シナリオごとに 2 本�
 | 1 | `claude -p --model claude-opus-4-8` + `--output-format stream-json` | 動作確認。`result` イベントに `subtype` / `total_cost_usd` / `permission_denials` が含まれる（claude CLI v2.1.202） |
 | 2 | `-p` モードでのスラッシュコマンド展開 | 展開される。`$ARGUMENTS` には**コマンド名以降の全文**（機能名 + 空行 + 事前指示）が入る → skill の引数節に「1 行目の最初のトークンが機能名、以降は事前指示」を凍結前に追記（ベースライン v0） |
 | 3 | `--permission-mode acceptEdits` + allowedTools（Read/Write/Edit/Glob/Grep/Task/TodoWrite/Bash(git status/log/diff/add/commit/ls)） | Write と `git commit` が denials 0 で通過（Haiku での安価な probe で確認） |
+| 4 | ハーネス改訂（2026-07-08、round-2 初回試行の INFRA を受けて）: executor を `bypassPermissions` + disallowedTools に変更 | allowlist 方式では heredoc + コマンド置換の複数行 `git commit`（Claude Code の標準手法）・`kill`・`&&` 連結内の `rm` が拒否され INFRA ノイズになる。probe で「bypass でも disallowedTools（touch）は拒否される」「heredoc commit は成功する」を確認。隔離 worktree + `--max-budget-usd 15` + disallow(git push / Web*) を安全層として維持 |
 
 ## G1 ゲート記録（凍結前の健全性確認、2026-07-08）
 
 1. **check の弁別性**: 全シナリオの checks.sh を「実行前の fixture 状態」に対して実行し、成果物系 check が全て名前付きで FAIL することを確認（常時 pass する check の検出）。初回実行で 4 件の非弁別的 check（テンプレートのプレースホルダ文にマッチする採用/却下 check、状態表の要約列にマッチする引き継ぎ check）を検出し、決定セクション・引き継ぎセクション内にスコープを絞って強化した。ガード系 check（clean tree / 変更スコープ）が pre-run で pass するのは想定どおり（実行後の逸脱を検出する向きの check のため）。
 2. **fixture の整合性**: 新しいコンテキストのサブエージェントに 3 fixture セット + prompt.txt の噛み合わせをレビューさせ、「3 セットとも内部矛盾・転記ずれ・不成立の記述なし、使用可」の判定を得た。
+3. **機能名の product source 衝突チェック**（2026-07-08 追加。round-2 で word-memo が実在の `Memo` 機能と衝突していたことが発覚したため）: シナリオの機能が `src/` / `prisma/` に存在しないことを grep で確認する。確認結果: memo は `model Memo` と衝突（→ s2 を word-reminder に差し替え、G1 再実施済み）。tags / bookmark / export / reminder は衝突なし。シナリオ差し替えは pass 条件の緩和ではなく前提バグの修正であり、実施時は 3 シナリオ全再実行を伴う。
 
 ## 制約検証メモ
 

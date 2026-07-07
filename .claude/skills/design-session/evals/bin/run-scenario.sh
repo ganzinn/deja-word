@@ -45,14 +45,14 @@ BASE=$(git -C "$WT" rev-parse HEAD)
   echo "skill_sha1: $(shasum "$SKILL_SRC/SKILL.md" | cut -d' ' -f1)"
 } > "$RUN_DIR/meta.txt"
 
-ALLOWED="Read Write Edit Glob Grep Task TodoWrite Bash(git status:*) Bash(git log:*) Bash(git diff:*) Bash(git add:*) Bash(git commit:*) Bash(ls:*)"
+# bypassPermissions の根拠: 隔離 worktree + 予算上限 + disallowedTools（bypass でも強制されることを
+# probe で確認済み）。allowlist 方式は heredoc コミット等の標準操作を拒否し INFRA ノイズになる。
 DISALLOWED="WebSearch WebFetch Bash(git push:*)"
 
 (
   cd "$WT" && claude -p "$(cat "$SCEN/prompt.txt")" \
     --model claude-opus-4-8 \
-    --permission-mode acceptEdits \
-    --allowedTools "$ALLOWED" \
+    --permission-mode bypassPermissions \
     --disallowedTools "$DISALLOWED" \
     --max-budget-usd 15 \
     --no-session-persistence \

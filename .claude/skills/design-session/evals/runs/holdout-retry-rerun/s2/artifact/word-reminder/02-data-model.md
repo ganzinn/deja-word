@@ -1,0 +1,98 @@
+# 02. データモデル
+
+状態: **確定**（2026-07-08）
+
+## 前提（確定事項の再掲）
+
+このトピックが依存する決定。覆す場合はハブ（README.md）と決定元の両方を更新すること。
+
+- リマインダーは登録済み単語への本人専用の復習予定日設定（01 確定）。
+- MVP の通知はアプリ内表示のみ（01 確定）。
+
+このトピックで踏まえた既存アーキテクチャの前提（設計調査で確認）:
+
+- 単語（`word`）には本人所有の単語のほか、`ownerId = "system"` の共有マスタ単語が存在しうる（pass-through モデル: 一般ユーザーは共有単語を閲覧し、自分の子データを付加できる）。
+- コンテンツ系子テーブルは `id String @id @default(cuid())` ＋ 非正規化 `ownerId`／`wordId` を持ち、`owner`・`word` とも `onDelete: Cascade`。ソフトデリートは無く、削除はカスケードによるハードデリート（既存スキーマの規約）。
+
+## 検討事項リスト
+
+- [x] リマインダーの多重度: 1 単語につき 1 件か、複数件を持てるか
+- [x] 期日の粒度: 日付のみか、日時（時刻まで）か
+- [x] 単語削除時のリマインダーの扱い
+
+## 議論・決定
+
+### 決定 1: リマインダーは独立テーブル `WordReminder` として持つ（Word のカラムにしない）
+
+復習予定日を、`word` テーブルのカラム（例: `reviewDueOn DateTime?`）ではなく、独立した子テーブル `WordReminder` として持つ。
+
+採用理由:
+
+- **共有単語に本人専用の予定日を付けられる**。共有マスタ単語（`ownerId = "system"`）に対しても各ユーザーが自分の予定日を持てる必要があり、単語行に 1 カラムを足す方式では表現できない（共有行は全員で 1 値になってしまう）。子テーブルなら「単語 × ユーザー」で行を分けられる。これは既存の Meaning/Memo 等「共有単語にユーザーが自分の子データを付加する」pass-through の踏襲。
+- **「予定日なし」を行の非在で表せる**。設定されていない状態は行が無いこととして自然に表現でき、カラム方式の NULL 判定より子データとしての生成・削除ライフサイクルが明快。
+- **予定日固有の `createdAt` / `updatedAt` を持てる**。「いつ予定を設定・変更したか」を単語本体の更新時刻と分離して記録できる。
+- 「関心ごとに子テーブルを分ける」既存スキーマ規約（Meaning / Memo / Example …）と一貫する。
+
+却下した代替案: `word` に `reviewDueOn DateTime?` カラムを追加する。join 不要でカスケードも自動という簡潔さはあるが、上記のとおり共有単語に本人専用の値を持てず、01 決定 1 の「本人専用」を共有単語で満たせないため却下。
+
+### 決定 2: 多重度は「(owner, word) につき 1 件」とする
+
+1 人のユーザーが 1 つの単語に対して持てるリマインダーは最大 1 件。DB では `@@unique([ownerId, wordId])` で保証する。
+
+採用理由: ユーザー事前指示の「1 単語につき 1 件」を、pass-through（共有単語を複数ユーザーが利用しうる）と両立する形で表現したもの。所有者ごとに 1 件に絞ることで、本人視点では常に「1 単語 = 1 予定日」になり、かつ共有単語で他ユーザーの予定日と衝突しない。既存の複合インデックス（例: `QuizAnswer` の `@@index([ownerId, wordId])`）と同じ idiom。
+
+却下した代替案:
+
+- **1 単語につき複数件（繰り返し予定・複数予定）**。MVP では用途に対して過剰。ユーザー事前指示で不採用。
+- **`@@unique([wordId])`（単語グローバルに 1 件）**。共有単語に対して先着 1 ユーザーしか予定日を持てなくなり、「本人専用」を満たせないため却下。
+
+### 決定 3: 期日の粒度は「日付のみ」とする
+
+予定日は日付のみを保持する。Prisma では `remindOn DateTime @db.Date`（Postgres `date` 型）で表現する。
+
+採用理由: 「この日に見返す」という用途に時刻管理は過剰（ユーザー事前指示）。`@db.Date` を使うことで、DB レベルで時刻・タイムゾーン成分を持たず、「日付比較」だけで期日判定でき、`DateTime`（timestamp）を真夜中に正規化して持つ場合のタイムゾーン起因のズレ（保存時と表示時で日付が 1 日ずれる等）を構造的に排除できる。
+
+補足: これは既存スキーマで最初の `@db.Date` 利用になる（現状の温度的フィールドはすべて `DateTime` timestamp）。期日到来の判定に用いる「今日」の基準日（ユーザーのローカル日 vs サーバー日）は表示・判定ロジックの論点であり 03 で扱う。ここでは保存形態のみを確定する。
+
+却下した代替案: `DateTime`（時刻付き timestamp）で保持し時刻を UI で無視する。保存に時刻・TZ 成分が残り「無視しているつもりのズレ」を生むため却下。
+
+### 決定 4: 単語・ユーザー削除時はカスケード削除（ハードデリート）
+
+`word` 削除時・`user` 削除時とも、対応する `WordReminder` 行を一緒に削除する。`word`・`owner` の両リレーションに `onDelete: Cascade` を付ける。
+
+採用理由: リマインダーは単語に付随する本人の情報であり、単語が消えれば残す意味が無い（ユーザー事前指示）。ユーザー削除時に全所有データを消す既存規約とも一致。ソフトデリートは既存スキーマに無く、導入しない。
+
+### 決定 5: 所有・テナント分離モデル（本人専用・共有行なし）
+
+`WordReminder` は純粋な本人専用データとして扱い、read も write も `ownerId == 操作ユーザー` の行のみに限定する（`scopedOwnerIds`（system + 自分）で広げる read 対象には含めない）。
+
+- **`ownerId = "system"` の共有リマインダー行は作らない**。リマインダーは共有マスタの対象種別ではないため、row-policy の pass-through 拡張は不要。seed で system 行を作る必要も無い。
+- **`WordReminder.ownerId` は親 `word.ownerId` と一致しないことがある**。共有単語（`word.ownerId = "system"`）に本人がリマインダーを付けた場合、`WordReminder.ownerId` は操作ユーザー、`word.ownerId` は `"system"` になる。書き込み時に `ownerId` へ「単語の所有者」ではなく「操作ユーザー」を入れること（Meaning/Memo と同じ、共有単語への自分の子データ付加の挙動）。
+
+（セキュリティ設計時チェックリストの「データ所有・テナント分離」を通した結果、上記を明示的な前提として記録。read/write 非対称の原則そのものは維持し、リマインダーは「read も write も自分のみ」の最も狭いスコープに置く。）
+
+## 確定モデル（Prisma スケッチ）
+
+実装時の正は `prisma/schema.prisma`。ここでは 02 で確定した形を示す。
+
+```prisma
+model WordReminder {
+  id        String   @id @default(cuid())
+  wordId    String   @map("word_id")
+  ownerId   String   @map("owner_id")
+  remindOn  DateTime @map("remind_on") @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  word  Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, wordId])
+  @@index([ownerId, remindOn])
+  @@map("word_reminder")
+}
+```
+
+- 逆リレーション: `Word` に `wordReminders WordReminder[]`（1 単語に複数ユーザー分がぶら下がりうるため単数 optional ではなく配列）、`User` に `wordReminders WordReminder[]` を追加する。
+- インデックス: `@@unique([ownerId, wordId])` が (ownerId, wordId) の複合インデックスを兼ねる。加えて「本人の期日到来リマインダー一覧」（`ownerId = ? AND remindOn <= 基準日`）を効かせるため `@@index([ownerId, remindOn])` を張る。
+- `remindOn` は必須（NOT NULL）。「予定日なし」は行の非在で表す（決定 1）。

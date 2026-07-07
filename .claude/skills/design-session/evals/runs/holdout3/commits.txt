@@ -1,0 +1,148 @@
+commit 3caf2eb0ff46cbf0158798760ac517fef65260aa
+Author: ganzinn <shusuke-urata@c-fo.com>
+Date:   Wed Jul 8 07:48:33 2026 +0900
+
+    word-archive 設計: 03 アーキテクチャを確定（設計完了）
+    
+    除外は一覧取得クエリ側で既定除外し全一覧・ナビに統一適用、アーカイブ/解除は
+    Server Action → UseCase 経由、除外述語を純関数 unit ＋操作〜反映を E2E 1本で確定。
+    全トピック確定につきハブに実装への引き継ぎを追記し設計シリーズを閉じる。
+    
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ docs/design/word-archive/03-architecture.md | 44 +++++++++++++++++++++++---
+ docs/design/word-archive/README.md          | 48 ++++++++++++++++++++++++++---
+ 2 files changed, 84 insertions(+), 8 deletions(-)
+
+diff --git a/docs/design/word-archive/03-architecture.md b/docs/design/word-archive/03-architecture.md
+index 01b5b53..8209e72 100644
+--- a/docs/design/word-archive/03-architecture.md
++++ b/docs/design/word-archive/03-architecture.md
+@@ -1,6 +1,6 @@
+ # 03. アーキテクチャ
+ 
+-状態: **議論中**
++状態: **確定**（2026-07-08）
+ 
+ ## 前提（確定事項の再掲）
+ 
+@@ -12,9 +12,45 @@
+ 
+ ## 検討事項リスト
+ 
+-- [ ] アーカイブ済み除外の適用方式（一覧取得クエリ側の既定除外 / 表示側のフィルタ）
+-- [ ] テスト戦略
++- [x] アーカイブ済み除外の適用方式（一覧取得クエリ側の既定除外 / 表示側のフィルタ）
++- [x] 除外の適用範囲（どの一覧・ナビ経路に効かせるか）
++- [x] アーカイブ/解除の書き込み経路
++- [x] テスト戦略
+ 
+ ## 議論・決定
+ 
+-（未確定。見出しは「決定 N: タイトル」形式で番号を振り、本文に「採用理由:」「却下した代替案:」のラベル付き行を置く。）
++### 決定 1: アーカイブ済み除外は一覧取得クエリ側で既定除外する
++
++一覧取得クエリの `where` にアーカイブ除外述語を組み込み、既定でアーカイブ済みを取得対象から外す。「アーカイブ済みを見返す」絞り込みは、既存の `q` / `sort` / `match` と同様に検索クエリパラメータで受け取り、この述語を「除外」→「アーカイブのみ」へ切り替える。
++
++- 実装方式: `UserWordArchive` は (userId, wordId) の中間テーブル（02 確定）なので、`Word` に逆リレーション `userWordArchives` を追加し、関係フィルタで除外する。
++  - 既定（未指定）: `userWordArchives: { none: { userId } }`（本人のアーカイブ行が無いものだけ）
++  - アーカイブのみ表示: `userWordArchives: { some: { userId } }`
++  - 述語は本人の `userId` で閉じる（本人のアーカイブ行だけを見る）。他ユーザーや system のアーカイブ行は評価しない。
++- 採用理由: `total` とページングは `where` から算出される（`listWordsForUser` は `findMany(where)` と `count(where)` を `Promise.all` で回す。src/lib/words-list.ts:132-141）。除外を `where` に入れれば取得件数・ページングが自動的に整合する。既存クエリは filtering を shared な `where` / where-builder に集約しており、隣接ナビ helper も同じ where を再利用して集合定義を一致させている。除外述語もここに組み込むのが既存方針と唯一整合する。
++- 却下した代替案: 表示側（Server Component / クライアント）でのフィルタリング — `count` は `where` から出るため、取得後にアーカイブ済みを間引くと `total`・ページング・「1ページ分の件数」が実データと乖離する。
++
++### 決定 2: 除外は全一覧・ナビ経路で統一適用する
++
++除外述語を、単語一覧を導出する共有 where / where-builder すべてに効かせる。対象は `listWordsForUser`（words-view）、`buildWordsByOccurrenceWhere` 経由の `listWordsByOccurrence`（occurrence-view）、および隣接ナビ helper（`findAdjacentWordsByOccurrence` / `findAdjacentWordsByOccurrenceNumber`）。
++
++- 採用理由: 集合定義がビュー・ナビ間で食い違うと「一覧から消えたのに前後ナビで到達できる」「occurrence-view にだけアーカイブ済みが残る」といった不整合が出る。既存コードは where-builder を共有して集合を一致させており（src/lib/words-list.ts の隣接 helper が同じ where を再利用）、その設計に除外述語を1箇所で足すことで全経路に一様に効く。
++- 却下した代替案: words-view だけ除外 — occurrence-view と前後ナビでアーカイブ済みが露出し、01 の「通常の一覧から隠す」を満たせない。
++
++### 決定 3: アーカイブ/解除は Server Action → UseCase 経由で書き込む
++
++アーカイブ・解除は Server Action を入口にし、UseCase（`src/lib/words-archive.ts`, `server-only`）の `archiveWord` / `unarchiveWord` が `UserWordArchive` 行を作成 / 削除する。Server Action は Result 型（`{ ok: true } | { ok: false, error, message }`）を返す。
++
++- スコープ: アーカイブは本人専用状態。対象 `Word` は本人の単語も system 共有単語もあり得るので、対象の可視性は読み系の慣習どおり `scopedOwnerIds(userId)` で確認し、`UserWordArchive` 行は本人の `userId` で作る（読み=scoped / 書き=userId 行、の非対称に沿う。src/lib/CLAUDE.md）。
++- 冪等性: 既にアーカイブ済みで再アーカイブ、未アーカイブで解除、を呼んでもエラーにしない（`upsert` 相当 / 行が無ければ no-op）。UI の二重操作・再送に耐える。
++- 削除耐性: 単語削除時は `UserWordArchive` 行が Cascade で消える（02 確定・ADR-0009）。解除操作が対象行の消滅と競合しても no-op で吸収する。
++- 却下した代替案: Server Component / page から直接 `prisma` を変更 — 認可・Result 変換・トランザクション境界の層分け（src/app / src/lib の慣習）に反する。
++
++### 決定 4: 除外述語を純関数として unit テスト、操作〜一覧反映は E2E を1本
++
++- unit: 除外述語を純ヘルパー `archiveExclusionWhere(userId, mode)`（`mode`: 既定=除外 / アーカイブのみ）として切り出し、unit テストする（`headwordCondition` と同様の純関数。src/lib/words-list.ts:110-114 が範）。既定で `none` 述語、絞り込み時に `some` 述語を返し、`userId` が述語内に正しく閉じ込められることを検証する。
++- E2E: アーカイブ操作〜一覧反映の流れを1本（`scripts/e2e/verify-archive.ts` / `pnpm e2e:archive`）。`test1` で単語をアーカイブ → `/words` から消える → アーカイブ絞り込みで見える → 解除で一覧に戻る、を通す（e2e-verify スキルのハーネスを使う）。
++- 採用理由: 一覧クエリ本体（`listWordsForUser` 等）は DB 依存で、ADR-0056 によりクエリの検証層は integration（`words-list.integration.test.ts`）であって unit ではない（クエリの unit テストは存在しない）。そのため「除外込みの一覧クエリを unit で検証したい」という要求は、除外述語を純関数として切り出す seam に落とし込むことで満たす。実 DB での反映（除外・絞り込み・解除の end-to-end）は E2E が端から端まで担保する。
++- 却下した代替案:
++  - (a) `prisma` をモックして `listWordsForUser` を直接 unit テスト — ADR-0056（クエリは integration で検証）に反し、`findMany` / `count` に `where` が渡ることを確認するだけで検証価値が低い。
++  - (b) integration テストで除外を検証 — E2E と守備範囲が重複し、今回ユーザーが確定したテスト範囲（unit + E2E 1本）を超える。将来 DB レベルの回帰固定が要れば `words-list.integration.test.ts` に追加できる（除外・スコープの既存アサーション群に並べる）。
+diff --git a/docs/design/word-archive/README.md b/docs/design/word-archive/README.md
+index e5c65c9..1907cfd 100644
+--- a/docs/design/word-archive/README.md
++++ b/docs/design/word-archive/README.md
+@@ -16,6 +16,9 @@
+ - **アーカイブは単語単位のオン/オフで本人専用**。単語データ自体は変更しない。→ [01](01-requirements.md)
+ - **アーカイブ済みは通常の単語一覧から隠し、絞り込みで見返す・戻すができる**。→ [01](01-requirements.md)
+ - **保存は中間テーブル UserWordArchive、単語削除時はアーカイブ状態も削除**。→ [02](02-data-model.md)
++- **アーカイブ済み除外は一覧取得クエリ側で既定除外し、全一覧・ナビ経路に統一適用**。絞り込みで「アーカイブのみ表示」へ切り替える。→ [03](03-architecture.md)
++- **アーカイブ/解除は Server Action → UseCase（words-archive.ts）で本人スコープの UserWordArchive 行を作成/削除（冪等）**。→ [03](03-architecture.md)
++- **テストは除外述語を純関数として unit、操作〜一覧反映を E2E 1本**。→ [03](03-architecture.md)
+ 
+ ## トピック状態表
+ 
+@@ -25,11 +28,9 @@
+ | --- | --- | --- |
+ | [01-requirements.md](01-requirements.md) | 確定（2026-07-05） | アーカイブの単位・所有・見え方 |
+ | [02-data-model.md](02-data-model.md) | 確定（2026-07-06） | 保存形態・削除時の扱い |
+-| [03-architecture.md](03-architecture.md) | 議論中 | 除外の適用方式・テスト戦略 |
++| [03-architecture.md](03-architecture.md) | 確定（2026-07-08） | 除外の適用方式・書き込み経路・テスト戦略 |
+ 
+-想定順序（残り）: 03。
+-
+-**次セッションの推奨トピック: 03（アーキテクチャ）**。引き継ぎ論点: アーカイブ済み除外の適用方式（一覧クエリ側の既定除外 / 表示側のフィルタ）・テスト戦略。
++**全トピック確定。設計は完了**。実装フェーズの分割は下記「実装への引き継ぎ」を起点に ticket-split スキルで行う。
+ 
+ ## セッション運用ルール
+ 
+@@ -39,3 +40,42 @@
+ 4. **議論の過程・却下案・採用理由はトピックファイルに残し、ハブには昇格させない**。ハブには結論のみ（各1〜3行）を書く。
+ 5. **既存の確定事項を覆す場合は、ハブのサマリと元トピックファイルの両方を更新する**。あわせて、その決定を「前提」に再掲している他ファイルも更新する。
+ 6. 全トピック確定後、ハブに「実装への引き継ぎ」セクションを追記して設計を閉じる。実装フェーズの分割計画は別途 `docs/plan/` で扱う（このディレクトリは設計のみ）。
++
++## 実装への引き継ぎ
++
++チケット分割（ticket-split スキル）が全トピックを読み直さずに開始できるための棚卸し。詳細が要る場合のみ各決定（`NN-xxx.md の決定 N`）を参照する。
++
++### 変更対象の一覧
++
++- **スキーマ変更 / マイグレーション**（→ [02](02-data-model.md) 決定 1・2 / [03](03-architecture.md) 決定 1）
++  - 新規モデル `UserWordArchive`（`@@map("user_word_archive")`）: `userId` + `wordId`、複合主キー `@@id([userId, wordId])`、両 FK `onDelete: Cascade`、各 FK に `@@index`。`OccurrencePresetSetting`（`prisma/schema.prisma`）を構造の範とする。
++  - 既存 `Word` に逆リレーション `userWordArchives UserWordArchive[]` を追加（除外述語 `some` / `none` を張るために必要）。
++  - マイグレーション 1 本。
++- **新規モジュール / ファイル**
++  - `src/lib/words-archive.ts`（`server-only`）: `archiveWord` / `unarchiveWord`（本人スコープで `UserWordArchive` 行を作成 / 削除、冪等）。→ [03](03-architecture.md) 決定 3
++  - 除外述語の純ヘルパー `archiveExclusionWhere(userId, mode)`: `Word` スコープの `where` 断片（`{ userWordArchives: { none|some: { userId } } }`）を返す純関数。unit テスト対象。words-view はこれを `where` に直接展開、occurrence-view / 隣接ナビは `word: {...}` の下にネストして置く。→ [03](03-architecture.md) 決定 1・4
++  - Server Action（`src/app/**`）: アーカイブ / 解除。Result 型を返す。
++- **既存ファイルの変更**
++  - `src/lib/words-list.ts`: 共有 where / where-builder（`listWordsForUser`、`buildWordsByOccurrenceWhere` 経由の `listWordsByOccurrence`、隣接ナビ `findAdjacentWordsByOccurrence` / `findAdjacentWordsByOccurrenceNumber`）に除外述語を組み込む。`WordListParams` にアーカイブ表示モードを追加。→ [03](03-architecture.md) 決定 1・2
++  - `src/app/words/page.tsx`: 検索クエリパラメータでアーカイブ表示モードを受け取り、`skip`/`take`/`total` の算出に流す。
++- **UI コンポーネント**
++  - 一覧のアーカイブ絞り込みトグル（通常 / アーカイブのみ）。
++  - 各単語のアーカイブ / 解除操作（一覧または詳細）。
++
++### 着手順序のヒント
++
++共有基盤 → 依存方向に沿って積む: **スキーマ + マイグレーション → 純ヘルパー `archiveExclusionWhere`（unit test 付き）→ `words-archive` UseCase ＋ where への除外組み込み → Server Action → UI → E2E**。競合しやすい共有物は `src/lib/words-list.ts` の where / where-builder（複数の一覧・ナビ経路が同じ where を共有するため、除外述語の組み込みは1本のチケットにまとめるのが安全）。
++
++### テスト戦略の要点（チケット完了条件に転記可）
++
++- unit: `archiveExclusionWhere` — 既定は `none` 述語 / 絞り込み時は `some` 述語 / `userId` が述語内に正しく閉じ込められる。
++- E2E: `scripts/e2e/verify-archive.ts`（`pnpm e2e:archive`）— `test1` で単語をアーカイブ → `/words` から消える → アーカイブ絞り込みで見える → 解除で一覧に戻る。
++- 一覧クエリ本体は ADR-0056 によりクエリの検証層が integration のため unit を持たない。DB レベルの回帰固定が必要になった場合のみ `words-list.integration.test.ts` に除外・スコープのアサーションを追加する。
++
++### 用語
++
++- 実装時に `docs/reference/naming-book.md` へ「アーカイブ（archived）/ アーカイブ解除」と `UserWordArchive` を追加する（現状コード・schema・naming-book に archive 語は未登録）。
++
++### チケット分割
++
++チケットは ticket-split スキルで `docs/plan/word-archive/` に生成する（形式は ticket-split 側で定義）。

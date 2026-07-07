@@ -96,6 +96,30 @@ judge の起動（改善側セッションから、シナリオごとに 2 本�
 - SKILL.md にモデル名指定が存在しないことを確認（2026-07-07、grep）。「モデル名指定の削除」対応は不要（no-op）
 - eval ハーネス側のモデル指定: executor = claude-opus-4-8（評価対象モデルのため固定）、preflight の機械的 probe = Haiku（下請け工程のため許容）
 
+## 最終結果（2026-07-08 受け入れ成立）
+
+改善ループ（3 ラウンド以内で s1〜s3 全 pass）+ ホールドアウト（3 本目で pass）により終了条件を満たした。skill 本文への改善は全て観測された fail・迷いに対応するもの:
+
+| # | 改善（SKILL.md / templates） | 起因となった観測 |
+| --- | --- | --- |
+| v0 | 引数の複数行対応（1 行目 = 機能名、以降 = 事前指示） | preflight #2（`$ARGUMENTS` に全文が入る） |
+| r1 | 状態行の確定表記 `状態: **確定**（YYYY-MM-DD）` を統一 | round-1 s2 c1 fail |
+| r1 | 前提再掲の出典表記 `（NN 確定）` を統一 | round-1 s2 c6 fail |
+| r1 | 委譲した調査の二重実施をしない旨を明記 | round-1 s1/s3 迷い観測 |
+| r2 | 覆し履歴は元トピックのみ・サマリと前提は現行結論のみ | round-2 s3 c1/c3 fail |
+| h1 | サマリ昇格の除外対象に「採用理由」を明記 + 逃がし先 | holdout1 A2 fail |
+| h2 | 決定本文のラベル形式「採用理由:」「却下した代替案:」を手順とテンプレートに明記 | holdout2 c4 fail |
+
 ## 監査マップ
 
-（各ラウンド終了時に追記: どの run がどの主張を裏付けるか）
+どの run がどの主張を裏付けるか（各 run ディレクトリに checks-output.txt / judge-*.md / artifact/ / commits.txt / meta.txt がある）:
+
+- **新規立ち上げの完走**: `runs/round-3/s1`, `runs/holdout-retry-rerun/s1`, `runs/holdout3-retry-rerun/s1`
+- **セッション継続（典型）の完走**: `runs/round-3/s2` ほか同上の各 s2
+- **確定事項の覆し + 伝播の完走**: `runs/round-3/s3` ほか同上の各 s3
+- **設計完了セッション + ticket-split 下流契約**: `runs/holdout3`（全判定 pass）。補助証跡: `runs/holdout`（A2 以外 pass、旧 skill）
+- **新規立ち上げ→01 確定のモード遷移**: `runs/holdout2`（c4 以外 pass、旧 skill。修正後の同モード再実行は未実施 — holdout は使い捨てのため。ラベル形式の効果は `runs/holdout3` の c3 pass が裏付ける）
+- **INFRA / eval 欠陥の処理過程**: `runs/round-2-infra`（permission 拒否）, `runs/round-2-eval-defect`（word-memo の実在機能衝突）, `runs/holdout`, `runs/holdout2`（失敗 holdout の保全）
+- **判定の非改変**: シナリオ checks.sh は Phase 0 凍結後、s2 差し替え（前提バグ修正、G1 再実施）を除き変更していない。judge 基準（criteria/）は一度も変更していない。git log -- .claude/skills/design-session/evals/ で追跡可能
+
+raw transcript（.jsonl）はローカル保管のみ（ユーザー決定）。コミット済みの transcript-summary.md が人間可読の証跡で、内容の疑義があれば再実行で再現する。

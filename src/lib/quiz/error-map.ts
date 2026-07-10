@@ -1,5 +1,6 @@
 import { EmptyDrillResultsError } from "@/lib/drill-create";
 import { EmptyDrillRetryError } from "@/lib/drill-retry-generate";
+import { DrillNoAskableWordsError } from "@/lib/drill-round-generate";
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import {
@@ -25,6 +26,8 @@ export type QuizErrorResult = {
  * - `EmptyDrillResultsError`: drill 生成の results に有効な単語が 1 件もない
  *   （改ざん入力・極端な削除レースのみ到達。バグではないためログは残さず not_found 扱い）
  * - `EmptyDrillRetryError`: 再テスト生成の wordIds に当該 drill の単語が 1 件もない（同上の扱い）
+ * - `DrillNoAskableWordsError`: 未定着メンバーが全員出題不能で、自己修復削除（ADR-0067）の
+ *   結果 drill がその場で完了になった（返せるラウンドが無いため generation_failed 扱い）
  * - `DrillRoundConflictError`: ラウンド送信の競合（別画面で 2 ラウンド以上進んでいる等）
  * - 未知のエラー: `words/error-map.ts` と同じ方針で `unknown` にマップ（ログのみ残す）
  */
@@ -50,6 +53,13 @@ export function mapQuizErrorToResult(e: unknown): QuizErrorResult {
       ok: false,
       error: "not_found",
       message: "再テストの対象になる単語が見つかりません。",
+    };
+  }
+  if (e instanceof DrillNoAskableWordsError) {
+    return {
+      ok: false,
+      error: "generation_failed",
+      message: "出題できない単語を対象から外したため、この定着モードは完了になりました。",
     };
   }
   if (e instanceof DrillRoundConflictError) {

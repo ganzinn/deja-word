@@ -96,6 +96,22 @@ describe("generateDrillRetryForUser", () => {
     expect(quiz.timeoutSeconds).toBe(7);
   });
 
+  test("a member whose occurrenceNumber moved outside the range is still asked", async () => {
+    const { user, occurrence, drillId, wordIds } = await setupDrill([
+      { headword: "alpha", number: 5, correct: false },
+      { headword: "beta", number: 12, correct: false },
+    ]);
+    // 実効範囲は 5..12。beta の番号を範囲外（99）へ移動する
+    await prisma.wordOccurrence.updateMany({
+      where: { wordId: wordIds[1], occurrenceId: occurrence.id },
+      data: { occurrenceNumber: 99 },
+    });
+
+    const { quiz } = await generateDrillRetryForUser(user.id, { drillId, wordIds });
+    // 範囲外へ移動しても指定メンバーは再テストで出題される（issue #106）
+    expect(quiz.questions.map((q) => q.wordId).sort()).toEqual([...wordIds].sort());
+  });
+
   test("a word deleted after the round drops out of the generated quiz", async () => {
     const { user, drillId, wordIds } = await setupDrill([
       { headword: "alpha", number: 1, correct: false },

@@ -120,11 +120,22 @@ export async function applyDrillRound(
     remainingByWordId.set(answer.wordId, nextRemaining(current, answer.result, remainingConfig));
     updatedWordIds.add(answer.wordId);
   }
+  // 新残数（0..9）ごとに wordId をまとめて updateMany（1 件ずつの update だと
+  // 数百語のラウンドで tx timeout するため。値域が 0..9 なので最大 10 クエリ）。
+  const wordIdsByRemaining = new Map<number, string[]>();
   for (const wordId of updatedWordIds) {
     const value = remainingByWordId.get(wordId);
     if (value === undefined) continue;
-    await tx.drillWord.update({
-      where: { drillId_wordId: { drillId: input.drillId, wordId } },
+    const group = wordIdsByRemaining.get(value);
+    if (group) {
+      group.push(wordId);
+    } else {
+      wordIdsByRemaining.set(value, [wordId]);
+    }
+  }
+  for (const [value, wordIds] of wordIdsByRemaining) {
+    await tx.drillWord.updateMany({
+      where: { drillId: input.drillId, wordId: { in: wordIds } },
       data: { remaining: value },
     });
   }

@@ -93,6 +93,7 @@
 | [0040](0040-drill-default-wrong-only.md) | 既定は誤答のみ、正解含むはオプトイン | 高 | — |
 | [0041](0041-drill-retry.md) | DRILL_RETRY（残数無影響の再演習） | 高 | — |
 | [0042](0042-retest-same-range.md) | 「同じ範囲でもう一度テストする」（sourceRange 保持） | 高 | — |
+| [0067](0067-drill-unaskable-members.md) | 投入後に出題不能化した DrillWord メンバーはラウンド生成時に自動削除（自己修復） | 高 | — |
 
 ### F. 音源
 

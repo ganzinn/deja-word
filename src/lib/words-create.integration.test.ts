@@ -8,6 +8,7 @@ import {
   DuplicateOccurrenceNumberError,
   createWordForUser,
 } from "@/lib/words-create";
+import { ForbiddenUpdateError } from "@/lib/words/policy/row-policy";
 
 import {
   createOccurrenceRow,
@@ -638,5 +639,55 @@ describe("createWordForUser", () => {
     expect(wo!.occurrenceNumber).toBeNull();
     expect(wo!.details).toHaveLength(1);
     expect(wo!.details[0].detail).toBe("テスト備考");
+  });
+
+  test("injected existing system meaning id in create form throws ForbiddenUpdateError, system row untouched", async () => {
+    const user = await createTestUser();
+    const sysWord = await createWordRow(SYSTEM_USER_ID, "system-word");
+    const sysMeaning = await prisma.meaning.create({
+      data: {
+        wordId: sysWord.id,
+        ownerId: SYSTEM_USER_ID,
+        partOfSpeech: "noun",
+        sortOrder: 0,
+        texts: { create: [{ ownerId: SYSTEM_USER_ID, text: "共通の意味", sortOrder: 0 }] },
+      },
+      select: { id: true },
+    });
+
+    // 既存 system 行の id + ownerId をフォームに注入する攻撃パス
+    await expect(
+      createWordForUser(
+        user.id,
+        emptyForm("attack", {
+          meanings: [
+            {
+              id: sysMeaning.id,
+              ownerId: SYSTEM_USER_ID,
+              partOfSpeech: "verb",
+              pronunciation: "",
+              texts: [{ text: "改変された意味" }],
+              notes: [],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenUpdateError);
+
+    // system の意味行は無改変（親 word・品詞・テキストすべてそのまま）
+    const still = await prisma.meaning.findUniqueOrThrow({
+      where: { id: sysMeaning.id },
+      include: { texts: true },
+    });
+    expect(still.wordId).toBe(sysWord.id);
+    expect(still.ownerId).toBe(SYSTEM_USER_ID);
+    expect(still.partOfSpeech).toBe("noun");
+    expect(still.texts.map((t) => t.text)).toEqual(["共通の意味"]);
+
+    // 攻撃フォームの単語自体も作成されない（transaction 前に拒否）
+    const attackWord = await prisma.word.findFirst({
+      where: { ownerId: user.id, headword: "attack" },
+    });
+    expect(attackWord).toBeNull();
   });
 });

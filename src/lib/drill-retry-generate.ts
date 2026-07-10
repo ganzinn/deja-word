@@ -28,6 +28,8 @@ export class EmptyDrillRetryError extends Error {
  *   （`startDrill` の results と同じ信頼モデル）。当該 drill の DrillWord との交差で検証し、
  *   drill 外の wordId は無視する
  * - remaining は見ない（そのラウンドで卒業した remaining=0 の単語も出題する）
+ * - 対象単語は `ensureTargetWordIds` で範囲と独立に取得する（ラウンド生成と同じ救済。
+ *   番号が範囲外へ移動したメンバーも再テストできる。issue #106）
  * - 形式・制限時間・四択の選択肢表示は `Drill` から導出（決定 4 と同じ）
  * - 出題順・選択肢は毎回サーバー再生成（決定 5 と同じ）
  * - roundCount は返さない（再テスト送信は残数に触れず CAS 不要のため）
@@ -58,7 +60,7 @@ export async function generateDrillRetryForUser(
     userId,
     drill.occurrenceId,
     { from: drill.rangeFrom, to: drill.rangeTo },
-    { includeTgExamples: isTgExampleFormat(drill.format) },
+    { includeTgExamples: isTgExampleFormat(drill.format), ensureTargetWordIds: [...memberIds] },
   );
   const partitioned = partitionMaterial(
     targetRows,

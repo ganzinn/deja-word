@@ -61,6 +61,12 @@ function usableTgExampleWhere(allowed: string[]) {
  * TG 例文形式（`includeTgExamples: true`）のときだけ、収集済み全単語の使える TG 例文を
  * 追加の 1 クエリで取得して `tgExampleRows` に返す（非 TG 形式は追加コストゼロ）。
  *
+ * `ensureTargetWordIds`（drill のラウンド・再テスト生成が使う）を指定すると、その単語は
+ * 範囲（from/to）と独立に出題対象として取得する（対象 Occurrence への番号付きリンクと
+ * 形式適格は要求。番号が範囲外へ移動した drill メンバーの救済。issue #106）。指定単語は
+ * ダミー候補クエリから除外して重複取得を防ぐ。targets が増えるぶんプールの take 算出は
+ * 自動的に織り込まれる。未指定（空）なら従来の範囲判定と完全に同一。
+ *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
  * `countQuizSourceExclusions` で取得する（05-architecture.md 決定 8 改訂）。
  */
@@ -68,9 +74,10 @@ export async function fetchQuizSource(
   userId: string,
   occurrenceId: string,
   range: { from?: number; to?: number },
-  options: { includeTgExamples?: boolean } = {},
+  options: { includeTgExamples?: boolean; ensureTargetWordIds?: readonly string[] } = {},
 ) {
   const allowed = scopedOwnerIds(userId);
+  const ensureIds = options.ensureTargetWordIds ?? [];
   await assertOccurrenceVisible(userId, occurrenceId);
 
   const hasVisibleMeaning = {
@@ -99,6 +106,17 @@ export async function fetchQuizSource(
       },
     },
   } as const;
+  // 範囲を問わない番号付きリンクの述語（ensureTargetWordIds 用）。番号付きリンク自体を
+  // 失った単語（リンク解除・番号 null 化）は指定されていても出題対象に含めない。
+  const numberedWordOccurrence = {
+    wordOccurrences: {
+      some: {
+        occurrenceId,
+        ownerId: { in: allowed },
+        occurrenceNumber: { not: null },
+      },
+    },
+  } as const;
   const select = {
     id: true,
     headword: true,
@@ -117,9 +135,16 @@ export async function fetchQuizSource(
     },
   } as const;
 
-  // 出題対象は全件取得。
+  // 出題対象は全件取得。ensureTargetWordIds の単語は範囲と独立に対象へ含める
+  // （番号付きリンクと形式適格は要求）。指定なしなら従来の範囲判定のみ。
   const targetRows = await prisma.word.findMany({
-    where: { ownerId: { in: allowed }, ...eligibleWord, ...inRangeWordOccurrence },
+    where: {
+      ownerId: { in: allowed },
+      ...eligibleWord,
+      ...(ensureIds.length > 0
+        ? { OR: [inRangeWordOccurrence, { id: { in: [...ensureIds] }, ...numberedWordOccurrence }] }
+        : inRangeWordOccurrence),
+    },
     select,
   });
 
@@ -135,6 +160,9 @@ export async function fetchQuizSource(
             ...eligibleWord,
             ...linkedToOccurrence,
             NOT: inRangeWordOccurrence,
+            // ensure 指定の単語は target 側で取得済み（範囲外でも）。ダミー候補と二重に
+            // 取得すると retargetMaterial の union で同一単語が重複出題されるため除外する。
+            ...(ensureIds.length > 0 ? { id: { notIn: [...ensureIds] } } : {}),
           },
           select,
           orderBy: { createdAt: "desc" },
@@ -146,7 +174,12 @@ export async function fetchQuizSource(
     fallbackTake === 0
       ? []
       : await prisma.word.findMany({
-          where: { ownerId: { in: allowed }, ...eligibleWord, NOT: linkedToOccurrence },
+          where: {
+            ownerId: { in: allowed },
+            ...eligibleWord,
+            NOT: linkedToOccurrence,
+            ...(ensureIds.length > 0 ? { id: { notIn: [...ensureIds] } } : {}),
+          },
           select,
           orderBy: { createdAt: "desc" },
           take: fallbackTake,

@@ -90,7 +90,8 @@ const { generateQuizForUser } = await import("@/lib/quiz-generate");
 const { submitQuizAnswersForUser } = await import("@/lib/quiz-answers-submit");
 const { getWordDetailForUser } = await import("@/lib/words-detail");
 const { createDrillForUser, EmptyDrillResultsError } = await import("@/lib/drill-create");
-const { generateDrillRoundForUser } = await import("@/lib/drill-round-generate");
+const { generateDrillRoundForUser, DrillNoAskableWordsError } =
+  await import("@/lib/drill-round-generate");
 const { submitDrillRoundForUser } = await import("@/lib/drill-round-submit");
 const { deleteDrillForUser } = await import("@/lib/drill-delete");
 const { generateDrillRetryForUser, EmptyDrillRetryError } =
@@ -450,6 +451,17 @@ describe("startDrillRound (Server Action)", () => {
       ok: false,
       error: "generation_failed",
       message: "出題できる単語がありません",
+    });
+  });
+
+  test("generation_failed: maps DrillNoAskableWordsError (self-healing completed the drill, ADR-0067)", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedDrillRoundGenerate.mockRejectedValue(new DrillNoAskableWordsError());
+    const res = await startDrillRound(input);
+    expect(res).toEqual({
+      ok: false,
+      error: "generation_failed",
+      message: "出題できない単語を対象から外したため、この定着モードは完了になりました。",
     });
   });
 

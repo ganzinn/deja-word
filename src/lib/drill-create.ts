@@ -38,6 +38,8 @@ export type DrillResultInput = { wordId: string; result: QuizResult };
  *   initialCorrectRemaining。各 1..9。正答は投入時のみ。06-drill-mode.md 決定 1）。テスト開始時の
  *   設定値を `Drill` 行へ保存し、ラウンド遷移（nextRemaining）でも同じ値を使う
  * - 結果画面表示中に削除された単語は存在確認フィルタで skip する（決定 3 と同形）
+ * - 番号付きリンクの無い単語（未リンク・番号なし）は DrillWord に投入しない
+ *   （出題不能な行を作らない。issue #106）
  */
 export async function createDrillForUser(
   userId: string,
@@ -91,10 +93,13 @@ export async function createDrillForUser(
         ownerId: { in: allowed },
         occurrenceNumber: { not: null },
       },
-      select: { occurrenceNumber: true },
+      select: { wordId: true, occurrenceNumber: true },
     });
     const numbers = links.map((l) => l.occurrenceNumber).filter((n): n is number => n !== null);
     if (numbers.length === 0) throw new EmptyDrillResultsError();
+    // 番号付きリンクを持つ単語だけを DrillWord に投入する。番号なし・未リンクの単語は
+    // ラウンド生成の出題対象になれず、remaining > 0 のまま完了不能化するため（issue #106）。
+    const numberedWordIds = new Set(links.map((l) => l.wordId));
 
     const drill = await tx.drill.create({
       data: {
@@ -112,10 +117,12 @@ export async function createDrillForUser(
         initialCorrectRemaining: input.initialCorrectRemaining,
         words: {
           createMany: {
-            data: results.map((r) => ({
-              wordId: r.wordId,
-              remaining: initialRemaining(r.result, remainingConfig),
-            })),
+            data: results
+              .filter((r) => numberedWordIds.has(r.wordId))
+              .map((r) => ({
+                wordId: r.wordId,
+                remaining: initialRemaining(r.result, remainingConfig),
+              })),
             skipDuplicates: true,
           },
         },

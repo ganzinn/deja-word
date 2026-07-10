@@ -4,6 +4,7 @@ import { isUniqueConstraintOn } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
 import { editorContextFor, resolveChildAllowedIds, writeWordChildren } from "@/lib/words/handlers";
+import { assertNoPreexistingChildIds } from "@/lib/words/policy/row-policy";
 
 import type { WordFormValues } from "@/lib/schema/word-form";
 
@@ -30,6 +31,9 @@ export async function createWordForUser(
 ): Promise<{ id: string }> {
   const headword = values.headword.trim();
   const ctx = editorContextFor(userId);
+  // 作成経路に既存行の id を持ち込ませない（update 経路と違い DB 突合が無いため、
+  // 素通しすると pass-through 分岐が既存の共通行を書き換えてしまう）。
+  assertNoPreexistingChildIds(values);
   const allowedOwnerIds = scopedOwnerIds(userId);
   const allowed = await resolveChildAllowedIds(userId, values, allowedOwnerIds);
 

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  INPUT_ID_MAX_LENGTH,
+  QUIZ_ANSWERS_MAX_COUNT,
   adjacentWordsInputSchema,
   answerInputSchema,
   getQuizPreviewInputSchema,
@@ -8,7 +10,10 @@ import {
   quizRangeInputSchema,
   saveQuizDefaultsInputSchema,
   startDrillInputSchema,
+  startDrillRetryInputSchema,
   startQuizInputSchema,
+  submitDrillRetryInputSchema,
+  submitDrillRoundInputSchema,
   submitQuizAnswersInputSchema,
   wordIdSchema,
 } from "@/lib/schema/quiz";
@@ -728,6 +733,76 @@ describe("wordIdSchema", () => {
   test("accepts a non-empty id and rejects an empty one", () => {
     expect(wordIdSchema.safeParse("w_1").success).toBe(true);
     expect(wordIdSchema.safeParse("").success).toBe(false);
+  });
+
+  test("accepts a real cuid and ids up to INPUT_ID_MAX_LENGTH, rejects over-length ids", () => {
+    expect(wordIdSchema.safeParse("cjld2cjxh0000qzrmn831i7rn").success).toBe(true);
+    expect(wordIdSchema.safeParse("a".repeat(INPUT_ID_MAX_LENGTH)).success).toBe(true);
+    expect(wordIdSchema.safeParse("a".repeat(INPUT_ID_MAX_LENGTH + 1)).success).toBe(false);
+  });
+});
+
+describe("answers/results array max limits (issue #107)", () => {
+  const answers = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ wordId: `w_${i}`, result: "CORRECT" as const }));
+
+  test("submitQuizAnswers accepts exactly QUIZ_ANSWERS_MAX_COUNT answers", () => {
+    const r = submitQuizAnswersInputSchema.safeParse({
+      format: "CHOICE",
+      answers: answers(QUIZ_ANSWERS_MAX_COUNT),
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("submitQuizAnswers rejects answers over QUIZ_ANSWERS_MAX_COUNT", () => {
+    const r = submitQuizAnswersInputSchema.safeParse({
+      format: "CHOICE",
+      answers: answers(QUIZ_ANSWERS_MAX_COUNT + 1),
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join(".") === "answers")).toBe(true);
+    }
+  });
+
+  test("startDrill rejects results over QUIZ_ANSWERS_MAX_COUNT", () => {
+    const r = startDrillInputSchema.safeParse({
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: answers(QUIZ_ANSWERS_MAX_COUNT + 1),
+    });
+    expect(r.success).toBe(false);
+  });
+
+  test("submitDrillRound rejects answers over QUIZ_ANSWERS_MAX_COUNT", () => {
+    const r = submitDrillRoundInputSchema.safeParse({
+      drillId: "d_1",
+      expectedRoundCount: 0,
+      answers: answers(QUIZ_ANSWERS_MAX_COUNT + 1),
+    });
+    expect(r.success).toBe(false);
+  });
+
+  test("submitDrillRetry rejects answers over QUIZ_ANSWERS_MAX_COUNT", () => {
+    const r = submitDrillRetryInputSchema.safeParse({
+      drillId: "d_1",
+      answers: answers(QUIZ_ANSWERS_MAX_COUNT + 1),
+    });
+    expect(r.success).toBe(false);
+  });
+
+  test("startDrillRetry rejects wordIds over QUIZ_ANSWERS_MAX_COUNT", () => {
+    const r = startDrillRetryInputSchema.safeParse({
+      drillId: "d_1",
+      wordIds: Array.from({ length: QUIZ_ANSWERS_MAX_COUNT + 1 }, (_, i) => `w_${i}`),
+    });
+    expect(r.success).toBe(false);
   });
 });
 

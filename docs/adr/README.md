@@ -60,6 +60,7 @@
 | [0017](0017-server-actions-over-route-handlers.md) | インターフェースは Server Action 統一（Route Handler は例外4件） | 高 | — |
 | [0018](0018-scoped-owner-ids-read-scope.md) | 読み取り認可は scopedOwnerIds の where 注入 | 高 | — |
 | [0019](0019-two-layer-write-authorization.md) | words の二層書き込み認可、quiz は意図的に不適用 | 高 | — |
+| [0068](0068-content-input-max-limits.md) | コンテンツ系入力テキスト・配列の zod 上限（短文 100 / 長文 2000 / 配列 50、quiz 解答系 5000） | 高 | — |
 
 ### D. quiz 機能
 

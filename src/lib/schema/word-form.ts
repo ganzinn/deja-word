@@ -3,10 +3,16 @@ import { z } from "zod/v3";
 import { exampleKinds } from "@/lib/mock/example-kinds";
 import { isCommonPartOfSpeech } from "@/lib/mock/parts-of-speech";
 import { relatedWordKinds } from "@/lib/mock/related-word-kinds";
+import {
+  CONTENT_ITEMS_MAX_COUNT,
+  LONG_TEXT_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+} from "@/lib/schema/content-limits";
 import type { WordDetail } from "@/lib/words-detail";
 
 // 品詞は空（未選択）または enum キー（parts-of-speech.ts の value）のみ許容する。
 // commonPartOfSpeechValues は string[] 型で z.enum のタプル要件を満たさないため refine で表現。
+// 一覧照合で値集合が有界のため .max() は付けない。
 const partOfSpeechSchema = z
   .string()
   .trim()
@@ -17,7 +23,11 @@ const partOfSpeechSchema = z
 const meaningTextSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
-  text: z.string().trim().min(1, "意味を入力してください"),
+  text: z
+    .string()
+    .trim()
+    .min(1, "意味を入力してください")
+    .max(LONG_TEXT_MAX_LENGTH, `意味は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`),
 });
 
 // 補足説明（任意項目）。空行は書き込み handler が除外するため空文字を許可する
@@ -25,16 +35,29 @@ const meaningTextSchema = z.object({
 const noteSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
-  text: z.string().trim(),
+  text: z
+    .string()
+    .trim()
+    .max(LONG_TEXT_MAX_LENGTH, `補足説明は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`),
 });
 
 const meaningSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
   partOfSpeech: partOfSpeechSchema,
-  pronunciation: z.string().trim().optional().or(z.literal("")),
-  texts: z.array(meaningTextSchema).min(1, "意味を 1 件以上入力してください"),
-  notes: z.array(noteSchema),
+  pronunciation: z
+    .string()
+    .trim()
+    .max(SHORT_TEXT_MAX_LENGTH, `発音は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`)
+    .optional()
+    .or(z.literal("")),
+  texts: z
+    .array(meaningTextSchema)
+    .min(1, "意味を 1 件以上入力してください")
+    .max(CONTENT_ITEMS_MAX_COUNT, `意味は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  notes: z
+    .array(noteSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `補足説明は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
   // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
   // 単語本体の書き込み handler が無視する（編集 UI の表示状態の初期値にのみ使う）。
   pronunciationAudioUrl: z.string().nullable().optional(),
@@ -44,9 +67,20 @@ const exampleSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
   kind: z.enum(exampleKinds),
-  text: z.string().trim().min(1, "例文を入力してください"),
-  meaning: z.string().trim().optional().or(z.literal("")),
-  notes: z.array(noteSchema),
+  text: z
+    .string()
+    .trim()
+    .min(1, "例文を入力してください")
+    .max(LONG_TEXT_MAX_LENGTH, `例文は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`),
+  meaning: z
+    .string()
+    .trim()
+    .max(LONG_TEXT_MAX_LENGTH, `例文の意味は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`)
+    .optional()
+    .or(z.literal("")),
+  notes: z
+    .array(noteSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `補足説明は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
 });
 
 const relatedWordSchema = z.object({
@@ -56,11 +90,27 @@ const relatedWordSchema = z.object({
   // useController/useWatch が初期値(defaultValues)へフォールバックし、
   // 種別を解除してもトグルの表示が戻らない（UI と保存結果が食い違う）。
   kind: z.enum(relatedWordKinds).nullish(),
-  term: z.string().trim().min(1, "関連語を入力してください"),
+  term: z
+    .string()
+    .trim()
+    .min(1, "関連語を入力してください")
+    .max(SHORT_TEXT_MAX_LENGTH, `関連語は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`),
   partOfSpeech: partOfSpeechSchema,
-  pronunciation: z.string().trim().optional().or(z.literal("")),
-  meaning: z.string().trim().optional().or(z.literal("")),
-  notes: z.array(noteSchema),
+  pronunciation: z
+    .string()
+    .trim()
+    .max(SHORT_TEXT_MAX_LENGTH, `発音は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`)
+    .optional()
+    .or(z.literal("")),
+  meaning: z
+    .string()
+    .trim()
+    .max(LONG_TEXT_MAX_LENGTH, `意味は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`)
+    .optional()
+    .or(z.literal("")),
+  notes: z
+    .array(noteSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `補足説明は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
   // 同上の理由でリンク解除も null を使う（undefined だと初期 cuid に戻る）。
   linkedWordId: z.string().cuid().nullish(),
   // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
@@ -71,13 +121,22 @@ const relatedWordSchema = z.object({
 const memoSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
-  text: z.string().trim().min(1, "メモを入力してください"),
+  text: z
+    .string()
+    .trim()
+    .min(1, "メモを入力してください")
+    .max(LONG_TEXT_MAX_LENGTH, `メモは ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`),
 });
 
 const occurrenceDetailSchema = z.object({
   id: z.string().cuid().optional(),
   ownerId: z.string().optional(),
-  detail: z.string().trim().optional().or(z.literal("")),
+  detail: z
+    .string()
+    .trim()
+    .max(LONG_TEXT_MAX_LENGTH, `詳細は ${LONG_TEXT_MAX_LENGTH} 文字以内で入力してください`)
+    .optional()
+    .or(z.literal("")),
 });
 
 const occurrenceSchema = z.object({
@@ -85,22 +144,45 @@ const occurrenceSchema = z.object({
   occurrenceId: z.string().optional(),
   ownerId: z.string(),
   occurrenceOwnerId: z.string().optional(),
-  location: z.string().trim().min(1, "掲載箇所名を入力してください"),
+  location: z
+    .string()
+    .trim()
+    .min(1, "掲載箇所名を入力してください")
+    .max(SHORT_TEXT_MAX_LENGTH, `掲載箇所名は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`),
   occurrenceNumber: z
     .number()
     .int("整数で入力してください")
     .min(1, "1 以上を入力してください")
     .nullable(),
-  details: z.array(occurrenceDetailSchema),
+  details: z
+    .array(occurrenceDetailSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `詳細は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
 });
 
+// AI 下書き action（ai-draft-action.ts）でも単体で safeParse するため export する。
+export const headwordSchema = z
+  .string()
+  .trim()
+  .min(1, "単語を入力してください")
+  .max(SHORT_TEXT_MAX_LENGTH, `単語は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`);
+
 export const wordFormSchema = z.object({
-  headword: z.string().trim().min(1, "単語を入力してください"),
-  meanings: z.array(meaningSchema),
-  examples: z.array(exampleSchema),
-  relatedWords: z.array(relatedWordSchema),
-  memos: z.array(memoSchema),
-  occurrences: z.array(occurrenceSchema),
+  headword: headwordSchema,
+  meanings: z
+    .array(meaningSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `意味は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  examples: z
+    .array(exampleSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `例文は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  relatedWords: z
+    .array(relatedWordSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `関連語は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  memos: z
+    .array(memoSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `メモは ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  occurrences: z
+    .array(occurrenceSchema)
+    .max(CONTENT_ITEMS_MAX_COUNT, `掲載箇所は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
 });
 
 export type WordFormValues = z.infer<typeof wordFormSchema>;

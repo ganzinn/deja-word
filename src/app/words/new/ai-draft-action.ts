@@ -1,5 +1,6 @@
 "use server";
 
+import { headwordSchema } from "@/lib/schema/word-form";
 import {
   wordAiSectionsSchema,
   type WordAiDraft,
@@ -28,10 +29,16 @@ export async function generateAiDraft(input: {
     };
   }
 
-  const headword = input.headword.trim();
-  if (headword.length === 0) {
-    return { ok: false, error: "invalid", message: "単語を入力してください。" };
+  // 上限超過の長文をそのまま LLM プロンプトへ渡さない（AI Gateway の入力課金に直結するため）。
+  const headwordResult = headwordSchema.safeParse(input.headword);
+  if (!headwordResult.success) {
+    return {
+      ok: false,
+      error: "invalid",
+      message: headwordResult.error.issues[0]?.message ?? "単語を入力してください",
+    };
   }
+  const headword = headwordResult.data;
 
   // クライアントは全 false のとき呼び出さないが、Server Action は直接 POST できるため防御する。
   const sections = wordAiSectionsSchema.safeParse(input.sections);

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { SHORT_TEXT_MAX_LENGTH } from "@/lib/schema/content-limits";
 import type { WordAiDraft, WordAiSections } from "@/lib/schema/word-ai-draft";
 
 vi.mock("@/lib/session", () => ({
@@ -57,6 +58,25 @@ describe("generateAiDraft (Server Action)", () => {
     const res = await generateAiDraft({ headword: "   ", sections: ALL_SECTIONS });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
     expect(mockedGenerate).not.toHaveBeenCalled();
+  });
+
+  test("invalid: headword が上限超過（LLM プロンプトへ渡さない）", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const res = await generateAiDraft({
+      headword: "a".repeat(SHORT_TEXT_MAX_LENGTH + 1),
+      sections: ALL_SECTIONS,
+    });
+    expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
+    expect(mockedGenerate).not.toHaveBeenCalled();
+  });
+
+  test("ok: 上限ちょうどの headword は生成に進む", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    mockedGenerate.mockResolvedValue(DRAFT);
+    const headword = "a".repeat(SHORT_TEXT_MAX_LENGTH);
+    const res = await generateAiDraft({ headword, sections: ALL_SECTIONS });
+    expect(res).toEqual({ ok: true, draft: DRAFT });
+    expect(mockedGenerate).toHaveBeenCalledWith(headword, ALL_SECTIONS);
   });
 
   test("invalid: 全セクション false", async () => {

@@ -4,6 +4,7 @@ import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { defaultWordFormValues, type WordFormValues } from "@/lib/schema/word-form";
 import {
   assertHeadwordChangeAllowed,
+  assertNoPreexistingChildIds,
   assertRowsAllowed,
   assertWordDeletable,
   assertWordUpdateAllowed,
@@ -302,5 +303,199 @@ describe("assertWordUpdateAllowed", () => {
         makeLoaded(),
       ),
     ).toThrow(ForbiddenUpdateError);
+  });
+});
+
+describe("assertNoPreexistingChildIds", () => {
+  // 既存行になりすます注入値。作成経路ではどの位置でも拒否される
+  const injected = { id: "row1", ownerId: SYSTEM_USER_ID };
+
+  test("passes for a form without any row ids", () => {
+    expect(() =>
+      assertNoPreexistingChildIds(
+        makeValues({
+          meanings: [
+            {
+              partOfSpeech: "",
+              pronunciation: "",
+              texts: [{ text: "意味" }],
+              notes: [{ text: "補足" }],
+            },
+          ],
+          examples: [{ kind: "SENTENCE", text: "ex", meaning: "", notes: [{ text: "" }] }],
+          relatedWords: [
+            {
+              kind: null,
+              term: "syn",
+              partOfSpeech: "",
+              pronunciation: "",
+              meaning: "",
+              notes: [{ text: "" }],
+              linkedWordId: null,
+            },
+          ],
+          memos: [{ text: "メモ" }],
+          occurrences: [
+            {
+              ownerId: "",
+              location: "ターゲット1900",
+              occurrenceNumber: null,
+              details: [{ detail: "" }],
+            },
+          ],
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  test.each<[string, Partial<WordFormValues>]>([
+    [
+      "meanings[].id",
+      {
+        meanings: [
+          {
+            ...injected,
+            partOfSpeech: "",
+            pronunciation: "",
+            texts: [{ text: "意味" }],
+            notes: [],
+          },
+        ],
+      },
+    ],
+    [
+      "meanings[].texts[].id",
+      {
+        meanings: [
+          {
+            partOfSpeech: "",
+            pronunciation: "",
+            texts: [{ ...injected, text: "意味" }],
+            notes: [],
+          },
+        ],
+      },
+    ],
+    [
+      "meanings[].notes[].id",
+      {
+        meanings: [
+          {
+            partOfSpeech: "",
+            pronunciation: "",
+            texts: [{ text: "意味" }],
+            notes: [{ ...injected, text: "補足" }],
+          },
+        ],
+      },
+    ],
+    [
+      "examples[].id",
+      { examples: [{ ...injected, kind: "SENTENCE", text: "ex", meaning: "", notes: [] }] },
+    ],
+    [
+      "examples[].notes[].id",
+      {
+        examples: [
+          { kind: "SENTENCE", text: "ex", meaning: "", notes: [{ ...injected, text: "補足" }] },
+        ],
+      },
+    ],
+    [
+      "relatedWords[].id",
+      {
+        relatedWords: [
+          {
+            ...injected,
+            kind: null,
+            term: "syn",
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            notes: [],
+            linkedWordId: null,
+          },
+        ],
+      },
+    ],
+    [
+      "relatedWords[].notes[].id",
+      {
+        relatedWords: [
+          {
+            kind: null,
+            term: "syn",
+            partOfSpeech: "",
+            pronunciation: "",
+            meaning: "",
+            notes: [{ ...injected, text: "補足" }],
+            linkedWordId: null,
+          },
+        ],
+      },
+    ],
+    ["memos[].id", { memos: [{ ...injected, text: "メモ" }] }],
+    [
+      "occurrences[].id",
+      {
+        occurrences: [
+          { ...injected, location: "ターゲット1900", occurrenceNumber: null, details: [] },
+        ],
+      },
+    ],
+    [
+      "occurrences[].details[].id",
+      {
+        occurrences: [
+          {
+            ownerId: "",
+            location: "ターゲット1900",
+            occurrenceNumber: null,
+            details: [{ ...injected, detail: "詳細" }],
+          },
+        ],
+      },
+    ],
+  ])("rejects a preexisting id at %s", (_position, overrides) => {
+    expect(() => assertNoPreexistingChildIds(makeValues(overrides))).toThrow(ForbiddenUpdateError);
+  });
+
+  test("allows occurrenceId (preset FK) when the row itself has no id", () => {
+    expect(() =>
+      assertNoPreexistingChildIds(
+        makeValues({
+          occurrences: [
+            {
+              occurrenceId: "occ1",
+              ownerId: "",
+              occurrenceOwnerId: SYSTEM_USER_ID,
+              location: "ターゲット1900",
+              occurrenceNumber: 1,
+              details: [{ detail: "" }],
+            },
+          ],
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  test("allows linkedWordId when the row itself has no id", () => {
+    expect(() =>
+      assertNoPreexistingChildIds(
+        makeValues({
+          relatedWords: [
+            {
+              kind: "SYNONYM",
+              term: "syn",
+              partOfSpeech: "",
+              pronunciation: "",
+              meaning: "",
+              notes: [],
+              linkedWordId: "w1",
+            },
+          ],
+        }),
+      ),
+    ).not.toThrow();
   });
 });

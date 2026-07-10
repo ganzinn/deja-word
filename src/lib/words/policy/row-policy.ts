@@ -108,6 +108,47 @@ export function assertRowsAllowed(
   }
 }
 
+/**
+ * 単語作成リクエストのフォーム値に既存行への参照（id 付き行）が無いことを検証する
+ * 純関数。作成経路では既存行参照を一切許可しない — id 付き行は update 経路のみで、
+ * そこでは assertRowsAllowed が DB の実 owner と照合する。作成経路は DB 突合を
+ * 行わないため、id を素通しすると handler の pass-through 分岐がフォーム値の
+ * id / ownerId を信用して既存の共通行を書き換えてしまう。
+ * なお `occurrences[].occurrenceId`（掲載箇所プリセットへの FK、resolveChildAllowedIds
+ * がスコープ検証する）と `relatedWords[].linkedWordId` は行 id ではない正当な参照
+ * のため、ここでは検査しない。
+ */
+export function assertNoPreexistingChildIds(values: WordFormValues): void {
+  const assertIdLess = (position: string, rows: ReadonlyArray<{ id?: string }>): void => {
+    for (const [i, row] of rows.entries()) {
+      if (row.id) {
+        throw new ForbiddenUpdateError(
+          `${position}[${i}]: preexisting id ${row.id} is not allowed on create`,
+        );
+      }
+    }
+  };
+
+  assertIdLess("meanings", values.meanings);
+  for (const [i, m] of values.meanings.entries()) {
+    assertIdLess(`meanings[${i}].texts`, m.texts);
+    assertIdLess(`meanings[${i}].notes`, m.notes);
+  }
+  assertIdLess("examples", values.examples);
+  for (const [i, e] of values.examples.entries()) {
+    assertIdLess(`examples[${i}].notes`, e.notes);
+  }
+  assertIdLess("relatedWords", values.relatedWords);
+  for (const [i, r] of values.relatedWords.entries()) {
+    assertIdLess(`relatedWords[${i}].notes`, r.notes);
+  }
+  assertIdLess("memos", values.memos);
+  assertIdLess("occurrences", values.occurrences);
+  for (const [i, oc] of values.occurrences.entries()) {
+    assertIdLess(`occurrences[${i}].details`, oc.details);
+  }
+}
+
 export type WordUpdateLoadedRows = {
   meanings: { id: string; ownerId: string }[];
   examples: { id: string; ownerId: string }[];

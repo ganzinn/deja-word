@@ -93,6 +93,7 @@
 | [0040](0040-drill-default-wrong-only.md) | 既定は誤答のみ、正解含むはオプトイン | 高 | — |
 | [0041](0041-drill-retry.md) | DRILL_RETRY（残数無影響の再演習） | 高 | — |
 | [0042](0042-retest-same-range.md) | 「同じ範囲でもう一度テストする」（sourceRange 保持） | 高 | — |
+| [0067](0067-drill-unaskable-members.md) | 投入後に出題不能化した DrillWord メンバーの扱い（issue #106 手順 3、未決定） | **低** | あり |
 
 ### F. 音源
 
@@ -157,6 +158,7 @@
 - **[0061](0061-destructive-ops-confirmation-gate.md)** 破壊的 ops の確認ゲート: 非対話 `--execute` 前提の運用（CI・自動化）は実在するか？
 - **[0063](0063-error-map-boundary.md)** error-map の線引き: 「共有ドメインエラーのみ集約」でよいか、全集約に倒すか？
 - **[0064](0064-db-check-constraints.md)** CHECK 制約: raw migration と drift 検出の折り合いを許容するか？対象カラムの過不足は？
+- **[0067](0067-drill-unaskable-members.md)** 出題不能メンバー: 完了不能の解消（完了判定から除外 / 自動削除）まで踏み込むか、UI 通知のみで十分か？
 
 確信度「中」（任意の補足）:
 

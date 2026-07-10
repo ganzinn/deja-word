@@ -191,6 +191,44 @@ describe("createDrillForUser", () => {
     expect(drill.words[0]).toMatchObject({ wordId: alive.id, remaining: 3 });
   });
 
+  test("words without a numbered link (unnumbered / unlinked) are not inserted into DrillWord", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const numbered = await createQuizWordRow(user.id, "numbered", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 7 },
+    });
+    const unnumbered = await createQuizWordRow(user.id, "unnumbered", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    const unlinked = await createQuizWordRow(user.id, "unlinked");
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [
+        { wordId: numbered.id, result: "INCORRECT" },
+        { wordId: unnumbered.id, result: "INCORRECT" },
+        { wordId: unlinked.id, result: "INCORRECT" },
+      ],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({
+      where: { id: drillId },
+      include: { words: true },
+    });
+    // 番号付きリンクを持つ単語のみ投入される（番号なし・未リンクは出題不能なため除外。issue #106）
+    expect(drill.rangeFrom).toBe(7);
+    expect(drill.rangeTo).toBe(7);
+    expect(drill.words).toHaveLength(1);
+    expect(drill.words[0]).toMatchObject({ wordId: numbered.id, remaining: 3 });
+  });
+
   test("results without any numbered word in the occurrence throw EmptyDrillResultsError", async () => {
     const user = await createTestUser();
     const occurrence = await createOccurrenceRow(user.id, "本A");

@@ -15,8 +15,10 @@ import type { StartQuizInput } from "@/lib/schema/quiz";
  * - 出題形式は `Drill.format` から導出（同 決定 4）
  * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。同 決定 5）
  * - 出題対象は未定着（remaining > 0）の DrillWord の単語**全て**（同 決定 1）。
- *   範囲ベースの partition 結果を未定着 id で再分割し、定着済みを含む範囲内の
- *   他単語は同一 Occurrence プール（ダミー候補）側に回す
+ *   未定着メンバーは `ensureTargetWordIds` で範囲と独立に取得する（作成後に番号が
+ *   範囲外へ移動しても出題し続け、完了不能化を防ぐ。issue #106）。範囲ベースの
+ *   partition 結果を未定着 id で再分割し、定着済みを含む範囲内の他単語は
+ *   同一 Occurrence プール（ダミー候補）側に回す
  * - 現在の `roundCount` を返し、クライアントはラウンド送信の `expectedRoundCount` に使う
  *   （05-architecture.md 決定 4）
  * - `sourceTest`（元テストの開始入力）と `occurrenceName` を返し、完了画面の
@@ -50,11 +52,14 @@ export async function generateDrillRoundForUser(
   });
   if (!drill) throw new DrillNotFoundError();
 
+  // 範囲（rangeFrom/rangeTo）は範囲内ダミー候補の供給用に渡し、未定着メンバー自体は
+  // ensureTargetWordIds で範囲と独立に取得する。
+  const memberIds = drill.words.map((w) => w.wordId);
   const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
     drill.occurrenceId,
     { from: drill.rangeFrom, to: drill.rangeTo },
-    { includeTgExamples: isTgExampleFormat(drill.format) },
+    { includeTgExamples: isTgExampleFormat(drill.format), ensureTargetWordIds: memberIds },
   );
   const partitioned = partitionMaterial(
     targetRows,
@@ -62,7 +67,7 @@ export async function generateDrillRoundForUser(
     fallbackRows,
     tgExampleRows,
   );
-  const material = retargetMaterial(partitioned, new Set(drill.words.map((w) => w.wordId)));
+  const material = retargetMaterial(partitioned, new Set(memberIds));
 
   return {
     quiz: {

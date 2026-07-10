@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 
 import { createDrillForUser } from "@/lib/drill-create";
-import { generateDrillRoundForUser } from "@/lib/drill-round-generate";
+import { DrillNoAskableWordsError, generateDrillRoundForUser } from "@/lib/drill-round-generate";
+import { submitDrillRoundForUser } from "@/lib/drill-round-submit";
 import { prisma } from "@/lib/prisma";
 
 import { createOccurrenceRow, createQuizWordRow, createTestUser } from "../../tests/setup/fixtures";
@@ -101,9 +102,11 @@ describe("generateDrillRoundForUser", () => {
     const { quiz } = await generateDrillRoundForUser(user.id, { drillId });
     // 範囲外へ移動しても未定着メンバーは出題され続ける（完了不能化しない。issue #106）
     expect(quiz.questions.map((q) => q.wordId).sort()).toEqual([...wordIds].sort());
+    // 出題可能なままのため自己修復削除（ADR-0067）の対象にもならない
+    expect(await prisma.drillWord.count({ where: { drillId } })).toBe(2);
   });
 
-  test("a member whose occurrenceNumber became null drops out of the round", async () => {
+  test("a member whose occurrenceNumber became null is deleted from the drill (self-healing, ADR-0067)", async () => {
     const { user, occurrence, drillId, wordIds } = await setupDrill([
       { headword: "alpha", number: 5, correct: false },
       { headword: "beta", number: 12, correct: false },
@@ -115,7 +118,66 @@ describe("generateDrillRoundForUser", () => {
     });
 
     const { quiz } = await generateDrillRoundForUser(user.id, { drillId });
-    // 番号付きリンク自体を失ったメンバーは出題対象にならない（扱いは ADR-0067 で判断）
+    // 番号付きリンク自体を失ったメンバーは出題されず、DrillWord 行ごと削除される
     expect(quiz.questions.map((q) => q.wordId)).toEqual([wordIds[0]]);
+    const rows = await prisma.drillWord.findMany({ where: { drillId }, select: { wordId: true } });
+    expect(rows.map((r) => r.wordId)).toEqual([wordIds[0]]);
+  });
+
+  test("a member whose meanings were all deleted is deleted from the drill (self-healing, ADR-0067)", async () => {
+    const { user, drillId, wordIds } = await setupDrill([
+      { headword: "alpha", number: 5, correct: false },
+      { headword: "beta", number: 12, correct: false },
+    ]);
+    // beta の意味を全削除 → 非 TG 形式の形式適格（可視 MeaningText 1 件以上）を失う
+    await prisma.meaning.deleteMany({ where: { wordId: wordIds[1] } });
+
+    const { quiz } = await generateDrillRoundForUser(user.id, { drillId });
+    // 出題不能化したメンバーは出題されず、DrillWord 行ごと削除される。生き残りは出題され続ける
+    expect(quiz.questions.map((q) => q.wordId)).toEqual([wordIds[0]]);
+    const rows = await prisma.drillWord.findMany({ where: { drillId }, select: { wordId: true } });
+    expect(rows.map((r) => r.wordId)).toEqual([wordIds[0]]);
+  });
+
+  test("drill remains completable after self-healing: surviving member graduates and completedAt is set (issue #106)", async () => {
+    const { user, drillId, wordIds } = await setupDrill([
+      { headword: "alpha", number: 5, correct: false },
+      { headword: "beta", number: 12, correct: false },
+    ]);
+    await prisma.meaning.deleteMany({ where: { wordId: wordIds[1] } });
+
+    // 誤答投入の残数は resetRemaining=3 → 生き残りメンバーを正解 3 ラウンドで卒業できる
+    let completed = false;
+    for (let round = 0; round < 3; round++) {
+      const { quiz, roundCount } = await generateDrillRoundForUser(user.id, { drillId });
+      expect(quiz.questions.map((q) => q.wordId)).toEqual([wordIds[0]]);
+      const result = await submitDrillRoundForUser(user.id, {
+        drillId,
+        expectedRoundCount: roundCount,
+        answers: quiz.questions.map((q) => ({ wordId: q.wordId, result: "CORRECT" as const })),
+      });
+      completed = result.completed;
+    }
+
+    expect(completed).toBe(true);
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    expect(drill.completedAt).not.toBeNull();
+  });
+
+  test("all unfinished members unaskable: rows deleted, completedAt set, DrillNoAskableWordsError thrown (ADR-0067)", async () => {
+    const { user, drillId, wordIds } = await setupDrill([
+      { headword: "alpha", number: 5, correct: false },
+    ]);
+    // 唯一の未定着メンバーが意味の全削除で出題不能化する
+    await prisma.meaning.deleteMany({ where: { wordId: wordIds[0] } });
+
+    // 返せるラウンドが無いため throw（action 層で「完了になりました」の Result に変換される）
+    await expect(generateDrillRoundForUser(user.id, { drillId })).rejects.toBeInstanceOf(
+      DrillNoAskableWordsError,
+    );
+    // DrillWord 行は削除され、送信側完了判定の鏡像として completedAt が設定される
+    expect(await prisma.drillWord.count({ where: { drillId } })).toBe(0);
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    expect(drill.completedAt).not.toBeNull();
   });
 });

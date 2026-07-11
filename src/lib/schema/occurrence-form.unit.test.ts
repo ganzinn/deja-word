@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { SHORT_TEXT_MAX_LENGTH } from "@/lib/schema/content-limits";
 import {
   defaultOccurrenceFormValues,
   occurrenceFormSchema,
@@ -34,6 +35,27 @@ describe("occurrenceFormSchema", () => {
     expect(r.location).toBe("TOEIC");
     expect(r.isPreset).toBe(false);
     expect(r.autoNumbering).toBe(true);
+  });
+
+  test("accepts location at exactly SHORT_TEXT_MAX_LENGTH", () => {
+    const r = occurrenceFormSchema.safeParse({
+      location: "a".repeat(SHORT_TEXT_MAX_LENGTH),
+      isPreset: true,
+      autoNumbering: false,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("rejects location over SHORT_TEXT_MAX_LENGTH", () => {
+    const r = occurrenceFormSchema.safeParse({
+      location: "a".repeat(SHORT_TEXT_MAX_LENGTH + 1),
+      isPreset: true,
+      autoNumbering: false,
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join(".") === "location")).toBe(true);
+    }
   });
 
   test("requires isPreset to be a boolean", () => {

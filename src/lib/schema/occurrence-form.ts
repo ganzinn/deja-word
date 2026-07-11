@@ -1,7 +1,13 @@
 import { z } from "zod/v3";
 
+import { SHORT_TEXT_MAX_LENGTH } from "@/lib/schema/content-limits";
+
 export const occurrenceFormSchema = z.object({
-  location: z.string().trim().min(1, "掲載箇所名を入力してください"),
+  location: z
+    .string()
+    .trim()
+    .min(1, "掲載箇所名を入力してください")
+    .max(SHORT_TEXT_MAX_LENGTH, `掲載箇所名は ${SHORT_TEXT_MAX_LENGTH} 文字以内で入力してください`),
   isPreset: z.boolean(),
   autoNumbering: z.boolean(),
 });

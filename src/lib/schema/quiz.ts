@@ -10,13 +10,26 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
 import type { QuizFormat } from "@/generated/prisma/enums";
 
 /**
+ * 解答系配列（answers / results / wordIds）の上限。仕様は「範囲内全出題」で問題数に
+ * 上限が無いため、現実的な最大出題規模（本番実測最大: 掲載箇所あたり 1900 語）の
+ * 約 2.6 倍の余裕を取った値。巨大配列による IN 句・createMany の資源枯渇を防ぐ（issue #107）。
+ */
+export const QUIZ_ANSWERS_MAX_COUNT = 5000;
+
+/** id 入力の上限。cuid は 25 文字で、将来の id 形式変更にも耐える余裕値（issue #107）。 */
+export const INPUT_ID_MAX_LENGTH = 64;
+
+// server-action 専用入力のためエラーメッセージは付けない（action 層が汎用メッセージに畳む）。
+const idInputSchema = z.string().min(1).max(INPUT_ID_MAX_LENGTH);
+
+/**
  * テスト範囲の入力（05-architecture.md 決定 2）。
  * mode と ownerId はサーバー側（経路とセッション）で決まるため含めない。
  * rangeFrom > rangeTo はスキーマでは拒否しない（対象 0 件として下流の
  * partitionMaterial / checkFormatAvailability が「成立しない」と扱う）。
  */
 export const quizRangeInputSchema = z.object({
-  occurrenceId: z.string().min(1),
+  occurrenceId: idInputSchema,
   rangeFrom: z.number().int().positive().optional(),
   rangeTo: z.number().int().positive().optional(),
 }) satisfies z.ZodType<QuizRangeInput>;
@@ -53,7 +66,7 @@ export const quizResultSchema = z.enum(["CORRECT", "INCORRECT", "VAGUE", "GAVE_U
 
 /** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
 export const answerInputSchema = z.object({
-  wordId: z.string().min(1),
+  wordId: idInputSchema,
   result: quizResultSchema,
 }) satisfies z.ZodType<AnswerInput>;
 
@@ -81,16 +94,16 @@ export const startQuizInputSchema = quizRangeInputSchema.extend({
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
 export const submitQuizAnswersInputSchema = z.object({
   format: quizFormatSchema,
-  answers: z.array(answerInputSchema).min(1),
+  answers: z.array(answerInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
 /** `getWordDetailForDialog` の入力（wordId 単体）。 */
-export const wordIdSchema = z.string().min(1);
+export const wordIdSchema = idInputSchema;
 
 /** `getAdjacentWordsForDialog` の入力（掲載箇所内の前後単語取得）。 */
 export const adjacentWordsInputSchema = z.object({
-  occurrenceId: z.string().min(1),
-  wordId: z.string().min(1),
+  occurrenceId: idInputSchema,
+  wordId: idInputSchema,
 });
 
 export type AdjacentWordsInput = z.infer<typeof adjacentWordsInputSchema>;
@@ -102,7 +115,7 @@ export type AdjacentWordsInput = z.infer<typeof adjacentWordsInputSchema>;
  * rangeFrom > rangeTo は quizRangeInputSchema と同方針で拒否しない。
  */
 export const saveQuizDefaultsInputSchema = z.object({
-  occurrenceId: z.string().min(1).nullable(),
+  occurrenceId: idInputSchema.nullable(),
   rangeFrom: z.number().int().positive().nullable(),
   rangeTo: z.number().int().positive().nullable(),
   format: quizFormatSchema.nullable(),
@@ -125,7 +138,7 @@ export const saveQuizDefaultsInputSchema = z.object({
 /** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。
  *  result から投入要否（CORRECT のみトグル依存）と初期残数（Drill の残数設定由来）を導出する。 */
 export const drillResultInputSchema = z.object({
-  wordId: z.string().min(1),
+  wordId: idInputSchema,
   result: quizResultSchema,
 }) satisfies z.ZodType<DrillResultInput>;
 
@@ -135,7 +148,7 @@ export const drillResultInputSchema = z.object({
  * テストは常に 1 問以上のため空の results は不正とする。
  */
 export const startDrillInputSchema = z.object({
-  occurrenceId: z.string().min(1),
+  occurrenceId: idInputSchema,
   // 元テストの範囲（省略 = 範囲指定なし）。完了画面の「同じ範囲でもう一度テストする」用に
   // `Drill` へ保存する（実効範囲 rangeFrom/rangeTo とは別物）。
   sourceRangeFrom: z.number().int().positive().optional(),
@@ -149,12 +162,12 @@ export const startDrillInputSchema = z.object({
   resetRemaining: quizRemainingCountSchema,
   vagueRemaining: quizRemainingCountSchema,
   initialCorrectRemaining: quizRemainingCountSchema,
-  results: z.array(drillResultInputSchema).min(1),
+  results: z.array(drillResultInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
 /** `startDrillRound` の入力（初回・再開とも同一経路。形式は `Drill.format` から導出）。 */
 export const startDrillRoundInputSchema = z.object({
-  drillId: z.string().min(1),
+  drillId: idInputSchema,
 });
 
 /**
@@ -162,14 +175,14 @@ export const startDrillRoundInputSchema = z.object({
  * roundCount をそのまま返す（CAS 冪等の期待値。05-architecture.md 決定 4）。
  */
 export const submitDrillRoundInputSchema = z.object({
-  drillId: z.string().min(1),
+  drillId: idInputSchema,
   expectedRoundCount: z.number().int().nonnegative(),
-  answers: z.array(answerInputSchema).min(1),
+  answers: z.array(answerInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 }) satisfies z.ZodType<DrillRoundInput>;
 
 /** `deleteDrill` の入力。 */
 export const deleteDrillInputSchema = z.object({
-  drillId: z.string().min(1),
+  drillId: idInputSchema,
 });
 
 /**
@@ -178,14 +191,14 @@ export const deleteDrillInputSchema = z.object({
  * results と同じ信頼モデル）。当該 drill の DrillWord との交差はサーバーで検証する。
  */
 export const startDrillRetryInputSchema = z.object({
-  drillId: z.string().min(1),
-  wordIds: z.array(z.string().min(1)).min(1),
+  drillId: idInputSchema,
+  wordIds: z.array(idInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
 /** `submitDrillRetry` の入力。format は `Drill.format` から導出するため受け取らない。 */
 export const submitDrillRetryInputSchema = z.object({
-  drillId: z.string().min(1),
-  answers: z.array(answerInputSchema).min(1),
+  drillId: idInputSchema,
+  answers: z.array(answerInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
 export type StartQuizInput = z.infer<typeof startQuizInputSchema>;

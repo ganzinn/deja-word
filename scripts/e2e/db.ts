@@ -63,6 +63,154 @@ export async function ensureUser(
   return { id: user.id, email, password };
 }
 
+/** 撮影用デモ単語の見出し語（test1 所有）。詳細・編集・重複登録警告の被写体に使う。 */
+export const DEMO_WORD_HEADWORD = "vivid";
+
+/** デモ単語を収める掲載箇所名（test1 所有）。 */
+export const DEMO_OCCURRENCE_LOCATION = "デモ単語帳";
+
+/**
+ * 撮影用のデモ単語（意味・訳語・各種例文・関連語 3 種・メモ・掲載箇所）を冪等に用意し、
+ * 作成した Word の id を返す（詳細・編集ページへの遷移に使う）。既存のデモ単語は消してから
+ * 作り直す。DB に「意味・例文・関連語・メモが揃った語」が無いため、詳細/編集の被写体として
+ * 自作の非著作コンテンツをここで seed する。正規パスを介さず prisma/seed.ts に倣って raw ネスト
+ * create する（ops コア規約）。子行はすべて ownerId を非正規化して持つ。
+ */
+export async function ensureDemoWord(
+  prisma: PrismaClientType,
+  ownerEmailRaw: string,
+): Promise<string> {
+  const email = ownerEmailRaw.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) {
+    throw new Error(
+      `ensureDemoWord: ユーザー ${email} が未用意です（先に ensureUser を呼んでください）。`,
+    );
+  }
+  const ownerId = user.id;
+
+  const occurrence = await prisma.occurrence.upsert({
+    where: { ownerId_location: { ownerId, location: DEMO_OCCURRENCE_LOCATION } },
+    update: {},
+    create: { ownerId, location: DEMO_OCCURRENCE_LOCATION, autoNumbering: false },
+    select: { id: true },
+  });
+
+  await prisma.word.deleteMany({ where: { ownerId, headword: DEMO_WORD_HEADWORD } });
+
+  const word = await prisma.word.create({
+    data: {
+      ownerId,
+      headword: DEMO_WORD_HEADWORD,
+      meanings: {
+        create: [
+          {
+            ownerId,
+            partOfSpeech: "adjective",
+            pronunciation: "ˈvɪvɪd",
+            sortOrder: 0,
+            texts: {
+              create: [
+                { ownerId, text: "鮮やかな、あざやかな", sortOrder: 0 },
+                { ownerId, text: "（記憶・描写などが）生き生きとした", sortOrder: 1 },
+              ],
+            },
+          },
+        ],
+      },
+      examples: {
+        create: [
+          {
+            ownerId,
+            kind: "TARGET",
+            text: "a vivid memory of 〜",
+            meaning: "〜の鮮明な記憶",
+            sortOrder: 0,
+          },
+          {
+            ownerId,
+            kind: "PHRASE",
+            text: "a vivid imagination",
+            meaning: "豊かな想像力",
+            sortOrder: 0,
+          },
+          { ownerId, kind: "MINIMAL", text: "vivid colors", meaning: "鮮やかな色彩", sortOrder: 0 },
+          {
+            ownerId,
+            kind: "SENTENCE",
+            text: "I still have vivid memories of that summer.",
+            meaning: "その夏の鮮明な記憶が今も残っている。",
+            sortOrder: 0,
+          },
+        ],
+      },
+      relatedWords: {
+        create: [
+          {
+            ownerId,
+            kind: "SYNONYM",
+            term: "bright",
+            partOfSpeech: "adjective",
+            meaning: "明るい、鮮やかな",
+            sortOrder: 0,
+          },
+          {
+            ownerId,
+            kind: "ANTONYM",
+            term: "dull",
+            partOfSpeech: "adjective",
+            meaning: "くすんだ、さえない",
+            sortOrder: 1,
+          },
+          {
+            ownerId,
+            kind: "DERIVATIVE",
+            term: "vividly",
+            partOfSpeech: "adverb",
+            meaning: "鮮やかに、生き生きと",
+            sortOrder: 2,
+          },
+        ],
+      },
+      memos: {
+        create: [
+          {
+            ownerId,
+            text: "語源はラテン語 vivere（＝生きる）。「生き生きと目に浮かぶ」イメージで覚える。",
+            sortOrder: 0,
+          },
+        ],
+      },
+      wordOccurrences: {
+        create: [{ ownerId, occurrenceId: occurrence.id, occurrenceNumber: 1, sortOrder: 0 }],
+      },
+    },
+    select: { id: true },
+  });
+  return word.id;
+}
+
+/**
+ * 掲載箇所ビューの撮影用に、最も単語数の多い共有（system 所有）掲載箇所を返す（読み取りのみ）。
+ * 番号付きの一覧を映すのに使い、無ければ明示エラーにする（ターゲット1900 等を db:import-words で用意する）。
+ */
+export async function getLargestSharedOccurrence(
+  prisma: PrismaClientType,
+): Promise<{ id: string; location: string }> {
+  // ownerId="system" は共有マスタ（naming-book: system user）。db.ts は @/ を実行時 import できないため文字列で持つ。
+  const occ = await prisma.occurrence.findFirst({
+    where: { ownerId: "system" },
+    orderBy: { wordLinks: { _count: "desc" } },
+    select: { id: true, location: true },
+  });
+  if (!occ) {
+    throw new Error(
+      "掲載箇所ビュー撮影用の共有掲載箇所（system 所有）がありません。`pnpm db:import-words` 等で用意してください。",
+    );
+  }
+  return occ;
+}
+
 /**
  * system ユーザー（id="system"）が seed 済み・パスワード設定済みかを確認する（読み取りのみ）。
  * 未整備なら分かりやすい remediation メッセージで throw する。system ユーザーは

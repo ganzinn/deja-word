@@ -8,7 +8,13 @@ import path from "node:path";
 import type { Browser, BrowserContext, Locator, Page } from "playwright-core";
 
 import { login, TEST_USER1_EMAIL, TEST_USER1_PASSWORD } from "./auth";
-import { ensureUser, makePrisma } from "./db";
+import {
+  DEMO_WORD_HEADWORD,
+  ensureDemoWord,
+  ensureUser,
+  getLargestSharedOccurrence,
+  makePrisma,
+} from "./db";
 import { launchBrowser, newContext } from "./harness";
 
 const OUT_DIR = path.join(process.cwd(), "docs", "features", "images");
@@ -18,6 +24,10 @@ const DOCS_USER_NAME = "デモユーザー";
 
 /** 撮影済みファイル名（拡張子なし）。最後に欠落チェックとサマリ表示に使う。 */
 const captured: string[] = [];
+
+/** words セクションの被写体。main() の DB 準備で解決してから撮影で使う。 */
+let demoWordId = "";
+let sharedOccurrenceId = "";
 
 /** ダークモード・アニメーション・端末差をなくした撮影専用コンテキスト。2x で文字を鮮明にする。 */
 async function docsContext(browser: Browser): Promise<BrowserContext> {
@@ -47,6 +57,7 @@ async function shot(page: Page, name: string, ready: Locator, content?: Locator)
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 
   let clip: { x: number; y: number; width: number; height: number } | undefined;
+  let grownViewport: { width: number; height: number } | undefined;
   if (content) {
     // 横幅はコンテナ幅、縦は子要素の実範囲を採る（flex-1 でコンテナだけ縦に伸びる画面の余白対策）。
     const box = await content.evaluate((el) => {
@@ -66,8 +77,16 @@ async function shot(page: Page, name: string, ready: Locator, content?: Locator)
       width: Math.min(viewport.width, x + box.width + CLIP_PADDING * 2) - x,
       height: box.height + CLIP_PADDING * 2,
     };
+    // clip は viewport 内しか撮れない。ビューポートより高いコンテンツ（単語詳細・編集など）は
+    // 一時的にビューポートを伸ばして全体を収めてから撮り、撮影後に元へ戻す。
+    const needed = Math.ceil(y + clip.height);
+    if (needed > viewport.height) {
+      grownViewport = viewport;
+      await page.setViewportSize({ width: viewport.width, height: needed });
+    }
   }
   await page.screenshot({ path: path.join(OUT_DIR, `${name}.png`), clip });
+  if (grownViewport) await page.setViewportSize(grownViewport);
   captured.push(name);
   console.log(`  shot: ${name}.png`);
 }
@@ -123,10 +142,73 @@ async function sectionAccount(browser: Browser): Promise<void> {
   }
 }
 
-/** セクション定義（宣言順に実行）。チケット②〜④で words / quiz / settings / admin を追加していく。 */
+/** 単語管理（一覧の 2 ビュー・登録フォーム・重複警告・AI 入力・詳細・編集）。 */
+async function sectionWords(browser: Browser): Promise<void> {
+  const user = await docsContext(browser);
+  try {
+    const page = await login(user, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
+    const main = page.getByRole("main");
+
+    // 単語一覧（単語ビュー）。デモ単語が新着順の先頭に並ぶ。
+    await page.goto("/words");
+    await shot(page, "words-list-word-view", page.getByRole("heading", { name: "単語一覧" }), main);
+
+    // 単語一覧（掲載箇所ビュー）。共有掲載箇所を掲載番号 1〜6 に絞って部分的に映す。
+    await page.goto(`/words?view=occurrence&occ=${sharedOccurrenceId}&to=6`);
+    await shot(
+      page,
+      "words-list-occurrence-view",
+      page.getByRole("button", { name: "掲載箇所単位" }),
+      main,
+    );
+
+    // 単語登録（空フォーム）。
+    await page.goto("/words/new");
+    await shot(page, "word-new", page.getByPlaceholder("例: ephemeral"), main);
+
+    // AI 入力ボタン（optional）。AI Gateway 未設定環境では描画されないので短 timeout で探し WARN スキップ。
+    // 全体フォームの word-new と重複しないよう、基本セクション（単語欄＋AI 入力ボタン）に寄せて撮る。
+    const aiButton = page.getByRole("button", { name: "AI入力" });
+    if (await aiButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      const basicSection = aiButton.locator(
+        "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' gap-4 ')][1]",
+      );
+      await shot(page, "word-new-ai-button", aiButton, basicSection);
+    } else {
+      console.log(
+        "  warn: AI入力ボタンが無いため word-new-ai-button をスキップ（AI Gateway 未設定環境）",
+      );
+    }
+
+    // 重複登録警告（コア体験）。既存の headword を入力して blur すると警告が出る（保存はしない）。
+    await page.goto("/words/new");
+    const headword = page.getByPlaceholder("例: ephemeral");
+    await headword.fill(DEMO_WORD_HEADWORD);
+    await headword.blur();
+    await shot(
+      page,
+      "word-new-duplicate-warning",
+      page.getByText("この単語は既に登録されています"),
+      main,
+    );
+
+    // 単語詳細（意味・訳語・例文種別・関連語・メモ・掲載箇所が揃ったデモ単語）。
+    await page.goto(`/words/${demoWordId}`);
+    await shot(page, "word-detail", page.getByRole("heading", { name: "意味" }), main);
+
+    // 単語編集。
+    await page.goto(`/words/${demoWordId}/edit`);
+    await shot(page, "word-edit", page.getByRole("heading", { name: "単語を編集" }), main);
+  } finally {
+    await user.close();
+  }
+}
+
+/** セクション定義（宣言順に実行）。チケット③〜④で quiz / settings / admin を追加していく。 */
 const SECTIONS: Record<string, (browser: Browser) => Promise<void>> = {
   common: sectionCommon,
   account: sectionAccount,
+  words: sectionWords,
 };
 
 function parseOnly(argv: string[]): string[] {
@@ -153,9 +235,14 @@ async function main(): Promise<void> {
     ([name]) => only.length === 0 || only.includes(name),
   );
 
+  const needsWords = targets.some(([name]) => name === "words");
   const prisma = makePrisma();
   try {
     await ensureUser(prisma, TEST_USER1_EMAIL, TEST_USER1_PASSWORD, DOCS_USER_NAME);
+    if (needsWords) {
+      demoWordId = await ensureDemoWord(prisma, TEST_USER1_EMAIL);
+      sharedOccurrenceId = (await getLargestSharedOccurrence(prisma)).id;
+    }
   } finally {
     await prisma.$disconnect();
   }

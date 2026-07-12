@@ -20,8 +20,11 @@ export async function launchBrowser(): Promise<Browser> {
 }
 
 /** 独立 cookie jar のコンテキストを作る（別ユーザーのログインを混ぜないため 1 ユーザー 1 context）。 */
-export async function newContext(browser: Browser): Promise<BrowserContext> {
-  return browser.newContext({ baseURL: baseUrl() });
+export async function newContext(
+  browser: Browser,
+  options?: Omit<NonNullable<Parameters<Browser["newContext"]>[0]>, "baseURL">,
+): Promise<BrowserContext> {
+  return browser.newContext({ baseURL: baseUrl(), ...options });
 }
 
 /**

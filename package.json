@@ -22,6 +22,7 @@
     "db:import-words": "tsx scripts/import-words.ts",
     "db:import-related-words": "tsx scripts/import-related-words.ts",
     "e2e:guard": "tsx scripts/e2e/verify-deletion-guard.ts",
+    "e2e:capture-docs": "tsx scripts/e2e/capture-docs-screenshots.ts",
     "test": "dotenv -e .env.test -- vitest run",
     "test:watch": "dotenv -e .env.test -- vitest",
     "test:unit": "vitest run --project unit",

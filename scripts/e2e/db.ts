@@ -190,6 +190,149 @@ export async function ensureDemoWord(
   return word.id;
 }
 
+/** quiz デッキを収める掲載箇所名（test1 所有）。②の「デモ単語帳」とは別掲載箇所にして両セクションを独立させる。 */
+export const QUIZ_OCCURRENCE_LOCATION = "デモ英単語帳";
+
+/**
+ * 単語テスト・定着モードの撮影用デッキ（自作の非著作単語）。各語に意味・訳語・TG例文を持たせ、
+ * 四択の distractor（複数の意味）と TG 形式（TARGET 例文）の両方を成立させる。掲載番号は 1..8。
+ */
+const QUIZ_DECK: {
+  headword: string;
+  pronunciation: string;
+  partOfSpeech: string;
+  texts: string[];
+  tg: { text: string; meaning: string };
+}[] = [
+  {
+    headword: "brisk",
+    pronunciation: "brɪsk",
+    partOfSpeech: "adjective",
+    texts: ["きびきびした、活発な", "（風などが）さわやかな"],
+    tg: { text: "walk at a brisk pace", meaning: "きびきびした足取りで歩く" },
+  },
+  {
+    headword: "cautious",
+    pronunciation: "ˈkɔːʃəs",
+    partOfSpeech: "adjective",
+    texts: ["用心深い、慎重な"],
+    tg: { text: "a cautious first step", meaning: "慎重な第一歩" },
+  },
+  {
+    headword: "gather",
+    pronunciation: "ˈɡæðər",
+    partOfSpeech: "verb",
+    texts: ["集める、集まる"],
+    tg: { text: "gather the loose papers", meaning: "散らばった紙を集める" },
+  },
+  {
+    headword: "remote",
+    pronunciation: "rɪˈmoʊt",
+    partOfSpeech: "adjective",
+    texts: ["遠く離れた、人里離れた"],
+    tg: { text: "a remote mountain village", meaning: "人里離れた山村" },
+  },
+  {
+    headword: "sturdy",
+    pronunciation: "ˈstɜːrdi",
+    partOfSpeech: "adjective",
+    texts: ["頑丈な、丈夫な"],
+    tg: { text: "a sturdy wooden chair", meaning: "頑丈な木の椅子" },
+  },
+  {
+    headword: "vanish",
+    pronunciation: "ˈvænɪʃ",
+    partOfSpeech: "verb",
+    texts: ["消える、見えなくなる"],
+    tg: { text: "vanish into the fog", meaning: "霧の中へ消える" },
+  },
+  {
+    headword: "gaze",
+    pronunciation: "ɡeɪz",
+    partOfSpeech: "verb",
+    texts: ["じっと見つめる"],
+    tg: { text: "gaze at the night sky", meaning: "夜空をじっと見つめる" },
+  },
+  {
+    headword: "murmur",
+    pronunciation: "ˈmɜːrmər",
+    partOfSpeech: "verb",
+    texts: ["つぶやく、ささやく"],
+    tg: { text: "murmur a soft reply", meaning: "小声で返事をつぶやく" },
+  },
+];
+
+/**
+ * 単語テスト・定着モードの撮影に使う被写体デッキ（test1 所有）を冪等に用意し、掲載箇所の情報を返す。
+ * quiz は seed から再現不可（`prisma/seed.ts` は system ユーザーのみ）・TG 例文はどの committed
+ * スクリプトも作らないため、`ensureDemoWord` に倣って自作の非著作コンテンツをここで seed する。
+ * 既存デッキ語は消してから作り直す（冪等）。正規パスを介さず raw ネスト create（ops コア規約）。
+ */
+export async function ensureQuizDeck(
+  prisma: PrismaClientType,
+  ownerEmailRaw: string,
+): Promise<{ occurrenceId: string; location: string; wordCount: number }> {
+  const email = ownerEmailRaw.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) {
+    throw new Error(
+      `ensureQuizDeck: ユーザー ${email} が未用意です（先に ensureUser を呼んでください）。`,
+    );
+  }
+  const ownerId = user.id;
+
+  const occurrence = await prisma.occurrence.upsert({
+    where: { ownerId_location: { ownerId, location: QUIZ_OCCURRENCE_LOCATION } },
+    update: {},
+    create: { ownerId, location: QUIZ_OCCURRENCE_LOCATION, autoNumbering: false },
+    select: { id: true },
+  });
+
+  // 撮影で作った進行中の定着モードを消してから作り直す（掲載箇所は upsert で残るため drill も残り、
+  // 再開一覧に前回分が累積・孤児化する）。DrillWord は cascade で落ちる。
+  await prisma.drill.deleteMany({ where: { ownerId, occurrenceId: occurrence.id } });
+
+  await prisma.word.deleteMany({
+    where: { ownerId, headword: { in: QUIZ_DECK.map((w) => w.headword) } },
+  });
+
+  for (const [i, spec] of QUIZ_DECK.entries()) {
+    await prisma.word.create({
+      data: {
+        ownerId,
+        headword: spec.headword,
+        meanings: {
+          create: [
+            {
+              ownerId,
+              partOfSpeech: spec.partOfSpeech,
+              pronunciation: spec.pronunciation,
+              sortOrder: 0,
+              texts: {
+                create: spec.texts.map((text, j) => ({ ownerId, text, sortOrder: j })),
+              },
+            },
+          ],
+        },
+        examples: {
+          create: [
+            { ownerId, kind: "TARGET", text: spec.tg.text, meaning: spec.tg.meaning, sortOrder: 0 },
+          ],
+        },
+        wordOccurrences: {
+          create: [{ ownerId, occurrenceId: occurrence.id, occurrenceNumber: i + 1, sortOrder: 0 }],
+        },
+      },
+    });
+  }
+
+  return {
+    occurrenceId: occurrence.id,
+    location: QUIZ_OCCURRENCE_LOCATION,
+    wordCount: QUIZ_DECK.length,
+  };
+}
+
 /**
  * 掲載箇所ビューの撮影用に、最も単語数の多い共有（system 所有）掲載箇所を返す（読み取りのみ）。
  * 番号付きの一覧を映すのに使い、無ければ明示エラーにする（ターゲット1900 等を db:import-words で用意する）。

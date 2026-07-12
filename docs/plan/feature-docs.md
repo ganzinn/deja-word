@@ -24,6 +24,11 @@
   一式がわかる形での掲載は不可）。commit 前に目視レビューする
   （写り込み範囲・ダークモード/トースト混入なし）。
 - 被写体の headword 等はスクリプト定数で固定し、DB に無ければ明示エラーにする。
+- 被写体データが既存 DB に無い場合（例: 意味・例文・関連語・メモが揃った語が無かった②）は、
+  `scripts/e2e/db.ts` に冪等な seed ヘルパを足して撮影前に用意する（②の `ensureDemoWord` が手本。
+  自作の非著作コンテンツにする）。test1 は使い回しなので seed した被写体は残ってよい。
+- ビューポート（800px）より高いページ（詳細・編集など）は `shot()` が一時的にビューポートを
+  伸ばして全体を撮る（クリップは viewport 内しか撮れないため）。縦長の被写体でも欠けない。
 
 ### ドキュメント共通フォーマット
 
@@ -33,27 +38,6 @@
 - 記載後に整合性セルフレビュー（用語・相対リンク・画像参照の突合）を行う。
 - `docs/features/README.md` の目次には全機能が並んでいる。ページを執筆したら「準備中」を
   リンクに置き換える。
-
-## チケット②: 単語管理
-
-- capture スクリプトに `words` セクションを追加（6 枚）:
-
-  | 画像 | 画面・状態 |
-  | --- | --- |
-  | words-list-word-view.png | `/words` 単語ビュー |
-  | words-list-occurrence-view.png | `/words` 掲載箇所ビュー（ビュー切替後） |
-  | word-new.png | `/words/new` 空フォーム |
-  | word-new-duplicate-warning.png | `/words/new` に既存 headword を入力し重複登録警告を表示（保存しない） |
-  | word-new-ai-button.png | AI 入力ボタン（**optional**: 短 timeout で探し、無ければ WARN でスキップ。AI Gateway 未設定環境では表示されない） |
-  | word-detail.png / word-edit.png | 定数で固定した語の詳細・編集（関連語・例文・メモが揃った語を選定） |
-
-- `docs/features/word-management.md` を執筆。章立て: 単語一覧（単語ビュー/掲載箇所ビュー・検索）/
-  単語登録（**重複登録警告＝アプリのコア体験**として強調）/ AI 下書き（環境条件も明記）/
-  単語詳細（意味・訳語・例文種別・関連語・メモ）/ 編集 / 掲載箇所と掲載番号（概念説明の正置き場所。
-  単語テストの出題範囲との関係）/ 補足: 発音音源（アップロードと TTS 代替 → settings 相互参照）。
-- セレクタは実装が一次情報: `src/app/words/new/_components/basic-fields.tsx`（重複警告文言）、
-  `src/app/words/_components/`（ビュー切替）。
-- 完了条件: 画像 6 枚（AI ボタンは optional）＋ページ執筆＋README 目次リンク化＋目視レビュー。
 
 ## チケット③: 単語テスト＋定着モード（最重量）
 

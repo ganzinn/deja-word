@@ -27,7 +27,7 @@ export class EmptyDrillRetryError extends Error {
  *   更新済みでラウンドのメンバーシップは永続化していないため、サーバーでは導出できない
  *   （`startDrill` の results と同じ信頼モデル）。当該 drill の DrillWord との交差で検証し、
  *   drill 外の wordId は無視する
- * - remaining は見ない（そのラウンドで卒業した remaining=0 の単語も出題する）
+ * - remaining は見ない（そのラウンドで定着した remaining=0 の単語も出題する）
  * - 対象単語は `ensureTargetWordIds` で範囲と独立に取得する（ラウンド生成と同じ救済。
  *   番号が範囲外へ移動したメンバーも再テストできる。issue #106）
  * - 形式・制限時間・四択の選択肢表示は `Drill` から導出（決定 4 と同じ）

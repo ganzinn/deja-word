@@ -117,7 +117,7 @@ describe("submitDrillRoundForUser", () => {
     expect(answers[0].result).toBe("TIMEOUT");
   });
 
-  test("sets completedAt when all words graduate", async () => {
+  test("sets completedAt when all words are retained", async () => {
     const { user, drillId, wordIds } = await setupDrill([
       { headword: "alpha", number: 1, correct: true },
       { headword: "beta", number: 2, correct: true },

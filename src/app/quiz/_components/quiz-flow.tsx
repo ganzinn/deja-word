@@ -407,7 +407,7 @@ export function QuizFlow({
     initialDrillRemaining(defaults),
   );
   const [drill, setDrill] = useState<DrillState | null>(null);
-  // 直近のラウンド送信で drill が完了（全卒業）したか。再テスト結果画面の「次のラウンドへ」の
+  // 直近のラウンド送信で drill が完了（全単語定着）したか。再テスト結果画面の「次のラウンドへ」の
   // 表示判定に使う（再テスト送信の応答には完了情報が含まれないため、ラウンド送信時の値を保持する）。
   const [drillCompleted, setDrillCompleted] = useState(false);
   // 完了画面の「同じ範囲でもう一度テストする」直上に出す対象件数（getQuizPreview のライブ値）。
@@ -662,7 +662,7 @@ export function QuizFlow({
       }).then((result) => {
         if (runId !== runIdRef.current) return;
         if (result.ok) {
-          // 完了（全卒業）フラグの持ち主はこの state（result-list へは props で渡す）
+          // 完了（全単語定着）フラグの持ち主はこの state（result-list へは props で渡す）
           setDrillCompleted(result.completed);
           setSubmitState({ status: "drill-success", remaining: result.remaining });
         } else {

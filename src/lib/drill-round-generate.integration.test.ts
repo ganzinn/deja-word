@@ -139,14 +139,14 @@ describe("generateDrillRoundForUser", () => {
     expect(rows.map((r) => r.wordId)).toEqual([wordIds[0]]);
   });
 
-  test("drill remains completable after self-healing: surviving member graduates and completedAt is set (issue #106)", async () => {
+  test("drill remains completable after self-healing: surviving member is retained and completedAt is set (issue #106)", async () => {
     const { user, drillId, wordIds } = await setupDrill([
       { headword: "alpha", number: 5, correct: false },
       { headword: "beta", number: 12, correct: false },
     ]);
     await prisma.meaning.deleteMany({ where: { wordId: wordIds[1] } });
 
-    // 誤答投入の残数は resetRemaining=3 → 生き残りメンバーを正解 3 ラウンドで卒業できる
+    // 誤答投入の残数は resetRemaining=3 → 生き残りメンバーを正解 3 ラウンドで定着できる
     let completed = false;
     for (let round = 0; round < 3; round++) {
       const { quiz, roundCount } = await generateDrillRoundForUser(user.id, { drillId });

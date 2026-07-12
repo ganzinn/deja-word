@@ -18,8 +18,8 @@
 
 ### 残数モデル・生成
 
-- 元テストで間違えた単語は残数 3、正解した単語は残数 1 から開始。正解で −1、間違い（「わからない」含む）で 3 にリセット、残数 0 ＝卒業（以降のラウンドに出題されない）。各ラウンドは未卒業（残数 > 0）の単語を全て出題（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 1）
-- drill は元テストごとに独立生成し複数並存可。生成タイミングは結果画面で「定着モードへ」を押したとき。全単語卒業で `Drill.completedAt` を設定（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 2）
+- 元テストで間違えた単語は残数 3、正解した単語は残数 1 から開始。正解で −1、間違い（「わからない」含む）で 3 にリセット、残数 0 ＝定着（以降のラウンドに出題されない）。各ラウンドは未定着（残数 > 0）の単語を全て出題（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 1）
+- drill は元テストごとに独立生成し複数並存可。生成タイミングは結果画面で「定着モードへ」を押したとき。全単語定着で `Drill.completedAt` を設定（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 2）
 - drill 生成の入力はクライアントから結果（`{ wordId, correct }[]`）と format を送る（QuizAnswer にテストセッション ID がなくサーバーで「今回のテストの結果」を特定できないため。改ざんはカンニング許容方針と整合）（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 2）
 - `startDrill` に範囲（rangeFrom / rangeTo）は含めない。Drill の rangeFrom / rangeTo は results の単語の occurrenceNumber から実効範囲（min / max）をサーバーで計算して保存する（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 2）
 - 出題形式は元テストを引き継ぐ: 生成時に format を `Drill.format` に保存し、ラウンドの問題生成と QuizAnswer.format の付与はサーバーが `Drill.format` から導出する（ラウンド系の入力に format はない）（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 4）
@@ -57,7 +57,7 @@ UseCase は `src/lib/` 直下フラット、handler は `src/lib/quiz/handlers/`
 
 ### 作成: `src/lib/drill-round-generate.ts`
 
-`generateDrillRoundForUser(userId, input: { drillId: string })` → `{ quiz: QuizPayload, roundCount }`。Drill を `ownerId: userId` で取得（不在は NotFound）→ 未卒業（remaining > 0）の DrillWord の単語を対象に、`fetchQuizSource`＋`partitionMaterial`＋`buildQuiz(Drill.format, material, Math.random)` で再生成 → 現在の `roundCount` を `expectedRoundCount` として返す。
+`generateDrillRoundForUser(userId, input: { drillId: string })` → `{ quiz: QuizPayload, roundCount }`。Drill を `ownerId: userId` で取得（不在は NotFound）→ 未定着（remaining > 0）の DrillWord の単語を対象に、`fetchQuizSource`＋`partitionMaterial`＋`buildQuiz(Drill.format, material, Math.random)` で再生成 → 現在の `roundCount` を `expectedRoundCount` として返す。
 
 ### 作成: `src/lib/drill-round-submit.ts`（＋ `.integration.test.ts`）
 
@@ -89,7 +89,7 @@ type ActiveDrill = {
 
 - [ ] `applyDrillRound` の unit test（tx-mock 流用）: CAS の 3 分岐（適用・alreadyApplied・Conflict）の分岐判定（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 9）
 - [ ] `createDrillForUser` の integration test: 初期残数が誤答=3 / 正答=1 で作られる・実効範囲が min / max で保存される（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 9）
-- [ ] `submitDrillRoundForUser` の integration test: 残数遷移（正解 −1・誤答 / GAVE_UP リセット 3）・全卒業で completedAt 設定・**冪等性＝同一 `expectedRoundCount` で 2 回呼び、2 回目が `alreadyApplied: true` を返し remaining と QuizAnswer 件数が 1 回分であること**（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 9）
+- [ ] `submitDrillRoundForUser` の integration test: 残数遷移（正解 −1・誤答 / GAVE_UP リセット 3）・全単語定着で completedAt 設定・**冪等性＝同一 `expectedRoundCount` で 2 回呼び、2 回目が `alreadyApplied: true` を返し remaining と QuizAnswer 件数が 1 回分であること**（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 9）
 - [ ] `pnpm lint` / `pnpm typecheck` / `pnpm test` が通る
 
 ## 競合注意
@@ -102,7 +102,7 @@ type ActiveDrill = {
 - **エラークラスの配置**: `DrillNotFoundError` / `DrillRoundConflictError` は `src/lib/quiz/handlers/drill-round-handler.ts` で定義（generate / delete も import）。**10 の error-map はここから import すること**。
 - CAS miss＋再読込で drill 不在（削除済み／他人の drill）は `DrillNotFoundError`（決定 5 の「存在を漏らさない」に合わせた補完。delete の `count === 0` も同様に NotFound）。
 - `createDrillForUser` に決定 3 と同形の存在確認フィルタを適用（チケット本文には明記なし）: 結果画面表示中に削除された単語は DrillWord 作成・範囲計算から除外（除外しないと FK 違反で生成全体が失敗するため）。番号付き可視単語が 0 件で実効範囲を計算できない場合は新設の `EmptyDrillResultsError`（`src/lib/drill-create.ts`。改ざん入力・極端な削除レースのみ到達。**10 で error-map への追加要否を判断すること**）。
-- ラウンド生成の出題対象: `partitionMaterial`（範囲ベース）の結果を未卒業 wordId で再分割し、targets ＝未卒業の DrillWord 単語全て、卒業済み等の範囲内他単語は sameOccurrencePool（ダミー候補）側（06-drill-mode.md 決定 1「未卒業の単語を全て出題」の具体化）。
+- ラウンド生成の出題対象: `partitionMaterial`（範囲ベース）の結果を未定着 wordId で再分割し、targets ＝未定着の DrillWord 単語全て、定着済み等の範囲内他単語は sameOccurrencePool（ダミー候補）側（06-drill-mode.md 決定 1「未定着の単語を全て出題」の具体化）。
 - drill-list の並び順は `updatedAt desc`（最終実施が新しい順。チケット未指定のため選択）。
 - tx-mock の `DelegateMock` に `findMany` / `updateMany` がないため、drill-round-handler の unit test 内で `word.findMany` / `drill.updateMany` / `drillWord.findMany` をローカルに補った（05 と同じ回避パターン。共有ファイルは未変更）。
 - fixture は既存 `createQuizWordRow` で足りたため `tests/setup/fixtures.ts` への追記なし。

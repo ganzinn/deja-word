@@ -302,7 +302,7 @@
 
 - 英語名: `Drill`（モデル）、`QuizMode.DRILL`
 - 日本語名: 定着モード
-- 定義: 「定着待ちプール」。元テスト 1 回から生成され、複数並存できる。間違えた（＋設定により正解した）単語をラウンド反復で出題し、全単語卒業で完了（`completedAt` 設定。進行中一覧は `completedAt IS NULL`）。
+- 定義: 「定着待ちプール」。元テスト 1 回から生成され、複数並存できる。間違えた（＋設定により正解した）単語をラウンド反復で出題し、全単語定着で完了（`completedAt` 設定。進行中一覧は `completedAt IS NULL`）。
 - 混同注意: UI 日本語は「定着モード」。「ドリル」表記はコード外では使わない。再開導線は quiz 開始画面の一覧（メニューには置かない）。
 - 出典: prisma/schema.prisma:432, docs/design/word-quiz/06-drill-mode.md
 
@@ -310,7 +310,7 @@
 
 - 英語名: `DrillWord.remaining`。遷移関数 `initialRemaining` / `nextRemaining`
 - 日本語名: 残数（定着までの残連続正解数）
-- 定義: drill 内の単語ごとのカウントダウン値（0..max）。正解で −1、うろ覚え / 誤答でリセット値に戻り、0 で卒業。
+- 定義: drill 内の単語ごとのカウントダウン値（0..max）。正解で −1、うろ覚え / 誤答でリセット値に戻り、0 で定着。
 - 混同注意: 「スコア加算」ではなく「残数カウントダウン」モデル。DRILL_RETRY は remaining に影響しない。
 - 出典: prisma/schema.prisma:467, src/lib/quiz/generation/next-remaining.ts:35
 
@@ -321,19 +321,19 @@
 - 定義: 残数の初期値・リセット値の 3 点セット（各 1..9）。誤答は resetRemaining、うろ覚えは vagueRemaining、正答は initialCorrectRemaining から開始する。
 - 出典: src/lib/quiz/generation/next-remaining.ts:13, prisma/schema.prisma:446-448
 
-#### 卒業
+#### 定着（単語単位）
 
-- 英語名: （専用のコード名なし。`remaining === 0` の状態）
-- 日本語名: 卒業
-- 定義: drill 内で残数が 0 になり、以降のラウンドに出題されない状態。
-- 混同注意: 「完了」は drill 全体（全単語卒業、`completedAt` 設定）を指し、「卒業」は単語単位。
+- 英語名: `retained`（テスト名・コメント上の記述語。専用のコード識別子は無く `remaining === 0` の状態）
+- 日本語名: 定着（単語単位）
+- 定義: drill 内で単語の残数が 0 になり、以降のラウンドに出題されない状態。
+- 混同注意: 「完了」は drill 全体（全単語定着・`completedAt` 設定）／「定着（単語単位）」は単語ごと／「定着モード」はモード名。文脈で書き分ける。**旧称「卒業」は使わない（2026-07-12 定着に統一）**。
 - 出典: docs/design/word-quiz/06-drill-mode.md:50
 
 #### ラウンド
 
 - 英語名: `round`（`startDrillRound` / `submitDrillRound` / `roundCount`）
 - 日本語名: ラウンド
-- 定義: drill 内の 1 周（未卒業の単語をすべて出題し、結果画面で区切る単位）。設計上の明文:「ユーザー説明上の『セッション』だが、テストセッション・ブラウザセッションとの混同を避けるためドキュメント・コードでは『ラウンド』と呼ぶ」。
+- 定義: drill 内の 1 周（未定着の単語をすべて出題し、結果画面で区切る単位）。設計上の明文:「ユーザー説明上の『セッション』だが、テストセッション・ブラウザセッションとの混同を避けるためドキュメント・コードでは『ラウンド』と呼ぶ」。
 - 混同注意: **「セッション」と呼ばない**（認証 Session・ブラウザセッションと衝突するため）。
 - 出典: docs/design/word-quiz/06-drill-mode.md:18, src/lib/schema/quiz.ts:156
 

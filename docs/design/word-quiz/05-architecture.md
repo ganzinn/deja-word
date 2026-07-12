@@ -275,7 +275,7 @@ src/lib/quiz/generation/
 | `quiz/handlers/`（insertQuizAnswers、applyDrillRound） | unit | `tests/setup/tx-mock.ts` に quizAnswer / drill / drillWord delegate を追加して流用 |
 | `fetchQuizSource`（可視性スコープ・意味未登録除外・番号なし除外） | integration | 実 DB＋`tests/setup/fixtures.ts` 拡張（番号付き／なし／意味なし単語の fixture） |
 | `submitQuizAnswersForUser`（削除済み単語 skip）／`createDrillForUser`（初期残数は Drill の残数設定由来）／`submitDrillRoundForUser`（残数遷移・completedAt・CAS） | integration | UseCase ごとにコロケート（words-create 等と同形） |
-| `generateDrillRetryForUser`（卒業単語含む指定セット生成・drill 外 wordId 無視）／`submitDrillRetryForUser`（mode=DRILL_RETRY 保存・残数/roundCount/completedAt 不変） | integration | 同上（06 決定 10 起因の加算） |
+| `generateDrillRetryForUser`（定着単語含む指定セット生成・drill 外 wordId 無視）／`submitDrillRetryForUser`（mode=DRILL_RETRY 保存・残数/roundCount/completedAt 不変） | integration | 同上（06 決定 10 起因の加算） |
 | `src/app/quiz/actions.ts`（認証なし・zod 不正・エラーマップ） | unit | 既存 actions の unit test と同じモックパターン |
 
 `deleteDrillForUser`（06 決定 7）は `ownerId: userId` 照合＋物理削除のみで特殊ロジックがないため、専用の integration は設けず actions.ts の unit テストパターンでカバーする。

@@ -81,7 +81,7 @@ function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
  * DRILL（`submitDrillRound`）の成功。
  * 残数バッジは drill-success の確定残数のみに基づき、クライアント見込み計算で先出ししない
  * （DRILL_RETRY は残数不変・応答にも含まれないため表示しない）。
- * drill の完了（全卒業）は quiz-flow の state が持ち、props の `drillCompleted` で受ける。
+ * drill の完了（全単語定着）は quiz-flow の state が持ち、props の `drillCompleted` で受ける。
  */
 export type SubmitState =
   | { status: "sending" }
@@ -139,7 +139,7 @@ type Props = {
   /** 同・対象件数の取得状態（quiz-flow が完了状態の結果画面でのみ取得する）。 */
   sourceTestPreview: SourceTestPreview | null;
   /**
-   * drill が完了（全卒業）したか（quiz-flow がラウンド送信の応答から保持する値）。
+   * drill が完了（全単語定着）したか（quiz-flow がラウンド送信の応答から保持する値）。
    * DRILL は完了メッセージの表示に、DRILL_RETRY は「次のラウンドへ」を出すかの判定に使う
    * （再テスト送信の応答には完了情報が含まれないため props で受ける）。
    */

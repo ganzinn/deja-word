@@ -66,7 +66,7 @@ export type QuizPayload =
 
 ### drill 残数遷移
 
-- 残数モデル: 元テスト誤答=3・正答=1 から開始。正解で −1、間違い（GAVE_UP 含む）で 3 にリセット、0 で卒業（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 1）。遷移は純関数 `nextRemaining(current, result)` として実装する（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 4）
+- 残数モデル: 元テスト誤答=3・正答=1 から開始。正解で −1、間違い（GAVE_UP 含む）で 3 にリセット、0 で定着（[06-drill-mode.md](../../design/word-quiz/06-drill-mode.md) 決定 1）。遷移は純関数 `nextRemaining(current, result)` として実装する（[05-architecture.md](../../design/word-quiz/05-architecture.md) 決定 4）
 
 ## 実装内容
 

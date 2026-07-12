@@ -18,7 +18,7 @@ export type QuizErrorResult = {
 
 /**
  * quiz 系 UseCase が投げるエラーを Result 型へ統一マップする
- * （05-architecture.md 決定 1。`words/error-map.ts` と同形）。
+ * （docs/adr/0014-three-layer-architecture.md。`words/error-map.ts` と同形）。
  *
  * - `OccurrenceNotFoundError`: 対象 Occurrence が不在・不可視（`fetchQuizSource` 由来）
  * - `QuizGenerationError`: 形式不成立等で問題生成できない（message はユーザー提示可能な日本語）

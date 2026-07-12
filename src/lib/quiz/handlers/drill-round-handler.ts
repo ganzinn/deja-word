@@ -14,7 +14,7 @@ export class DrillNotFoundError extends Error {
 
 /**
  * ラウンド送信の競合エラー。`roundCount` が期待値＋1 以外（2 ラウンド以上
- * 進んでいる古いタブ等）の場合に投げる（05-architecture.md 決定 4）。
+ * 進んでいる古いタブ等）の場合に投げる（docs/adr/0033-drill-round-count-cas.md）。
  */
 export class DrillRoundConflictError extends Error {
   constructor() {
@@ -40,7 +40,7 @@ export type DrillRoundResult = {
  * drill ラウンド 1 回分（履歴一括保存＋残数更新＋完了判定）を適用する。
  * 全体を 1 tx で呼ぶこと（UseCase `submitDrillRoundForUser` が tx を張る）。
  *
- * 冪等化は `Drill.roundCount` の compare-and-swap（05-architecture.md 決定 4）:
+ * 冪等化は `Drill.roundCount` の compare-and-swap（docs/adr/0033-drill-round-count-cas.md）:
  * 1. roundCount=expectedRoundCount の行だけを increment（CAS）
  * 2. 成功 → 通常経路（insertQuizAnswers → nextRemaining で残数更新 → 完了判定）
  * 3. 失敗 → 再読込し、期待値＋1 なら適用済みとして確定残数を冪等返却、
@@ -89,15 +89,15 @@ export async function applyDrillRound(
   });
   if (!drill) throw new DrillNotFoundError(); // CAS 成功直後のため通常は到達しない
 
-  // 残数遷移は drill ごとに保存された設定値を使う（生成時と同じ値。06-drill-mode.md 決定 1）。
+  // 残数遷移は drill ごとに保存された設定値を使う（生成時と同じ値。docs/adr/0036-drill-remaining-count-model.md）。
   const remainingConfig = {
     resetRemaining: drill.resetRemaining,
     vagueRemaining: drill.vagueRemaining,
     initialCorrectRemaining: drill.initialCorrectRemaining,
   };
 
-  // QuizAnswer.format は Drill.format から導出（06-drill-mode.md 決定 4）。
-  // ラウンド中に削除された単語は handler 側で履歴 insert が skip される（決定 3 のフィルタ）。
+  // QuizAnswer.format は Drill.format から導出（docs/adr/0038-drill-inherits-format-timeout.md）。
+  // ラウンド中に削除された単語は handler 側で履歴 insert が skip される（docs/adr/0032-history-submit-single-flight.md）。
   const { skippedWordIds } = await insertQuizAnswers(tx, userId, {
     mode: "DRILL",
     format: drill.format,
@@ -144,7 +144,7 @@ export async function applyDrillRound(
     wordId,
     remaining: value,
   }));
-  // 完了判定は残っている DrillWord 行だけで行う（05-architecture.md 決定 4）
+  // 完了判定は残っている DrillWord 行だけで行う（docs/adr/0033-drill-round-count-cas.md）
   const completed = remaining.every((w) => w.remaining === 0);
   if (completed && drill.completedAt === null) {
     await tx.drill.update({

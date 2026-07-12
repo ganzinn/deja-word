@@ -1,6 +1,6 @@
 // 問題生成・drill ラウンド生成が使う素材型と取得行のパーティション純関数
-// （05-architecture.md 決定 8。プレビューはこの分割を使わず件数のみ取得する＝決定 8 改訂）。
-// 取得クエリ `fetchQuizSource` はチケット 04。本ファイルは DB 非依存。
+// （docs/adr/0030-dummy-pool-bounded-fetch.md。プレビューはこの分割を使わず件数のみ取得する）。
+// 取得クエリ `fetchQuizSource` は別ファイル。本ファイルは DB 非依存。
 
 import type { MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
 

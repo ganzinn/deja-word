@@ -29,7 +29,7 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/05-architecture.md` 決定 6（追記含む。design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 決定 6（追記含む。元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/quiz/CLAUDE.md` — 形式追加チェックリスト
 - `src/lib/quiz/generation/build-quiz.ts` / `src/lib/quiz/payload.ts`
 - commits `39fd8f7`（TG四択追加）/ `a483884`（TG自己判定追加）— 拡張点の実運用例

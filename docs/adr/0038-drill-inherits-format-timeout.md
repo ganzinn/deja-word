@@ -17,7 +17,7 @@ drill の各ラウンドで出題形式・制限時間を選ばせるか、元�
 
 ## 採らなかった代替案
 
-`docs/design/word-quiz/06-drill-mode.md` 決定 4 の却下案:
+本 ADR に記録した却下案:
 
 - **ラウンドごとに形式を選択可能にする** — 却下
 - **デフォルト継承 + 変更可能** — 却下
@@ -30,6 +30,6 @@ drill の各ラウンドで出題形式・制限時間を選ばせるか、元�
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/06-drill-mode.md` 決定 4（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 形式・制限時間の継承の決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `prisma/schema.prisma` — Drill.format / timeoutSeconds
 - commit `3df0102` "word-quiz 設計"（形式継承の確定コミット）

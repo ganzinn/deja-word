@@ -25,19 +25,19 @@ export class EmptyDrillResultsError extends Error {
 export type DrillResultInput = { wordId: string; result: QuizResult };
 
 /**
- * テスト結果画面の「定着モードへ」起点で drill を生成する（06-drill-mode.md 決定 2）。
+ * テスト結果画面の「定着モードへ」起点で drill を生成する（docs/adr/0037-drill-per-source-test.md）。
  *
  * - 入力の results はクライアント申告（サーバーに「今回のテスト」を特定する手段が
- *   ないため。改ざんはカンニング許容方針と整合。05-architecture.md 決定 2）
+ *   ないため。改ざんはカンニング許容方針と整合。docs/adr/0025-server-side-generation-cheating-accepted.md）
  * - 既定（drillIncludeCorrect=false）は誤答とうろ覚えを投入する。true で正答単語も投入する
  *   （結果画面トグル「正解した問題も定着モードで出題する」由来）。うろ覚え（VAGUE）は
  *   トグルに関係なく常に投入する（正解後にうろ覚えへ降格した＝復習したい意思表示のため）
  * - rangeFrom / rangeTo は投入対象の単語の occurrenceNumber から実効範囲（min / max）を
- *   サーバーで計算して保存する（同 決定 2）
+ *   サーバーで計算して保存する
  * - 初期残数は Drill の残数設定（誤答=resetRemaining / うろ覚え=vagueRemaining / 正答=
- *   initialCorrectRemaining。各 1..9。正答は投入時のみ。06-drill-mode.md 決定 1）。テスト開始時の
+ *   initialCorrectRemaining。各 1..9。正答は投入時のみ。docs/adr/0036-drill-remaining-count-model.md）。テスト開始時の
  *   設定値を `Drill` 行へ保存し、ラウンド遷移（nextRemaining）でも同じ値を使う
- * - 結果画面表示中に削除された単語は存在確認フィルタで skip する（決定 3 と同形）
+ * - 結果画面表示中に削除された単語は存在確認フィルタで skip する（docs/adr/0032-history-submit-single-flight.md）
  * - 番号付きリンクの無い単語（未リンク・番号なし）は DrillWord に投入しない
  *   （出題不能な行を作らない。issue #106）
  */

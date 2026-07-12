@@ -23,7 +23,7 @@ export const INPUT_ID_MAX_LENGTH = 64;
 const idInputSchema = z.string().min(1).max(INPUT_ID_MAX_LENGTH);
 
 /**
- * テスト範囲の入力（05-architecture.md 決定 2）。
+ * テスト範囲の入力（docs/adr/0017-server-actions-over-route-handlers.md）。
  * mode と ownerId はサーバー側（経路とセッション）で決まるため含めない。
  * rangeFrom > rangeTo はスキーマでは拒否しない（対象 0 件として下流の
  * partitionMaterial / checkFormatAvailability が「成立しない」と扱う）。
@@ -64,7 +64,7 @@ export const quizRemainingCountSchema = z
 /** 解答結果の値。QuizResult enum と同期させる（生成 enum は import 時の値として使えないため列挙）。 */
 export const quizResultSchema = z.enum(["CORRECT", "INCORRECT", "VAGUE", "GAVE_UP", "TIMEOUT"]);
 
-/** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る。決定 2）。 */
+/** 1 解答分の入力。format は持たない（送信トップレベルで 1 回だけ送る）。 */
 export const answerInputSchema = z.object({
   wordId: idInputSchema,
   result: quizResultSchema,
@@ -135,7 +135,7 @@ export const saveQuizDefaultsInputSchema = z.object({
 
 // ---- drill 系 Server Action の入力スキーマ ----
 
-/** 元テスト 1 問分の結果（`startDrill` の results 要素。05-architecture.md 決定 2）。
+/** 元テスト 1 問分の結果（`startDrill` の results 要素。docs/adr/0017-server-actions-over-route-handlers.md）。
  *  result から投入要否（CORRECT のみトグル依存）と初期残数（Drill の残数設定由来）を導出する。 */
 export const drillResultInputSchema = z.object({
   wordId: idInputSchema,
@@ -144,7 +144,7 @@ export const drillResultInputSchema = z.object({
 
 /**
  * `startDrill` の入力。format / timeoutSeconds はここで 1 回だけ受け取り
- * `Drill` に保存して全ラウンドで引き継ぐ（06-drill-mode.md 決定 4）。
+ * `Drill` に保存して全ラウンドで引き継ぐ（docs/adr/0038-drill-inherits-format-timeout.md）。
  * テストは常に 1 問以上のため空の results は不正とする。
  */
 export const startDrillInputSchema = z.object({
@@ -172,7 +172,7 @@ export const startDrillRoundInputSchema = z.object({
 
 /**
  * `submitDrillRound` の入力。expectedRoundCount は `startDrillRound` 応答の
- * roundCount をそのまま返す（CAS 冪等の期待値。05-architecture.md 決定 4）。
+ * roundCount をそのまま返す（CAS 冪等の期待値。docs/adr/0033-drill-round-count-cas.md）。
  */
 export const submitDrillRoundInputSchema = z.object({
   drillId: idInputSchema,
@@ -186,7 +186,7 @@ export const deleteDrillInputSchema = z.object({
 });
 
 /**
- * `startDrillRetry` の入力（06-drill-mode.md 決定 10）。wordIds は直前ラウンドの出題単語の
+ * `startDrillRetry` の入力（docs/adr/0041-drill-retry.md）。wordIds は直前ラウンドの出題単語の
  * クライアント申告（サーバーにラウンドのメンバーシップがなく導出不可。`startDrill` の
  * results と同じ信頼モデル）。当該 drill の DrillWord との交差はサーバーで検証する。
  */

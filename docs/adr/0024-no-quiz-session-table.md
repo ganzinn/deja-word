@@ -13,7 +13,7 @@
 
 ## 決定内容
 
-- **テストセッション（1 回のテスト実施）テーブルは持たない**。過去テストの結果一覧を見る要求がないため（`docs/design/word-quiz/02-data-model.md` に理由明記）
+- **テストセッション（1 回のテスト実施）テーブルは持たない**。過去テストの結果一覧を見る要求がないため
 - 履歴は **QuizAnswer（1 解答 = 1 行、append-only）**のみ。単語（Word）に紐づけ、Meaning には紐づけない（出題・正誤の単位が単語のため）
 - TEST / DRILL / DRILL_RETRY の区別は `mode` カラムで持つ
 
@@ -29,6 +29,6 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/02-data-model.md` — 「テストセッションテーブルは持たない」と理由（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 「テストセッションテーブルは持たない」と理由（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `prisma/schema.prisma` — QuizAnswer モデル（wordId / ownerId / mode / result）
 - `docs/reference/naming-book.md` — ラウンド vs セッションの用語規約

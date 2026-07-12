@@ -1,5 +1,5 @@
 // 出題形式コンポーネント共通の解答結果型。
-// quiz-flow / result-list（チケット 08）もこの型を import する。
+// quiz-flow / result-list もこの型を import する。
 
 import type { QuizResult } from "@/generated/prisma/enums";
 

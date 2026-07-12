@@ -11,9 +11,9 @@ export type AnswerInput = {
 };
 
 /**
- * 解答履歴を一括保存する。TEST（チケット 05）と DRILL（チケット 09）で共有する。
+ * 解答履歴を一括保存する。TEST と DRILL で共有する。
  *
- * 単語削除耐性（05-architecture.md 決定 3）: tx 内で可視単語の存在確認を行い、
+ * 単語削除耐性（docs/adr/0032-history-submit-single-flight.md）: tx 内で可視単語の存在確認を行い、
  * 実在分のみ createMany する。FK 違反で全件失敗させず、存在しなかった単語は
  * `skippedWordIds` として返す。
  */

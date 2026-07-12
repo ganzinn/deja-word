@@ -480,7 +480,7 @@ describe("startDrillRound (Server Action)", () => {
         },
       ],
     };
-    // 完了画面の「同じ範囲でもう一度テストする」用の元テスト開始入力（06-drill-mode.md 決定 11）
+    // 完了画面の「同じ範囲でもう一度テストする」用の元テスト開始入力（docs/adr/0042-retest-same-range.md）
     const sourceTest = {
       occurrenceId: "o_1",
       rangeFrom: 1,

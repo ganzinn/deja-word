@@ -21,7 +21,7 @@ export class EmptyDrillRetryError extends Error {
 }
 
 /**
- * 「同じ問題で再テスト」（drill retry）1 回分の問題を生成する（06-drill-mode.md 決定 10）。
+ * 「同じ問題で再テスト」（drill retry）1 回分の問題を生成する（docs/adr/0041-drill-retry.md）。
  *
  * - 出題対象は wordIds（直前ラウンドの出題単語）のクライアント申告。ラウンド送信後は残数が
  *   更新済みでラウンドのメンバーシップは永続化していないため、サーバーでは導出できない
@@ -30,8 +30,8 @@ export class EmptyDrillRetryError extends Error {
  * - remaining は見ない（そのラウンドで定着した remaining=0 の単語も出題する）
  * - 対象単語は `ensureTargetWordIds` で範囲と独立に取得する（ラウンド生成と同じ救済。
  *   番号が範囲外へ移動したメンバーも再テストできる。issue #106）
- * - 形式・制限時間・四択の選択肢表示は `Drill` から導出（決定 4 と同じ）
- * - 出題順・選択肢は毎回サーバー再生成（決定 5 と同じ）
+ * - 形式・制限時間・四択の選択肢表示は `Drill` から導出（docs/adr/0038-drill-inherits-format-timeout.md）
+ * - 出題順・選択肢は毎回サーバー再生成（docs/adr/0039-drill-reshuffle-each-round.md）
  * - roundCount は返さない（再テスト送信は残数に触れず CAS 不要のため）
  */
 export async function generateDrillRetryForUser(

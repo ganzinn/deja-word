@@ -23,18 +23,18 @@
 
 ## 採らなかった代替案
 
-`docs/refactor/word-registration.md` の「解消しない項目」表に明記:
+本 ADR に記録した「解消しない項目」の却下案:
 
 - **Repository 抽象（N4）**: 「薄い抽象は屋上屋」として却下
 - **DDD エンティティ（N5）**: 「zod 型 + Prisma 型で十分」として却下
 
 ## 影響
 
-- UseCase は flat ファイルで発見性を保ち、純関数群はディレクトリに逃がす配置規約（`docs/design/word-quiz/05-architecture.md` 決定 1 が quiz でも踏襲）
+- UseCase は flat ファイルで発見性を保ち、純関数群はディレクトリに逃がす配置規約（quiz でも踏襲）
 - 新機能（quiz / drill）も同じ 3 層で実装され、層の責務が `src/lib/CLAUDE.md` / `src/app/CLAUDE.md` に恒久規約化された
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/refactor/word-registration.md` — 到達点アーキテクチャ、N1–N6 の「解消しない」表（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 到達点アーキテクチャ、N1–N6 の「解消しない」表（元 refactor ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - commit `0f65fe6`（PR #1、計画）、`0d90577` / `f149c2a` / `f6fcd52` / `2b71e8b` / `b8b6c78`（Phase 1–5）
 - `src/lib/CLAUDE.md` / `src/app/CLAUDE.md` — 層の責務規約

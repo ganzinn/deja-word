@@ -190,7 +190,7 @@ export function ResultList({
   const noDrillWords = !drillIncludeCorrect && wrongCount === 0;
   const skippedWordIds =
     submitState.status === "success" ? new Set(submitState.skippedWordIds) : null;
-  // DRILL: 送信成功までは残数表示を保留する（04-ui.md「drill ラウンド結果画面」）。
+  // DRILL: 送信成功までは残数表示を保留する。
   // DRILL_RETRY は success 変種のため自動的に null（残数バッジなし）になる。
   const remainingByWordId =
     submitState.status === "drill-success"
@@ -439,7 +439,7 @@ export function ResultList({
                   <br />
                   おつかれさまでした！
                 </p>
-                {/* 元テストの範囲・形式で新しい通常テストを開始し、定着を確認する（06-drill-mode.md 決定 11）。
+                {/* 元テストの範囲・形式で新しい通常テストを開始し、定着を確認する（docs/adr/0042-retest-same-range.md）。
                     直上に元テストの範囲と対象件数を出し、押す前に確認できるようにする。
                     履歴の確定（送信成功）までは無効 */}
                 <SourceTestInfo label={sourceTestLabel} preview={sourceTestPreview} />
@@ -463,7 +463,7 @@ export function ResultList({
                 次のラウンドへ
               </Button>
             )}
-            {/* 残数に影響しない再テスト（06-drill-mode.md 決定 10）。履歴の確定（送信成功）までは無効 */}
+            {/* 残数に影響しない再テスト（docs/adr/0041-drill-retry.md）。履歴の確定（送信成功）までは無効 */}
             <Button
               size="lg"
               variant="outline"

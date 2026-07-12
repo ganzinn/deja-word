@@ -17,7 +17,7 @@
 
 ## 採らなかった代替案
 
-`docs/refactor/word-registration.md` に却下案が表形式で記録されている:
+本 ADR に記録した却下案:
 
 - **テーブル分離（system 用とユーザー用を分ける）**: 検索が UNION を強いられ、コピー行の陳腐化問題も生じ、総コストが現状維持を上回るため却下
 - **enum の scope カラム追加**: 却下（同表参照）
@@ -26,12 +26,12 @@
 
 ## 影響
 
-- quiz 機能は QuizAnswer / Drill / DrillWord の side table 加算のみで実装され、既存テーブル無変更が守られた（`docs/design/word-quiz/README.md` が本方針の踏襲を明記）
+- quiz 機能は QuizAnswer / Drill / DrillWord の side table 加算のみで実装され、既存テーブル無変更が守られた
 - ノート複数行化も `*Note` 子テーブル加算で対応（[ADR-0012](0012-note-child-tables.md)）
 - 本方針は `prisma/CLAUDE.md` に恒久規約として記載されている
 
 ## 根拠（コード・コミット・文書参照）
 
 - commit `159300a` "将来の方向性を「テーブル分離」から「side table 加算」に書き換え" — 代替案比較を含む方針転換のコミット
-- `docs/refactor/word-registration.md` — 「将来の方向性: side table 加算」節と却下案表（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 「将来の方向性: side table 加算」節と却下案表（元 refactor ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `prisma/CLAUDE.md` — 「既存テーブルは変更せず side table の加算で拡張する」

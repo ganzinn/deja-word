@@ -14,7 +14,7 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
  *
  * 問題生成は範囲内の出題対象を全件＋ダミー候補プールを目標件数まで優先順で不足分だけ読む独自経路
  * （`fetchQuizSource`）。プレビュー（`getQuizPreviewForUser`）は件数のみの軽量経路に分離された
- * ため（05-architecture.md 決定 8 改訂）、形式の成立可否はここで `checkFormatAvailability` に
+ * ため（docs/adr/0030-dummy-pool-bounded-fetch.md）、形式の成立可否はここで `checkFormatAvailability` に
  * より初めて判定する。
  * 不成立の場合は QuizGenerationError（カウントダウン画面でメッセージ表示）。
  *

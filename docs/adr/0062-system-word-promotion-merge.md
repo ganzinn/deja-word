@@ -44,7 +44,7 @@ system principal での単語作成（`createWordAsSystem`）は次を行う:
 
 - `src/lib/words-create.ts:66-108`（`createWordAsSystem` 本体）
 - `src/lib/words-merge.ts`（`mergeWordInto`。子エンティティの付け替え順序をコメントで契約化）
-- `docs/refactor/word-registration.md`（このパスの導入経緯。長期保存対象ではないため本 ADR が引き継ぎ先）
+- このパスの導入経緯は本 ADR が記録（元 refactor ドキュメントは実装完了に伴い削除）
 
 ## 人間への確認質問
 

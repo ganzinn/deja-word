@@ -29,6 +29,6 @@
 ## 根拠（コード・コミット・文書参照）
 
 - `src/lib/CLAUDE.md` — 「`ownerId: userId` 単独では共有マスタが欠ける」
-- `docs/design/word-quiz/05-architecture.md` 決定 5 — where 注入方式の採用
+- where 注入方式の採用（元 design ドキュメントは実装完了に伴い削除）
 - `src/lib/system-user.ts` — `scopedOwnerIds` 実装
-- `docs/refactor/word-registration.md` — RLS 却下の記録
+- RLS 却下の記録（元 refactor ドキュメントは実装完了に伴い削除）

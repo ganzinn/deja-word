@@ -1,7 +1,7 @@
 # src/lib/quiz
 
 - server-only の線引き: `payload.ts` / `default-settings.ts` / `spelling.ts` / `generation/` はクライアントからも import されるため `server-only` を付けない。`handlers/` / `queries/` は付ける。
-- handler のシグネチャは `(tx, userId, ...)`。words の EditorContext / row-policy は使わない。quiz は system 共有行に書き込まないための意図的な相違 (docs/design/word-quiz/05-architecture.md 決定 5)。
+- handler のシグネチャは `(tx, userId, ...)`。words の EditorContext / row-policy は使わない。quiz は system 共有行に書き込まないための意図的な相違 (docs/adr/0019-two-layer-write-authorization.md)。
 - 出題生成は RNG (`() => number`) を引数注入する純関数。unit テストは `tests/setup/seeded-rng.ts` を注入して決定化する。シードは永続化しない (中断 = 破棄)。
 - 同名ファイルに注意: `quiz/default-settings.ts` (client-safe 定数) と `src/lib/quiz-default-settings.ts` (server-only UseCase)、`quiz/spelling.ts` (採点) と `quiz/generation/spelling.ts` (出題生成) は別物。
 - `error-map.ts` に `server-only` が無いのは、import する Error クラスの定義元が server-only 付きのため**推移的に保護されている**既存様式（words 側も同じ）。

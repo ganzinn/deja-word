@@ -25,7 +25,7 @@ words の書き込み認可を 2 層の純関数に分離し、`src/lib/words/po
 ## 採らなかった代替案
 
 - handler 内の `SYSTEM_USER_ID` 条件分岐（旧実装）— リファクタ Phase 2–4 で解消。Phase 4（commit `2b71e8b`）には `SYSTEM_USER_ID` が残ってよい場所の grep 不変条件が DoD として記録されている
-- quiz にも同じ policy を適用 — 「quiz は共有行に書かないため不適用」として却下（`docs/design/word-quiz/05-architecture.md` 決定 5）
+- quiz にも同じ policy を適用 — 「quiz は共有行に書かないため不適用」として却下
 
 ## 影響
 
@@ -37,4 +37,4 @@ words の書き込み認可を 2 層の純関数に分離し、`src/lib/words/po
 - `src/lib/words/CLAUDE.md` — 二層認可の規約（EditorContext = 誰として書くか / row-policy = 行単位許可）
 - `src/lib/words/policy/row-policy.ts` / `policy/editor-context.ts`
 - commit `2b71e8b` "認可ロジックを policy/ に切り出し SYSTEM_USER_ID を局所化"（Phase 4）
-- `docs/design/word-quiz/05-architecture.md` 決定 5 — quiz 側の意図的不適用
+- quiz 側の意図的不適用（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

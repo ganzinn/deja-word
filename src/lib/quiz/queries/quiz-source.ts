@@ -26,7 +26,7 @@ export async function assertOccurrenceVisible(userId: string, occurrenceId: stri
  * なるため、targets が十分あればダミー専用の取得は不要。よって候補プールがこの件数に達するよう、
  * targets → 同一 Occurrence（範囲外）→ 他 Occurrence の優先順で**不足分だけ**取得する。
  * ダミーは 1 問あたり数件・問題間で使い回せるため、この件数あれば dedup 後も充足する
- * （05-architecture.md 決定 8・2026-06-21 追補）。
+ * （docs/adr/0030-dummy-pool-bounded-fetch.md・2026-06-21 追補）。
  */
 export const DUMMY_POOL_SIZE = 50;
 
@@ -68,7 +68,7 @@ function usableTgExampleWhere(allowed: string[]) {
  * 自動的に織り込まれる。未指定（空）なら従来の範囲判定と完全に同一。
  *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
- * `countQuizSourceExclusions` で取得する（05-architecture.md 決定 8 改訂）。
+ * `countQuizSourceExclusions` で取得する（docs/adr/0030-dummy-pool-bounded-fetch.md）。
  */
 export async function fetchQuizSource(
   userId: string,

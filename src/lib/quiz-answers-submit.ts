@@ -8,8 +8,8 @@ import { insertQuizAnswers, type AnswerInput } from "@/lib/quiz/handlers/quiz-an
  * 通常テストの解答履歴を一括保存する薄い UseCase。
  *
  * mode（TEST）はサーバーが経路で決め、クライアント入力に含めない
- * （05-architecture.md 決定 2）。削除済み単語は handler 側でスキップされ
- * `skippedWordIds` として返る（同 決定 3）。
+ * （docs/adr/0017-server-actions-over-route-handlers.md）。削除済み単語は handler 側でスキップされ
+ * `skippedWordIds` として返る（docs/adr/0032-history-submit-single-flight.md）。
  */
 export async function submitQuizAnswersForUser(
   userId: string,

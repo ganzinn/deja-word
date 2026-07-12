@@ -1067,6 +1067,9 @@ export function QuizFlow({
       <ScreenHeader backHref="/menu" title="単語テスト" />
       <div className="px-4 pt-6">
         <StartForm
+          // 開始画面に戻った直後の router.refresh() で新しいデフォルトが届いたら、
+          // StartForm を再マウントして useState 初期化子に読み直させる（内容不変なら key 同一で remount しない）。
+          key={JSON.stringify({ defaults, saveAsDefaultInitial })}
           occurrences={occurrences}
           activeDrills={activeDrills}
           defaults={defaults}

@@ -18,7 +18,7 @@ drill のラウンド直後に「同じ問題でもう一度確かめたい」�
 
 ## 採らなかった代替案
 
-`docs/design/word-quiz/06-drill-mode.md` 決定 10 の却下案:
+本 ADR に記録した却下案:
 
 - **ラウンドメンバーシップの永続化**（再演習用に問題保存）— 却下
 - **mode = DRILL の再利用** — 却下（本番ラウンドと区別できず残数計算を汚染する）
@@ -32,6 +32,6 @@ drill のラウンド直後に「同じ問題でもう一度確かめたい」�
 ## 根拠（コード・コミット・文書参照）
 
 - commit `2f925c8` "feat: 定着モードに「同じ問題で再テスト」（drill retry）を追加"（PR #87）
-- `docs/design/word-quiz/06-drill-mode.md` 決定 10（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- drill retry の決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/drill-retry-generate.ts` / `src/lib/drill-retry-submit.ts`
 - `prisma/schema.prisma` — QuizMode enum

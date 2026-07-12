@@ -29,7 +29,7 @@ drill のラウンド結果送信が二重実行されると残数（[ADR-0036](
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/05-architecture.md` 決定 4（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 決定 4（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/CLAUDE.md` — 「楽観ロックや素の update に書き換えない」（決定 4 への参照付き）
 - `src/lib/quiz/handlers/drill-round-handler.ts` / `src/lib/drill-round-submit.ts`
 - `prisma/schema.prisma` — `Drill.roundCount`

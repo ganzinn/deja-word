@@ -9,7 +9,7 @@
 
 ## 背景
 
-quiz 設計時に、クライアント ↔ サーバのインターフェースを Server Action と Route Handler（REST 風 API）のどちらに寄せるかが検討された（`docs/design/word-quiz/05-architecture.md` 決定 2）。
+quiz 設計時に、クライアント ↔ サーバのインターフェースを Server Action と Route Handler（REST 風 API）のどちらに寄せるかが検討された。
 
 ## 決定内容
 
@@ -30,7 +30,7 @@ quiz 設計時に、クライアント ↔ サーバのインターフェース�
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/05-architecture.md` 決定 2（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- インターフェースを Server Action に統一する決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/app/CLAUDE.md` — Route Handler 例外 2 件の明記
 - `src/app/quiz/actions.ts` — quiz の Server Action 集約
 - `next.config.ts` — bodySizeLimit 設定とコメント

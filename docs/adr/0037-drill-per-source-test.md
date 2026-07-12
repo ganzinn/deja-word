@@ -17,7 +17,7 @@ drill（定着モード）の生成単位を、ユーザー全体で 1 つの復
 
 ## 採らなかった代替案
 
-`docs/design/word-quiz/06-drill-mode.md` 決定 2 の却下案:
+本 ADR に記録した却下案:
 
 - **ユーザー単位の単一プール** — 却下
 - **掲載箇所単位のプール** — 却下
@@ -30,6 +30,6 @@ drill（定着モード）の生成単位を、ユーザー全体で 1 つの復
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/06-drill-mode.md` 決定 2・決定 7（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- drill の生成単位と削除導線の決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/drill-create.ts` / `src/lib/drill-list.ts` / `src/lib/drill-delete.ts`
 - `prisma/schema.prisma` — Drill / DrillWord

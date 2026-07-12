@@ -17,7 +17,7 @@ drill は同じ単語群を複数ラウンド反復する。出題順が固定�
 
 ## 採らなかった代替案
 
-- **固定順** — 位置記憶で覚えてしまうため却下（`docs/design/word-quiz/06-drill-mode.md` 決定 5 の却下案）
+- **固定順** — 位置記憶で覚えてしまうため却下
 
 ## 影響
 
@@ -26,5 +26,5 @@ drill は同じ単語群を複数ラウンド反復する。出題順が固定�
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/06-drill-mode.md` 決定 5（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- ラウンドごとの再シャッフルの決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/drill-round-generate.ts` / `src/lib/quiz/generation/shuffle.ts`

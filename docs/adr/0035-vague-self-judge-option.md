@@ -32,4 +32,4 @@
 - commit `f2dd495` "feat: 単語テストに「うろ覚え」（正解と不正解の中間）を追加"（PR #78）
 - `docs/reference/naming-book.md` ブレ 3 — GAVE_UP / VAGUE のラベル変遷
 - `prisma/schema.prisma` — QuizResult enum と drill 残数カラム
-- `docs/design/word-quiz/03-algorithm.md` — 自己判定 3 値の決定と却下案
+- 自己判定 3 値の決定と却下案（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

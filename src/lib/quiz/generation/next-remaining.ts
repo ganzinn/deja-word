@@ -1,4 +1,4 @@
-// drill 残数遷移（06-drill-mode.md 決定 1 / 05-architecture.md 決定 4）。
+// drill 残数遷移（docs/adr/0036-drill-remaining-count-model.md / docs/adr/0033-drill-round-count-cas.md）。
 // 残数値（誤答リセット / うろ覚え / 正答初期）はテスト開始時にユーザーが設定でき、
 // drill ごとに `Drill` 行へ永続化される。生成時もラウンド遷移時も drill の値を使う。
 

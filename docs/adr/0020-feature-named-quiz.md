@@ -17,7 +17,7 @@
 
 ## 採らなかった代替案
 
-- `test` を機能名に使う — ソフトウェアテストとの衝突を理由に却下（`docs/design/word-quiz/README.md:17` に明記）
+- `test` を機能名に使う — ソフトウェアテストとの衝突を理由に却下
 
 ## 影響
 
@@ -26,6 +26,6 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/README.md:17`（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 機能名 quiz の確定と `test` 却下の記録（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `docs/reference/naming-book.md` — quiz の用語定義
 - commit `fdbbb0c` "word-quiz 設計ドキュメント基盤を追加"

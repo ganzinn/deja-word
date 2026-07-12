@@ -10,8 +10,8 @@
 - 単語の書き込みは正規パス (`createWordForUser` 等 → `writeWordChildren`) を通す。`tx.word.create` 等での迂回は row-policy と書き込み順序の契約を壊す。
 - 入力バリデーションの zod スキーマは `src/lib/schema/` に置き client と共用する (Action ファイル内に書かない)。
 - `src/lib/mock/` は品詞などの本番用定数定義。テストダブルではない。
-- drill のラウンド送信は `Drill.roundCount` の compare-and-swap で冪等化している (`quiz/handlers/drill-round-handler.ts` の `updateMany`、where に期待値)。楽観ロックや素の update に書き換えない (docs/design/word-quiz/05-architecture.md 決定 4)。
-- TG 例文形式の出題適格判定は「意味 1 件以上」の AND ではなく述語ごと置換 (`quiz/queries/quiz-source.ts`)。意味未登録の単語が TG 形式で出題されるのは仕様 (05-architecture.md 決定 8)。
+- drill のラウンド送信は `Drill.roundCount` の compare-and-swap で冪等化している (`quiz/handlers/drill-round-handler.ts` の `updateMany`、where に期待値)。楽観ロックや素の update に書き換えない (docs/adr/0033-drill-round-count-cas.md)。
+- TG 例文形式の出題適格判定は「意味 1 件以上」の AND ではなく述語ごと置換 (`quiz/queries/quiz-source.ts`)。意味未登録の単語が TG 形式で出題されるのは仕様 (docs/adr/0027-meaningless-words-excluded-tg-exception.md)。
 
 ## ops ツール用コアモジュール (tsx から呼ぶもの)
 

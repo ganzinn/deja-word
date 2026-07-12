@@ -30,5 +30,5 @@ quiz の出題時に発音を聞かせたいが、音源の取得待ちで出題
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/04-ui.md` — 自動再生・プリロード・非ブロックの決定と却下案（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
-- `docs/design/word-quiz/05-architecture.md` 決定 10 — `new Audio(url)` プリロード方式
+- 自動再生・プリロード・非ブロックの決定と却下案（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
+- `new Audio(url)` プリロード方式（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

@@ -21,11 +21,11 @@ export class DrillNoAskableWordsError extends Error {
 }
 
 /**
- * drill ラウンド 1 回分の問題を再生成する（初回・再開とも単一経路。06-drill-mode.md 決定 6）。
+ * drill ラウンド 1 回分の問題を再生成する（初回・再開とも単一経路）。
  *
- * - 出題形式は `Drill.format` から導出（同 決定 4）
- * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。同 決定 5）
- * - 出題対象は未定着（remaining > 0）の DrillWord の単語**全て**（同 決定 1）。
+ * - 出題形式は `Drill.format` から導出（docs/adr/0038-drill-inherits-format-timeout.md）
+ * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。docs/adr/0039-drill-reshuffle-each-round.md）
+ * - 出題対象は未定着（remaining > 0）の DrillWord の単語**全て**（docs/adr/0036-drill-remaining-count-model.md）。
  *   未定着メンバーは `ensureTargetWordIds` で範囲と独立に取得する（作成後に番号が
  *   範囲外へ移動しても出題し続け、完了不能化を防ぐ。issue #106）。範囲ベースの
  *   partition 結果を未定着 id で再分割し、定着済みを含む範囲内の他単語は
@@ -38,9 +38,9 @@ export class DrillNoAskableWordsError extends Error {
  *   `completedAt` を設定し（設定しないと送信すべきラウンドが発生せず完了機会が失われる）、
  *   返せるラウンドが無いので `DrillNoAskableWordsError` を throw する
  * - 現在の `roundCount` を返し、クライアントはラウンド送信の `expectedRoundCount` に使う
- *   （05-architecture.md 決定 4）
+ *   （docs/adr/0033-drill-round-count-cas.md）
  * - `sourceTest`（元テストの開始入力）と `occurrenceName` を返し、完了画面の
- *   「同じ範囲でもう一度テストする」とその範囲表示に使う（06-drill-mode.md 決定 11。
+ *   「同じ範囲でもう一度テストする」とその範囲表示に使う（docs/adr/0042-retest-same-range.md。
  *   再開経路では `startInput` がクライアントに無いためサーバーから供給する）
  */
 export async function generateDrillRoundForUser(

@@ -28,5 +28,4 @@ M5（デプロイ）の当初計画は「Terraform + Vercel/Neon Dashboard の�
 ## 根拠（コード・コミット・文書参照）
 
 - commit `cd6ad29` "M5 Phase 1 とデプロイ計画を Vercel-Managed Integration 方針に差し替え" — 撤回理由の明記
-- `docs/plan/m5-deployment.md` — M5 計画
 - `docker-compose.yml` — ローカル PG17（postgres:17-alpine）

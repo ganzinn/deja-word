@@ -30,6 +30,6 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/01-requirements.md`（2026-06-13 追加の制限時間節）/ `02-data-model.md`（QuizDefaultTimeout、フォールバック規則）— design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先
+- 制限時間の要件（2026-06-13 追加）と QuizDefaultTimeout・フォールバック規則（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/quiz/default-settings.ts` / `timeout-options.ts`
 - `prisma/schema.prisma` — QuizDefaultTimeout

@@ -18,7 +18,7 @@ drill を完了（全単語定着）した後、学習サイクルとして「�
 
 ## 採らなかった代替案
 
-`docs/design/word-quiz/06-drill-mode.md` 決定 11 の却下案:
+本 ADR に記録した却下案:
 
 - **実効範囲（rangeFrom/To）の流用** — ユーザーの指定と一致しないため却下
 - **クライアント状態のみで受け渡す** — 後日（別セッション）に完了画面から再テストできないため却下
@@ -30,5 +30,5 @@ drill を完了（全単語定着）した後、学習サイクルとして「�
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/06-drill-mode.md` 決定 11（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先。PR #88 で実装）
+- 同じ範囲での再テストの決定（元 design ドキュメントは削除済み。PR #88 で実装）
 - `prisma/schema.prisma` — Drill.sourceRangeFrom / sourceRangeTo（nullable）

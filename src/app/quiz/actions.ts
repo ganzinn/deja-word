@@ -187,7 +187,7 @@ export type StartDrillRoundResult =
  * drill ラウンド 1 回分の問題生成（初回・再開とも同一経路。形式は `Drill.format` から導出）。
  * roundCount はラウンド送信の expectedRoundCount に使う。
  * sourceTest は完了画面の「同じ範囲でもう一度テストする」の開始入力、occurrenceName は
- * その範囲表示に使う掲載箇所名（06-drill-mode.md 決定 11）。
+ * その範囲表示に使う掲載箇所名（docs/adr/0042-retest-same-range.md）。
  */
 export async function startDrillRound(input: StartDrillRoundInput): Promise<StartDrillRoundResult> {
   const session = await getCurrentSession();
@@ -240,7 +240,7 @@ export async function submitDrillRound(
 export type StartDrillRetryResult = { ok: true; quiz: QuizPayload } | QuizActionFailure;
 
 /**
- * 「同じ問題で再テスト」の問題生成（06-drill-mode.md 決定 10）。wordIds は直前ラウンドの
+ * 「同じ問題で再テスト」の問題生成（docs/adr/0041-drill-retry.md）。wordIds は直前ラウンドの
  * 出題単語のクライアント申告。残数に影響しないため roundCount は返さない。
  */
 export async function startDrillRetry(input: StartDrillRetryInput): Promise<StartDrillRetryResult> {
@@ -264,7 +264,7 @@ export type SubmitDrillRetryResult =
 
 /**
  * 「同じ問題で再テスト」の履歴一括送信（mode=DRILL_RETRY はサーバーが経路で決める）。
- * 残数・roundCount・completedAt には触れない（06-drill-mode.md 決定 10）。
+ * 残数・roundCount・completedAt には触れない（docs/adr/0041-drill-retry.md）。
  */
 export async function submitDrillRetry(
   input: SubmitDrillRetryInput,

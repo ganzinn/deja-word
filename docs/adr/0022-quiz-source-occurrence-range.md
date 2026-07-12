@@ -17,7 +17,7 @@ quiz の出題対象をどう選ばせるか。教材（ターゲット1900 等�
 
 ## 採らなかった代替案
 
-- **全単語からの自動選定のみ（範囲指定なし）** — 「読んだ本のこの範囲を腕試しする」という使い方に合わないため却下（`docs/design/word-quiz/01-requirements.md` の却下案）
+- **全単語からの自動選定のみ（範囲指定なし）** — 「読んだ本のこの範囲を腕試しする」という使い方に合わないため却下
 
 ## 影響
 
@@ -26,6 +26,6 @@ quiz の出題対象をどう選ばせるか。教材（ターゲット1900 等�
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/01-requirements.md` — 出題対象の決定と却下案（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 出題対象の決定と却下案（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/quiz/queries/quiz-source.ts` — 範囲指定の実装
 - `prisma/schema.prisma` — QuizAnswer / Drill の rangeFrom/To

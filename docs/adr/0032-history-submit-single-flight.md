@@ -28,5 +28,5 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/05-architecture.md` 決定 3 — single-flight + 存在フィルタ、MVP 許容の明記（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 決定 3 — single-flight + 存在フィルタ、MVP 許容の明記（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/quiz-answers-submit.ts` / `src/lib/quiz/handlers/quiz-answer-handler.ts`

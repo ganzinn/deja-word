@@ -20,7 +20,7 @@
 
 ## 採らなかった代替案
 
-- 2 箇所も Cascade に統一 — 設定行や関連語行ごと消えてしまい、ユーザーの他の設定・入力まで巻き添えになるため却下（`docs/design/word-quiz/02-data-model.md` が「既存規約の Cascade からの意図的な逸脱」として理由を記録）
+- 2 箇所も Cascade に統一 — 設定行や関連語行ごと消えてしまい、ユーザーの他の設定・入力まで巻き添えになるため却下
 
 ## 影響
 
@@ -32,4 +32,4 @@
 - `prisma/CLAUDE.md` — Cascade 既定と SetNull 2 箇所の意図的例外（修正禁止の明記）
 - `prisma/schema.prisma:235` — `linkedWord ... onDelete: SetNull`
 - `prisma/schema.prisma:409` — `occurrence ... onDelete: SetNull`（直前コメントに理由）
-- `docs/design/word-quiz/02-data-model.md` — QuizDefaultSetting の SetNull の採用理由
+- QuizDefaultSetting の SetNull の採用理由（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

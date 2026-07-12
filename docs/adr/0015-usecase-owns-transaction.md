@@ -31,4 +31,4 @@
 - `src/lib/CLAUDE.md` — 「UseCase が `prisma.$transaction` を張り、handler は受け取った `tx` を使う」
 - commit `f6fcd52` "words-children.ts を 5 つの entity handler に分割"（Phase 3、tx 境界の移動）
 - `src/lib/words/handlers/shared.ts` — Tx 型定義
-- `docs/design/word-quiz/05-architecture.md` — quiz でも同じ前提を踏襲
+- quiz でも同じ前提を踏襲（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

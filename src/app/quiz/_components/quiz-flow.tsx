@@ -108,7 +108,7 @@ function sourceTestLabelOf(drill: DrillState): string {
 }
 
 /**
- * 音声プリロード（05-architecture.md 決定 10）: payload 内の発音音源 URL を
+ * 音声プリロード（docs/adr/0047-quiz-audio-autoplay-preload.md）: payload 内の発音音源 URL を
  * `new Audio(url)` で生成・保持して先読みする。取得失敗は無視して進行に影響させない。
  */
 function preloadAudio(
@@ -138,7 +138,7 @@ function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
       return question.choices[question.correctIndex]?.text ?? "";
     }
     case "SELF_JUDGE": {
-      // 最初の Meaning の MeaningText を「; 」連結（04-ui.md「結果一覧画面（テスト）」）
+      // 最初の Meaning の MeaningText を「; 」連結
       const question = quiz.questions[index];
       return question.answer[0]?.texts.join("; ") ?? "";
     }
@@ -389,7 +389,7 @@ export function QuizFlow({
   const router = useRouter();
   // 発音音源が無いとき自動音声で代用する設定（出題時／解答表示時の自動再生に使う）
   const ttsFallbackEnabled = useTtsFallbackEnabled();
-  // TEST / DRILL / DRILL_RETRY は同じ状態機械を mode 違いで再利用する（06-drill-mode.md 決定 8・10）
+  // TEST / DRILL / DRILL_RETRY は同じ状態機械を mode 違いで再利用する
   const [mode, setMode] = useState<QuizMode>("TEST");
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [quiz, setQuiz] = useState<QuizPayload | null>(null);
@@ -568,7 +568,7 @@ export function QuizFlow({
    * - TEST: 「同じ範囲でもう一度テストする」— 同じ開始入力（掲載箇所・範囲・形式・制限時間）で
    *   新しい通常テストを開始する（既存の `handleStart` 経路の再利用。履歴も TEST のまま）
    * - DRILL / DRILL_RETRY: 「同じ問題でもう一度テストする」— 直前のラウンド（または再テスト）と
-   *   同じ単語セットで、残数に影響しない再テストを開始する（06-drill-mode.md 決定 10）。
+   *   同じ単語セットで、残数に影響しない再テストを開始する（docs/adr/0041-drill-retry.md）。
    *   wordIds は結果画面の rows（＝直前の出題セット）から拾い、サーバーへクライアント申告する
    */
   function handleStartRetry() {
@@ -604,7 +604,7 @@ export function QuizFlow({
 
   /**
    * 定着完了画面の「同じ範囲でもう一度テストする」: 元テストの開始入力（範囲・形式・制限時間）で
-   * 新しい通常テストを開始する（06-drill-mode.md 決定 11）。TEST の再テストと違い `startInput` は
+   * 新しい通常テストを開始する（docs/adr/0042-retest-same-range.md）。TEST の再テストと違い `startInput` は
    * 再開経路で null のため、`startDrillRound` 応答由来の `drill.sourceTest` を使う。
    */
   function handleStartSourceTest() {
@@ -636,7 +636,7 @@ export function QuizFlow({
     const runId = runIdRef.current;
     setSubmitState({ status: "sending" });
     if (mode === "DRILL_RETRY") {
-      // DRILL_RETRY: 履歴保存のみ（残数・roundCount・completedAt に触れない。06-drill-mode.md 決定 10）。
+      // DRILL_RETRY: 履歴保存のみ（残数・roundCount・completedAt に触れない。docs/adr/0041-drill-retry.md）。
       // TEST と同じ success 変種を使うことで削除済みバッジ・送信ゲートをそのまま再利用する
       if (drill === null) return;
       void submitDrillRetry({

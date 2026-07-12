@@ -28,8 +28,6 @@
 - ランタイム管理: mise（Node / pnpm を exact pin）
 - デプロイ先: Vercel（production は「Create Release」ワークフローの実行で自動デプロイ。詳細は [`docs/ops/release-deploy.md`](./docs/ops/release-deploy.md)）
 
-詳細な実装計画は [`docs/plan/foundation-milestones.md`](./docs/plan/foundation-milestones.md) を参照してください。
-
 ## セットアップ
 
 前提として、[mise](https://mise.jdx.dev/)・Docker・pnpm が利用できる環境を想定しています。

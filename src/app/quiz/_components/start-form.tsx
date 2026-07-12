@@ -410,7 +410,7 @@ export function StartForm({
         開始
       </Button>
 
-      {/* 進行中 drill がなければセクションごと非表示（04-ui.md「開始画面（/quiz）」） */}
+      {/* 進行中 drill がなければセクションごと非表示 */}
       {activeDrills.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold">進行中の定着モード</h2>

@@ -91,7 +91,7 @@
 - 日本語名: TG例文（ターゲット例文）
 - 定義: quiz の TG 形式の素材となる例文。「使える TG 例文」= `kind=TARGET` かつ `meaning` が非 null・非空。出題は使える TG 例文のうち `sortOrder` 最小の 1 件・1 単語 1 問。A / B / do / doing / 〜 / 括弧のプレースホルダをハイライト描画する（英文=`tg-text` 青太字、和訳=`tg-meaning` 赤）。
 - 混同注意: TG 形式では単語自身の意味（MeaningText）の有無を問わない（meaning 非依存）。TG は enum 値 `TARGET` の UI 略記。
-- 出典: docs/design/word-quiz/README.md:22, src/lib/quiz/queries/quiz-source.ts:41, src/components/tg-example-text.tsx
+- 出典: src/lib/quiz/queries/quiz-source.ts:41, src/components/tg-example-text.tsx
 
 #### MP例文（MINIMAL / ミニマルフレーズ）
 
@@ -191,7 +191,7 @@
 - 日本語名: 単語テスト（UI 表示）
 - 定義: 単語のテスト機能全般。設計 README の命名基準:「機能名は quiz。『テスト』はソフトウェアテストと紛らわしいため、ディレクトリ名・コード上の命名は quiz を基準とする」。UI の日本語は「単語テスト」「定着モード」を使う。
 - 混同注意: コード・ファイル名に `test` を使わない（`*.test.ts` はソフトウェアテスト専用）。
-- 出典: docs/design/word-quiz/README.md:17, docs/plan/word-quiz/README.md:73
+- 出典: docs/adr/0020-feature-named-quiz.md
 
 #### QuizFormat（出題形式）
 
@@ -304,7 +304,7 @@
 - 日本語名: 定着モード
 - 定義: 「定着待ちプール」。元テスト 1 回から生成され、複数並存できる。間違えた（＋設定により正解した）単語をラウンド反復で出題し、全単語定着で完了（`completedAt` 設定。進行中一覧は `completedAt IS NULL`）。
 - 混同注意: UI 日本語は「定着モード」。「ドリル」表記はコード外では使わない。再開導線は quiz 開始画面の一覧（メニューには置かない）。
-- 出典: prisma/schema.prisma:432, docs/design/word-quiz/06-drill-mode.md
+- 出典: prisma/schema.prisma:432, docs/adr/0036-drill-remaining-count-model.md
 
 #### remaining（残数）
 
@@ -327,7 +327,7 @@
 - 日本語名: 定着（単語単位）
 - 定義: drill 内で単語の残数が 0 になり、以降のラウンドに出題されない状態。
 - 混同注意: 「完了」は drill 全体（全単語定着・`completedAt` 設定）／「定着（単語単位）」は単語ごと／「定着モード」はモード名。文脈で書き分ける。**旧称「卒業」は使わない（2026-07-12 定着に統一）**。
-- 出典: docs/design/word-quiz/06-drill-mode.md:50
+- 出典: docs/adr/0036-drill-remaining-count-model.md, src/lib/quiz/generation/next-remaining.ts:35
 
 #### ラウンド
 
@@ -335,7 +335,7 @@
 - 日本語名: ラウンド
 - 定義: drill 内の 1 周（未定着の単語をすべて出題し、結果画面で区切る単位）。設計上の明文:「ユーザー説明上の『セッション』だが、テストセッション・ブラウザセッションとの混同を避けるためドキュメント・コードでは『ラウンド』と呼ぶ」。
 - 混同注意: **「セッション」と呼ばない**（認証 Session・ブラウザセッションと衝突するため）。
-- 出典: docs/design/word-quiz/06-drill-mode.md:18, src/lib/schema/quiz.ts:156
+- 出典: src/lib/schema/quiz.ts:156
 
 #### roundCount と CAS 冪等化
 
@@ -504,8 +504,8 @@
 
 - 英語名: side table
 - 日本語名: side table 加算（既存テーブル無変更の拡張）
-- 定義: 機能拡張時に既存テーブルを変更せず、新しいテーブルを「横に足す」方針。quiz 設計（QuizAnswer / Drill / DrillWord の追加）の基本方針で、出典は単語登録リファクタ計画。
-- 出典: docs/refactor/word-registration.md, prisma/CLAUDE.md
+- 定義: 機能拡張時に既存テーブルを変更せず、新しいテーブルを「横に足す」方針。quiz 設計（QuizAnswer / Drill / DrillWord の追加）の基本方針。判断の一次情報は ADR-0008。
+- 出典: docs/adr/0008-side-table-addition.md, prisma/CLAUDE.md
 
 #### backfill（埋め戻し）
 
@@ -527,7 +527,7 @@
 - 英語名: `/menu`（`src/app/menu/page.tsx`）
 - 日本語名: メニュー
 - 定義: ログイン後のエントリポイント画面。「単語テスト」ボタンなど各機能への起点。
-- 混同注意: 設計ドキュメント（docs/design/word-quiz/ 等）に登場する「ダッシュボード」「`src/app/dashboard/page.tsx`」はこの画面の旧称であり、実体は `/menu` のみ（2026-07-04 に「メニュー」が正と確定）。設計 docs 側の表記改訂は将来対応（改訂予定: issue #98）。
+- 混同注意: 旧称「ダッシュボード」（旧 `src/app/dashboard/page.tsx`）は使わない。ログイン後のエントリは `/menu` のみ（2026-07-04 に「メニュー」が正と確定）。
 - 出典: src/app/menu/page.tsx
 
 #### mock（src/lib/mock/ — 名前と実態のズレ）
@@ -554,13 +554,13 @@
 
 ### ブレ 2: 「例文四択」（旧称）vs「TG四択」（形式 7・8 の日本語名）
 
-- 状況: prisma/schema.prisma:349-350 のコメントは形式 7・8 を「例文四択」と記載。一方 UI ラベル（src/lib/quiz/format-options.ts）と設計 README は「TG四択」（README:76 に「例文四択」→「TG四択」の改名が明記）。形式 9・10 のコメントは新称ベースの「TG自己判定」であり、7・8 だけ旧称が残る。
-- 提案: **「TG四択」を正**とする。根拠: 改名が設計ドキュメントに明記され、ユーザーが見る UI ラベルも TG四択。schema コメントの更新が追随漏れ。
+- 状況: prisma/schema.prisma:349-350 のコメントは形式 7・8 を「例文四択」と記載。一方 UI ラベル（src/lib/quiz/format-options.ts）は「TG四択」。形式 9・10 のコメントは新称ベースの「TG自己判定」であり、7・8 だけ旧称が残る。
+- 提案: **「TG四択」を正**とする。根拠: ユーザーが見る UI ラベルが TG四択。schema コメントの更新が追随漏れ。
 
 ### ブレ 3: 「思い浮かばなかった（GAVE_UP）」vs「うろ覚え（VAGUE）」（自己判定の選択肢）
 
-- 状況: docs/design/word-quiz/README.md:27 は自己判定の選択肢を「思い浮かばなかった（GAVE_UP）」と記載。実装は「うろ覚え（VAGUE）」に置換済み（src/app/quiz/_components/self-judge-panel.tsx:138、schema.prisma:359 に「自己判定の『思い浮かばなかった』は VAGUE へ移行し廃止」と明記、docs/design/word-quiz/06-drill-mode.md:61）。
-- 提案: **「うろ覚え（VAGUE）」を正**とする。根拠: schema コメントと 06 が廃止を明文化しており、README:27 は旧仕様の残存。注意点として `GAVE_UP` 自体は廃止されておらず、「四択・多義語選択の回答前『わからない』」へ意味が変わって存続している。
+- 状況: 自己判定の選択肢は「うろ覚え（VAGUE）」が正（src/app/quiz/_components/self-judge-panel.tsx:138、schema.prisma:359 に「自己判定の『思い浮かばなかった』は VAGUE へ移行し廃止」と明記）。
+- 提案: **「うろ覚え（VAGUE）」を正**とする。根拠: schema コメントが VAGUE への移行と旧「思い浮かばなかった」の廃止を明文化。注意点として `GAVE_UP` 自体は廃止されておらず、「四択・多義語選択の回答前『わからない』」へ意味が変わって存続している。
 
 ### ブレ 4: `meaning` の三義（多義であり改名提案はしない）
 

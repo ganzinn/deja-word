@@ -32,7 +32,7 @@ export type QuizPreview = {
  * `checkFormatAvailability` で検証して `QuizGenerationError` を返す（不成立はそこで表示）。
  * ただし TG 例文形式（CHOICE_TG / CHOICE_TG_JA_EN）は出題対象そのものが「使える TG 例文を
  * 持つ単語」に絞られるため、`format` を渡された場合に限り対象件数・除外内訳を形式依存で数える
- * （05-architecture.md 決定 8 の追補）。
+ * （docs/adr/0030-dummy-pool-bounded-fetch.md の追補）。
  *
  * 不在・不可視 Occurrence は `assertOccurrenceVisible` が OccurrenceNotFoundError を投げる
  * （count は不可視でも 0 を返すため、可視性は明示確認する）。

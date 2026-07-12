@@ -6,7 +6,7 @@ import { insertQuizAnswers, type AnswerInput } from "@/lib/quiz/handlers/quiz-an
 
 /**
  * 「同じ問題で再テスト」（drill retry）の解答履歴を一括保存する薄い UseCase
- * （06-drill-mode.md 決定 10）。
+ * （docs/adr/0041-drill-retry.md）。
  *
  * - mode（DRILL_RETRY）はサーバーが経路で決め、format は `Drill.format` から導出する
  *   （ラウンド送信と同じ。クライアント申告を受けない）

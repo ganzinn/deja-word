@@ -32,7 +32,7 @@
 
 ## 根拠（コード・コミット・文書参照）
 
-- `docs/design/word-quiz/06-drill-mode.md` 決定 1（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 残数モデルの決定（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `prisma/schema.prisma` — DrillWord.remaining、Drill の残数設定カラム
 - `src/lib/quiz/generation/next-remaining.ts`
 - `docs/reference/naming-book.md` — 残数の用語定義

@@ -31,4 +31,4 @@
 - commit `8bced6a` "feat(words): 発音をグループ化し意味読み上げ音源を廃止"（PR #28、理由明記）
 - `prisma/migrations/20260614071602_remove_translation_audio_url/`
 - `docs/reference/naming-book.md` — 廃止の記録（2026-06-14）
-- `docs/design/word-quiz/04-ui.md` — 「意味音源（読み上げ）は quiz では使わない」
+- 「意味音源（読み上げ）は quiz では使わない」（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）

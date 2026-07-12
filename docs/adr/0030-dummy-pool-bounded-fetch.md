@@ -33,5 +33,5 @@
 ## 根拠（コード・コミット・文書参照）
 
 - commits `876561a` / `4907166` / `c8f2c9b`（PR #56、いずれも実測値と改訂理由を本文に記載）
-- `docs/design/word-quiz/05-architecture.md` 決定 8 — 取り消し線付きの改訂記録（design/ 削除運用の対象になった場合は本 ADR が引き継ぎ先）
+- 決定 8 — 取り消し線付きの改訂記録（元 design ドキュメントは実装完了に伴い削除。本 ADR が一次情報）
 - `src/lib/quiz/generation/dummy-pool.ts` / `src/lib/quiz/queries/quiz-source.ts`

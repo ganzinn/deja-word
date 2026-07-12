@@ -354,6 +354,27 @@ export async function getLargestSharedOccurrence(
   return occ;
 }
 
+/** 管理画面（ユーザー管理）の撮影用デモ被写体の email（一般ユーザー扱い、非 system）。 */
+export const ADMIN_DEMO_INVITEE_EMAIL = "invited-member@example.com";
+
+/**
+ * ユーザー管理画面の撮影用に「招待済み・パスワード未設定」状態のデモユーザーを冪等に用意する。
+ * 一覧に「パスワード未設定・メール未確認」バッジの行を出し、招待→本人パスワード設定フローの
+ * 途中状態を見せる。credential アカウントは作らない（＝未設定状態）。前回 seed で付いていても消して
+ * 未設定へ戻す。system ユーザーは id 固定の不変条件を壊すため対象外（この email なら衝突しない）。
+ */
+export async function ensureAdminDemoInvitee(prisma: PrismaClientType): Promise<void> {
+  const email = ADMIN_DEMO_INVITEE_EMAIL.toLowerCase();
+  const name = email.split("@")[0] ?? email; // 一覧は email 表示だが仮名として local 部を入れる
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { emailVerified: false, name },
+    create: { id: randomUUID(), email, name, emailVerified: false },
+    select: { id: true },
+  });
+  await prisma.account.deleteMany({ where: { userId: user.id, providerId: "credential" } });
+}
+
 /**
  * system ユーザー（id="system"）が seed 済み・パスワード設定済みかを確認する（読み取りのみ）。
  * 未整備なら分かりやすい remediation メッセージで throw する。system ユーザーは

@@ -1,15 +1,18 @@
 // docs/features/ 用スクリーンショットの一括撮影スクリプト（pnpm e2e:capture-docs）。
 // セクション単位で追記していく（--only <section>[,<section>] で部分実行できる）。
-// 撮影内容はローカル DB の登録データに依存する。全体像・チケットは docs/plan/feature-docs.md、
+// 撮影内容はローカル DB の登録データに依存する。ターゲット1900 等の共有マスタは部分的な写り込みのみ
+// 許容し、被写体が既存 DB に無いものは db.ts の冪等 seed ヘルパ（ensureDemoWord 等）で自作する。
 // 実行前提（dev サーバ・test1 ユーザー等）は docs/features/README.md の再生成レシピを参照。
 import "dotenv/config";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { Browser, BrowserContext, Locator, Page } from "playwright-core";
 
-import { login, TEST_USER1_EMAIL, TEST_USER1_PASSWORD } from "./auth";
+import { login, SYSTEM_EMAIL, systemPassword, TEST_USER1_EMAIL, TEST_USER1_PASSWORD } from "./auth";
 import {
+  assertSystemUserReady,
   DEMO_WORD_HEADWORD,
+  ensureAdminDemoInvitee,
   ensureDemoWord,
   ensureQuizDeck,
   ensureUser,
@@ -362,12 +365,75 @@ async function sectionQuiz(browser: Browser): Promise<void> {
   }
 }
 
-/** セクション定義（宣言順に実行）。チケット④で settings / admin を追加していく。 */
+/** 設定（設定トップ・単語全般・掲載箇所・単語テストのデフォルト）。すべて test1 の一般ユーザー画面。 */
+async function sectionSettings(browser: Browser): Promise<void> {
+  const user = await docsContext(browser);
+  try {
+    const page = await login(user, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
+    // 各設定ページは main 自体が中央コンテナ（mx-auto max-w-*）。account 同様 main をクリップ対象にする。
+    const main = page.getByRole("main");
+
+    // 設定トップ（単語全般・掲載箇所・単語テストへの入口）。
+    await page.goto("/settings");
+    await shot(page, "settings-home", page.getByRole("heading", { name: "設定" }), main);
+
+    // 単語全般（発音音源未登録時の自動音声フォールバック）。
+    await page.goto("/settings/general");
+    await shot(page, "settings-general", page.getByRole("heading", { name: "単語全般" }), main);
+
+    // 掲載箇所（プリセット・自動採番トグル）。デモ掲載箇所 2 件を preflight で用意済み。
+    await page.goto("/settings/occurrences");
+    await shot(
+      page,
+      "settings-occurrences",
+      // 「自分の掲載箇所」「共通の掲載箇所」h2 と部分一致するため exact でヘッダ h1 に絞る。
+      page.getByRole("heading", { name: "掲載箇所", exact: true }),
+      main,
+    );
+
+    // 単語テストのデフォルト設定（掲載箇所・範囲・形式別制限時間など）。ビューポートより高いので shot が伸長。
+    await page.goto("/settings/quiz-defaults");
+    await shot(
+      page,
+      "settings-quiz-defaults",
+      page.getByRole("heading", { name: "単語テスト" }),
+      main,
+    );
+  } finally {
+    await user.close();
+  }
+}
+
+/**
+ * ユーザー管理（管理者向け）。system ユーザーでログインしないと `/admin/users` は notFound になるため、
+ * 一般ユーザー（test1）とは別 context で system ログインして撮る（1 ユーザー 1 context 規約）。
+ * 招待済み・パスワード未設定のデモユーザーを preflight で用意し、一覧に途中状態のバッジを写す。
+ */
+async function sectionAdmin(browser: Browser): Promise<void> {
+  const sys = await docsContext(browser);
+  try {
+    const page = await login(sys, SYSTEM_EMAIL, systemPassword());
+    // 招待フォーム＋登録済みユーザー一覧を含むページ全体（ビューポートより高いので shot が伸長）。
+    await page.goto("/admin/users");
+    await shot(
+      page,
+      "admin-users",
+      page.getByRole("heading", { name: "ユーザー管理" }),
+      page.getByRole("main"),
+    );
+  } finally {
+    await sys.close();
+  }
+}
+
+/** セクション定義（宣言順に実行）。 */
 const SECTIONS: Record<string, (browser: Browser) => Promise<void>> = {
   common: sectionCommon,
   account: sectionAccount,
   words: sectionWords,
   quiz: sectionQuiz,
+  settings: sectionSettings,
+  admin: sectionAdmin,
 };
 
 function parseOnly(argv: string[]): string[] {
@@ -396,17 +462,26 @@ async function main(): Promise<void> {
 
   const needsWords = targets.some(([name]) => name === "words");
   const needsQuiz = targets.some(([name]) => name === "quiz");
+  // 設定の「掲載箇所」画面は test1 のデモ掲載箇所（②③が作る「デモ単語帳」「デモ英単語帳」）を被写体にする。
+  const needsSettings = targets.some(([name]) => name === "settings");
+  const needsAdmin = targets.some(([name]) => name === "admin");
   const prisma = makePrisma();
   try {
     await ensureUser(prisma, TEST_USER1_EMAIL, TEST_USER1_PASSWORD, DOCS_USER_NAME);
-    if (needsWords) {
+    if (needsWords || needsSettings) {
       demoWordId = await ensureDemoWord(prisma, TEST_USER1_EMAIL);
+    }
+    if (needsWords) {
       sharedOccurrenceId = (await getLargestSharedOccurrence(prisma)).id;
     }
-    if (needsQuiz) {
+    if (needsQuiz || needsSettings) {
       const deck = await ensureQuizDeck(prisma, TEST_USER1_EMAIL);
       quizDeckLocation = deck.location;
       quizDeckWordCount = deck.wordCount;
+    }
+    if (needsAdmin) {
+      await assertSystemUserReady(prisma);
+      await ensureAdminDemoInvitee(prisma);
     }
   } finally {
     await prisma.$disconnect();

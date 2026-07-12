@@ -16,8 +16,10 @@
   セクション単位で追記していき、部分実行で既存画像を再撮影せずに済むようにする。
 - 一般ユーザーは `test1@example.com`（`ensureUser` で冪等用意）、admin 画面は system ユーザー
   （`assertSystemUserReady` で preflight、1 ユーザー 1 context 規約で別 context）。
-- 出力は `docs/features/images/<name>.png`。viewport 1280x800 / deviceScaleFactor 1 /
-  colorScheme "light" / reducedMotion "reduce" 固定。
+- 出力は `docs/features/images/<name>.png`。viewport 1280x800 / **deviceScaleFactor 2**（文字の鮮明化）/
+  colorScheme "light" / reducedMotion "reduce" 固定。ページ全体ではなく、`shot()` に
+  コンテンツコンテナの Locator を渡して **bounding box ＋余白でクリップ**する
+  （余白だらけの画像を避ける。縦方向は子要素の実範囲を採るため flex-1 の伸びは写らない）。
 - 撮影内容はローカル DB の登録データに依存する（ターゲット1900 の**部分的な**写り込みは許容、
   一式がわかる形での掲載は不可）。commit 前に目視レビューする
   （写り込み範囲・ダークモード/トースト混入なし）。

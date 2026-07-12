@@ -19,21 +19,25 @@ const DOCS_USER_NAME = "デモユーザー";
 /** 撮影済みファイル名（拡張子なし）。最後に欠落チェックとサマリ表示に使う。 */
 const captured: string[] = [];
 
-/** ダークモード・アニメーション・端末差をなくした撮影専用コンテキスト。 */
+/** ダークモード・アニメーション・端末差をなくした撮影専用コンテキスト。2x で文字を鮮明にする。 */
 async function docsContext(browser: Browser): Promise<BrowserContext> {
   return newContext(browser, {
     viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 1,
+    deviceScaleFactor: 2,
     colorScheme: "light",
     reducedMotion: "reduce",
   });
 }
 
+/** コンテンツクリップ時に周囲へ残す余白（CSS px）。 */
+const CLIP_PADDING = 24;
+
 /**
  * `ready` の可視を待ち、トーストの消滅と dev インジケータ（nextjs-portal）の非表示化を挟んで
  * `docs/features/images/<name>.png` に保存する。
+ * `content` を渡すとその要素の bounding box ＋余白でクリップし、ページ全体の広い余白を省く。
  */
-async function shot(page: Page, name: string, ready: Locator): Promise<void> {
+async function shot(page: Page, name: string, ready: Locator, content?: Locator): Promise<void> {
   await ready.waitFor({ state: "visible", timeout: 15_000 });
   await page.waitForFunction(
     () => document.querySelectorAll("[data-sonner-toast]").length === 0,
@@ -41,7 +45,29 @@ async function shot(page: Page, name: string, ready: Locator): Promise<void> {
     { timeout: 10_000 },
   );
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-  await page.screenshot({ path: path.join(OUT_DIR, `${name}.png`) });
+
+  let clip: { x: number; y: number; width: number; height: number } | undefined;
+  if (content) {
+    // 横幅はコンテナ幅、縦は子要素の実範囲を採る（flex-1 でコンテナだけ縦に伸びる画面の余白対策）。
+    const box = await content.evaluate((el) => {
+      const rects = [...el.children].map((c) => c.getBoundingClientRect());
+      const own = el.getBoundingClientRect();
+      const top = rects.length > 0 ? Math.min(...rects.map((r) => r.top)) : own.top;
+      const bottom = rects.length > 0 ? Math.max(...rects.map((r) => r.bottom)) : own.bottom;
+      return { x: own.left, y: top, width: own.width, height: bottom - top };
+    });
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error(`${name}: viewport が未設定です`);
+    const x = Math.max(0, box.x - CLIP_PADDING);
+    const y = Math.max(0, box.y - CLIP_PADDING);
+    clip = {
+      x,
+      y,
+      width: Math.min(viewport.width, x + box.width + CLIP_PADDING * 2) - x,
+      height: box.height + CLIP_PADDING * 2,
+    };
+  }
+  await page.screenshot({ path: path.join(OUT_DIR, `${name}.png`), clip });
   captured.push(name);
   console.log(`  shot: ${name}.png`);
 }
@@ -51,14 +77,15 @@ async function sectionCommon(browser: Browser): Promise<void> {
   const anon = await docsContext(browser);
   try {
     const page = await anon.newPage();
+    const content = page.locator("main > div");
     await page.goto("/");
-    await shot(page, "landing", page.getByRole("heading", { name: "DejaWord" }));
+    await shot(page, "landing", page.getByRole("heading", { name: "DejaWord" }), content);
     await page.goto("/sign-in");
-    await shot(page, "sign-in", page.locator("#password"));
+    await shot(page, "sign-in", page.locator("#password"), content);
     await page.goto("/sign-up");
     const signUpField = page.locator("#name");
     try {
-      await shot(page, "sign-up", signUpField);
+      await shot(page, "sign-up", signUpField, content);
     } catch (e) {
       throw new Error(
         `sign-up の撮影に失敗しました。DISABLE_SIGNUP="true" の環境では /sign-up は 404 になります: ${String(e)}`,
@@ -72,7 +99,12 @@ async function sectionCommon(browser: Browser): Promise<void> {
   try {
     const page = await login(user, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
     await page.goto("/menu");
-    await shot(page, "menu", page.getByRole("heading", { name: "メニュー" }));
+    await shot(
+      page,
+      "menu",
+      page.getByRole("heading", { name: "メニュー" }),
+      page.locator("main > div"),
+    );
   } finally {
     await user.close();
   }
@@ -84,7 +116,8 @@ async function sectionAccount(browser: Browser): Promise<void> {
   try {
     const page = await login(user, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
     await page.goto("/account");
-    await shot(page, "account", page.getByText("メールアドレス"));
+    // account は main 自体が中央コンテナ（mx-auto max-w-*）なので main をクリップ対象にする。
+    await shot(page, "account", page.getByText("メールアドレス"), page.locator("main"));
   } finally {
     await user.close();
   }

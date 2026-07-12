@@ -41,14 +41,14 @@ async function setupDrill(
 }
 
 describe("generateDrillRetryForUser", () => {
-  test("generates exactly the requested word set, including a graduated (remaining=0) word", async () => {
+  test("generates exactly the requested word set, including a retained (remaining=0) word", async () => {
     const { user, drillId, wordIds } = await setupDrill([
       { headword: "alpha", number: 1, correct: true }, // remaining 1
       { headword: "beta", number: 2, correct: false }, // remaining 3
     ]);
     const [a, b] = wordIds;
 
-    // ラウンド送信で alpha を卒業させる（remaining 1 -> 0）
+    // ラウンド送信で alpha を定着させる（remaining 1 -> 0）
     const round = await submitDrillRoundForUser(user.id, {
       drillId,
       expectedRoundCount: 0,

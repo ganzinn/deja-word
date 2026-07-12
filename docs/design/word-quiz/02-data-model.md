@@ -10,7 +10,7 @@
 - 既存テーブル（Word / Meaning / Occurrence 等）は変更せず、side table 加算で対応する（`docs/refactor/word-registration.md` の将来方針）。
 - 既存スキーマの規約: cuid() ID / snake_case `@map` / 全行 `ownerId` / FK に `@@index` / `onDelete: Cascade` / enum は大文字（`prisma/schema.prisma` で確認済み）。
 - 単語ごとの解答履歴（正誤・日時・出題形式）を永続化する。通常テストは終了時、drill は各ラウンド終了時に一括送信（01・06 確定）。
-- drill は日をまたいで再開可能。単語ごとの残数（卒業までの残連続正解数）を永続化する（06 確定）。
+- drill は日をまたいで再開可能。単語ごとの残数（定着までの残連続正解数）を永続化する（06 確定）。
 - drill の解答は mode 区分で通常テストと区別する（06 確定）。
 - 復習スケジュール属性（SRS の easeFactor / nextReviewAt 等）は MVP 不要。ただし将来拡張を阻まないこと（01 確定）。
 - StudySet（任意セット編成）はスコープ外（01 確定）。
@@ -99,7 +99,7 @@ model Drill {
   roundCount   Int       @default(0) @map("round_count") // 完了したラウンド数。ラウンド送信の冪等化（CAS）に使う（05 確定）
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
-  completedAt  DateTime? @map("completed_at") // 全単語卒業時に設定。進行中一覧は completedAt IS NULL
+  completedAt  DateTime? @map("completed_at") // 全単語定着時に設定。進行中一覧は completedAt IS NULL
 
   owner      User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
@@ -114,7 +114,7 @@ model Drill {
 model DrillWord {
   drillId   String   @map("drill_id")
   wordId    String   @map("word_id")
-  remaining Int      // 卒業までの残連続正解数 (0..max)。初期値・リセット値は Drill の残数設定（reset/vague/initialCorrect, 各 1..9）由来。正答は「正解も出題する」ON 時のみ投入（06 決定 9）
+  remaining Int      // 定着までの残連続正解数 (0..max)。初期値・リセット値は Drill の残数設定（reset/vague/initialCorrect, 各 1..9）由来。正答は「正解も出題する」ON 時のみ投入（06 決定 9）
   updatedAt DateTime @updatedAt @map("updated_at")
 
   drill Drill @relation(fields: [drillId], references: [id], onDelete: Cascade)

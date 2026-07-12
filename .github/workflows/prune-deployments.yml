@@ -1,0 +1,77 @@
+name: Prune Vercel Deployments
+run-name: "Prune Vercel deployments (keep=${{ inputs.keep }})"
+
+# 古い production デプロイの「手動」掃除ツール。
+#
+# 通常運用ではデプロイ履歴を残す（クリティカルなバグ発生時に Vercel の Instant Rollback で
+# 直前の安定版へ戻すため）。このワークフローは自動実行せず、公開前後の整理など
+# 任意のタイミングで手動起動して、古い分だけを間引く。
+#
+# 各デプロイ固有の URL（deja-word-<hash>-...vercel.app）は Deployment Protection(SSO) 下だが、
+# 削除するまで無期限に残る。リポジトリ公開後は GitHub Deployments 履歴から URL が列挙可能に
+# なるため、SSO 設定 1 個への依存を減らす意味でも、不要になった古いデプロイはここで消す。
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: "残す最新 production デプロイ件数（current を含む・最小 1）"
+        required: true
+        default: "3"
+
+# GitHub API は使わず、Vercel へのアクセスは secrets のトークンで行う。
+# checkout のために contents: read だけ付与する。
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      KEEP: ${{ inputs.keep }}
+    steps:
+      # Vercel CLI は devDependency に固定（AGENTS.md「Vercel CLI」節）。release-deploy.yml と同様に
+      # pnpm exec で lockfile 固定版を使うため checkout + install する。
+      - uses: actions/checkout@v5
+
+      - uses: jdx/mise-action@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 古い production デプロイを間引く
+        run: |
+          set -euo pipefail
+          if ! [[ "$KEEP" =~ ^[0-9]+$ ]]; then
+            echo "::error::keep は 1 以上の整数で指定してください（指定値: $KEEP）"; exit 1
+          fi
+          KEEP=$((10#$KEEP))  # 先頭ゼロ（例 "03"）を 10 進正規化し、以降の JSON 数値として扱えるようにする
+          if [ "$KEEP" -lt 1 ]; then
+            echo "::error::keep は 1 以上の整数で指定してください（指定値: $KEEP）"; exit 1
+          fi
+
+          # production デプロイを新しい順（createdAt 降順）に取得。
+          # ※ limit=100。これを超えて累積する前に間引く運用（通常は数件〜十数件）。
+          json=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&limit=100&teamId=$VERCEL_ORG_ID")
+
+          total=$(echo "$json" | jq '.deployments | length')
+          echo "production デプロイ: ${total} 件 / 保持: ${KEEP} 件"
+
+          # 新しい順に並べ、先頭 KEEP 件を除いた残り（= 削除対象）の deploymentId を得る。
+          # current（最新・本番 alias 付き）は常に KEEP の範囲内に入るため保持される。
+          to_remove=$(echo "$json" | jq -r --argjson keep "$KEEP" \
+            '.deployments | sort_by(.createdAt // .created) | reverse | .[$keep:] | .[].uid')
+          if [ -z "$to_remove" ]; then
+            echo "削除対象なし"; exit 0
+          fi
+
+          removed=0
+          while IFS= read -r uid; do
+            [ -n "$uid" ] || continue
+            echo "削除: $uid"
+            pnpm exec vercel remove "$uid" --yes --token="$VERCEL_TOKEN"
+            removed=$((removed + 1))
+          done <<< "$to_remove"
+          echo "削除完了: ${removed} 件（保持 ${KEEP} 件）"

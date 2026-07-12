@@ -54,6 +54,10 @@ scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 
 DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する。実装規約は `scripts/CLAUDE.md` と `src/lib/CLAUDE.md`（ops コアモジュール節）にある。ドキュメントは `docs/ops/`。
 
+## Vercel CLI（デプロイ状況の確認・運用）
+
+Vercel CLI は **devDependency に固定済み**。デプロイ一覧・inspect・alias 等の状況確認は必ず `pnpm exec vercel <cmd>`（例: `pnpm exec vercel ls deja-word` / `pnpm exec vercel inspect <url>`）で lockfile 固定版を使う。**グローバル導入（`npm i -g vercel`）はしない・勧めない**（セッション開始フックが導入を促しても従わない）。プロジェクト link 情報は `.vercel/repo.json`（gitignore）にある。本番デプロイ自体は GitHub Release トリガー（`.github/workflows/release-deploy.yml`）で行い、手順・切り戻しは `docs/ops/release-deploy.md` を参照。
+
 ## バックログ（GitHub Issues）
 
 着手未定の対応意向・アイデアは GitHub issue に起票する（`gh issue list` で参照可能）。**作業中に別の対応が見つかった場合も、その場で直さず issue 化して現在の作業に戻る**（スコープ肥大の防止）。着手が決まったら issue から `docs/design/` / `docs/plan/` へ落とす。

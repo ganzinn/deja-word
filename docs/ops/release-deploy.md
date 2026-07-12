@@ -17,6 +17,7 @@ Vercel の Git Integration は **ブランチベース** で、git タグや Git
 |---|---|
 | `.github/workflows/create-release.yml` | **エントリポイント**。手動実行で `rel-YYYYMMDDHHmm` タグの Release を作成し、deploy を呼び出す |
 | `.github/workflows/release-deploy.yml` | デプロイ本体（reusable）。`create-release` からの呼び出し、または手動 UI の Release Publish で起動 |
+| `.github/workflows/prune-deployments.yml` | 古い production デプロイの**手動掃除ツール**（`workflow_dispatch`）。→ [デプロイ履歴の掃除](#デプロイ履歴の掃除prune) |
 
 > `GITHUB_TOKEN` で作成した Release は `release: published` を**再発火しない**（GitHub の無限ループ防止仕様）。そのため `create-release.yml` は `release-deploy.yml` を `workflow_call` で直接呼び出してデプロイをつなぐ。
 
@@ -60,4 +61,22 @@ GitHub → Releases → Draft a new release で任意タグを **target=main** �
 
 ## ロールバック
 
-問題があれば Vercel Dashboard → Deployments → 直前の安定デプロイで **Instant Rollback**（1 click）。
+問題があれば Vercel Dashboard → Deployments → 直前の安定デプロイで **Instant Rollback**（1 click）。Instant Rollback は**過去の production デプロイが残っていること**が前提。後述の掃除で消しすぎると戻り先が無くなるため、直近数件は残す運用にする（消した場合でも過去タグから Create Release で再デプロイすれば戻せる）。
+
+## デプロイ履歴の掃除（prune）
+
+リリースごとに production デプロイが積み上がる。各デプロイ固有 URL（`deja-word-<hash>-...vercel.app`）は Deployment Protection(SSO) 下だが、削除するまで**無期限に残る**（Vercel は自動失効・個数上限なし）。リポジトリ公開後は GitHub Deployments 履歴から URL が列挙可能になるため、不要になった古いデプロイは削除して攻撃面と SSO 設定への依存を減らす。
+
+**自動では消さない**（クリティカルなバグ時に Instant Rollback で戻せるよう履歴を残す）。掃除は `prune-deployments.yml` を**任意のタイミングで手動起動**して行う。
+
+手順:
+
+1. GitHub → **Actions** → 左の **Prune Vercel Deployments** → **Run workflow**
+2. `keep` に**残す最新 production デプロイ件数**（current を含む・最小 1）を入力して実行
+   - `keep=3`（既定）: current + 直近 2 件を Instant Rollback 用に残し、それ以前を削除
+   - `keep=1`: current 1 件だけ残して全削除（攻撃面最小・Instant Rollback バッファ無し）
+3. ログで削除件数を確認
+
+挙動: production デプロイを新しい順に並べ、新しい方から `keep` 件を残して残りを `vercel remove <deploymentId>` で削除する。current（最新・本番 alias 付き）は常に保持されるため、公開入口（本番ドメイン）は影響を受けない。削除した URL は 404 になり、GitHub の Deployments レコードは履歴として残るがリンクは無効化される。
+
+> Secret は release-deploy と共通（`VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`）。追加登録は不要。

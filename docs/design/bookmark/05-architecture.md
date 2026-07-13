@@ -9,6 +9,7 @@
 - 用語は bookmark（日本語名「ブックマーク」）、naming-book に登録する（01 確定）。
 - 共有マスタ単語（ownerId=system）にも本人のブックマークを付けられる。ブックマークは常に本人だけのデータ（01 確定）。
 - 単語一覧の「ブックマークのみ」フィルタと quiz の「ブックマークのみ」絞り込みが入る（01 確定）。
+- ブックマークは per-user 設定系 side table `Bookmark`（複合 PK userId × wordId、両 FK Cascade、backfill なしの純加算 migration）。既存テーブルは無変更（02 確定）。
 
 既存の確定済み前提（規約・ADR）:
 

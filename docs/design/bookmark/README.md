@@ -20,6 +20,9 @@
 - **単語一覧に「ブックマークのみ」フィルタを追加**する（専用一覧画面は作らない）。→ [01](01-requirements.md)
 - **quiz は開始フォームの「ブックマークのみ」チェックボックスで絞り込む**。掲載箇所×番号範囲と AND、掲載箇所未選択＋チェック ON ならブックマーク全件出題。仕様詳細は 03 で決める。→ [01](01-requirements.md)
 - **スコープ外**: 誤答からの自動付与・種別/タグ分類・解答直後画面での付け外し・共有/エクスポート。→ [01](01-requirements.md)
+- **side table `Bookmark`（複合 PK userId × wordId、per-user 設定系・ownerId なし）を新設**。既存テーブルは無変更。→ [02](02-data-model.md)
+- **カラムは FK 2 列 + createdAt のみ。両 FK は onDelete: Cascade**。→ [02](02-data-model.md)
+- **インデックスは PK + wordId 単独（userId 個別 index は張らない）。マイグレーションは backfill なしの純加算**。→ [02](02-data-model.md)
 
 ## トピック状態表
 
@@ -28,14 +31,14 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定（2026-07-13） | 要求・ユースケース・スコープ外 |
-| [02-data-model.md](02-data-model.md) | 未着手 | ブックマークの side table 設計・削除連鎖 |
+| [02-data-model.md](02-data-model.md) | 確定（2026-07-13） | ブックマークの side table 設計・削除連鎖 |
 | [03-quiz-scope.md](03-quiz-scope.md) | 未着手 | quiz 出題範囲へのブックマーク条件の組み込み |
 | [04-ui.md](04-ui.md) | 未着手 | 一覧・詳細のトグル、開始フォームのチェックボックス |
 | [05-architecture.md](05-architecture.md) | 未着手 | 層配置・認可・テスト戦略 |
 
-想定順序（残り）: 02 → 03 → 04 → 05。要求次第で入れ替え可。
+想定順序（残り）: 03 → 04 → 05。要求次第で入れ替え可。
 
-**次セッションの推奨トピック: 02（データモデル）**。引き継ぎ論点: per-user 設定パターン（複合 PK `[userId, wordId]`、手本 OccurrencePresetSetting）を想定。共有マスタ単語も対象のため対象単語は scoped 検証。onDelete・index は「ブックマーク全件出題（03）」「一覧表示・フィルタ（04）」の引き方を見据えて決める。
+**次セッションの推奨トピック: 03（quiz 出題範囲）**。引き継ぎ論点: 出題述語は `src/lib/quiz/queries/quiz-source.ts` の fetchQuizSource / countQuizTargets / countQuizSourceExclusions の 3 関数に同一述語（`bookmarks: { some: { userId } }`）で入れる契約（プレビュー件数 = 実出題数の一致のため）。ダミー候補（範囲外・掲載箇所外から補充）にブックマーク条件を適用するかが論点。掲載箇所未選択の全件出題は occurrenceId 必須前提（スキーマ・シグネチャ・Drill）に波及する。
 
 ## セッション運用ルール
 

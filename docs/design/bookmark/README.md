@@ -28,6 +28,13 @@
 - **Drill は掲載箇所なしに対応**: occurrenceId / rangeFrom / rangeTo を nullable 化し `sourceBookmarkedOnly` を追加。QuizDefaultSetting にも `bookmarkedOnly Boolean?` を追加。→ [03](03-quiz-scope.md)
 - **ブックマーク集合は開始時に再評価**（再テスト含む）。drill 本体は DrillWord スナップショットで、開始後に外しても drill からは消えない。→ [03](03-quiz-scope.md)
 - **対象 0 件（ブックマーク 0 個＋ON 含む）は既存流儀**（プレビュー 0 件・開始不成立、入口で拒否しない）。→ [03](03-quiz-scope.md)
+- **トグルは共有部品 BookmarkButton（src/components/）＋行内用 RowBookmarkButton（contents ラッパ）**。設置は単語一覧行・結果一覧行の右端ボタン群、単語詳細の ScreenHeader actions、quiz 単語詳細ダイアログのヘッダ。→ [04](04-ui.md)
+- **反映は楽観的更新**（即時反転、失敗時のみ巻き戻し＋エラー toast、router.refresh なし）。server action は目標状態を受ける冪等 set。→ [04](04-ui.md)
+- **状態取得は 3 経路**: 一覧は WordListItem に `bookmarked` 追加、quiz 結果一覧は表示時に一括取得しクライアント状態管理、ダイアログは getWordDetailForDialog に並置＋コールバックで親へ同期。→ [04](04-ui.md)
+- **単語一覧フィルタは toolbar の Bookmark アイコントグル＋ URL `bookmarked=1`**（デフォルト OFF は URL 非掲載）。→ [04](04-ui.md)
+- **開始フォームは掲載箇所 Select に「指定なし」を常時表示**。未指定時は範囲 Input を disabled＋送信除外（テキストは保持）、プレビューは bookmarkedOnly 連動・noNumber null 項目は省略。設定画面にも同チェックボックスを追加。→ [04](04-ui.md)
+- **drill ラベルは全件モード「ブックマークのみ」、掲載箇所あり＋ブックマーク条件は「（ブックマークのみ）」注記**。→ [04](04-ui.md)
+- **アイコンは lucide BookmarkIcon、ON は塗りつぶし＋強調色、aria-pressed で状態提示**。→ [04](04-ui.md)
 
 ## トピック状態表
 
@@ -38,12 +45,12 @@
 | [01-requirements.md](01-requirements.md) | 確定（2026-07-13） | 要求・ユースケース・スコープ外 |
 | [02-data-model.md](02-data-model.md) | 確定（2026-07-13） | ブックマークの side table 設計・削除連鎖 |
 | [03-quiz-scope.md](03-quiz-scope.md) | 確定（2026-07-13） | quiz 出題範囲へのブックマーク条件の組み込み |
-| [04-ui.md](04-ui.md) | 未着手 | 一覧・詳細のトグル、開始フォームのチェックボックス |
+| [04-ui.md](04-ui.md) | 確定（2026-07-13） | 一覧・詳細のトグル、開始フォームのチェックボックス |
 | [05-architecture.md](05-architecture.md) | 未着手 | 層配置・認可・テスト戦略 |
 
-想定順序（残り）: 04 → 05。要求次第で入れ替え可。
+想定順序（残り）: 05 のみ。
 
-**次セッションの推奨トピック: 04（UI）**。引き継ぎ論点: トグル部品の共有化と反映方式（楽観的更新 or router.refresh、既存パターンは useTransition＋server action＋toast）。開始フォームは掲載箇所未選択時の範囲入力の無効化/クリアと、デフォルト設定読み込み（SetNull で occurrenceId null＋range 残存があり得る）の扱いが要決定。掲載箇所なし drill の一覧・完了画面表示（範囲ラベルに代わる表記）と、全件モードプレビューの除外内訳（noNumber が null）の表示も 04 の検討事項リストに追記済み。
+**次セッションの推奨トピック: 05（アーキテクチャ）**。引き継ぎ論点: 冪等 set の UseCase / server action の配置・命名・シグネチャ（1 action で boolean を受けるか add/remove 2 action か）と認可（共有マスタ単語への本人ブックマークの scoped 検証、セキュリティチェックリスト通し）。quiz 結果一覧用の状態一括取得 action の配置・入力上限も要決定。仕上げにテスト戦略と naming-book / ADR 起票（ADR-0022 例外の補記を含む）。05 確定で全トピック完了となるため、同セッションでハブに「実装への引き継ぎ」セクションを追記して設計を閉じる。
 
 ## セッション運用ルール
 

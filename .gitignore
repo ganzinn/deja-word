@@ -41,6 +41,9 @@ yarn-error.log*
 # local scratch (import CSV など、git 管理外)
 /tmp/
 
+# devman logs
+/log/
+
 # prisma generated client
 /src/generated/
 

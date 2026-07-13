@@ -1,7 +1,7 @@
 ---
 name: ticket-implement
-description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。
-argument-hint: "[機能名] [--pr]"
+description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。--teams 指定で実装の委譲先をサブエージェントから agent teams の teammate に切り替える。
+argument-hint: "[機能名] [--pr] [--teams]"
 disable-model-invocation: true
 ---
 
@@ -13,10 +13,11 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ## 引数
 
-対象: `$ARGUMENTS`（`<機能名> [--pr]`）
+対象: `$ARGUMENTS`（`<機能名> [--pr] [--teams]`）
 
 - 機能名は `docs/plan/<機能名>/` のディレクトリ名
 - `--pr` 指定でチケット単位 PR モード。なしなら単一ブランチ統合モード（デフォルト）
+- `--teams` 指定で実装の委譲先をサブエージェントから agent teams の teammate に切り替える（「teams 委譲」節参照）。委譲手段のみの切替で、ブランチ運用モードとは独立（`--pr` と併用可）
 - 機能名未指定の場合: `docs/plan/` 配下の各ハブを走査し、機能ごとに「完了 / 全チケット数」「今着手可能なチケット」「検出された前回モード（統合ブランチの有無・チケット単位 PR リンクの有無）」の一覧を提示して選んでもらう
 
 ## 前提条件チェック
@@ -104,6 +105,17 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 ## サブエージェント委譲
 
 [templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) のプレースホルダ（`{機能名}` `{NN}` `{チケット名}` `{worktree絶対パス}`）を埋めて委譲する。チケット本文の転記はしない（サブエージェントが worktree 内のハブ＋チケットを読む）。
+
+## teams 委譲（--teams）
+
+委譲手段をサブエージェントから agent teams（実験的機能）の teammate に切り替える。**役割分担・ブランチ運用・状態の意味・ウェーブの回し方は一切変わらない**: メイン = リードが ready 判定・マージ・ステータス更新・integration テストの直列実行を担い、teammate が worktree 内で実装・検証・コミットする。
+
+- 前提: agent teams が有効であること（settings.json の `env` に `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"`）。無効なら通常のサブエージェント委譲にフォールバックし、その旨を計画ドラフト提示で伝える
+- ready チケットごとに teammate を 1 人スポーンする。指示は同じ [templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) を埋めて渡し、担当 worktree の絶対パス配下だけで作業させる（テンプレの禁止事項 — `docs/plan/` 編集・push・PR 作成の禁止 — はそのまま適用）
+- 並行度上限は共通ルールどおり（上限 3・推奨 2）。トークンコストは teammate 数に比例して嵩むため、計画ドラフト提示に含める
+- 完了・手詰まりは teammate からの通知・メッセージで受け、報告（変更ファイル一覧・DoD 結果・実装メモ）をメインが回収する。マージして worktree を削除したら当該 teammate は解放する
+- 「失敗・中断時の扱い」はサブエージェント委譲と同一規則を適用する（「再委譲」= 同一 worktree を担当する teammate への再指示メッセージ）
+- teams 特有の制約: セッションは `/resume` で teammate を復元しない。中断・再開は本スキルの既存フロー（ready 判定・突き合わせ）がそのまま吸収するため追加の再開処理は不要。teammate の権限確認はリードへバブルアップされるため、承認待ちで停滞しない permission mode で開始する
 
 ## 失敗・中断時の扱い
 

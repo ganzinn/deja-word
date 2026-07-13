@@ -75,6 +75,8 @@
   - `src/lib/quiz/queries/quiz-source.ts`: 3 関数へ bookmarkedOnly 追加・出題述語 `bookmarks: { some: { userId } }` 同一適用（ダミー候補には非適用）・全件モード対応
   - `src/lib/quiz-generate.ts` / `src/lib/drill-create.ts`: pass-through ＋ Drill 保存
   - `src/lib/quiz-default-settings.ts`: bookmarkedOnly の読み書き
+  - `src/lib/drill-list.ts` / `src/lib/drill-round-generate.ts` / `src/lib/drill-retry-generate.ts`: Drill nullable 化への型対応（ActiveDrill 型・occurrence null 時の扱い）と sourceTest 復元への sourceBookmarkedOnly 反映（[03](03-quiz-scope.md) 決定 4・5 の帰結）
+  - `src/lib/quiz-preview.ts`: getQuizPreviewForUser の入力（QuizRangeInput）の occurrenceId optional 化＋ bookmarkedOnly 追加・count 系 2 関数への受け渡し・assertOccurrenceVisible の occurrenceId あり時のみ呼び出し・QuizPreview.excluded.noNumber の null 許容（[03](03-quiz-scope.md) 決定 1・3 の帰結。action の getQuizPreview は委譲のみで型波及）
   - `src/lib/words-list.ts`: wordListSelect へ userId 導入＋ bookmarked 列＋「ブックマークのみ」フィルタ
   - `src/app/quiz/actions.ts`: getWordDetailForDialog の戻りに bookmarked 並置
 - **UI コンポーネント（設置・フォーム）**:
@@ -84,6 +86,7 @@
   - quiz 単語詳細ダイアログ（word-detail-dialog.tsx）: ヘッダに設置、onBookmarkChange コールバックで親へ同期
   - quiz 開始フォーム: 掲載箇所 Select に「指定なし」常時表示・未指定時は範囲 Input を disabled ＋送信除外・「ブックマークのみ」チェックボックス・プレビュー連動（noNumber null 項目は省略）。設定画面（quiz-defaults）にも同チェックボックス
   - drill ラベル: 全件モード「ブックマークのみ」、掲載箇所あり＋ブックマーク条件は「（ブックマークのみ）」注記
+  - 完了画面の再テスト前ライブプレビュー（quiz-flow.tsx）: sourceTest 由来の bookmarkedOnly / occurrenceId 未指定を getQuizPreview 入力に含める（[03](03-quiz-scope.md) 決定 5 の帰結。含めないと全件モード drill で入力検証に落ちる）
 
 ### 着手順序のヒント
 

@@ -59,6 +59,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 ### 検証の分担
 
 - **worktree 内（サブエージェント）**: `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全。整形差分は実装コミットに含める）
+  - 任意: devman が導入済みの環境では `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される。`docs/ops/devman.md` 参照）。未導入なら pnpm 直実行のまま
 - **`pnpm test:integration` は worktree で実行禁止**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できず、`.env.test` は gitignore 済みで worktree に存在しない。メインがマージ後の統合ブランチ（PR モードではメインの checkout）で**直列**実行する
 - integration テストの有無は**サブエージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
 

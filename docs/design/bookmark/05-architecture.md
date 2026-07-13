@@ -9,6 +9,11 @@
 - 用語は bookmark（日本語名「ブックマーク」）、naming-book に登録する（01 確定）。
 - 共有マスタ単語（ownerId=system）にも本人のブックマークを付けられる。ブックマークは常に本人だけのデータ（01 確定）。
 - 単語一覧の「ブックマークのみ」フィルタと quiz の「ブックマークのみ」絞り込みが入る（01 確定）。
+- ブックマークは per-user 設定系 side table `Bookmark`（複合 PK userId × wordId、両 FK Cascade、backfill なしの純加算 migration）。ブックマーク格納のための既存テーブル変更はなし（02 確定）。
+- quiz の絞り込みは出題述語 `bookmarks: { some: { userId } }` を fetchQuizSource / countQuizTargets / countQuizSourceExclusions の 3 関数へ同一適用し、各関数に `bookmarkedOnly: boolean` 引数を追加。ダミー候補（sameOccurrenceRows / fallbackRows）には適用しない（03 確定）。
+- occurrenceId を optional 化（quizRangeInputSchema・3 関数シグネチャ）。掲載箇所未指定は bookmarkedOnly=true のときのみ・範囲未指定必須をスキーマのクロスフィールド検証で拒否。全件モードは掲載番号なし単語も対象（ADR-0022 の明示的例外、実装時に ADR へ補記起票）（03 確定）。
+- Drill の occurrenceId / rangeFrom / rangeTo を nullable 化し `sourceBookmarkedOnly Boolean @default(false)` を追加。QuizDefaultSetting に `bookmarkedOnly Boolean?` を追加（03 確定）。
+- ブックマーク集合は開始時（再テスト含む）に再評価。drill 本体は DrillWord スナップショットでブックマーク条件を再適用しない（03 確定）。
 
 既存の確定済み前提（規約・ADR）:
 

@@ -20,6 +20,14 @@
 - **単語一覧に「ブックマークのみ」フィルタを追加**する（専用一覧画面は作らない）。→ [01](01-requirements.md)
 - **quiz は開始フォームの「ブックマークのみ」チェックボックスで絞り込む**。掲載箇所×番号範囲と AND、掲載箇所未選択＋チェック ON ならブックマーク全件出題。仕様詳細は 03 で決める。→ [01](01-requirements.md)
 - **スコープ外**: 誤答からの自動付与・種別/タグ分類・解答直後画面での付け外し・共有/エクスポート。→ [01](01-requirements.md)
+- **side table `Bookmark`（複合 PK userId × wordId、per-user 設定系・ownerId なし）を新設**。ブックマーク格納のための既存テーブル変更はなし。→ [02](02-data-model.md)
+- **カラムは FK 2 列 + createdAt のみ。両 FK は onDelete: Cascade**。→ [02](02-data-model.md)
+- **インデックスは PK + wordId 単独（userId 個別 index は張らない）。マイグレーションは backfill なしの純加算**。→ [02](02-data-model.md)
+- **quiz の絞り込みは出題述語 `bookmarks: { some: { userId } }` を quiz-source の 3 関数へ同一適用**（入力・各関数に `bookmarkedOnly: boolean` を追加、除外内訳もブックマークにスコープ）。ダミー候補には適用しない。→ [03](03-quiz-scope.md)
+- **掲載箇所未選択＋チェック ON は「ブックマーク全件モード」**。occurrenceId を optional 化し、掲載番号なし単語も対象（ADR-0022 の明示的例外）。未選択を許すのは bookmarkedOnly=true のときのみ・そのとき範囲未指定、はスキーマで拒否。→ [03](03-quiz-scope.md)
+- **Drill は掲載箇所なしに対応**: occurrenceId / rangeFrom / rangeTo を nullable 化し `sourceBookmarkedOnly` を追加。QuizDefaultSetting にも `bookmarkedOnly Boolean?` を追加。→ [03](03-quiz-scope.md)
+- **ブックマーク集合は開始時に再評価**（再テスト含む）。drill 本体は DrillWord スナップショットで、開始後に外しても drill からは消えない。→ [03](03-quiz-scope.md)
+- **対象 0 件（ブックマーク 0 個＋ON 含む）は既存流儀**（プレビュー 0 件・開始不成立、入口で拒否しない）。→ [03](03-quiz-scope.md)
 
 ## トピック状態表
 
@@ -28,14 +36,14 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定（2026-07-13） | 要求・ユースケース・スコープ外 |
-| [02-data-model.md](02-data-model.md) | 未着手 | ブックマークの side table 設計・削除連鎖 |
-| [03-quiz-scope.md](03-quiz-scope.md) | 未着手 | quiz 出題範囲へのブックマーク条件の組み込み |
+| [02-data-model.md](02-data-model.md) | 確定（2026-07-13） | ブックマークの side table 設計・削除連鎖 |
+| [03-quiz-scope.md](03-quiz-scope.md) | 確定（2026-07-13） | quiz 出題範囲へのブックマーク条件の組み込み |
 | [04-ui.md](04-ui.md) | 未着手 | 一覧・詳細のトグル、開始フォームのチェックボックス |
 | [05-architecture.md](05-architecture.md) | 未着手 | 層配置・認可・テスト戦略 |
 
-想定順序（残り）: 02 → 03 → 04 → 05。要求次第で入れ替え可。
+想定順序（残り）: 04 → 05。要求次第で入れ替え可。
 
-**次セッションの推奨トピック: 02（データモデル）**。引き継ぎ論点: per-user 設定パターン（複合 PK `[userId, wordId]`、手本 OccurrencePresetSetting）を想定。共有マスタ単語も対象のため対象単語は scoped 検証。onDelete・index は「ブックマーク全件出題（03）」「一覧表示・フィルタ（04）」の引き方を見据えて決める。
+**次セッションの推奨トピック: 04（UI）**。引き継ぎ論点: トグル部品の共有化と反映方式（楽観的更新 or router.refresh、既存パターンは useTransition＋server action＋toast）。開始フォームは掲載箇所未選択時の範囲入力の無効化/クリアと、デフォルト設定読み込み（SetNull で occurrenceId null＋range 残存があり得る）の扱いが要決定。掲載箇所なし drill の一覧・完了画面表示（範囲ラベルに代わる表記）と、全件モードプレビューの除外内訳（noNumber が null）の表示も 04 の検討事項リストに追記済み。
 
 ## セッション運用ルール
 

@@ -30,13 +30,13 @@
 
 ### 決定 1: ブックマーク絞り込みは出題述語として 3 関数へ同一に適用する
 
-quiz の入力（プレビュー・開始の両経路の基底 `quizRangeInputSchema`）に `bookmarkedOnly: boolean`（必須。英語名はこれで統一、日本語名「ブックマークのみ」）を追加する。true のとき、出題対象の Word 述語に `bookmarks: { some: { userId } }` を AND で追加する。組み込み先は `src/lib/quiz/queries/quiz-source.ts` の 3 関数すべて:
+quiz の入力（プレビュー・開始の両経路の基底 `quizRangeInputSchema`）に `bookmarkedOnly: boolean`（英語名はこれで統一、日本語名「ブックマークのみ」。zod では `.default(false)` とし省略時は false — パース後の型は必須 boolean のまま、未更新のフォームからの送信も後方互換で通る）を追加する。true のとき、出題対象の Word 述語に `bookmarks: { some: { userId } }` を AND で追加する。組み込み先は `src/lib/quiz/queries/quiz-source.ts` の 3 関数すべて:
 
 - `fetchQuizSource` の targetRows 述語（`eligibleWord` ∧ `inRangeWordOccurrence` に AND）
 - `countQuizTargets` の count 述語（同型を維持）
 - `countQuizSourceExclusions` の 3 内訳（noNumber / noMeaning / noTgExample）すべて
 
-除外内訳もブックマーク済み単語にスコープする（例: noNumber は「ブックマーク済みだが掲載番号なしで対象外」の件数になる）。3 関数とも引数に `bookmarkedOnly: boolean` を追加して受け取る（絞り込み条件はセッションの userId とこのフラグのみから組み立てる。クライアントが対象 wordId 集合を指定する経路は作らない）。
+除外内訳もブックマーク済み単語にスコープする（例: noNumber は「ブックマーク済みだが掲載番号なしで対象外」の件数になる）。3 関数とも引数に `bookmarkedOnly: boolean` を追加して受け取る（省略時 false の default 付き引数とし、既存の呼び出し箇所は無変更で成立させる。絞り込み条件はセッションの userId とこのフラグのみから組み立てる。クライアントが対象 wordId 集合を指定する経路は作らない）。
 
 - 採用理由: 「プレビュー件数 = 実出題数」の既存契約（ADR-0030 で count 述語と取得述語を同型に保つ規約）を維持するには、絞り込み条件も 3 関数へ同一に入れる以外にない。除外内訳までスコープすることで、絞り込み ON 時の「なぜ対象が少ないか」の説明が正確になる。
 - 却下した代替案: 除外内訳は非スコープのまま（掲載箇所全体の内訳を表示）— ブックマークのみモードではブックマーク外の単語の内訳が混ざり、対象件数との対応が読めなくなるため却下。

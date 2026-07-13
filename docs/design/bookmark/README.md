@@ -35,6 +35,11 @@
 - **開始フォームは掲載箇所 Select に「指定なし」を常時表示**。未指定時は範囲 Input を disabled＋送信除外（テキストは保持）、プレビューは bookmarkedOnly 連動・noNumber null 項目は省略。設定画面にも同チェックボックスを追加。→ [04](04-ui.md)
 - **drill ラベルは全件モード「ブックマークのみ」、掲載箇所あり＋ブックマーク条件は「（ブックマークのみ）」注記**。→ [04](04-ui.md)
 - **アイコンは lucide BookmarkIcon、ON は塗りつぶし＋強調色、aria-pressed で状態提示**。→ [04](04-ui.md)
+- **UseCase は新規 `src/lib/bookmark-settings.ts`**: `setBookmarkForUser`（冪等 set、対象 word は scoped 検証で system 単語も許可）＋ `getBookmarkedWordIdsForUser`（一括取得、単語詳細ページもこれを 1 件で使う）。→ [05](05-architecture.md)
+- **server action は新規 `src/app/words/actions.ts` に集約**: `toggleBookmark(wordId, bookmarked)`（boolean 1 action・zod なし・revalidatePath なし）と `getBookmarkStates`（入力は schema/bookmark.ts の zod、wordIds 上限 3000）。BookmarkButton は action を直接 import。→ [05](05-architecture.md)
+- **quiz・一覧への組み込みは既存ファイルの拡張のみ**（schema/quiz.ts・quiz-source.ts・quiz-generate / drill-create・quiz-default-settings・words-list.ts・getWordDetailForDialog）。追加 index 不要。→ [05](05-architecture.md)
+- **テストは unit（スキーマ検証）＋ integration（bookmark-settings 新規、quiz-source / words-list 等は拡張）＋ E2E 要点確認**。action 層の専用テストは作らない。→ [05](05-architecture.md)
+- **naming-book 登録・ADR 起票（新 ADR ＋ ADR-0022 への補記）は実装チケットで行う**。セキュリティチェックリストは全項目クリア（前提を破る設計なし）。→ [05](05-architecture.md)
 
 ## トピック状態表
 
@@ -46,11 +51,62 @@
 | [02-data-model.md](02-data-model.md) | 確定（2026-07-13） | ブックマークの side table 設計・削除連鎖 |
 | [03-quiz-scope.md](03-quiz-scope.md) | 確定（2026-07-13） | quiz 出題範囲へのブックマーク条件の組み込み |
 | [04-ui.md](04-ui.md) | 確定（2026-07-13） | 一覧・詳細のトグル、開始フォームのチェックボックス |
-| [05-architecture.md](05-architecture.md) | 未着手 | 層配置・認可・テスト戦略 |
+| [05-architecture.md](05-architecture.md) | 確定（2026-07-13） | 層配置・認可・テスト戦略 |
 
-想定順序（残り）: 05 のみ。
+**全トピック確定（2026-07-13）— 設計完了**。後続はチケット分割（ticket-split スキル、置き場 `docs/plan/bookmark/`）へ。
 
-**次セッションの推奨トピック: 05（アーキテクチャ）**。引き継ぎ論点: 冪等 set の UseCase / server action の配置・命名・シグネチャ（1 action で boolean を受けるか add/remove 2 action か）と認可（共有マスタ単語への本人ブックマークの scoped 検証、セキュリティチェックリスト通し）。quiz 結果一覧用の状態一括取得 action の配置・入力上限も要決定。仕上げにテスト戦略と naming-book / ADR 起票（ADR-0022 例外の補記を含む）。05 確定で全トピック完了となるため、同セッションでハブに「実装への引き継ぎ」セクションを追記して設計を閉じる。
+## 実装への引き継ぎ
+
+チケット分割が全トピックを読み直さずに開始できるための棚卸し。詳細が必要な場合のみ各トピックの「決定 N」を参照する。
+
+### 変更対象の一覧
+
+- **スキーマ / migration**（backfill なしの純加算。分割単位はチケット分割で決める）:
+  - `Bookmark` モデル新設: 複合 PK userId × wordId、カラムは FK 2 列＋ createdAt のみ、両 FK onDelete: Cascade、index は PK ＋ wordId 単独（userId 個別 index は張らない）、User / Word に逆参照追加（[02](02-data-model.md)）
+  - `Drill`: occurrenceId / rangeFrom / rangeTo を nullable 化＋ `sourceBookmarkedOnly Boolean @default(false)` 追加（[03](03-quiz-scope.md)）
+  - `QuizDefaultSetting`: `bookmarkedOnly Boolean?` 追加（[03](03-quiz-scope.md)）
+- **新規モジュール**:
+  - `src/lib/bookmark-settings.ts`: `setBookmarkForUser` / `getBookmarkedWordIdsForUser` ＋ `BookmarkWordNotInScopeError`（[05 決定 1](05-architecture.md)）
+  - `src/lib/schema/bookmark.ts`: `getBookmarkStatesInputSchema`（wordIds 上限 3000）（[05 決定 3](05-architecture.md)）
+  - `src/app/words/actions.ts`: `toggleBookmark` / `getBookmarkStates`（[05 決定 2・3](05-architecture.md)）
+  - `src/components/bookmark-button.tsx`: `BookmarkButton` ＋行内用 `RowBookmarkButton`（contents ラッパ）。楽観的更新・失敗時巻き戻し＋ toast・aria-pressed（[04](04-ui.md)）
+- **既存ファイルの変更**:
+  - `src/lib/schema/quiz.ts`: quizRangeInputSchema の occurrenceId optional 化＋ bookmarkedOnly ＋クロスフィールド検証（extend 先へ自動波及）
+  - `src/lib/quiz/queries/quiz-source.ts`: 3 関数へ bookmarkedOnly 追加・出題述語 `bookmarks: { some: { userId } }` 同一適用（ダミー候補には非適用）・全件モード対応
+  - `src/lib/quiz-generate.ts` / `src/lib/drill-create.ts`: pass-through ＋ Drill 保存
+  - `src/lib/quiz-default-settings.ts`: bookmarkedOnly の読み書き
+  - `src/lib/words-list.ts`: wordListSelect へ userId 導入＋ bookmarked 列＋「ブックマークのみ」フィルタ
+  - `src/app/quiz/actions.ts`: getWordDetailForDialog の戻りに bookmarked 並置
+- **UI コンポーネント（設置・フォーム）**:
+  - 単語一覧: 行右端に RowBookmarkButton、toolbar に Bookmark アイコントグル（URL `bookmarked=1`、デフォルト OFF は URL 非掲載）
+  - quiz 結果一覧（result-list.tsx）: 行右端に設置、表示時に getBookmarkStates で一括取得しクライアント状態管理
+  - 単語詳細（words/[id]）: ScreenHeader actions に設置（bookmarked は server component が getBookmarkedWordIdsForUser を 1 件で取得）
+  - quiz 単語詳細ダイアログ（word-detail-dialog.tsx）: ヘッダに設置、onBookmarkChange コールバックで親へ同期
+  - quiz 開始フォーム: 掲載箇所 Select に「指定なし」常時表示・未指定時は範囲 Input を disabled ＋送信除外・「ブックマークのみ」チェックボックス・プレビュー連動（noNumber null 項目は省略）。設定画面（quiz-defaults）にも同チェックボックス
+  - drill ラベル: 全件モード「ブックマークのみ」、掲載箇所あり＋ブックマーク条件は「（ブックマークのみ）」注記
+
+### 着手順序のヒント
+
+スキーマ（Bookmark ＋ Drill / QuizDefaultSetting）→ src/lib/bookmark-settings.ts ＋ schema/bookmark.ts → quiz 系（schema/quiz.ts → quiz-source.ts → quiz-generate / drill-create / quiz-default-settings）→ words-list.ts → action ＋ BookmarkButton → 各設置箇所・開始フォーム・設定画面。
+
+並行実装時に競合しやすい共有物: `prisma/schema.prisma`（migration 順序）・`src/lib/schema/quiz.ts`（extend 波及）・`src/app/quiz/actions.ts`・単語一覧まわりの page / toolbar。
+
+### テスト戦略の要点（チケット完了条件に転記できる粒度）
+
+- unit: schema/quiz のクロスフィールド検証の組合せ（指定×false / 未指定×true×範囲なし / 未指定×false 拒否 / 未指定×範囲あり拒否）、schema/bookmark の上限超過拒否
+- integration（新規）: bookmark-settings — ON / OFF の冪等性・scope 外で throw・system 単語へ付与可・他ユーザー単語拒否・一括取得のヒット / 非ヒット
+- integration（拡張）: quiz-source — bookmarkedOnly の絞り込み・テナント分離・ダミー非適用・全件モードで掲載番号なし単語を含む・除外内訳のスコープ / words-list — bookmarked 列とフィルタ / drill-create・quiz-default-settings — nullable 保存と bookmarkedOnly 保存
+- action 層の専用テストは作らない（分岐が薄く、UseCase integration ＋ E2E でカバー）
+- E2E（e2e-verify スキル）: トグル一連（一覧行・詳細・ダイアログの状態同期）・一覧フィルタ・quiz「ブックマークのみ」開始（掲載箇所あり＋全件モード）・0 件時プレビュー 0 件
+
+### ドキュメント起票（実装チケットに含める）
+
+- naming-book: `Bookmark（ブックマーク）` 登録（混同注意:「お気に入り」「スター」「マーク」不使用、UI 文言は「ブックマークのみ」）
+- ADR: 新 ADR「per-user side table ＋開始時評価」・新 ADR「全件モード（ADR-0022 の例外）」＋ ADR-0022 への相互リンク補記（1 本化の判断はチケット分割時、0022 例外は独立の見出しに）
+
+### 次工程
+
+チケット分割は ticket-split スキルで行う。チケットの置き場は `docs/plan/bookmark/`、形式は ticket-split 側で定義。
 
 ## セッション運用ルール
 

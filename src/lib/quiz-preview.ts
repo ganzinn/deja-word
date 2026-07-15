@@ -20,8 +20,10 @@ export type QuizPreview = {
   /**
    * noMeaning と noTgExample は形式で排他（非 TG 形式は noMeaning のみ数値・noTgExample=null、
    * TG 例文形式は noTgExample のみ数値・noMeaning=null）。null 側はカウントせず表示もしない。
+   * noNumber はブックマーク全件モード（掲載箇所なし）では掲載箇所の概念がないため null になる
+   * （全件モードの配線は 04。本経路は掲載箇所ありのみで数値）。
    */
-  excluded: { noNumber: number; noMeaning: number | null; noTgExample: number | null };
+  excluded: { noNumber: number | null; noMeaning: number | null; noTgExample: number | null };
 };
 
 /**

@@ -499,7 +499,11 @@ function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () 
 function ExcludedNote({ excluded }: { excluded: QuizPreview["excluded"] }) {
   // 各件数は独立カウントのため合算・恒等式の表示はしない（重複があり得る）
   const parts: string[] = [];
-  if (excluded.noNumber > 0) parts.push(`掲載番号なしの単語 ${excluded.noNumber}語`);
+  // noNumber は全件モード（掲載箇所なし）では null（掲載箇所の概念がない）。既存の
+  // noMeaning / noTgExample の null 省略と同型で、null のときは項目を出さない。
+  if (excluded.noNumber !== null && excluded.noNumber > 0) {
+    parts.push(`掲載番号なしの単語 ${excluded.noNumber}語`);
+  }
   // noMeaning は非 TG 形式のときのみ非 null（TG 形式では意味を問わないため表示しない）
   if (excluded.noMeaning !== null && excluded.noMeaning > 0) {
     parts.push(`意味未登録の単語 ${excluded.noMeaning}語`);

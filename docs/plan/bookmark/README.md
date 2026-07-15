@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- |
 | [01-bookmark-schema.md](01-bookmark-schema.md) | Bookmark モデル新設（migration）＋ naming-book 登録＋ ADR「per-user side table＋開始時評価」起票 | なし | 完了（2026-07-16） | - |
 | [02-bookmark-settings.md](02-bookmark-settings.md) | UseCase `setBookmarkForUser` / `getBookmarkedWordIdsForUser` ＋入力スキーマ `schema/bookmark.ts` | 01 | 完了（2026-07-16） | - |
-| [03-quiz-source.md](03-quiz-source.md) | quiz-source 3 関数へのブックマーク述語・全件モード対応（後方互換のシグネチャ拡張）＋ ADR「全件モード」起票 | 01 | 実装中 | - |
+| [03-quiz-source.md](03-quiz-source.md) | quiz-source 3 関数へのブックマーク述語・全件モード対応（後方互換のシグネチャ拡張）＋ ADR「全件モード」起票 | 01 | 完了（2026-07-16） | - |
 | [04-quiz-persist.md](04-quiz-persist.md) | Drill / QuizDefaultSetting の migration ＋ schema/quiz 拡張＋ quiz-generate / drill-create / quiz-default-settings / drill 系 3 ファイルの対応 | 01, 03 | 未着手 | - |
 | [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 完了（2026-07-16） | - |
 | [06-toggle-foundation.md](06-toggle-foundation.md) | server action `toggleBookmark` / `getBookmarkStates` ＋共有部品 BookmarkButton / RowBookmarkButton（UI 未設置） | 02 | 完了（2026-07-16） | - |

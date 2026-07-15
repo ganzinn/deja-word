@@ -1,6 +1,6 @@
 # 05. words-list
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -36,4 +36,6 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- select の bookmarks に `select: { userId: true }` を付与（チケット再掲の literal は `{ where: { userId }, take: 1 }` だが、参照元 isPreset パターンに合わせ取得列を絞った。挙動は同じ）
+- `buildWordsByOccurrenceWhere` に `bookmarkedOnly` を optional で追加。`AdjacentWordsParams` は同フラグを持たないため**隣接取得（prev/next ナビ）は従来どおり無フィルタ**（設計決定 5 の対象が listWordsForUser / listWordsByOccurrence の 2 関数のみのため意図的にスコープ外）。→ **07（words-ui）でトグル ON 時に単語詳細の隣接ナビも絞り込ませたい場合は、findAdjacentWordsByOccurrence への bookmarkedOnly 追加が別途必要**（ヘルパは受け入れ可能済み、AdjacentWordsParams への追加＋呼び出し配線のみ）。判断が要れば ticket-split へ
+- q と bookmarkedOnly の同時指定で `word` キーが二重定義にならないよう、両条件を単一 `Prisma.WordWhereInput` に畳んでから spread

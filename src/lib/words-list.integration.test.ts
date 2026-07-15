@@ -85,6 +85,11 @@ async function occurrenceIdOf(userId: string, location: string): Promise<string>
   return occ.id;
 }
 
+/** userId が wordId をブックマークする（書き込み UseCase は本チケット対象外のため直接挿入する）。 */
+async function bookmarkWord(userId: string, wordId: string): Promise<void> {
+  await prisma.bookmark.create({ data: { userId, wordId } });
+}
+
 describe("listWordsForUser", () => {
   test("returns user + system words within scope, isSystem flag is set correctly", async () => {
     const user = await createTestUser();
@@ -304,6 +309,49 @@ describe("listWordsForUser", () => {
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.pronunciationAudioUrl).toBe("/audio/first.mp3");
   });
+
+  test("bookmarked reflects only the viewing user's bookmark", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const marked = await createWordForUser(user.id, form("marked"));
+    // 共有(system)単語を stranger だけがブックマーク。user から見ると false のまま。
+    const shared = await createWordForUser(SYSTEM_USER_ID, form("shared"));
+    await bookmarkWord(user.id, marked.id);
+    await bookmarkWord(stranger.id, shared.id);
+
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      skip: 0,
+      take: 50,
+    });
+    const byHeadword = new Map(result.items.map((i) => [i.headword, i]));
+    expect(byHeadword.get("marked")?.bookmarked).toBe(true);
+    expect(byHeadword.get("shared")?.bookmarked).toBe(false);
+  });
+
+  test("bookmarkedOnly returns only the user's bookmarked words (foreign bookmarks excluded)", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const aaa = await createWordForUser(user.id, form("aaa"));
+    const bbb = await createWordForUser(user.id, form("bbb"));
+    const ccc = await createWordForUser(SYSTEM_USER_ID, form("ccc"));
+    await bookmarkWord(user.id, aaa.id);
+    await bookmarkWord(user.id, ccc.id);
+    // stranger が bbb をブックマークしても user の絞り込みには混ざらない
+    await bookmarkWord(stranger.id, bbb.id);
+
+    const result = await listWordsForUser(user.id, {
+      sort: "headword",
+      match: "contains",
+      bookmarkedOnly: true,
+      skip: 0,
+      take: 50,
+    });
+    expect(result.total).toBe(2);
+    expect(result.items.map((i) => i.headword)).toEqual(["aaa", "ccc"]);
+    expect(result.items.every((i) => i.bookmarked)).toBe(true);
+  });
 });
 
 describe("listWordsByOccurrence", () => {
@@ -433,6 +481,53 @@ describe("listWordsByOccurrence", () => {
     });
     const item = result.items.find((i) => i.id === w.id);
     expect(item?.pronunciationAudioUrl).toBe("/audio/occ.mp3");
+  });
+
+  test("bookmarked reflects only the viewing user's bookmark", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const alpha = await createWordForUser(user.id, formWithOccurrence("alpha", LOC, 1));
+    const bravo = await createWordForUser(user.id, formWithOccurrence("bravo", LOC, 2));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    await bookmarkWord(user.id, alpha.id);
+    // stranger のブックマークは user の一覧に混ざらない
+    await bookmarkWord(stranger.id, bravo.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    const byHeadword = new Map(result.items.map((i) => [i.headword, i]));
+    expect(byHeadword.get("alpha")?.bookmarked).toBe(true);
+    expect(byHeadword.get("bravo")?.bookmarked).toBe(false);
+  });
+
+  test("bookmarkedOnly filters within the occurrence (foreign bookmarks excluded)", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const alpha = await createWordForUser(user.id, formWithOccurrence("alpha", LOC, 1));
+    const bravo = await createWordForUser(user.id, formWithOccurrence("bravo", LOC, 2));
+    const charlie = await createWordForUser(user.id, formWithOccurrence("charlie", LOC, 3));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    await bookmarkWord(user.id, alpha.id);
+    await bookmarkWord(user.id, charlie.id);
+    // stranger が bravo をブックマークしても絞り込みには混ざらない
+    await bookmarkWord(stranger.id, bravo.id);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      match: "contains",
+      order: "asc",
+      bookmarkedOnly: true,
+      skip: 0,
+      take: 50,
+    });
+    expect(result.total).toBe(2);
+    expect(result.items.map((i) => i.headword)).toEqual(["alpha", "charlie"]);
+    expect(result.items.every((i) => i.bookmarked)).toBe(true);
   });
 });
 

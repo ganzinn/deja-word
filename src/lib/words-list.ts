@@ -16,12 +16,15 @@ export type WordListItem = {
   partOfSpeech: string | null;
   meaningTexts: string[];
   pronunciationAudioUrl: string | null;
+  bookmarked: boolean;
 };
 
 export type WordListParams = {
   q?: string;
   sort: WordListSort;
   match: WordMatchMode;
+  /** true なら閲覧ユーザーがブックマークした単語だけに絞り込む。 */
+  bookmarkedOnly?: boolean;
   skip: number;
   take: number;
 };
@@ -46,6 +49,8 @@ export type WordsByOccurrenceParams = {
   from?: number;
   to?: number;
   order: OccurrenceNumberOrder;
+  /** true なら閲覧ユーザーがブックマークした単語だけに絞り込む。 */
+  bookmarkedOnly?: boolean;
   skip: number;
   take: number;
 };
@@ -60,8 +65,10 @@ export type WordsByOccurrenceResult = {
  * ネストした meanings / texts は親 Word と別 owner の行を含みうる（pass-through で共有単語に
  * 他ユーザーが自分の Meaning / text を付加できる）ため、words-detail.ts と同形に owner で再スコープする。
  * これを怠ると take: 1 が他ユーザー所有の先頭 Meaning を拾い、私的な意味・音源が漏れる。
+ * bookmarks は閲覧ユーザー userId でスコープした存在確認（occurrences-list.ts の isPreset と同型）で、
+ * toWordListItem が boolean へ畳む。
  */
-function wordListSelect(allowed: string[]) {
+function wordListSelect(userId: string, allowed: string[]) {
   return {
     id: true,
     headword: true,
@@ -80,6 +87,11 @@ function wordListSelect(allowed: string[]) {
         },
       },
     },
+    bookmarks: {
+      where: { userId },
+      select: { userId: true },
+      take: 1,
+    },
   };
 }
 
@@ -92,6 +104,7 @@ type WordListRow = {
     pronunciationAudioUrl: string | null;
     texts: { text: string }[];
   }[];
+  bookmarks: { userId: string }[];
 };
 
 function toWordListItem(row: WordListRow): WordListItem {
@@ -104,6 +117,7 @@ function toWordListItem(row: WordListRow): WordListItem {
     partOfSpeech: firstMeaning?.partOfSpeech ?? null,
     meaningTexts: firstMeaning?.texts.map((t) => t.text) ?? [],
     pronunciationAudioUrl: firstMeaning?.pronunciationAudioUrl ?? null,
+    bookmarked: row.bookmarks.length > 0,
   };
 }
 
@@ -122,6 +136,7 @@ export async function listWordsForUser(
   const where = {
     ownerId: { in: allowed },
     ...(q.length > 0 ? { headword: headwordCondition(q, params.match) } : {}),
+    ...(params.bookmarkedOnly ? { bookmarks: { some: { userId } } } : {}),
   };
 
   const orderBy =
@@ -132,7 +147,7 @@ export async function listWordsForUser(
   const [rows, total] = await Promise.all([
     prisma.word.findMany({
       where,
-      select: wordListSelect(allowed),
+      select: wordListSelect(userId, allowed),
       orderBy,
       skip: params.skip,
       take: params.take,
@@ -143,10 +158,16 @@ export async function listWordsForUser(
   return { items: rows.map(toWordListItem), total };
 }
 
-/** 掲載箇所単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。 */
+/**
+ * 掲載箇所単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
+ * bookmarkedOnly は WordsByOccurrenceParams のみが渡す（隣接取得の AdjacentWordsParams は持たないため
+ * undefined＝無効）。q と同じ word リレーション条件に畳んで単一の word キーへまとめる。
+ */
 function buildWordsByOccurrenceWhere(
   userId: string,
-  params: Pick<WordsByOccurrenceParams, "occurrenceId" | "q" | "match" | "from" | "to">,
+  params: Pick<WordsByOccurrenceParams, "occurrenceId" | "q" | "match" | "from" | "to"> & {
+    bookmarkedOnly?: boolean;
+  },
 ): Prisma.WordOccurrenceWhereInput {
   const q = params.q?.trim() ?? "";
   const hasRange = params.from !== undefined || params.to !== undefined;
@@ -154,11 +175,15 @@ function buildWordsByOccurrenceWhere(
   if (params.from !== undefined) numberFilter.gte = params.from;
   if (params.to !== undefined) numberFilter.lte = params.to;
 
+  const word: Prisma.WordWhereInput = {};
+  if (q.length > 0) word.headword = headwordCondition(q, params.match);
+  if (params.bookmarkedOnly) word.bookmarks = { some: { userId } };
+
   return {
     occurrenceId: params.occurrenceId,
     ownerId: { in: scopedOwnerIds(userId) },
     ...(hasRange ? { occurrenceNumber: numberFilter } : {}),
-    ...(q.length > 0 ? { word: { headword: headwordCondition(q, params.match) } } : {}),
+    ...(Object.keys(word).length > 0 ? { word } : {}),
   };
 }
 
@@ -184,7 +209,7 @@ export async function listWordsByOccurrence(
       where,
       select: {
         occurrenceNumber: true,
-        word: { select: wordListSelect(allowed) },
+        word: { select: wordListSelect(userId, allowed) },
       },
       orderBy,
       skip: params.skip,

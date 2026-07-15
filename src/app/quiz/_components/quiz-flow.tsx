@@ -97,14 +97,21 @@ type DrillState = {
 
 /**
  * 完了画面の元テスト範囲ラベル（進行中一覧 `ActiveDrillRow` の表記に合わせる）。
- * 例: 「本A No.1〜100」「本A No.1〜」「本A（範囲指定なし）」
+ * 例: 「本A No.1〜100」「本A No.1〜」「本A（範囲指定なし）」「本A No.1〜100（ブックマークのみ）」「ブックマークのみ」
+ * ブックマーク条件の表記は決定 8 に従う（開始フォームのチェックボックス文言と揃える）。
  */
 function sourceTestLabelOf(drill: DrillState): string {
-  const { rangeFrom, rangeTo } = drill.sourceTest;
-  if (rangeFrom === undefined && rangeTo === undefined) {
-    return `${drill.occurrenceName}（範囲指定なし）`;
+  const { occurrenceId, rangeFrom, rangeTo, bookmarkedOnly } = drill.sourceTest;
+  // 全件モード（掲載箇所なし）は範囲数値を持たず、必ずブックマークのみ。
+  if (occurrenceId === undefined) {
+    return "ブックマークのみ";
   }
-  return `${drill.occurrenceName} No.${rangeFrom ?? ""}〜${rangeTo ?? ""}`;
+  const bookmarkSuffix = bookmarkedOnly ? "・ブックマークのみ" : "";
+  if (rangeFrom === undefined && rangeTo === undefined) {
+    return `${drill.occurrenceName}（範囲指定なし${bookmarkSuffix}）`;
+  }
+  const rangeLabel = `${drill.occurrenceName} No.${rangeFrom ?? ""}〜${rangeTo ?? ""}`;
+  return bookmarkedOnly ? `${rangeLabel}（ブックマークのみ）` : rangeLabel;
 }
 
 /**
@@ -740,16 +747,20 @@ export function QuizFlow({
     const fetchKey = `${runId}:${drill.drillId}`;
     if (sourceTestFetchKeyRef.current === fetchKey) return;
     sourceTestFetchKeyRef.current = fetchKey;
-    const { occurrenceId, rangeFrom, rangeTo, format } = drill.sourceTest;
-    // TG 例文形式は対象件数が形式依存のため format を渡す（他形式では無視される）
-    void getQuizPreview({ occurrenceId, rangeFrom, rangeTo, format }).then((result) => {
-      if (runId !== runIdRef.current) return;
-      setSourceTestPreview(
-        result.ok
-          ? { status: "ready", targetCount: result.preview.targetCount }
-          : { status: "error" },
-      );
-    });
+    const { occurrenceId, rangeFrom, rangeTo, bookmarkedOnly, format } = drill.sourceTest;
+    // TG 例文形式は対象件数が形式依存のため format を渡す（他形式では無視される）。
+    // 全件モード drill は occurrenceId 未指定＋bookmarkedOnly=true を渡さないと入力検証に落ち、
+    // ブックマーク条件付き drill は件数が非絞り込みになるため bookmarkedOnly を含める（決定 5 の帰結）。
+    void getQuizPreview({ occurrenceId, rangeFrom, rangeTo, bookmarkedOnly, format }).then(
+      (result) => {
+        if (runId !== runIdRef.current) return;
+        setSourceTestPreview(
+          result.ok
+            ? { status: "ready", targetCount: result.preview.targetCount }
+            : { status: "error" },
+        );
+      },
+    );
   }, [phase.name, drillCompleted, drill]);
 
   function handleQuestionComplete(outcome: QuestionOutcome) {

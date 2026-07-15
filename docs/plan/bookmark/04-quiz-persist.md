@@ -93,3 +93,4 @@ Drill（nullable 化 3 列＋ `sourceBookmarkedOnly`）と QuizDefaultSetting（
 - `drill-round-generate.ts` の `occurrenceName` は型 `string` のまま全件モードで `""` を暫定返却。**全件モード drill のラベル表示（「ブックマークのみ」）と ActiveDrill の null 対応は 09**（drill-list.ts の ActiveDrill は nullable 化済み）
 - 完了画面の再テスト前ライブプレビュー（quiz-flow.tsx）が全件モード drill で getQuizPreview にブックマーク条件 / occurrenceId 未指定を渡す対応は **09**（未対応だと入力検証に落ちる。pre-09 は全件モード drill が生成されないため顕在化しない）
 - migration は `20260715185254_add_bookmark_quiz_persist`（純加算・backfill なし）
+- 追補（09 実装時）: drill-list.ts の ActiveDrill に `sourceBookmarkedOnly` を追加（決定 8 の進行中一覧ラベルに必要だった。09 がリード承認のうえ実施）

@@ -84,6 +84,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults.occurrenceId);
   const [rangeFromText, setRangeFromText] = useState(defaults.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
+  // 「ブックマークのみ」絞り込みのデフォルト。未設定（null）は OFF。
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(defaults.bookmarkedOnly ?? false);
   const [format, setFormat] = useState<QuizFormat | null>(defaults.format);
   const [timeoutByFormat, setTimeoutByFormat] = useState<Record<QuizFormat, TimeoutFieldState>>(
     () => initTimeoutState(defaults.timeoutByFormat),
@@ -129,8 +131,11 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     startTransition(async () => {
       const result = await saveQuizDefaults({
         occurrenceId,
-        rangeFrom: parseRangeValue(rangeFromText),
-        rangeTo: parseRangeValue(rangeToText),
+        // 掲載箇所「指定なし」（occurrenceId null。Occurrence 削除の SetNull 残存を含む）のときは
+        // 範囲 Input を disabled にし送信からも除外して null に正規化する（決定 6・7 の無害化）。
+        rangeFrom: occurrenceId === null ? null : parseRangeValue(rangeFromText),
+        rangeTo: occurrenceId === null ? null : parseRangeValue(rangeToText),
+        bookmarkedOnly,
         format,
         timeoutByFormat: timeoutByFormatInput,
         showCountdown,
@@ -158,6 +163,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setOccurrenceId(DEFAULT_QUIZ_SETTINGS.occurrenceId);
     setRangeFromText(DEFAULT_QUIZ_SETTINGS.rangeFrom?.toString() ?? "");
     setRangeToText(DEFAULT_QUIZ_SETTINGS.rangeTo?.toString() ?? "");
+    setBookmarkedOnly(DEFAULT_QUIZ_SETTINGS.bookmarkedOnly ?? false);
     setFormat(DEFAULT_QUIZ_SETTINGS.format);
     setTimeoutByFormat(initTimeoutState(DEFAULT_QUIZ_SETTINGS.timeoutByFormat));
     setShowCountdown(DEFAULT_QUIZ_SETTINGS.showCountdown ?? false);
@@ -220,6 +226,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             value={rangeFromText}
             onChange={(e) => setRangeFromText(e.target.value)}
             aria-label="掲載番号（から）"
+            disabled={occurrenceId === null}
           />
           <span className="text-muted-foreground shrink-0 text-sm">〜</span>
           <Input
@@ -230,10 +237,27 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
             value={rangeToText}
             onChange={(e) => setRangeToText(e.target.value)}
             aria-label="掲載番号（まで）"
+            disabled={occurrenceId === null}
           />
         </div>
         <p className="text-muted-foreground text-xs">
           空欄は「制限なし」。片側のみも指定できます。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-bookmarked-only"
+            checked={bookmarkedOnly}
+            onCheckedChange={(checked) => setBookmarkedOnly(checked === true)}
+          />
+          <Label htmlFor="quiz-defaults-bookmarked-only" className="font-normal">
+            ブックマークのみ
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          ブックマークした単語だけを出題対象にします。掲載箇所「指定なし」でも全件からテストできます。
         </p>
       </section>
 

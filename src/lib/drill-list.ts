@@ -9,6 +9,7 @@ export type ActiveDrill = {
   occurrenceName: string | null; // Occurrence の表示名（全件モード drill では null）
   rangeFrom: number | null; // 実効範囲（全件モード drill では null）
   rangeTo: number | null;
+  sourceBookmarkedOnly: boolean; // 元テストの「ブックマークのみ」指定（実効範囲ベースのラベル注記に使う）
   format: QuizFormat;
   timeoutSeconds: number | null; // 1 問あたりの制限時間（null = 制限なし）
   remainingWordCount: number; // remaining > 0 の DrillWord 数
@@ -27,6 +28,7 @@ export async function listActiveDrillsForUser(userId: string): Promise<ActiveDri
       id: true,
       rangeFrom: true,
       rangeTo: true,
+      sourceBookmarkedOnly: true,
       format: true,
       timeoutSeconds: true,
       updatedAt: true,
@@ -40,6 +42,7 @@ export async function listActiveDrillsForUser(userId: string): Promise<ActiveDri
     occurrenceName: d.occurrence?.location ?? null,
     rangeFrom: d.rangeFrom,
     rangeTo: d.rangeTo,
+    sourceBookmarkedOnly: d.sourceBookmarkedOnly,
     format: d.format,
     timeoutSeconds: d.timeoutSeconds,
     remainingWordCount: d._count.words,

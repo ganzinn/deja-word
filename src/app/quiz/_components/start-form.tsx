@@ -87,17 +87,22 @@ type PreviewResponse =
   | { key: string; ok: false; message: string };
 
 function previewKeyOf(
-  occurrenceId: string,
+  occurrenceId: string | null,
   rangeFrom: number | undefined,
   rangeTo: number | undefined,
+  bookmarkedOnly: boolean,
   tgFormat: boolean,
 ): string {
   // TG 例文形式は対象件数・除外内訳が形式依存になるため、TG⇔非 TG の切替をキーに含めて
-  // 再取得する（TG 形式同士は件数が同じため区別しない）。
-  return `${occurrenceId}:${rangeFrom ?? ""}:${rangeTo ?? ""}:${tgFormat ? "tg" : ""}`;
+  // 再取得する（TG 形式同士は件数が同じため区別しない）。bookmarkedOnly の切替も対象件数を
+  // 変えるためキーに含める。occurrenceId 未指定（全件モード）は空文字で表す。
+  return `${occurrenceId ?? ""}:${rangeFrom ?? ""}:${rangeTo ?? ""}:${bookmarkedOnly ? "bm" : ""}:${tgFormat ? "tg" : ""}`;
 }
 
 const PREVIEW_DEBOUNCE_MS = 300;
+
+/** 掲載箇所 Select の「指定なし」項目の値（cuid と衝突しないセンチネル。null 掲載箇所を表す）。 */
+const NO_OCCURRENCE_VALUE = "__none__";
 
 /** 空欄は undefined（制限なし）。0 以下・非整数はサーバー側 zod が invalid として弾く。 */
 function parseRangeValue(text: string): number | undefined {
@@ -118,6 +123,8 @@ export function StartForm({
   const [occurrenceId, setOccurrenceId] = useState<string | null>(defaults.occurrenceId);
   const [rangeFromText, setRangeFromText] = useState(defaults.rangeFrom?.toString() ?? "");
   const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
+  // 「ブックマークのみ」絞り込み。初期値はデフォルト設定（未設定 null は OFF）。
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(defaults.bookmarkedOnly ?? false);
   const initialFormat = defaults.format;
   // 初期選択形式があれば、その形式の保存済み制限時間を初期値に（未選択なら制限なし）
   const initialTimeout =
@@ -144,34 +151,43 @@ export function StartForm({
   // 応答順逆転対策の単調増加トークン（クライアント内で完結。Action の入出力には含めない）
   const previewTokenRef = useRef(0);
 
-  const rangeFrom = parseRangeValue(rangeFromText);
-  const rangeTo = parseRangeValue(rangeToText);
+  // 掲載箇所未指定（指定なし）の間は範囲を送信から除外する（入力テキストは保持したまま）。
+  // これにより「掲載箇所未選択＋範囲指定」をスキーマが拒否する組が UI から送られない。
+  const rangeFrom = occurrenceId === null ? undefined : parseRangeValue(rangeFromText);
+  const rangeTo = occurrenceId === null ? undefined : parseRangeValue(rangeToText);
   // TG 例文形式のときだけ format をプレビューへ渡す（対象件数が TG 例文の有無で絞られる）
   const tgPreviewFormat = format !== null && isTgExampleFormat(format) ? format : undefined;
-  const requestKey =
-    occurrenceId === null
-      ? null
-      : previewKeyOf(occurrenceId, rangeFrom, rangeTo, tgPreviewFormat !== undefined);
+  // プレビューを取得するのは「掲載箇所が指定あり、または bookmarkedOnly=true」（＝開始しうる入力）のとき。
+  // どちらでもなければ requestKey=null で idle 案内を出す。
+  const canPreview = occurrenceId !== null || bookmarkedOnly;
+  const requestKey = canPreview
+    ? previewKeyOf(occurrenceId, rangeFrom, rangeTo, bookmarkedOnly, tgPreviewFormat !== undefined)
+    : null;
 
   useEffect(() => {
-    if (occurrenceId === null || requestKey === null) return;
+    if (requestKey === null) return;
     // debounce: 入力が続く間は cleanup がタイマーを破棄して発火させない
     const timer = setTimeout(() => {
       const token = ++previewTokenRef.current;
-      void getQuizPreview({ occurrenceId, rangeFrom, rangeTo, format: tgPreviewFormat }).then(
-        (result) => {
-          // 自分のトークン ≠ 最新トークンなら古い応答として捨てる
-          if (token !== previewTokenRef.current) return;
-          if (result.ok) {
-            setPreviewResponse({ key: requestKey, ok: true, preview: result.preview });
-          } else {
-            setPreviewResponse({ key: requestKey, ok: false, message: result.message });
-          }
-        },
-      );
+      // 全件モード（occurrenceId=null）は undefined として送る（スキーマの optional に合わせる）
+      void getQuizPreview({
+        occurrenceId: occurrenceId ?? undefined,
+        rangeFrom,
+        rangeTo,
+        bookmarkedOnly,
+        format: tgPreviewFormat,
+      }).then((result) => {
+        // 自分のトークン ≠ 最新トークンなら古い応答として捨てる
+        if (token !== previewTokenRef.current) return;
+        if (result.ok) {
+          setPreviewResponse({ key: requestKey, ok: true, preview: result.preview });
+        } else {
+          setPreviewResponse({ key: requestKey, ok: false, message: result.message });
+        }
+      });
     }, PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [occurrenceId, rangeFrom, rangeTo, requestKey, tgPreviewFormat]);
+  }, [occurrenceId, rangeFrom, rangeTo, bookmarkedOnly, requestKey, tgPreviewFormat]);
 
   // 現在の入力に対する応答だけを採用（入力変更直後の古い応答は loading 扱い）
   const previewState: PreviewState =
@@ -206,20 +222,22 @@ export function StartForm({
   const timeoutSeconds = timeoutEnabled ? parseRangeValue(timeoutText) : undefined;
   // 形式の成立可否は事前判定しない（開始時に generateQuizForUser が検証しエラー表示）。
   const canStart =
-    occurrenceId !== null &&
+    (occurrenceId !== null || bookmarkedOnly) &&
     format !== null &&
     preview !== null &&
     preview.targetCount > 0 &&
     (!timeoutEnabled || timeoutSeconds !== undefined);
 
   function handleStart() {
-    if (!canStart || occurrenceId === null || format === null) {
+    if (!canStart || format === null) {
       return;
     }
     const input: StartQuizInput = {
-      occurrenceId,
+      // 全件モード（指定なし）は undefined として送る（スキーマの optional に合わせる）
+      occurrenceId: occurrenceId ?? undefined,
       rangeFrom,
       rangeTo,
+      bookmarkedOnly,
       format,
       timeoutSeconds: timeoutSeconds ?? null,
       choiceFirstMeaningTextOnly,
@@ -233,20 +251,29 @@ export function StartForm({
     onStart(input);
   }
 
-  const selectItems = occurrences.map((o) => ({
-    value: o.id,
-    label: `${o.location}（${o.wordCount}語）`,
-  }));
+  // 先頭に「指定なし」（全件モードの掲載箇所未指定）を常時表示する。トリガー表示用の value→label マップ。
+  const selectItems = [
+    { value: NO_OCCURRENCE_VALUE, label: "指定なし" },
+    ...occurrences.map((o) => ({
+      value: o.id,
+      label: `${o.location}（${o.wordCount}語）`,
+    })),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
         <Label htmlFor="quiz-occurrence">掲載箇所</Label>
-        <Select items={selectItems} value={occurrenceId} onValueChange={setOccurrenceId}>
+        <Select
+          items={selectItems}
+          value={occurrenceId ?? NO_OCCURRENCE_VALUE}
+          onValueChange={(value) => setOccurrenceId(value === NO_OCCURRENCE_VALUE ? null : value)}
+        >
           <SelectTrigger id="quiz-occurrence" className="w-full data-[size=default]:h-14">
             <SelectValue placeholder="掲載箇所を選択" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={NO_OCCURRENCE_VALUE}>指定なし</SelectItem>
             {occurrences.map((o) => (
               <SelectItem key={o.id} value={o.id}>
                 {o.location}（{o.wordCount}語）
@@ -269,6 +296,7 @@ export function StartForm({
             onChange={(e) => setRangeFromText(e.target.value)}
             aria-label="掲載番号（から）"
             className="h-14"
+            disabled={occurrenceId === null}
           />
           <span className="text-muted-foreground shrink-0 text-sm">〜</span>
           <Input
@@ -280,6 +308,7 @@ export function StartForm({
             onChange={(e) => setRangeToText(e.target.value)}
             aria-label="掲載番号（まで）"
             className="h-14"
+            disabled={occurrenceId === null}
           />
         </div>
         <p className="text-muted-foreground text-xs">
@@ -287,9 +316,28 @@ export function StartForm({
         </p>
       </section>
 
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-bookmarked-only"
+            className="size-6"
+            checked={bookmarkedOnly}
+            onCheckedChange={(checked) => setBookmarkedOnly(checked === true)}
+          />
+          <Label htmlFor="quiz-bookmarked-only" className="font-normal">
+            ブックマークのみ
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          ブックマークした単語だけを出題対象にします。掲載箇所「指定なし」でも全件からテストできます。
+        </p>
+      </section>
+
       <section className="flex flex-col gap-1" aria-live="polite">
         {previewState.status === "idle" ? (
-          <p className="text-muted-foreground text-sm">掲載箇所を選択してください</p>
+          <p className="text-muted-foreground text-sm">
+            掲載箇所を選択してください。「ブックマークのみ」をオンにすると、指定なしでも全件からテストできます。
+          </p>
         ) : previewState.status === "loading" ? (
           <p className="text-muted-foreground text-sm">対象件数を確認中…</p>
         ) : previewState.status === "error" ? (
@@ -402,7 +450,7 @@ export function StartForm({
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オンで開始すると、上の掲載箇所・掲載番号範囲・出題形式・制限時間をデフォルト設定として保存します。
+          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題形式・制限時間をデフォルト設定として保存します。
         </p>
       </section>
 
@@ -437,7 +485,15 @@ function ActiveDrillRow({ drill, onResume }: { drill: ActiveDrill; onResume: () 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const rangeLabel = `${drill.occurrenceName} No.${drill.rangeFrom}〜${drill.rangeTo}`;
+  // 決定 8: 全件モード drill（掲載箇所なし）は範囲数値を持たないため「ブックマークのみ」。
+  // 掲載箇所あり＋元テストがブックマークのみのときは実効範囲に「（ブックマークのみ）」を併記する
+  // （drill 一覧の行は掲載箇所ありなら常に実効範囲の数値を持つため、範囲指定なし分岐は完了画面側のみ）。
+  const rangeLabel =
+    drill.occurrenceName === null
+      ? "ブックマークのみ"
+      : `${drill.occurrenceName} No.${drill.rangeFrom}〜${drill.rangeTo}${
+          drill.sourceBookmarkedOnly ? "（ブックマークのみ）" : ""
+        }`;
 
   function handleDelete() {
     startTransition(async () => {

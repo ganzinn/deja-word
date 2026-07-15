@@ -2,6 +2,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { RowBookmarkButton } from "@/components/bookmark-button";
 import { RowAudioButton } from "@/components/row-audio-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TtsFallbackProvider } from "@/components/tts-fallback-context";
@@ -41,6 +42,7 @@ type RawParams = {
   from?: string;
   to?: string;
   order?: string;
+  bookmarked?: string;
   page?: string;
 };
 
@@ -71,18 +73,21 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   const q = (params.q ?? "").trim();
   const sort: WordListSort = params.sort === "headword" ? "headword" : "recent";
   const match = parseMatch(params.match);
+  const bookmarkedOnly = params.bookmarked === "1";
   const page = parsePage(params.page);
 
   const { items, total } = await listWordsForUser(userId, {
     q: q.length > 0 ? q : undefined,
     sort,
     match,
+    bookmarkedOnly,
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
-  const hrefForPage = (p: number) => buildWordsHref("word", { q, sort, match, page: p });
+  const hrefForPage = (p: number) =>
+    buildWordsHref("word", { q, sort, match, bookmarked: bookmarkedOnly, page: p });
 
   if (page > totalPages && total > 0) {
     redirect(hrefForPage(totalPages));
@@ -92,7 +97,7 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   return (
     <WordsShell>
       <ViewModeToggle view="word" />
-      <WordListToolbar initialQuery={q} sort={sort} match={match} />
+      <WordListToolbar initialQuery={q} sort={sort} match={match} bookmarked={bookmarkedOnly} />
 
       <ResultCount label={q.length > 0 ? `「${q}」の検索結果` : "全"} total={total} />
 
@@ -116,6 +121,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
   const from = parseRangeNumber(params.from);
   const to = parseRangeNumber(params.to);
   const order = parseOrder(params.order);
+  const bookmarkedOnly = params.bookmarked === "1";
   const page = parsePage(params.page);
 
   const toolbar = (
@@ -131,6 +137,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
       initialFrom={params.from ?? ""}
       initialTo={params.to ?? ""}
       order={order}
+      bookmarked={bookmarkedOnly}
     />
   );
 
@@ -153,6 +160,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
     from,
     to,
     order,
+    bookmarkedOnly,
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
@@ -166,6 +174,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
       from: params.from,
       to: params.to,
       order,
+      bookmarked: bookmarkedOnly,
       page: p,
     });
   // 詳細画面に絞り込みコンテキストを引き継ぎ、掲載番号順の前後ナビと「戻る」を成立させる
@@ -298,6 +307,7 @@ function WordRow({
             ttsText={item.headword}
             reserveSpaceWhenEmpty
           />
+          <RowBookmarkButton wordId={item.id} bookmarked={item.bookmarked} />
         </div>
       </div>
       {item.partOfSpeech || item.meaningTexts.length > 0 ? (

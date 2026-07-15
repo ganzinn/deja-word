@@ -63,6 +63,11 @@ describe("buildWordsHref", () => {
       }),
     ).toBe("/words?view=occurrence&occ=occ1&q=ap&match=contains&from=2&to=8&order=desc&page=3");
   });
+
+  test("omits bookmarked when false, includes bookmarked=1 when true", () => {
+    expect(buildWordsHref("word", { bookmarked: false, page: 1 })).toBe("/words");
+    expect(buildWordsHref("word", { bookmarked: true, page: 1 })).toBe("/words?bookmarked=1");
+  });
 });
 
 describe("buildWordDetailHref", () => {

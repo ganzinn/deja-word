@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import type { OccurrenceNumberOrder, WordMatchMode } from "@/lib/words-list";
 
+import { BookmarkFilterToggle } from "./bookmark-filter-toggle";
 import { SearchInput } from "./search-input";
 import { setParam, useDebouncedCommit } from "./toolbar-url";
 
@@ -34,6 +35,7 @@ type Props = {
   initialFrom: string;
   initialTo: string;
   order: OccurrenceNumberOrder;
+  bookmarked: boolean;
 };
 
 export function OccurrenceFilterToolbar({
@@ -44,6 +46,7 @@ export function OccurrenceFilterToolbar({
   initialFrom,
   initialTo,
   order,
+  bookmarked,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,6 +60,7 @@ export function OccurrenceFilterToolbar({
     from?: string;
     to?: string;
     order?: OccurrenceNumberOrder;
+    bookmarked?: boolean;
   }) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", "occurrence");
@@ -66,6 +70,7 @@ export function OccurrenceFilterToolbar({
     if (next.from !== undefined) setParam(params, "from", next.from.trim());
     if (next.to !== undefined) setParam(params, "to", next.to.trim());
     if (next.order !== undefined) setParam(params, "order", next.order, "asc");
+    if (next.bookmarked !== undefined) setParam(params, "bookmarked", next.bookmarked ? "1" : "");
     params.delete("page");
     const qs = params.toString();
     return qs.length > 0 ? `${pathname}?${qs}` : pathname;
@@ -96,6 +101,10 @@ export function OccurrenceFilterToolbar({
     if (next !== "asc" && next !== "desc") return;
     if (next === order) return;
     commit(buildHref({ order: next }));
+  }
+
+  function handleBookmarkedChange(next: boolean) {
+    commit(buildHref({ bookmarked: next }));
   }
 
   const selectItems = occurrences.map((o) => ({ value: o.id, label: o.location }));
@@ -155,16 +164,19 @@ export function OccurrenceFilterToolbar({
         onMatchChange={handleMatchChange}
       />
 
-      <ToggleGroup
-        value={[order]}
-        onValueChange={handleOrderChange}
-        aria-label="並び順"
-        variant="outline"
-        size="sm"
-      >
-        <ToggleGroupItem value="asc">番号昇順</ToggleGroupItem>
-        <ToggleGroupItem value="desc">番号降順</ToggleGroupItem>
-      </ToggleGroup>
+      <div className="flex items-center justify-between gap-2">
+        <ToggleGroup
+          value={[order]}
+          onValueChange={handleOrderChange}
+          aria-label="並び順"
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="asc">番号昇順</ToggleGroupItem>
+          <ToggleGroupItem value="desc">番号降順</ToggleGroupItem>
+        </ToggleGroup>
+        <BookmarkFilterToggle pressed={bookmarked} onPressedChange={handleBookmarkedChange} />
+      </div>
     </div>
   );
 }

@@ -34,6 +34,7 @@ export function buildWordsHref(
     from?: string;
     to?: string;
     order?: OccurrenceNumberOrder;
+    bookmarked?: boolean;
     page: number;
   },
 ): string {
@@ -46,6 +47,7 @@ export function buildWordsHref(
   if (opts.from) params.set("from", opts.from);
   if (opts.to) params.set("to", opts.to);
   if (opts.order && opts.order !== "asc") params.set("order", opts.order);
+  if (opts.bookmarked) params.set("bookmarked", "1");
   if (opts.page > 1) params.set("page", String(opts.page));
   const qs = params.toString();
   return qs.length > 0 ? `/words?${qs}` : "/words";

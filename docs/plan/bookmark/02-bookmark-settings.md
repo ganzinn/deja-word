@@ -1,6 +1,6 @@
 # 02. bookmark-settings
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -50,4 +50,5 @@ occurrence-preset-settings.integration.test.ts と同粒度でコロケートす
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし。ファイル名・関数シグネチャ・認可方針（`findFirst` + `scopedOwnerIds`）・複合 unique `userId_wordId`・OFF は `deleteMany`・read は scoped 検証なし、いずれもチケット前提どおり
+- 上限定数は `BOOKMARK_WORD_IDS_MAX_COUNT = 3000` として `src/lib/schema/bookmark.ts` に定義（06 の action から import 可能）

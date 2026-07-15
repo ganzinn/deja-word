@@ -35,6 +35,7 @@ model User {
   quizDefaultSetting       QuizDefaultSetting?
   quizDefaultTimeouts      QuizDefaultTimeout[]
   preference               UserPreference?
+  bookmarks                Bookmark[]
 
   @@unique([email])
   @@map("user")
@@ -129,6 +130,7 @@ model Word {
   wordOccurrences        WordOccurrence[]
   quizAnswers            QuizAnswer[]
   drillWords             DrillWord[]
+  bookmarks              Bookmark[]
 
   @@unique([ownerId, headword])
   @@index([ownerId])
@@ -473,4 +475,20 @@ model DrillWord {
   @@id([drillId, wordId])
   @@index([wordId])
   @@map("drill_word")
+}
+
+// ブックマーク: ユーザー × 単語の per-user side table。行があればその単語をブックマーク中（ON）。
+// 共有マスタ単語（ownerId=system）にも本人の行を張れる。個別 @@index([userId]) は張らない
+// （PK 先頭列 prefix と完全重複するため。手本 OccurrencePresetSetting との差異は意図的）。
+model Bookmark {
+  userId    String   @map("user_id")
+  wordId    String   @map("word_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([userId, wordId])
+  @@index([wordId])
+  @@map("bookmark")
 }

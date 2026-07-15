@@ -1,6 +1,6 @@
 # 01. bookmark-schema
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -74,4 +74,8 @@ Bookmark モデルを新設して migration を適用し、naming-book への用
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- naming-book の Bookmark エントリは設計フェーズで既に本体登録済みだった（出典がプレースホルダ）。本チケットでは出典行を `prisma/schema.prisma:483` へ確定するのみとした（新規追加ではなく確定作業）
+- Bookmark モデルは schema.prisma 末尾（DrillWord の後）に配置。逆リレーションは User / Word に `bookmarks Bookmark[]` を追記
+- ADR は 0069（per-user side table＋開始時評価）の 1 本のみ起票。全件モード ADR（ADR-0022 例外）は分担どおり 03 で起票する（0069 の「影響」節に前振りあり）
+- migration は `20260715162102_add_bookmark`（CREATE TABLE ＋ `bookmark_word_id_idx` ＋ user/word 両 FK Cascade のみ。backfill なし・`@@index([userId])` なし）。04 着手時は本チケットマージ後に `pnpm db:migrate` を実行する運用（plan ハブ記載どおり）
+- テスト追加なし（Bookmark の挙動担保は 02 の integration テストで行う方針）

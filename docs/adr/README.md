@@ -49,6 +49,7 @@
 | [0013](0013-enum-addition-backfill-migration.md) | enum 値追加時は推奨デフォルトの backfill migration | 高 | — |
 | [0065](0065-system-word-coexistence.md) | system 単語作成は共存させる（昇格マージ廃止、0062 を置換） | 高 | — |
 | [0066](0066-system-word-deletion-guard.md) | system 所有単語の削除方針（pass-through 子を持つ共有単語は削除拒否） | 高 | — |
+| [0069](0069-bookmark-per-user-side-table-start-time-eval.md) | ブックマークは per-user side table・quiz 絞り込みは開始時評価 | 高 | — |
 
 ### C. アーキテクチャ・レイヤリング
 

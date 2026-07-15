@@ -69,4 +69,6 @@ quiz の出題クエリ（`src/lib/quiz/queries/quiz-source.ts` の 3 関数）�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 2026-07-16 実装セッション: teammate への委譲が API 接続エラー（Connection closed mid-response）で 3 回連続中断したためスキップ。実装内容起因の失敗ではない（DoD 未達・テスト失敗ではない）
+- worktree `../deja-word-worktrees/bookmark-03-quiz-source`（ブランチ `feature/bookmark-03-quiz-source`）を検査用に残置。3 回目の試行による未コミット変更 `src/lib/quiz/queries/quiz-source.ts` あり（未完成の可能性が高い）
+- 依存する 04・09 も未着手のまま保留。再開時は本チケットから（ready 判定が拾う）

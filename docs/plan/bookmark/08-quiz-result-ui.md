@@ -49,4 +49,7 @@ quiz 結果一覧の行と単語詳細ダイアログにブックマークトグ
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 2026-07-16 実装セッション: **着手前調査でチケット内の指示が両立不能と判明し、実装せず停止**（worktree 変更なし）。ticket-split への差し戻し対象
+  - 矛盾: (1)「状態マップは ResultList 内で管理」(2)「quiz-flow.tsx は 09 の担当・触らない」(3) DoD「ダイアログでトグル → 行の表示が同期」の 3 つが両立しない。結果画面の単語詳細ダイアログを描画しているのは ResultList でなく quiz-flow（quiz-flow.tsx:1054-1060、ResultList は onOpenDialog を dialogStack へ渡すだけ）のため、(3) の配線には quiz-flow の編集が必須で (2) と衝突する
+  - 回避不能の確認済み: BookmarkButton は内部 useState で行とダイアログのインスタンスが状態非共有／ResultList とダイアログは quiz-flow 直下の兄弟で context でも包めない／ResultList 自前ダイアログ案はブラウザバックガード（dialogStack 層数）を壊す
+  - 推奨解消案（teammate 分析）: 状態マップを quiz-flow に持たせる（設計 04-ui.md 決定 4 の「(quiz-flow / ResultList)」表記とも整合）。その場合 08 が quiz-flow を触るため、**quiz-flow.tsx を共有する 08 と 09 の直列化（順序決め）が必要** → 計画の変更に当たるため ticket-split で判断する

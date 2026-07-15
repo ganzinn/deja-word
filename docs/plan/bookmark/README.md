@@ -19,7 +19,7 @@
 | [02-bookmark-settings.md](02-bookmark-settings.md) | UseCase `setBookmarkForUser` / `getBookmarkedWordIdsForUser` ＋入力スキーマ `schema/bookmark.ts` | 01 | 完了（2026-07-16） | - |
 | [03-quiz-source.md](03-quiz-source.md) | quiz-source 3 関数へのブックマーク述語・全件モード対応（後方互換のシグネチャ拡張）＋ ADR「全件モード」起票 | 01 | 実装中 | - |
 | [04-quiz-persist.md](04-quiz-persist.md) | Drill / QuizDefaultSetting の migration ＋ schema/quiz 拡張＋ quiz-generate / drill-create / quiz-default-settings / drill 系 3 ファイルの対応 | 01, 03 | 未着手 | - |
-| [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 未着手 | - |
+| [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 実装中 | - |
 | [06-toggle-foundation.md](06-toggle-foundation.md) | server action `toggleBookmark` / `getBookmarkStates` ＋共有部品 BookmarkButton / RowBookmarkButton（UI 未設置） | 02 | 完了（2026-07-16） | - |
 | [07-words-ui.md](07-words-ui.md) | 単語一覧の行・toolbar フィルタトグル・単語詳細への設置＋ E2E | 02, 05, 06 | 未着手 | - |
 | [08-quiz-result-ui.md](08-quiz-result-ui.md) | quiz 結果一覧・単語詳細ダイアログへの設置（getWordDetailForDialog 拡張）＋ E2E | 02, 06 | 未着手 | - |

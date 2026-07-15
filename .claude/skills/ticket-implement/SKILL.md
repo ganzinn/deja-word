@@ -1,7 +1,7 @@
 ---
 name: ticket-implement
-description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。--teams 指定で実装の委譲先をサブエージェントから agent teams の teammate に切り替える。
-argument-hint: "[機能名] [--pr] [--teams]"
+description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。--teams 指定で実装の委譲先をサブエージェントから agent teams の teammate に、--herdr 指定で herdr の独立ペインで動く claude CLI に切り替える。
+argument-hint: "[機能名] [--pr] [--teams|--herdr]"
 disable-model-invocation: true
 ---
 
@@ -13,11 +13,12 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ## 引数
 
-対象: `$ARGUMENTS`（`<機能名> [--pr] [--teams]`）
+対象: `$ARGUMENTS`（`<機能名> [--pr] [--teams|--herdr]`）
 
 - 機能名は `docs/plan/<機能名>/` のディレクトリ名
 - `--pr` 指定でチケット単位 PR モード。なしなら単一ブランチ統合モード（デフォルト）
 - `--teams` 指定で実装の委譲先をサブエージェントから agent teams の teammate に切り替える（「teams 委譲」節参照）。委譲手段のみの切替で、ブランチ運用モードとは独立（`--pr` と併用可）
+- `--herdr` 指定で実装の委譲先を herdr の独立ペインで動く claude CLI に切り替える（「herdr ペイン委譲」節参照）。これも委譲手段のみの切替で `--pr` と併用可。`--teams` とは排他（両方指定されたら計画ドラフト提示でどちらにするか確認する）
 - 機能名未指定の場合: `docs/plan/` 配下の各ハブを走査し、機能ごとに「完了 / 全チケット数」「今着手可能なチケット」「検出された前回モード（統合ブランチの有無・チケット単位 PR リンクの有無）」の一覧を提示して選んでもらう
 
 ## 前提条件チェック
@@ -104,7 +105,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ## サブエージェント委譲
 
-[templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) のプレースホルダ（`{機能名}` `{NN}` `{チケット名}` `{worktree絶対パス}`）を埋めて委譲する。チケット本文の転記はしない（サブエージェントが worktree 内のハブ＋チケットを読む）。
+[templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) のプレースホルダ（`{機能名}` `{NN}` `{チケット名}` `{worktree絶対パス}`。`{報告ファイル絶対パス}` は --herdr のみ — テンプレ冒頭の注記に従う）を埋めて委譲する。チケット本文の転記はしない（サブエージェントが worktree 内のハブ＋チケットを読む）。
 
 ## teams 委譲（--teams）
 
@@ -116,6 +117,27 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 - 完了・手詰まりは teammate からの通知・メッセージで受け、報告（変更ファイル一覧・DoD 結果・実装メモ）をメインが回収する。マージして worktree を削除したら当該 teammate は解放する
 - 「失敗・中断時の扱い」はサブエージェント委譲と同一規則を適用する（「再委譲」= 同一 worktree を担当する teammate への再指示メッセージ）
 - teams 特有の制約: セッションは `/resume` で teammate を復元しない。中断・再開は本スキルの既存フロー（ready 判定・突き合わせ）がそのまま吸収するため追加の再開処理は不要。teammate の権限確認はリードへバブルアップされるため、承認待ちで停滞しない permission mode で開始する
+
+## herdr ペイン委譲（--herdr）
+
+委譲先を herdr の独立ペインで動く claude CLI に切り替える。**役割分担・ブランチ運用・状態の意味・ウェーブの回し方は一切変わらない**（teams 委譲と同じ「委譲手段のみの切替」）。teammate と違い実装エージェントごとに実ターミナルペインを持つため、**herdr サイドバーで各エージェントの idle / working / blocked / done が個別に可視化される**のが利点。herdr の操作コマンドは herdr スキル（`HERDR_ENV=1` で利用可）を参照する。
+
+- 前提: `HERDR_ENV=1`（herdr 管理下のペインで実行中）かつ herdr の claude integration 導入済み（`herdr integration status` で `claude: current`）。満たさなければ通常のサブエージェント委譲にフォールバックし、その旨を計画ドラフト提示で伝える
+- **起動**: ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、専用ペインで claude を起動する:
+
+  ```sh
+  herdr agent start <機能名>-NN --cwd <worktree絶対パス> --split down --no-focus \
+    -- claude --permission-mode acceptEdits "$(cat <プロンプトファイル>)"
+  ```
+
+  返却 JSON の pane_id を控える（ペイン ID は不変ではないため、見失ったら `herdr agent list` で引き直す）。ペインが増えて見づらければ専用タブ（`herdr tab create --label "<機能名> impl"` → `--tab <id>`）を使ってよい
+- **permission mode**: 承認待ちで完全に停滞しないモードで起動する（既定は `--permission-mode acceptEdits`）。それでも blocked になった場合はサイドバーに見えるので、ユーザーが当該ペインで直接承認できる。メインは blocked を検知したら `herdr agent read <pane_id> --source recent --lines 40` で内容を確認し、判断できなければエスカレーションする
+- **完了待ち**: `herdr wait agent-status <pane_id> --status done --timeout 600000` で待つ。タイムアウトしたら `herdr agent list` で現状（working 継続 / blocked / idle）を確認して待ち直す。複数ペイン並行時はチケット番号順に順次待てばよい（マージ順と一致する）
+- **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。ファイルが無い・不完全な場合のフォールバックとして `herdr agent read <pane_id> --source recent-unwrapped --lines 200` で最終メッセージを読む
+- **後片付け**: マージ・検証成功後、`herdr pane close <pane_id>` でペインを閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に pane_id とパスを明記する
+- 並行度上限は共通ルールどおり（上限 3・推奨 2）。ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む。計画ドラフト提示に含める
+- 「失敗・中断時の扱い」はサブエージェント委譲と同一規則を適用する（「再委譲」= 同一ペインの claude への追加指示。`herdr pane run <pane_id> "<指示>"` で送る — 1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる。ペインが消えていた場合のみ同一 worktree で claude を起動し直す）
+- 中断・再開は既存フロー（ready 判定・突き合わせ）がそのまま吸収する。再開時に前回の実装ペインが残っていれば `herdr agent list` で状態を確認し、done/idle なら報告回収から続行、消えていれば worktree の残骸ルール（計画ドラフト提示の「実装中」スタック行の扱い）に従う
 
 ## 失敗・中断時の扱い
 

@@ -12,6 +12,8 @@ export type QuizDefaults = {
   occurrenceId: string | null;
   rangeFrom: number | null;
   rangeTo: number | null;
+  /** 「ブックマークのみ」絞り込みのデフォルト。null = アプリ既定 OFF。occurrence 削除で occurrenceId が null になっても残す（全件モードの初期値として成立）。 */
+  bookmarkedOnly: boolean | null;
   format: QuizFormat | null;
   /** 出題形式ごとの制限時間（秒）。全形式キーを持ち、null = その形式は制限なし（行なし）。 */
   timeoutByFormat: Record<QuizFormat, number | null>;
@@ -115,6 +117,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       occurrenceId: null,
       rangeFrom: null,
       rangeTo: null,
+      bookmarkedOnly: null,
       format: null,
       timeoutByFormat,
       showCountdown: null,
@@ -136,6 +139,8 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     occurrenceId: occurrenceVisible ? setting.occurrenceId : null,
     rangeFrom: setting.rangeFrom,
     rangeTo: setting.rangeTo,
+    // occurrence 削除（SetNull）で occurrenceId が null になっても bookmarkedOnly は残す（決定 6）。
+    bookmarkedOnly: setting.bookmarkedOnly,
     format: setting.format,
     timeoutByFormat,
     showCountdown: setting.showCountdown,
@@ -185,13 +190,17 @@ export async function saveStartSettingsAsDefaultsForUser(
   userId: string,
   input: StartQuizInput,
 ): Promise<void> {
-  await assertOccurrenceInScope(userId, input.occurrenceId);
+  // 掲載箇所ありのときだけ可視性を検証する（全件モードは掲載箇所を指定しない）。
+  const occurrenceId = input.occurrenceId ?? null;
+  if (occurrenceId !== null) await assertOccurrenceInScope(userId, occurrenceId);
 
   // 開始画面にある項目のみ。rangeFrom / rangeTo は空欄が undefined のため null に正規化する。
   const settingInput = {
-    occurrenceId: input.occurrenceId,
+    occurrenceId,
     rangeFrom: input.rangeFrom ?? null,
     rangeTo: input.rangeTo ?? null,
+    // 「ブックマークのみ」も開始画面項目。省略時 false（決定 6）。
+    bookmarkedOnly: input.bookmarkedOnly ?? false,
     format: input.format,
     choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
   };

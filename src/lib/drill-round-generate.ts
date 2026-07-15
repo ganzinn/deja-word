@@ -64,6 +64,7 @@ export async function generateDrillRoundForUser(
       rangeTo: true,
       sourceRangeFrom: true,
       sourceRangeTo: true,
+      sourceBookmarkedOnly: true,
       roundCount: true,
       words: { where: { remaining: { gt: 0 } }, select: { wordId: true } },
     },
@@ -71,12 +72,13 @@ export async function generateDrillRoundForUser(
   if (!drill) throw new DrillNotFoundError();
 
   // 範囲（rangeFrom/rangeTo）は範囲内ダミー候補の供給用に渡し、未定着メンバー自体は
-  // ensureTargetWordIds で範囲と独立に取得する。
+  // ensureTargetWordIds で範囲と独立に取得する。全件モード drill は occurrenceId / range とも null。
+  // ブックマーク条件は再適用しない（drill は DrillWord スナップショット。決定 5）。
   const memberIds = drill.words.map((w) => w.wordId);
   const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
     drill.occurrenceId,
-    { from: drill.rangeFrom, to: drill.rangeTo },
+    { from: drill.rangeFrom ?? undefined, to: drill.rangeTo ?? undefined },
     { includeTgExamples: isTgExampleFormat(drill.format), ensureTargetWordIds: memberIds },
   );
   // 自己修復削除（ADR-0067）: 未定着なのに出題対象として返ってこなかったメンバー
@@ -119,14 +121,17 @@ export async function generateDrillRoundForUser(
     },
     roundCount: drill.roundCount,
     sourceTest: {
-      occurrenceId: drill.occurrenceId,
+      // 全件モード drill は occurrenceId が null。StartQuizInput の optional に合わせて undefined へ
+      occurrenceId: drill.occurrenceId ?? undefined,
       // NULL = 元テストが範囲指定なし（Occurrence 全体）。StartQuizInput の optional に合わせる
       rangeFrom: drill.sourceRangeFrom ?? undefined,
       rangeTo: drill.sourceRangeTo ?? undefined,
+      // 元テストの「ブックマークのみ」指定。再テストは開始時に今のブックマーク集合で再評価する（決定 5）
+      bookmarkedOnly: drill.sourceBookmarkedOnly,
       format: drill.format,
       timeoutSeconds: drill.timeoutSeconds,
       choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
     },
-    occurrenceName: drill.occurrence.location,
+    occurrenceName: drill.occurrence?.location ?? "",
   };
 }

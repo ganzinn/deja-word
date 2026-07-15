@@ -62,6 +62,63 @@ describe("quizRangeInputSchema", () => {
   });
 });
 
+describe("quizRangeInputSchema bookmarkedOnly / cross-field (決定 1・3)", () => {
+  test("bookmarkedOnly defaults to false when omitted", () => {
+    const r = quizRangeInputSchema.safeParse({ occurrenceId: "occ_1" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.bookmarkedOnly).toBe(false);
+  });
+
+  test("掲載箇所指定 × bookmarkedOnly false/true = 従来どおり許可", () => {
+    expect(
+      quizRangeInputSchema.safeParse({ occurrenceId: "occ_1", bookmarkedOnly: false }).success,
+    ).toBe(true);
+    expect(
+      quizRangeInputSchema.safeParse({ occurrenceId: "occ_1", bookmarkedOnly: true }).success,
+    ).toBe(true);
+  });
+
+  test("全件モード: 掲載箇所未指定 × bookmarkedOnly true × 範囲なし = 許可", () => {
+    const r = quizRangeInputSchema.safeParse({ bookmarkedOnly: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.occurrenceId).toBeUndefined();
+  });
+
+  test("掲載箇所未指定 × bookmarkedOnly false = 拒否（掲載箇所必須。省略時 false 扱いも同様）", () => {
+    expect(quizRangeInputSchema.safeParse({ bookmarkedOnly: false }).success).toBe(false);
+    expect(quizRangeInputSchema.safeParse({}).success).toBe(false);
+  });
+
+  test("掲載箇所未指定 × bookmarkedOnly true × 範囲あり = 拒否", () => {
+    expect(quizRangeInputSchema.safeParse({ bookmarkedOnly: true, rangeFrom: 1 }).success).toBe(
+      false,
+    );
+    expect(quizRangeInputSchema.safeParse({ bookmarkedOnly: true, rangeTo: 100 }).success).toBe(
+      false,
+    );
+    expect(
+      quizRangeInputSchema.safeParse({ bookmarkedOnly: true, rangeFrom: 1, rangeTo: 100 }).success,
+    ).toBe(false);
+  });
+
+  test("クロスフィールド検証は extend 先へ自動波及する（決定 5）", () => {
+    // getQuizPreviewInputSchema
+    expect(getQuizPreviewInputSchema.safeParse({ bookmarkedOnly: true }).success).toBe(true);
+    expect(getQuizPreviewInputSchema.safeParse({}).success).toBe(false);
+    // startQuizInputSchema
+    const startBase = {
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    } as const;
+    expect(startQuizInputSchema.safeParse({ ...startBase, bookmarkedOnly: true }).success).toBe(
+      true,
+    );
+    // 掲載箇所未指定 × bookmarkedOnly 省略（false）は拒否
+    expect(startQuizInputSchema.safeParse({ ...startBase }).success).toBe(false);
+  });
+});
+
 describe("quizFormatSchema", () => {
   test("accepts every quiz format (both directions)", () => {
     for (const f of [
@@ -608,6 +665,36 @@ describe("saveQuizDefaultsInputSchema", () => {
     expect(r.success).toBe(true);
   });
 
+  test("bookmarkedOnly accepts true / false / null, defaults to null when omitted, rejects non-boolean", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
+      drillIncludeCorrect: null,
+      resetRemaining: null,
+      vagueRemaining: null,
+      initialCorrectRemaining: null,
+      saveOnStart: null,
+    };
+    for (const bookmarkedOnly of [true, false, null]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, bookmarkedOnly }).success).toBe(true);
+    }
+    // 省略時は `.default(null)` で null が補われる（設定フォーム未更新の後方互換）。
+    const r = saveQuizDefaultsInputSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.bookmarkedOnly).toBeNull();
+    expect(saveQuizDefaultsInputSchema.safeParse({ ...base, bookmarkedOnly: "true" }).success).toBe(
+      false,
+    );
+  });
+
   test("saveOnStart accepts true / false / null, rejects non-boolean / missing", () => {
     const base = {
       occurrenceId: null,
@@ -704,6 +791,33 @@ describe("startDrillInputSchema", () => {
     expect(startDrillInputSchema.safeParse({ ...base, drillIncludeCorrect: null }).success).toBe(
       false,
     );
+  });
+
+  test("occurrenceId optional (全件モード drill) and sourceBookmarkedOnly defaults to false", () => {
+    const base = {
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [{ wordId: "w_1", result: "INCORRECT" }],
+    } as const;
+    // 掲載箇所なし（ブックマーク全件モードの元テスト由来）も受理する。startDrill 側にクロスフィールド検証はない。
+    const r = startDrillInputSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.occurrenceId).toBeUndefined();
+      expect(r.data.sourceBookmarkedOnly).toBe(false);
+    }
+    const r2 = startDrillInputSchema.safeParse({
+      ...base,
+      occurrenceId: "occ_1",
+      sourceBookmarkedOnly: true,
+    });
+    expect(r2.success).toBe(true);
+    if (r2.success) expect(r2.data.sourceBookmarkedOnly).toBe(true);
   });
 
   test("remaining counts are required integers in 1..9", () => {

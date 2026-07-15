@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { prisma } from "@/lib/prisma";
 import { generateQuizForUser } from "@/lib/quiz-generate";
 
 import { createOccurrenceRow, createQuizWordRow, createTestUser } from "../../tests/setup/fixtures";
@@ -69,5 +70,40 @@ describe("generateQuizForUser (TG four-choice, meaning-independent)", () => {
     expect(q.prompt).toBe("the meaningless target sentence");
     expect(q.answer).toBe("対象の例文の意味");
     expect(q.pronunciationAudioUrl).toBeNull();
+  });
+});
+
+describe("generateQuizForUser (all-bookmark mode / bookmarkedOnly の pass-through)", () => {
+  test("全件モード（掲載箇所なし＋bookmarkedOnly）はブックマーク済み単語のみ出題する（掲載番号なし・未紐付けも含む）", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "全件モード帳");
+    // ブックマーク済み: 掲載番号なし・未紐付けでも全件モードでは出題対象になる（ADR-0022 の明示的例外）。
+    const bmUnnumbered = await createQuizWordRow(user.id, "bm-unnumbered", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    const bmUnlinked = await createQuizWordRow(user.id, "bm-unlinked");
+    // ブックマークなし（出題対象外。ダミー候補にはなりうるが SELF_JUDGE はダミー不要）。
+    const other = await createQuizWordRow(user.id, "not-bookmarked", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    await prisma.bookmark.createMany({
+      data: [
+        { userId: user.id, wordId: bmUnnumbered.id },
+        { userId: user.id, wordId: bmUnlinked.id },
+      ],
+    });
+
+    const payload = await generateQuizForUser(user.id, {
+      // occurrenceId 省略 = 全件モード
+      bookmarkedOnly: true,
+      format: "SELF_JUDGE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    });
+
+    expect(payload.format).toBe("SELF_JUDGE");
+    const askedIds = new Set(payload.questions.map((q) => q.wordId));
+    expect(askedIds).toEqual(new Set([bmUnnumbered.id, bmUnlinked.id]));
+    expect(askedIds.has(other.id)).toBe(false);
   });
 });

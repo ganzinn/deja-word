@@ -323,6 +323,109 @@ describe("createDrillForUser", () => {
     expect(drill.words[0]).toMatchObject({ wordId: vague.id, remaining: 2 });
   });
 
+  test("occurrence-mode drill persists sourceBookmarkedOnly (元テストの「ブックマークのみ」指定)", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const w = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      sourceBookmarkedOnly: true,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [{ wordId: w.id, result: "INCORRECT" }],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    expect(drill.occurrenceId).toBe(occurrence.id);
+    expect(drill.sourceBookmarkedOnly).toBe(true);
+  });
+
+  test("all-bookmark mode (no occurrence) creates a drill with null occurrence/range and stores sourceBookmarkedOnly", async () => {
+    const user = await createTestUser();
+    // 掲載箇所に紐付かない単語（掲載番号なし・未紐付け）でも全件モード drill は投入される（issue #106 の番号縛りは掲載箇所ありのみ）。
+    const w1 = await createQuizWordRow(user.id, "alpha");
+    const w2 = await createQuizWordRow(user.id, "beta");
+
+    const { drillId } = await createDrillForUser(user.id, {
+      // occurrenceId 省略 = 全件モード
+      sourceBookmarkedOnly: true,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [
+        { wordId: w1.id, result: "INCORRECT" },
+        { wordId: w2.id, result: "VAGUE" },
+      ],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({
+      where: { id: drillId },
+      include: { words: true },
+    });
+    // 掲載箇所なし drill は occurrenceId / rangeFrom / rangeTo が 3 つとも null（実効範囲は計算しない）。
+    expect(drill.occurrenceId).toBeNull();
+    expect(drill.rangeFrom).toBeNull();
+    expect(drill.rangeTo).toBeNull();
+    expect(drill.sourceBookmarkedOnly).toBe(true);
+    const remainingByWordId = new Map(drill.words.map((w) => [w.wordId, w.remaining]));
+    expect(remainingByWordId.get(w1.id)).toBe(3);
+    expect(remainingByWordId.get(w2.id)).toBe(2);
+  });
+
+  test("all-bookmark mode with no insertable results throws EmptyDrillResultsError", async () => {
+    const user = await createTestUser();
+    const w = await createQuizWordRow(user.id, "alpha");
+    // drillIncludeCorrect=false ＋ 全問正解 → 全件モードでも投入対象 0 件（既存の 0 件流儀）。
+    await expect(
+      createDrillForUser(user.id, {
+        sourceBookmarkedOnly: true,
+        format: "CHOICE",
+        timeoutSeconds: null,
+        choiceFirstMeaningTextOnly: false,
+        drillIncludeCorrect: false,
+        resetRemaining: 3,
+        vagueRemaining: 2,
+        initialCorrectRemaining: 1,
+        results: [{ wordId: w.id, result: "CORRECT" }],
+      }),
+    ).rejects.toBeInstanceOf(EmptyDrillResultsError);
+  });
+
+  test("sourceBookmarkedOnly defaults to false when omitted", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "本A");
+    const w = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+
+    const { drillId } = await createDrillForUser(user.id, {
+      occurrenceId: occurrence.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [{ wordId: w.id, result: "INCORRECT" }],
+    });
+
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    expect(drill.sourceBookmarkedOnly).toBe(false);
+  });
+
   test("drillIncludeCorrect=false with all-correct results throws EmptyDrillResultsError", async () => {
     const user = await createTestUser();
     const occurrence = await createOccurrenceRow(user.id, "本A");

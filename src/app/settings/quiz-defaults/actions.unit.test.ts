@@ -107,7 +107,8 @@ describe("saveQuizDefaults (Server Action)", () => {
     mockedSave.mockResolvedValue();
     const res = await saveQuizDefaults(VALID_INPUT);
     expect(res).toEqual({ ok: true });
-    expect(mockedSave).toHaveBeenCalledWith("u_1", VALID_INPUT);
+    // スキーマの bookmarkedOnly `.default(null)` がパース後に補われる。
+    expect(mockedSave).toHaveBeenCalledWith("u_1", { ...VALID_INPUT, bookmarkedOnly: null });
     expect(mockedRevalidatePath).toHaveBeenCalledWith("/settings/quiz-defaults");
   });
 
@@ -144,6 +145,7 @@ describe("saveQuizDefaults (Server Action)", () => {
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });
-    expect(mockedSave).toHaveBeenCalledWith("u_1", input);
+    // スキーマの bookmarkedOnly `.default(null)` がパース後に補われる。
+    expect(mockedSave).toHaveBeenCalledWith("u_1", { ...input, bookmarkedOnly: null });
   });
 });

@@ -38,6 +38,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     occurrenceId: null,
     rangeFrom: null,
     rangeTo: null,
+    bookmarkedOnly: null,
     format: null,
     timeoutByFormat: timeoutMap({}),
     showCountdown: null,
@@ -129,6 +130,23 @@ describe("saveQuizDefaultsForUser", () => {
     const user = await createTestUser();
     await saveQuizDefaultsForUser(user.id, defaults({ drillIncludeCorrect: true }));
     expect((await getQuizDefaultsForUser(user.id))?.drillIncludeCorrect).toBe(true);
+  });
+
+  test("persists bookmarkedOnly (round-trips true) and retains it after occurrence SetNull (決定 6)", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "削除予定bm", 0);
+    await saveQuizDefaultsForUser(
+      user.id,
+      defaults({ occurrenceId: occ.id, bookmarkedOnly: true }),
+    );
+    expect((await getQuizDefaultsForUser(user.id))?.bookmarkedOnly).toBe(true);
+
+    // occurrence 削除（DB の SetNull）で occurrenceId は null になるが bookmarkedOnly は残る
+    // （結果の「occurrenceId null ＋ bookmarkedOnly true」は全件モードの初期値として成立する）。
+    await prisma.occurrence.delete({ where: { id: occ.id } });
+    const saved = await getQuizDefaultsForUser(user.id);
+    expect(saved?.occurrenceId).toBeNull();
+    expect(saved?.bookmarkedOnly).toBe(true);
   });
 
   test("syncs per-format timeout rows: upsert for values, delete for null on re-save", async () => {
@@ -310,6 +328,8 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 30 }),
         // 開始画面項目（四択先頭訳語のみ表示）は上書きされる
         choiceFirstMeaningTextOnly: true,
+        // bookmarkedOnly も開始画面項目。入力で未指定 = false へ上書きされる（決定 6）
+        bookmarkedOnly: false,
         // 定着までの回数は開始画面に項目が無いため触らない（null のまま温存）
         // 挙動設定・メタ設定はすべて温存
         showCountdown: true,
@@ -342,6 +362,8 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "CHOICE",
         timeoutByFormat: { ...DEFAULT_QUIZ_SETTINGS.timeoutByFormat, CHOICE: 8 },
         choiceFirstMeaningTextOnly: true,
+        // bookmarkedOnly も開始画面項目。入力で未指定 = false（決定 6）
+        bookmarkedOnly: false,
       }),
     );
   });
@@ -407,5 +429,19 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         choiceFirstMeaningTextOnly: false,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
+  });
+
+  test("all-bookmark mode (no occurrence) stores bookmarkedOnly with a null occurrence (決定 6)", async () => {
+    const user = await createTestUser();
+    // 掲載箇所なし（全件モードの元テスト由来）: occurrenceId / range とも未指定、bookmarkedOnly true。
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      bookmarkedOnly: true,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    });
+    const saved = await getQuizDefaultsForUser(user.id);
+    expect(saved?.occurrenceId).toBeNull();
+    expect(saved?.bookmarkedOnly).toBe(true);
   });
 });

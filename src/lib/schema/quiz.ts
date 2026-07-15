@@ -6,7 +6,6 @@ import type { DrillRoundInput } from "@/lib/quiz/handlers/drill-round-handler";
 import { ALL_QUIZ_FORMATS } from "@/lib/quiz/format-options";
 import { REMAINING_MAX_COUNT, REMAINING_MIN_COUNT } from "@/lib/quiz/remaining-options";
 import { TIMEOUT_MAX_SECONDS, TIMEOUT_MIN_SECONDS } from "@/lib/quiz/timeout-options";
-import type { QuizRangeInput } from "@/lib/quiz-preview";
 import type { QuizFormat } from "@/generated/prisma/enums";
 
 /**
@@ -23,16 +22,53 @@ export const INPUT_ID_MAX_LENGTH = 64;
 const idInputSchema = z.string().min(1).max(INPUT_ID_MAX_LENGTH);
 
 /**
- * テスト範囲の入力（docs/adr/0017-server-actions-over-route-handlers.md）。
+ * 掲載箇所未指定（掲載箇所 Select「指定なし」）を許すのは「ブックマーク全件モード」
+ * — `bookmarkedOnly: true` かつ範囲未指定 — のときだけ。違反は入口（スキーマ）で拒否する
+ * （逆転範囲を拒否しない既存規約とは別扱い。こちらは形として無効。決定 3）。
+ * `.extend()` した各 action 入力スキーマにも同じ検証を掛けるため関数として共有する。
+ */
+function checkQuizRangeCrossField(
+  val: { occurrenceId?: string; rangeFrom?: number; rangeTo?: number; bookmarkedOnly: boolean },
+  ctx: z.RefinementCtx,
+): void {
+  if (val.occurrenceId !== undefined) return;
+  if (!val.bookmarkedOnly) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["occurrenceId"],
+      message: "掲載箇所を指定してください。",
+    });
+  }
+  if (val.rangeFrom !== undefined || val.rangeTo !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["rangeFrom"],
+      message: "掲載箇所を指定しないときは範囲を指定できません。",
+    });
+  }
+}
+
+/**
+ * テスト範囲の入力の ZodObject（フィールド定義のみ。`.extend()` の土台に保つため refine 前）。
  * mode と ownerId はサーバー側（経路とセッション）で決まるため含めない。
  * rangeFrom > rangeTo はスキーマでは拒否しない（対象 0 件として下流の
  * partitionMaterial / checkFormatAvailability が「成立しない」と扱う）。
+ * occurrenceId は optional（掲載箇所未指定＝ブックマーク全件モード。上のクロスフィールド検証で門番）。
+ * bookmarkedOnly は「ブックマークのみ」絞り込み。`.default(false)` で省略時 false（未更新フォームも後方互換で通る。
+ * パース後の型は必須 boolean。決定 1）。
  */
-export const quizRangeInputSchema = z.object({
-  occurrenceId: idInputSchema,
+const quizRangeInputObject = z.object({
+  occurrenceId: idInputSchema.optional(),
   rangeFrom: z.number().int().positive().optional(),
   rangeTo: z.number().int().positive().optional(),
-}) satisfies z.ZodType<QuizRangeInput>;
+  bookmarkedOnly: z.boolean().default(false),
+});
+
+/**
+ * テスト範囲の入力（docs/adr/0017-server-actions-over-route-handlers.md）。
+ * 掲載箇所未指定＋範囲のクロスフィールド検証込み（決定 3）。
+ */
+export const quizRangeInputSchema = quizRangeInputObject.superRefine(checkQuizRangeCrossField);
 
 // 形式リストは ALL_QUIZ_FORMATS（FORMAT_GROUPS 由来）を単一の出どころとする。
 // 形式追加は enum 値＋FORMAT_GROUPS への追記だけでここに波及する。
@@ -76,20 +112,24 @@ export const answerInputSchema = z.object({
  * `getQuizPreview` の入力。format は任意（未選択・非 TG 形式ではプレビューが形式非依存のため）。
  * TG 例文形式のときだけ対象件数・除外内訳が TG 例文の有無で絞られる。
  */
-export const getQuizPreviewInputSchema = quizRangeInputSchema.extend({
-  format: quizFormatSchema.optional(),
-});
+export const getQuizPreviewInputSchema = quizRangeInputObject
+  .extend({
+    format: quizFormatSchema.optional(),
+  })
+  .superRefine(checkQuizRangeCrossField);
 
 /**
  * `startQuiz` の入力。定着までの回数（残数設定）はテスト結果画面で受け取り `startDrill` に渡すため
  * ここには含めない（テスト生成 `generateQuizForUser` も残数を使わない）。
  */
-export const startQuizInputSchema = quizRangeInputSchema.extend({
-  format: quizFormatSchema,
-  timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
-  // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
-  choiceFirstMeaningTextOnly: z.boolean(),
-});
+export const startQuizInputSchema = quizRangeInputObject
+  .extend({
+    format: quizFormatSchema,
+    timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
+    // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
+    choiceFirstMeaningTextOnly: z.boolean(),
+  })
+  .superRefine(checkQuizRangeCrossField);
 
 /** `submitQuizAnswers` の入力。テストは常に 1 問以上のため空の answers は不正とする。 */
 export const submitQuizAnswersInputSchema = z.object({
@@ -118,6 +158,9 @@ export const saveQuizDefaultsInputSchema = z.object({
   occurrenceId: idInputSchema.nullable(),
   rangeFrom: z.number().int().positive().nullable(),
   rangeTo: z.number().int().positive().nullable(),
+  // 「ブックマークのみ」絞り込みのデフォルト。null = アプリ既定 OFF（既存の nullable Boolean 項目と同じ流儀。決定 6）。
+  // `.default(null)` で省略時は null（09 未実装の設定フォームが bookmarkedOnly を送らない後方互換）。
+  bookmarkedOnly: z.boolean().nullable().default(null),
   format: quizFormatSchema.nullable(),
   timeoutByFormat: quizTimeoutByFormatSchema,
   showCountdown: z.boolean().nullable(),
@@ -148,11 +191,15 @@ export const drillResultInputSchema = z.object({
  * テストは常に 1 問以上のため空の results は不正とする。
  */
 export const startDrillInputSchema = z.object({
-  occurrenceId: idInputSchema,
+  // 掲載箇所なし（ブックマーク全件モードの元テスト由来）では省略 = null で Drill を作る。
+  occurrenceId: idInputSchema.optional(),
   // 元テストの範囲（省略 = 範囲指定なし）。完了画面の「同じ範囲でもう一度テストする」用に
   // `Drill` へ保存する（実効範囲 rangeFrom/rangeTo とは別物）。
   sourceRangeFrom: z.number().int().positive().optional(),
   sourceRangeTo: z.number().int().positive().optional(),
+  // 元テストの「ブックマークのみ」指定（省略時 false）。`Drill.sourceBookmarkedOnly` に保存し、
+  // 再テスト開始時に今のブックマーク集合で再評価する（決定 5）。
+  sourceBookmarkedOnly: z.boolean().default(false),
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   choiceFirstMeaningTextOnly: z.boolean(),
@@ -201,10 +248,14 @@ export const submitDrillRetryInputSchema = z.object({
   answers: z.array(answerInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
-export type StartQuizInput = z.infer<typeof startQuizInputSchema>;
-export type SaveQuizDefaultsInput = z.infer<typeof saveQuizDefaultsInputSchema>;
+// bookmarkedOnly / sourceBookmarkedOnly は `.default(false)` のため、パース後（z.infer）の型では必須になる。
+// action 呼び出し元（start-form / quiz-flow）はこれらを未指定のまま送る後方互換があるため、
+// 呼び出し元が満たす「パース前」の入力型（z.input）を公開する（省略時 false は zod 側の default が補う）。
+export type StartQuizInput = z.input<typeof startQuizInputSchema>;
+// bookmarkedOnly は `.default(null)`。設定フォーム（09 未実装）が未指定で送る後方互換のため入力型を公開する。
+export type SaveQuizDefaultsInput = z.input<typeof saveQuizDefaultsInputSchema>;
 export type SubmitQuizAnswersInput = z.infer<typeof submitQuizAnswersInputSchema>;
-export type StartDrillInput = z.infer<typeof startDrillInputSchema>;
+export type StartDrillInput = z.input<typeof startDrillInputSchema>;
 export type StartDrillRoundInput = z.infer<typeof startDrillRoundInputSchema>;
 export type SubmitDrillRoundInput = z.infer<typeof submitDrillRoundInputSchema>;
 export type DeleteDrillInput = z.infer<typeof deleteDrillInputSchema>;

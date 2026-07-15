@@ -8,11 +8,19 @@ import {
 } from "@/lib/quiz/queries/quiz-source";
 import type { QuizFormat } from "@/generated/prisma/enums";
 
-/** テスト範囲の入力。ownerId は常にセッション由来でクライアント入力に含めない。 */
+/**
+ * テスト範囲の入力。ownerId は常にセッション由来でクライアント入力に含めない。
+ * action 呼び出し元が満たす「パース前」の入力型（`bookmarkedOnly` / `occurrenceId` は
+ * zod 側の `.default(false)` / optional に対応させ、省略時 false・未指定を許す）。必須にすると
+ * 09 まで bookmarkedOnly を送らない start-form / quiz-flow が型エラーになるため optional にする。
+ */
 export type QuizRangeInput = {
-  occurrenceId: string;
+  /** 掲載箇所。未指定 = ブックマーク全件モード（bookmarkedOnly=true かつ範囲未指定のときだけ有効）。 */
+  occurrenceId?: string;
   rangeFrom?: number;
   rangeTo?: number;
+  /** 「ブックマークのみ」絞り込み。省略時 false 扱い。 */
+  bookmarkedOnly?: boolean;
 };
 
 export type QuizPreview = {
@@ -43,12 +51,15 @@ export async function getQuizPreviewForUser(
   userId: string,
   input: QuizRangeInput & { format?: QuizFormat },
 ): Promise<QuizPreview> {
-  await assertOccurrenceVisible(userId, input.occurrenceId);
+  // 掲載箇所未指定（全件モード）では検証対象の掲載箇所がないため可視性検証をスキップする。
+  const occurrenceId = input.occurrenceId ?? null;
+  if (occurrenceId !== null) await assertOccurrenceVisible(userId, occurrenceId);
+  const bookmarkedOnly = input.bookmarkedOnly ?? false;
   const range = { from: input.rangeFrom, to: input.rangeTo };
   const tgFormat = input.format !== undefined && isTgExampleFormat(input.format);
   const [targetCount, excluded] = await Promise.all([
-    countQuizTargets(userId, input.occurrenceId, range, { requireTgExample: tgFormat }),
-    countQuizSourceExclusions(userId, input.occurrenceId, { countTgExample: tgFormat }),
+    countQuizTargets(userId, occurrenceId, range, { requireTgExample: tgFormat, bookmarkedOnly }),
+    countQuizSourceExclusions(userId, occurrenceId, { countTgExample: tgFormat, bookmarkedOnly }),
   ]);
 
   return { targetCount, excluded };

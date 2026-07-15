@@ -66,6 +66,8 @@ describe("generateDrillRoundForUser", () => {
       occurrenceId: occurrence.id,
       rangeFrom: 1,
       rangeTo: 100,
+      // 元テストの「ブックマークのみ」指定（Drill.sourceBookmarkedOnly の既定 false）
+      bookmarkedOnly: false,
       format: "SELF_JUDGE",
       timeoutSeconds: 7,
       choiceFirstMeaningTextOnly: false,
@@ -82,6 +84,8 @@ describe("generateDrillRoundForUser", () => {
       occurrenceId: occurrence.id,
       rangeFrom: undefined,
       rangeTo: undefined,
+      // 元テストの「ブックマークのみ」指定（Drill.sourceBookmarkedOnly の既定 false）
+      bookmarkedOnly: false,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,

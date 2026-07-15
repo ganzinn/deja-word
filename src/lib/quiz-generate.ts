@@ -30,9 +30,13 @@ export async function generateQuizForUser(
 ): Promise<QuizPayload> {
   const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
-    input.occurrenceId,
+    // 掲載箇所未指定（ブックマーク全件モード）は null で渡す。
+    input.occurrenceId ?? null,
     { from: input.rangeFrom, to: input.rangeTo },
-    { includeTgExamples: isTgExampleFormat(input.format) },
+    {
+      includeTgExamples: isTgExampleFormat(input.format),
+      bookmarkedOnly: input.bookmarkedOnly ?? false,
+    },
   );
   const material = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows);
 

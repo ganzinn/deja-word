@@ -49,20 +49,21 @@ graph LR
 - 01 のマージ後、02・03・05 は並行可
 - 04（03 の後）と 06（02 の後）は互いに並行可
 - 07・08 は 06 の後に並行可（07 は 05 のマージも必要）
-- 09 は 04 の後（07・08 とは並行可）
+- 09 は 04 の後（07 とは並行可）。08 は quiz-flow.tsx を 09 と共有するため 09 の完了後に着手する
 
 ## チケット横断の共通事項
 
 ### 共有物・競合点
 
-原則として同一ファイルは 1 チケットだけが触る分割にしてある。例外は以下の 3 ファイルで、いずれも依存関係または着手順序で直列化する。
+原則として同一ファイルは 1 チケットだけが触る分割にしてある。例外は以下の 4 ファイルで、いずれも依存関係または着手順序で直列化する。
 
 - `prisma/schema.prisma` / migration: **01（Bookmark 新設）と 04（Drill nullable 化・sourceBookmarkedOnly・QuizDefaultSetting.bookmarkedOnly）の 2 チケットが migration を持つ**。04 は 01 に依存するため migration は必ず直列になる。他のチケットでスキーマ変更を追加しない（必要が生じたら ticket-split の見直し・追加モードへ）
   - Drill の nullable 化を 01 に同居させないのは、nullable 化が `drill-list.ts` 等の型を壊すため（コード対応と同一 PR でないと typecheck が通らない）
 - `src/app/quiz/_components/start-form.tsx`: **03 が 1 行だけ触り**（除外内訳 `noNumber` の null 許容化に伴う型ガード）、本対応は 09。09 は 03 に依存するため直列になる
 - `src/lib/quiz-preview.ts`: **03 が型のみ触り**（`QuizPreview.excluded.noNumber` の null 許容化）、本対応（入力の optional 化・bookmarkedOnly 受け渡し・assertOccurrenceVisible の条件化）は 04。04 は 03 に依存するため直列になる
 - `src/lib/schema/quiz.ts`: 触るのは 04 のみ。extend 先（getQuizPreviewInputSchema / startQuizInputSchema）へは自動波及するため、09 はスキーマを変更せずフォーム側の対応のみ行う
-- `src/app/quiz/actions.ts`: 触るのは 08 のみ（getQuizPreview は quiz-preview.ts へ委譲しているだけのため、プレビュー対応で変更しない。実装時に変更が必要と判明したら ticket-split の見直しへ）
+- `src/app/quiz/_components/quiz-flow.tsx`: **09（drill ラベル・再テストプレビュー、完了済み 2026-07-16）と 08（ブックマーク配線: 状態マップ・ResultList への props・WordDetailDialog への onBookmarkChange 受け渡し）が触る**。09 完了後に 08 が着手する順序のため競合しない。08 は 09 の成果物を論理的に消費しない（純粋な着手順序の制約のみ）ため、依存列・依存図には載せない
+- `src/app/quiz/actions.ts`: 触るのは 08 のみ（getWordDetailForDialog への bookmarked 並置）。getQuizPreview は quiz-preview.ts へ委譲しているだけのためプレビュー対応で変更せず、09 完了時点でも変更不要と確認済み
 
 ### 共通規約
 

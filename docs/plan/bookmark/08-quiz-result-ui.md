@@ -1,6 +1,6 @@
 # 08. quiz-result-ui
 
-状態: **実装中**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -60,3 +60,9 @@ quiz 結果一覧の行と単語詳細ダイアログにブックマークトグ
   - 回避不能の確認済み: BookmarkButton は内部 useState で行とダイアログのインスタンスが状態非共有／ResultList とダイアログは quiz-flow 直下の兄弟で context でも包めない／ResultList 自前ダイアログ案はブラウザバックガード（dialogStack 層数）を壊す
   - 推奨解消案（teammate 分析）: 状態マップを quiz-flow に持たせる（設計 04-ui.md 決定 4 の「(quiz-flow / ResultList)」表記とも整合）。その場合 08 が quiz-flow を触るため、**quiz-flow.tsx を共有する 08 と 09 の直列化（順序決め）が必要** → 計画の変更に当たるため ticket-split で判断する
 - 2026-07-16 ticket-split 改訂: 上記の推奨解消案を採用し本文へ反映済み（状態マップは quiz-flow で管理、quiz-flow のブックマーク配線は本チケットの担当）。09 は完了済みのため直列化の調整は不要。実装再開可
+- 2026-07-16 実装完了（改訂後チケットで再実装。E2E PASS・lint / typecheck / test:unit 全パス）。計画との差分:
+  - ダイアログのトグル設置位置: 「ヘッダ部」の具体位置として、ダイアログコンテンツ最上段の右上（✕ の左、前後ナビより上の独立行）に設置。共有の `WordDetailView`（詳細ページと共用）には手を入れていない（詳細ページは ScreenHeader 側に設置済みのため、混ぜると二重表示になる）
+  - 状態マップの型と未取得時の挙動: `Map<string, boolean> | null` とし、`getBookmarkStates` の取得前・取得失敗時は null のまま行トグルを描画しない（エラー表示なし。結果表示・履歴送信に影響なし）。チケットに取得失敗時の仕様記載がなかったための最小実装
+  - 行トグルとダイアログの表示同期: `BookmarkButton` は内部 useState 初期化子で表示するため、行側は `key={bookmarked}` の再マウントでマップ値の変化（ダイアログからの同期・失敗時巻き戻し）を反映
+  - 削除済み行の判定: TEST / DRILL_RETRY は `skippedWordIds`、DRILL は確定残数マップに行が無いこと、の OR で判定（送信完了前は削除済みが未判明のためトグルを出すが、送信完了とほぼ同時にマップ取得が揃うため実害なし）
+  - 既存 unit テストの追随修正: `actions.unit.test.ts` の `getWordDetailForDialog` テストが戻り値形状変更で fail したため、モック追加と期待値更新を実施（新規の専用テスト追加ではない）

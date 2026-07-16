@@ -22,7 +22,7 @@
 | [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 完了（2026-07-16） | - |
 | [06-toggle-foundation.md](06-toggle-foundation.md) | server action `toggleBookmark` / `getBookmarkStates` ＋共有部品 BookmarkButton / RowBookmarkButton（UI 未設置） | 02 | 完了（2026-07-16） | - |
 | [07-words-ui.md](07-words-ui.md) | 単語一覧の行・toolbar フィルタトグル・単語詳細への設置＋ E2E | 02, 05, 06 | 完了（2026-07-16） | - |
-| [08-quiz-result-ui.md](08-quiz-result-ui.md) | quiz 結果一覧・単語詳細ダイアログへの設置（getWordDetailForDialog 拡張）＋ E2E | 02, 06 | 実装中 | - |
+| [08-quiz-result-ui.md](08-quiz-result-ui.md) | quiz 結果一覧・単語詳細ダイアログへの設置（getWordDetailForDialog 拡張）＋ E2E | 02, 06 | 完了（2026-07-16） | - |
 | [09-quiz-start-ui.md](09-quiz-start-ui.md) | quiz 開始フォーム「指定なし」＋「ブックマークのみ」・プレビュー連動・設定画面・drill ラベル＋ E2E | 03, 04 | 完了（2026-07-16） | - |
 
 ## 依存関係図

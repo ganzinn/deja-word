@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { getBookmarkStates } from "@/app/words/actions";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
@@ -422,6 +423,9 @@ export function QuizFlow({
   const [sourceTestPreview, setSourceTestPreview] = useState<SourceTestPreview | null>(null);
   // 対象件数の重複取得ガード（実行世代 × drill 単位で 1 回。state を挟まず effect 内で同期判定する）
   const sourceTestFetchKeyRef = useRef<string | null>(null);
+  // 結果一覧のブックマーク状態マップ（wordId → boolean）。結果フェーズ入りで一括取得し、
+  // 行・ダイアログのトグルはコールバックでこのマップを楽観的更新する。null = 未取得（取得前・取得失敗）。
+  const [bookmarkStates, setBookmarkStates] = useState<Map<string, boolean> | null>(null);
   // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID スタック（空 = 閉。back ガードの最上段の層）。
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
@@ -446,6 +450,8 @@ export function QuizFlow({
     setSubmitState(null);
     // 完了画面の対象件数は結果画面ごとに取り直す（表示時点のライブ値を出すため）
     setSourceTestPreview(null);
+    // ブックマーク状態マップも結果フェーズ入りごとに取り直す（クイズ中の付け外しを反映するため）
+    setBookmarkStates(null);
     // 新しい出題に備えて「詳細」ボタンを解答前の非表示状態へ戻す
     setAnswerShown(false);
   }
@@ -763,6 +769,34 @@ export function QuizFlow({
     );
   }, [phase.name, drillCompleted, drill]);
 
+  // 結果フェーズに入った時点で、結果一覧の表示対象 wordId のブックマーク状態を一括取得する
+  // （ResultRow はクライアント状態由来で DB 一覧取得を通らないため）。古い応答は runId で捨てる。
+  // 取得失敗時は null のままトグル非表示に落とす（結果表示・履歴送信には影響させない）。
+  useEffect(() => {
+    if (phase.name !== "result" || rows.length === 0) return;
+    const runId = runIdRef.current;
+    void getBookmarkStates({ wordIds: rows.map((row) => row.wordId) }).then((result) => {
+      if (runId !== runIdRef.current) return;
+      if (!result.ok) return;
+      const bookmarkedIds = new Set(result.bookmarkedWordIds);
+      setBookmarkStates(new Map(rows.map((row) => [row.wordId, bookmarkedIds.has(row.wordId)])));
+    });
+  }, [phase.name, rows]);
+
+  /**
+   * 行・ダイアログのブックマークトグルを状態マップへ同期する（楽観的更新の確定・巻き戻しの両方）。
+   * マップ未取得（出題中に開いたダイアログなど）では何もしない — クイズ中の付け外しは
+   * 結果フェーズ入りの一括取得が反映するため古くならない。
+   */
+  function handleBookmarkChange(wordId: string, bookmarked: boolean) {
+    setBookmarkStates((prev) => {
+      if (prev === null || !prev.has(wordId)) return prev;
+      const next = new Map(prev);
+      next.set(wordId, bookmarked);
+      return next;
+    });
+  }
+
   function handleQuestionComplete(outcome: QuestionOutcome) {
     if (phase.name !== "play" || quiz === null) return;
     const index = phase.index;
@@ -1026,10 +1060,12 @@ export function QuizFlow({
           onShowDetail={() => setDialogStack([question.wordId])}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
+        {/* 出題中はマップ未取得のため onBookmarkChange は実質 no-op（結果フェーズ入りの一括取得が反映する） */}
         <WordDetailDialog
           wordId={dialogWordId}
           onClose={() => setDialogStack([])}
           onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
+          onBookmarkChange={handleBookmarkChange}
         />
       </main>
     );
@@ -1059,6 +1095,8 @@ export function QuizFlow({
           drillRemaining={drillRemaining}
           onDrillRemainingChange={setDrillRemaining}
           onOpenDialog={(id) => setDialogStack([id])}
+          bookmarkStates={bookmarkStates}
+          onBookmarkChange={handleBookmarkChange}
         />
         {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
         {/* 前後ナビはルート単語（スタック深さ 1）のみ。関連語をたどった先は掲載順の文脈外なので出さない */}
@@ -1068,6 +1106,7 @@ export function QuizFlow({
           onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
           occurrenceId={dialogStack.length === 1 ? dialogOccurrenceId : null}
           onNavigate={(id) => setDialogStack([id])}
+          onBookmarkChange={handleBookmarkChange}
         />
       </main>
     );

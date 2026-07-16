@@ -36,6 +36,14 @@ vi.mock("@/lib/words-detail", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/bookmark-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/bookmark-settings")>();
+  return {
+    ...actual,
+    getBookmarkedWordIdsForUser: vi.fn(),
+  };
+});
+
 vi.mock("@/lib/drill-create", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/drill-create")>();
   return {
@@ -89,6 +97,7 @@ const { getQuizPreviewForUser } = await import("@/lib/quiz-preview");
 const { generateQuizForUser } = await import("@/lib/quiz-generate");
 const { submitQuizAnswersForUser } = await import("@/lib/quiz-answers-submit");
 const { getWordDetailForUser } = await import("@/lib/words-detail");
+const { getBookmarkedWordIdsForUser } = await import("@/lib/bookmark-settings");
 const { createDrillForUser, EmptyDrillResultsError } = await import("@/lib/drill-create");
 const { generateDrillRoundForUser, DrillNoAskableWordsError } =
   await import("@/lib/drill-round-generate");
@@ -119,6 +128,7 @@ const mockedPreview = vi.mocked(getQuizPreviewForUser);
 const mockedGenerate = vi.mocked(generateQuizForUser);
 const mockedSubmit = vi.mocked(submitQuizAnswersForUser);
 const mockedWordDetail = vi.mocked(getWordDetailForUser);
+const mockedBookmarkedWordIds = vi.mocked(getBookmarkedWordIdsForUser);
 const mockedDrillCreate = vi.mocked(createDrillForUser);
 const mockedDrillRoundGenerate = vi.mocked(generateDrillRoundForUser);
 const mockedDrillRoundSubmit = vi.mocked(submitDrillRoundForUser);
@@ -134,6 +144,7 @@ beforeEach(() => {
   mockedGenerate.mockReset();
   mockedSubmit.mockReset();
   mockedWordDetail.mockReset();
+  mockedBookmarkedWordIds.mockReset();
   mockedDrillCreate.mockReset();
   mockedDrillRoundGenerate.mockReset();
   mockedDrillRoundSubmit.mockReset();
@@ -334,15 +345,29 @@ describe("getWordDetailForDialog (Server Action)", () => {
     expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
   });
 
-  test("ok: returns the word detail as-is", async () => {
+  test("ok: returns the word detail with the bookmark state alongside", async () => {
     mockedGetSession.mockResolvedValue(SESSION);
     const word = { id: "w_1", headword: "ubiquitous" } as unknown as NonNullable<
       Awaited<ReturnType<typeof getWordDetailForUser>>
     >;
     mockedWordDetail.mockResolvedValue(word);
+    mockedBookmarkedWordIds.mockResolvedValue(["w_1"]);
     const res = await getWordDetailForDialog("w_1");
-    expect(res).toEqual({ ok: true, word });
+    expect(res).toEqual({ ok: true, word, bookmarked: true });
     expect(mockedWordDetail).toHaveBeenCalledWith("u_1", "w_1");
+    // ブックマーク状態は 1 件配列で本人分を引く
+    expect(mockedBookmarkedWordIds).toHaveBeenCalledWith("u_1", ["w_1"]);
+  });
+
+  test("ok: bookmarked=false when the word is not bookmarked", async () => {
+    mockedGetSession.mockResolvedValue(SESSION);
+    const word = { id: "w_1", headword: "ubiquitous" } as unknown as NonNullable<
+      Awaited<ReturnType<typeof getWordDetailForUser>>
+    >;
+    mockedWordDetail.mockResolvedValue(word);
+    mockedBookmarkedWordIds.mockResolvedValue([]);
+    const res = await getWordDetailForDialog("w_1");
+    expect(res).toEqual({ ok: true, word, bookmarked: false });
   });
 });
 

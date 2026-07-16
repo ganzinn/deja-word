@@ -3,6 +3,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { BookmarkButton } from "@/components/bookmark-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { WordDetailView } from "@/components/word-detail-view";
@@ -21,17 +22,22 @@ type Props = {
   occurrenceId?: string | null;
   /** 前後ナビ押下時のコールバック。表示単語を隣接単語へ差し替えるために呼ばれる。 */
   onNavigate?: (wordId: string) => void;
+  /**
+   * ヘッダのブックマークトグルの変更を親へ同期するコールバック。未指定でも成立する
+   * （結果一覧の状態マップを持たない呼び出し元では、結果フェーズ入りの一括取得が反映する）。
+   */
+  onBookmarkChange?: (wordId: string, bookmarked: boolean) => void;
 };
 
 /** どの単語に対する応答かを wordId で持ち、render 側で鮮度を判定する。 */
 type DetailResponse =
-  | { wordId: string; ok: true; word: WordDetail }
+  | { wordId: string; ok: true; word: WordDetail; bookmarked: boolean }
   | { wordId: string; ok: false; message: string };
 
 type DetailState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; word: WordDetail };
+  | { status: "ready"; word: WordDetail; bookmarked: boolean };
 
 /** どの単語×掲載箇所に対する応答かを key で持ち、render 側で鮮度を判定する。 */
 type NavResponse = { key: string; nav: AdjacentWordsResult };
@@ -50,6 +56,7 @@ export function WordDetailDialog({
   onSelectRelated,
   occurrenceId = null,
   onNavigate,
+  onBookmarkChange,
 }: Props) {
   const [response, setResponse] = useState<DetailResponse | null>(null);
   const [navResponse, setNavResponse] = useState<NavResponse | null>(null);
@@ -67,7 +74,7 @@ export function WordDetailDialog({
     void getWordDetailForDialog(wordId).then((result) => {
       if (cancelled) return;
       if (result.ok) {
-        setResponse({ wordId, ok: true, word: result.word });
+        setResponse({ wordId, ok: true, word: result.word, bookmarked: result.bookmarked });
       } else {
         setResponse({ wordId, ok: false, message: result.message });
       }
@@ -94,7 +101,7 @@ export function WordDetailDialog({
     response === null || response.wordId !== wordId
       ? { status: "loading" }
       : response.ok
-        ? { status: "ready", word: response.word }
+        ? { status: "ready", word: response.word, bookmarked: response.bookmarked }
         : { status: "error", message: response.message };
 
   const nav =
@@ -115,6 +122,18 @@ export function WordDetailDialog({
       >
         <DialogTitle className="sr-only">単語の詳細</DialogTitle>
         <div className="mx-auto w-full max-w-sm pb-16 md:max-w-2xl">
+          {/* ヘッダのブックマークトグル。出題中・結果一覧のどちらから開いても同じ位置（右上、✕ の左）に出す。
+              初期値はサーバ供給（getWordDetailForDialog の bookmarked）のため取得完了後のみ描画する */}
+          {state.status === "ready" ? (
+            <div className="flex justify-end px-4 pt-4 pr-14 md:pr-4">
+              <BookmarkButton
+                key={state.word.id}
+                wordId={state.word.id}
+                bookmarked={state.bookmarked}
+                onBookmarkChange={(next) => onBookmarkChange?.(state.word.id, next)}
+              />
+            </div>
+          ) : null}
           {/* 詳細ページ（AdjacentWordNav）と同じ位置・見た目。右は ✕（absolute top-2 right-2）を避ける */}
           {nav !== null && onNavigate !== undefined ? (
             <nav

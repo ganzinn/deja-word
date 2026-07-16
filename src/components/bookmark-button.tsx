@@ -25,7 +25,7 @@ type BookmarkButtonProps = {
  * 苦手な単語にブックマークを付け外しする共有トグルボタン（4 導線で使い回す）。
  * 反映は楽観的更新: タップで即座に反転表示し、`toggleBookmark` が失敗したときのみ
  * 元に戻してエラー toast を出す（成功時は toast なし）。`router.refresh()` は呼ばない。
- * ON は塗りつぶし＋強調色、OFF はアウトライン。`aria-pressed` で状態を伝える。
+ * ON は青の塗りつぶし（TG 例文と同じ blue-500）、OFF はアウトライン。`aria-pressed` で状態を伝える。
  */
 export function BookmarkButton({
   wordId,
@@ -67,7 +67,7 @@ export function BookmarkButton({
     >
       <BookmarkIcon
         fill={current ? "currentColor" : "none"}
-        className={cn(current && "text-primary")}
+        className={cn(current && "text-blue-500")}
       />
     </Button>
   );

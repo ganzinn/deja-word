@@ -133,18 +133,20 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ### 起動
 
-ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、専用ペインで claude を起動する:
+ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、**エージェント専用のタブ**で claude を起動する（ペイン分割は使わない — 並行数が増えると 1 ペインが小さくなり見づらい）:
 
 ```sh
-herdr agent start <機能名>-NN --cwd <worktree絶対パス> --split down --no-focus \
+herdr tab create --label <機能名>-NN --no-focus
+# 返却 JSON の result.tab.tab_id と result.root_pane.pane_id を読む
+herdr agent start <機能名>-NN --cwd <worktree絶対パス> --tab <tab_id> --no-focus \
   -- claude "$(cat <プロンプトファイル>)" \
      --permission-mode acceptEdits --allowedTools "Bash(pnpm *)" "Bash(git *)"
+herdr pane close <root_paneのpane_id>  # agent start はタブの root ペインを分割するため、元のシェルを閉じてエージェント単独のフルサイズ表示にする
 ```
 
 - **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` は可変長のため、後置した位置引数を許可リストとして飲み込み、プロンプト未実行の空セッションが起動する
 - devman 経由で検証させる場合は `"Bash(devman run *)"` を許可リストに追加する（`devman *` にはしない — `devman server` はリポジトリにつき 1 つのサーバ仕様のため、実装エージェントが起動するとユーザーの dev サーバを停止させてしまう）
 - 同名エージェントが残っていると `agent_name_taken` で起動に失敗する。起動前（特に再開時）に `herdr agent list` で確認し、残骸ペインは回収・close してから起動する
-- ペインが増えて見づらければ専用タブ（`herdr tab create --label "<機能名> impl"` → `--tab <id>`）を使ってよい
 - 起動確認: `herdr agent wait <名前> --status working --timeout 90000` で着手を確認する（以後の idle 待ちが「完了」を意味するようになる）。タイムアウトしたら `herdr agent read <名前> --source visible` で停止原因（trust ダイアログ等）を確認する
 
 ### 完了待ち
@@ -163,7 +165,7 @@ herdr agent wait <名前> --status idle --timeout 300000
 
 - **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。idle になっても report ファイルが無い・不完全な場合は `herdr agent read <名前> --source recent-unwrapped --lines 200` で最終メッセージを確認する（recent バッファは直近の描画分しか残らないことがあるため、report ファイルが一次情報）
 - **再委譲**（「失敗・中断時の扱い」の共通規則を適用）: `herdr agent get <名前>` で pane_id を解決し、`herdr pane run <pane_id> "<指示>"` で同一ペインの claude に追加指示を送る（1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる）。ペインが消えていた場合のみ同一 worktree で claude を起動し直す
-- **後片付け**: マージ・検証成功後、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
+- **後片付け**: マージ・検証成功後、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり。タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
 - 並行度上限は共通ルールどおり（上限 3・推奨 2）。ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む。計画ドラフト提示に含める
 - 中断・再開は既存フロー（ready 判定・突き合わせ）がそのまま吸収する。再開時に前回の実装ペインが残っていれば `herdr agent list` で状態を確認し、idle なら報告回収から続行、消えていれば worktree の残骸ルール（計画ドラフト提示の「実装中」スタック行の扱い）に従う
 

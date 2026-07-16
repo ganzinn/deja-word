@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { OccurrenceNotFoundError } from "@/lib/occurrences-update";
+import { prisma } from "@/lib/prisma";
 import {
   countQuizSourceExclusions,
   countQuizTargets,
@@ -545,6 +546,187 @@ describe("countQuizTargets / countQuizSourceExclusions: TG example options", () 
     expect(await countQuizSourceExclusions(user.id, occurrence.id, {})).toEqual({
       noNumber: 0,
       noMeaning: 1,
+      noTgExample: null,
+    });
+  });
+});
+
+/** 単語を対象ユーザーのブックマークに登録する（行の存在で ON）。 */
+async function bookmarkWord(userId: string, wordId: string) {
+  await prisma.bookmark.create({ data: { userId, wordId } });
+}
+
+describe("fetchQuizSource / countQuizTargets: bookmarkedOnly（掲載箇所指定モード）", () => {
+  test("targets をブックマーク済みに絞り、ダミー候補には絞り込みを適用しない", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "ブックマーク絞り込み帳");
+    const bm1 = await createQuizWordRow(user.id, "bm1", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    const bm2 = await createQuizWordRow(user.id, "bm2", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    // 範囲内・意味ありだがブックマークなし → bookmarkedOnly では対象外
+    const plainInRange = await createQuizWordRow(user.id, "plain-in-range", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 3 },
+    });
+    // 範囲外・ブックマークなし → ダミー候補（同一 Occurrence）に出るはず
+    const plainOutOfRange = await createQuizWordRow(user.id, "plain-out-of-range", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 999 },
+    });
+    await bookmarkWord(user.id, bm1.id);
+    await bookmarkWord(user.id, bm2.id);
+
+    const { targetRows, sameOccurrenceRows } = await fetchQuizSource(
+      user.id,
+      occurrence.id,
+      { from: 1, to: 100 },
+      { bookmarkedOnly: true },
+    );
+    // 出題対象はブックマーク済みの範囲内 2 件のみ
+    expect(targetRows.map((r) => r.id).sort()).toEqual([bm1.id, bm2.id].sort());
+    expect(targetRows.map((r) => r.id)).not.toContain(plainInRange.id);
+    // ダミー候補はブックマーク条件非適用（範囲外の非ブックマーク単語が入る）
+    expect(sameOccurrenceRows.map((r) => r.id)).toContain(plainOutOfRange.id);
+
+    // countQuizTargets も同様に絞られる（bookmarkedOnly=false は従来どおり範囲内 3 件）
+    expect(
+      await countQuizTargets(
+        user.id,
+        occurrence.id,
+        { from: 1, to: 100 },
+        { bookmarkedOnly: true },
+      ),
+    ).toBe(2);
+    expect(await countQuizTargets(user.id, occurrence.id, { from: 1, to: 100 })).toBe(3);
+  });
+
+  test("他ユーザーのブックマークは混ざらない（ブックマーク集合のテナント分離）", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    const occurrence = await getSystemOccurrence(SYSTEM_OCCURRENCE_LOCATIONS[0]);
+    // どちらのユーザーにも可視な system 単語 3 件
+    const wordA = await createQuizWordRow(SYSTEM_USER_ID, "shared-a", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    const wordB = await createQuizWordRow(SYSTEM_USER_ID, "shared-b", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    await createQuizWordRow(SYSTEM_USER_ID, "shared-c", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 3 },
+    });
+    // 同じ system 単語でも、ブックマークは各ユーザー別
+    await bookmarkWord(user.id, wordA.id);
+    await bookmarkWord(stranger.id, wordB.id);
+
+    const forUser = await fetchQuizSource(user.id, occurrence.id, {}, { bookmarkedOnly: true });
+    expect(forUser.targetRows.map((r) => r.id)).toEqual([wordA.id]);
+    const forStranger = await fetchQuizSource(
+      stranger.id,
+      occurrence.id,
+      {},
+      { bookmarkedOnly: true },
+    );
+    expect(forStranger.targetRows.map((r) => r.id)).toEqual([wordB.id]);
+    expect(await countQuizTargets(user.id, occurrence.id, {}, { bookmarkedOnly: true })).toBe(1);
+  });
+});
+
+describe("fetchQuizSource / countQuiz*: ブックマーク全件モード（occurrenceId=null）", () => {
+  test("掲載番号なし・掲載箇所未紐付けの単語も出題対象に含める", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "全件モード帳");
+    const numbered = await createQuizWordRow(user.id, "numbered", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 5 },
+    });
+    // 掲載箇所には紐付くが掲載番号なし
+    const noNumber = await createQuizWordRow(user.id, "no-number", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    // どの掲載箇所にも紐付かない単語
+    const unlinked = await createQuizWordRow(user.id, "unlinked");
+    // ブックマークなし → 全件モードでも対象外
+    const notBookmarked = await createQuizWordRow(user.id, "not-bookmarked", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 6 },
+    });
+    await bookmarkWord(user.id, numbered.id);
+    await bookmarkWord(user.id, noNumber.id);
+    await bookmarkWord(user.id, unlinked.id);
+
+    const { targetRows, sameOccurrenceRows } = await fetchQuizSource(
+      user.id,
+      null,
+      {},
+      { bookmarkedOnly: true },
+    );
+    expect(targetRows.map((r) => r.id).sort()).toEqual(
+      [numbered.id, noNumber.id, unlinked.id].sort(),
+    );
+    expect(targetRows.map((r) => r.id)).not.toContain(notBookmarked.id);
+    // 全件モードでは同一 Occurrence プールの概念がないため常に空
+    expect(sameOccurrenceRows).toEqual([]);
+
+    expect(await countQuizTargets(user.id, null, {}, { bookmarkedOnly: true })).toBe(3);
+  });
+
+  test("除外内訳: noNumber は null、noMeaning はブックマーク済み全体にスコープ", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "全件除外帳");
+    // ブックマーク済み・意味あり → どのバケットにも数えない
+    const ok = await createQuizWordRow(user.id, "ok", {
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    // ブックマーク済み・意味なし → noMeaning に数える
+    const noMeaningBm = await createQuizWordRow(user.id, "no-meaning-bm", {
+      meanings: [],
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    // 意味なしだがブックマークなし → 数えない（ブックマークスコープ）
+    await createQuizWordRow(user.id, "no-meaning-plain", { meanings: [] });
+    await bookmarkWord(user.id, ok.id);
+    await bookmarkWord(user.id, noMeaningBm.id);
+
+    // 全件モードは掲載箇所の概念がないため noNumber は null
+    expect(await countQuizSourceExclusions(user.id, null, { bookmarkedOnly: true })).toEqual({
+      noNumber: null,
+      noMeaning: 1,
+      noTgExample: null,
+    });
+  });
+});
+
+describe("countQuizSourceExclusions: bookmarkedOnly（掲載箇所指定モード）", () => {
+  test("除外内訳もブックマーク済み単語にスコープする", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "除外スコープ帳");
+    // ブックマーク済み・番号なし → noNumber に数える
+    const noNumBm = await createQuizWordRow(user.id, "no-num-bm", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    // 番号なしだがブックマークなし → 数えない
+    await createQuizWordRow(user.id, "no-num-plain", {
+      occurrence: { id: occurrence.id, occurrenceNumber: null },
+    });
+    // ブックマーク済み・意味なし（番号あり） → noMeaning に数える
+    const noMeaningBm = await createQuizWordRow(user.id, "no-meaning-bm", {
+      meanings: [],
+      occurrence: { id: occurrence.id, occurrenceNumber: 1 },
+    });
+    // 意味なしだがブックマークなし → 数えない
+    await createQuizWordRow(user.id, "no-meaning-plain", {
+      meanings: [],
+      occurrence: { id: occurrence.id, occurrenceNumber: 2 },
+    });
+    await bookmarkWord(user.id, noNumBm.id);
+    await bookmarkWord(user.id, noMeaningBm.id);
+
+    expect(
+      await countQuizSourceExclusions(user.id, occurrence.id, { bookmarkedOnly: true }),
+    ).toEqual({ noNumber: 1, noMeaning: 1, noTgExample: null });
+    // bookmarkedOnly=false は従来どおり全体を数える
+    expect(await countQuizSourceExclusions(user.id, occurrence.id)).toEqual({
+      noNumber: 2,
+      noMeaning: 2,
       noTgExample: null,
     });
   });

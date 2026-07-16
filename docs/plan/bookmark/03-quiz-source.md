@@ -1,6 +1,6 @@
 # 03. quiz-source
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -69,4 +69,8 @@ quiz の出題クエリ（`src/lib/quiz/queries/quiz-source.ts` の 3 関数）�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 実装は API 接続エラーで 3 回中断後に復帰した同一 teammate が完遂（実装内容起因の失敗はなし）
+- ensureTargetWordIds の「番号付き→適格性のみ」への条件緩和は**全件モード（occurrenceId=null）限定**。掲載箇所指定モードは従来どおり numberedWordOccurrence を要求し完全後方互換（bookmarkedOnly=false は空スプレッドで従来と同一 where。既存テストの期待値更新は不要だった）
+- occurrenceId=null を許すのは bookmarkedOnly=true かつ範囲未指定のときだけ、というクロスフィールド検証は 04 スコープ（schema/quiz.ts）。本関数群は null を受理して全件モードで動くのみで、入力妥当性の門番は持たない
+- **04 への申し送り**: quiz-preview.ts の入力 optional 化・bookmarkedOnly 受け渡し・assertOccurrenceVisible 条件化は 04 で行う。`QuizPreview.excluded.noNumber` は本チケットで number|null 化済み（04 での再変更不要）
+- ADR-0070（全件モード）起票＋ADR-0022 に相互リンク補記

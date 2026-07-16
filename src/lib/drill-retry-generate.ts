@@ -56,10 +56,12 @@ export async function generateDrillRetryForUser(
   const memberIds = new Set(input.wordIds.filter((id) => drillWordIds.has(id)));
   if (memberIds.size === 0) throw new EmptyDrillRetryError();
 
+  // 全件モード drill は occurrenceId / range とも null。対象は ensureTargetWordIds（DrillWord 集合）で
+  // 範囲と独立に取得する（ブックマーク条件は再適用しない。決定 5）。
   const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
     userId,
     drill.occurrenceId,
-    { from: drill.rangeFrom, to: drill.rangeTo },
+    { from: drill.rangeFrom ?? undefined, to: drill.rangeTo ?? undefined },
     { includeTgExamples: isTgExampleFormat(drill.format), ensureTargetWordIds: [...memberIds] },
   );
   const partitioned = partitionMaterial(

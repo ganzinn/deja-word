@@ -2,10 +2,12 @@ import { PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { BookmarkButton } from "@/components/bookmark-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TtsFallbackProvider } from "@/components/tts-fallback-context";
 import { buttonVariants } from "@/components/ui/button";
 import { WordDetailView } from "@/components/word-detail-view";
+import { getBookmarkedWordIdsForUser } from "@/lib/bookmark-settings";
 import { getCurrentSession } from "@/lib/session";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 import { getTtsFallbackEnabled } from "@/lib/user-preferences";
@@ -83,6 +85,8 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
   const canDelete = word.ownerId === session.user.id;
   const incomingLinkCount = canDelete ? await countIncomingLinksForUser(session.user.id, id) : 0;
   const ttsFallbackEnabled = await getTtsFallbackEnabled(session.user.id);
+  // read 専用関数は増やさず、1 件配列で本人のブックマーク状態を取得する。
+  const bookmarked = (await getBookmarkedWordIdsForUser(session.user.id, [id])).length > 0;
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
@@ -91,26 +95,25 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
         title={word.headword}
         titleClassName="truncate"
         actions={
-          canEdit || canDelete ? (
-            <>
-              {canEdit ? (
-                <Link
-                  href={`/words/${id}/edit`}
-                  aria-label="編集"
-                  className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-                >
-                  <PencilIcon />
-                </Link>
-              ) : null}
-              {canDelete ? (
-                <DeleteWordButton
-                  wordId={id}
-                  headword={word.headword}
-                  incomingLinkCount={incomingLinkCount}
-                />
-              ) : null}
-            </>
-          ) : undefined
+          <>
+            <BookmarkButton wordId={id} bookmarked={bookmarked} />
+            {canEdit ? (
+              <Link
+                href={`/words/${id}/edit`}
+                aria-label="編集"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+              >
+                <PencilIcon />
+              </Link>
+            ) : null}
+            {canDelete ? (
+              <DeleteWordButton
+                wordId={id}
+                headword={word.headword}
+                incomingLinkCount={incomingLinkCount}
+              />
+            ) : null}
+          </>
         }
       />
 

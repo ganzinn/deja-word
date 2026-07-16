@@ -333,6 +333,40 @@ export async function ensureQuizDeck(
   };
 }
 
+/** ブックマーク撮影でブックマーク済みにするデッキ語（QUIZ_DECK の headword から選ぶ）。 */
+const BOOKMARKED_DECK_HEADWORDS = ["brisk", "remote", "gaze"];
+
+/**
+ * ブックマーク機能の撮影用に、quiz デッキの一部の単語へ本人のブックマークを冪等に付ける。
+ * ensureQuizDeck がデッキ語を作り直す（＝旧 Bookmark 行は cascade で消える）ため、必ずその後に呼ぶ。
+ */
+export async function ensureQuizDeckBookmarks(
+  prisma: PrismaClientType,
+  ownerEmailRaw: string,
+): Promise<number> {
+  const email = ownerEmailRaw.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) {
+    throw new Error(
+      `ensureQuizDeckBookmarks: ユーザー ${email} が未用意です（先に ensureUser を呼んでください）。`,
+    );
+  }
+  const words = await prisma.word.findMany({
+    where: { ownerId: user.id, headword: { in: BOOKMARKED_DECK_HEADWORDS } },
+    select: { id: true },
+  });
+  if (words.length !== BOOKMARKED_DECK_HEADWORDS.length) {
+    throw new Error(
+      "ensureQuizDeckBookmarks: デッキ語が不足しています（先に ensureQuizDeck を呼んでください）。",
+    );
+  }
+  await prisma.bookmark.createMany({
+    data: words.map((w) => ({ userId: user.id, wordId: w.id })),
+    skipDuplicates: true,
+  });
+  return words.length;
+}
+
 /**
  * 掲載箇所ビューの撮影用に、最も単語数の多い共有（system 所有）掲載箇所を返す（読み取りのみ）。
  * 番号付きの一覧を映すのに使い、無ければ明示エラーにする（ターゲット1900 等を db:import-words で用意する）。

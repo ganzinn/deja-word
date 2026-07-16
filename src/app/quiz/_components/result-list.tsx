@@ -11,6 +11,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 
+import { RowBookmarkButton } from "@/components/bookmark-button";
 import { RowAudioButton } from "@/components/row-audio-button";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +153,13 @@ type Props = {
   onDrillRemainingChange: (value: DrillRemainingText) => void;
   /** 行タップで単語詳細を開く。ダイアログの状態・描画は親（QuizFlow）が持つ（back ガードの最上段の層）。 */
   onOpenDialog: (wordId: string) => void;
+  /**
+   * 行のブックマークトグルの状態マップ（wordId → boolean。quiz-flow が結果フェーズ入りで一括取得）。
+   * null = 未取得（取得前・取得失敗）でトグルを描画しない。
+   */
+  bookmarkStates: Map<string, boolean> | null;
+  /** 行・ダイアログのトグルをマップへ同期する（楽観的更新の確定・巻き戻しの両方で呼ばれる）。 */
+  onBookmarkChange: (wordId: string, bookmarked: boolean) => void;
 };
 
 export function ResultList({
@@ -172,6 +180,8 @@ export function ResultList({
   drillRemaining,
   onDrillRemainingChange,
   onOpenDialog,
+  bookmarkStates,
+  onBookmarkChange,
 }: Props) {
   const [wrongOnly, setWrongOnly] = useState(false);
   // 残数が 1..9 の整数のときだけ定着モードを開始できる（空欄・範囲外は開始をゲート）。
@@ -245,6 +255,12 @@ export function ResultList({
             // 発音ボタンは英語（headword / TG 英文）が見出し行にある形式では見出し行の右端、
             // 英語が正解行に出る形式（日→英）では正解行の右端に置く。
             const audioOnHeading = row.promptKind === "headword" || row.promptKind === "tg-text";
+            // 単語削除済みの行にはブックマークトグルを出さない（wordId の参照先なし）。
+            // 削除の判定源は送信応答: TEST / DRILL_RETRY は skippedWordIds、DRILL は確定残数に行が無いこと。
+            const deleted =
+              (skippedWordIds?.has(row.wordId) ?? false) ||
+              (remainingByWordId !== null && !remainingByWordId.has(row.wordId));
+            const bookmarked = bookmarkStates?.get(row.wordId) ?? false;
             return (
               <li key={row.wordId}>
                 <div
@@ -273,6 +289,16 @@ export function ResultList({
                           src={row.pronunciationAudioUrl}
                           label="発音"
                           ttsText={row.headword}
+                        />
+                      ) : null}
+                      {/* ボタンは内部 state 初期化子で表示するため、マップ値の変化（ダイアログでの
+                          トグル同期・失敗時の巻き戻し）は key の再マウントで反映する */}
+                      {bookmarkStates !== null && !deleted ? (
+                        <RowBookmarkButton
+                          key={`bookmark-${bookmarked}`}
+                          wordId={row.wordId}
+                          bookmarked={bookmarked}
+                          onBookmarkChange={(next) => onBookmarkChange(row.wordId, next)}
                         />
                       ) : null}
                     </div>

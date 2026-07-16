@@ -1,6 +1,6 @@
 # 04. quiz-persist
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -81,4 +81,16 @@ Drill（nullable 化 3 列＋ `sourceBookmarkedOnly`）と QuizDefaultSetting（
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+チケット列挙外だが「occurrenceId optional 化＋ .default() 追加」の帰結として 04 単独で typecheck / test を通すために不可避だった変更（いずれも共有ファイル制約には抵触しない）:
+
+- `startDrillInputSchema` に occurrenceId optional 化＋ `sourceBookmarkedOnly: z.boolean().default(false)` を追加（startDrill にクロスフィールド検証は付けない＝cheating-accepted 方針）
+- `StartQuizInput` / `StartDrillInput` / `SaveQuizDefaultsInput` を `z.infer` → **`z.input`** に変更（`.default()` により z.infer だと必須化し、未指定で送る 09 のフォーム群が型エラーになるため）
+- `quizRangeInputSchema` は superRefine で ZodEffects 化するため `.extend()` 不可 → raw ZodObject `quizRangeInputObject` を private に置き、3 スキーマへ共通 refine 関数を適用（zod v3 制約の回避）
+- `src/lib/quiz/default-settings.ts` の DEFAULT_QUIZ_SETTINGS に `bookmarkedOnly: null` 追加
+- `.default()` の値補完に伴い既存 action unit テストの `toHaveBeenCalledWith` を更新（quiz / quiz-defaults）。saveStartSettingsAsDefaultsForUser が bookmarkedOnly を部分 upsert 対象に含めた（決定 6）ため既存 integration 2 ケースの期待値にも追加
+
+**09 への申し送り**:
+- `drill-round-generate.ts` の `occurrenceName` は型 `string` のまま全件モードで `""` を暫定返却。**全件モード drill のラベル表示（「ブックマークのみ」）と ActiveDrill の null 対応は 09**（drill-list.ts の ActiveDrill は nullable 化済み）
+- 完了画面の再テスト前ライブプレビュー（quiz-flow.tsx）が全件モード drill で getQuizPreview にブックマーク条件 / occurrenceId 未指定を渡す対応は **09**（未対応だと入力検証に落ちる。pre-09 は全件モード drill が生成されないため顕在化しない）
+- migration は `20260715185254_add_bookmark_quiz_persist`（純加算・backfill なし）
+- 追補（09 実装時）: drill-list.ts の ActiveDrill に `sourceBookmarkedOnly` を追加（決定 8 の進行中一覧ラベルに必要だった。09 がリード承認のうえ実施）

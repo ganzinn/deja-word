@@ -1,5 +1,6 @@
 "use server";
 
+import { getBookmarkedWordIdsForUser } from "@/lib/bookmark-settings";
 import { createDrillForUser } from "@/lib/drill-create";
 import { deleteDrillForUser } from "@/lib/drill-delete";
 import { generateDrillRetryForUser } from "@/lib/drill-retry-generate";
@@ -304,9 +305,14 @@ export async function deleteDrill(input: DeleteDrillInput): Promise<DeleteDrillR
   }
 }
 
-export type GetWordDetailForDialogResult = { ok: true; word: WordDetail } | QuizActionFailure;
+export type GetWordDetailForDialogResult =
+  | { ok: true; word: WordDetail; bookmarked: boolean }
+  | QuizActionFailure;
 
-/** 結果画面の単語詳細ダイアログ用。既存 `getWordDetailForUser` の薄いラッパ。 */
+/**
+ * 結果画面の単語詳細ダイアログ用。既存 `getWordDetailForUser` の薄いラッパ。
+ * `bookmarked` は表示専用の `WordDetail` 型に混ぜず並置する（ダイアログヘッダのトグル初期値）。
+ */
 export async function getWordDetailForDialog(
   wordId: string,
 ): Promise<GetWordDetailForDialogResult> {
@@ -321,7 +327,10 @@ export async function getWordDetailForDialog(
     if (!word) {
       return { ok: false, error: "not_found", message: "対象の単語が見つかりません。" };
     }
-    return { ok: true, word };
+    // read 専用関数は増やさず、1 件配列で本人のブックマーク状態を取得する。
+    const bookmarked =
+      (await getBookmarkedWordIdsForUser(session.user.id, [parsed.data])).length > 0;
+    return { ok: true, word, bookmarked };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

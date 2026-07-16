@@ -67,18 +67,30 @@ function usableTgExampleWhere(allowed: string[]) {
  * ダミー候補クエリから除外して重複取得を防ぐ。targets が増えるぶんプールの take 算出は
  * 自動的に織り込まれる。未指定（空）なら従来の範囲判定と完全に同一。
  *
+ * `bookmarkedOnly: true`（省略時 false）で出題対象をブックマーク済み単語に絞る（ダミー候補には
+ * 効かない）。`occurrenceId: null` は「ブックマーク全件モード」で、掲載箇所・掲載番号の条件を
+ * 課さずブックマーク済みの適格単語を全件出題する（掲載番号なし・掲載箇所未紐付けも含む。
+ * ADR-0070 / ADR-0022 の明示的例外）。同一 Occurrence プールは概念がないため空、補完プールは
+ * 全登録単語になる。ensureTargetWordIds はどちらのモードでもブックマーク条件を課さず救済する。
+ *
  * プレビューはこの重い経路を使わず、件数のみを `countQuizTargets` /
  * `countQuizSourceExclusions` で取得する（docs/adr/0030-dummy-pool-bounded-fetch.md）。
  */
 export async function fetchQuizSource(
   userId: string,
-  occurrenceId: string,
+  occurrenceId: string | null,
   range: { from?: number; to?: number },
-  options: { includeTgExamples?: boolean; ensureTargetWordIds?: readonly string[] } = {},
+  options: {
+    includeTgExamples?: boolean;
+    ensureTargetWordIds?: readonly string[];
+    bookmarkedOnly?: boolean;
+  } = {},
 ) {
   const allowed = scopedOwnerIds(userId);
   const ensureIds = options.ensureTargetWordIds ?? [];
-  await assertOccurrenceVisible(userId, occurrenceId);
+  const bookmarkedOnly = options.bookmarkedOnly ?? false;
+  // 全件モード（掲載箇所未指定）では掲載箇所の可視性検証はスキップする（検証対象がない）。
+  if (occurrenceId !== null) await assertOccurrenceVisible(userId, occurrenceId);
 
   const hasVisibleMeaning = {
     meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } },
@@ -89,34 +101,39 @@ export async function fetchQuizSource(
   const eligibleWord = options.includeTgExamples
     ? { examples: { some: usableTgExampleWhere(allowed) } }
     : hasVisibleMeaning;
-  const linkedToOccurrence = {
-    wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
-  } as const;
-  // 出題対象の述語: occurrenceNumber が非 null かつ範囲内（`countQuizTargets` と一致）。
-  const inRangeWordOccurrence = {
-    wordOccurrences: {
-      some: {
-        occurrenceId,
-        ownerId: { in: allowed },
-        occurrenceNumber: {
-          not: null,
-          ...(range.from !== undefined ? { gte: range.from } : {}),
-          ...(range.to !== undefined ? { lte: range.to } : {}),
-        },
-      },
-    },
-  } as const;
-  // 範囲を問わない番号付きリンクの述語（ensureTargetWordIds 用）。番号付きリンク自体を
-  // 失った単語（リンク解除・番号 null 化）は指定されていても出題対象に含めない。
-  const numberedWordOccurrence = {
-    wordOccurrences: {
-      some: {
-        occurrenceId,
-        ownerId: { in: allowed },
-        occurrenceNumber: { not: null },
-      },
-    },
-  } as const;
+  // 「ブックマークのみ」絞り込み: 出題対象（targets）の Word 述語に AND で足す。
+  // ダミー候補（sameOccurrenceRows / fallbackRows）には足さない（決定 2）。
+  const bookmarkedWord = bookmarkedOnly ? { bookmarks: { some: { userId } } } : {};
+  // 掲載箇所指定モードの述語群（全件モードでは掲載箇所の概念がないため null）。
+  const occ =
+    occurrenceId === null
+      ? null
+      : {
+          linkedToOccurrence: {
+            wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+          },
+          // 出題対象の述語: occurrenceNumber が非 null かつ範囲内（`countQuizTargets` と一致）。
+          inRange: {
+            wordOccurrences: {
+              some: {
+                occurrenceId,
+                ownerId: { in: allowed },
+                occurrenceNumber: {
+                  not: null,
+                  ...(range.from !== undefined ? { gte: range.from } : {}),
+                  ...(range.to !== undefined ? { lte: range.to } : {}),
+                },
+              },
+            },
+          },
+          // 範囲を問わない番号付きリンクの述語（ensureTargetWordIds 用）。番号付きリンク自体を
+          // 失った単語（リンク解除・番号 null 化）は指定されていても出題対象に含めない。
+          numbered: {
+            wordOccurrences: {
+              some: { occurrenceId, ownerId: { in: allowed }, occurrenceNumber: { not: null } },
+            },
+          },
+        };
   const select = {
     id: true,
     headword: true,
@@ -135,31 +152,42 @@ export async function fetchQuizSource(
     },
   } as const;
 
-  // 出題対象は全件取得。ensureTargetWordIds の単語は範囲と独立に対象へ含める
-  // （番号付きリンクと形式適格は要求）。指定なしなら従来の範囲判定のみ。
+  // 出題対象。掲載箇所指定モードは範囲内（∧ ブックマーク）、全件モードはブックマーク済み全件
+  // （掲載番号なし・掲載箇所未紐付けの単語も含む）。ensureTargetWordIds の単語はどちらのモードでも
+  // ブックマーク条件を課さず救済する（drill スナップショット）。全件モードでは番号条件も課さない。
   const targetRows = await prisma.word.findMany({
     where: {
       ownerId: { in: allowed },
       ...eligibleWord,
-      ...(ensureIds.length > 0
-        ? { OR: [inRangeWordOccurrence, { id: { in: [...ensureIds] }, ...numberedWordOccurrence }] }
-        : inRangeWordOccurrence),
+      ...(occ === null
+        ? ensureIds.length > 0
+          ? { OR: [bookmarkedWord, { id: { in: [...ensureIds] } }] }
+          : bookmarkedWord
+        : ensureIds.length > 0
+          ? {
+              OR: [
+                { ...occ.inRange, ...bookmarkedWord },
+                { id: { in: [...ensureIds] }, ...occ.numbered },
+              ],
+            }
+          : { ...occ.inRange, ...bookmarkedWord }),
     },
     select,
   });
 
   // ダミー候補プールを DUMMY_POOL_SIZE 件まで、同一 Occurrence（範囲外）→ 他 Occurrence の
   // 順で不足分だけ補う。fallback の取得数は同一 Occurrence の実取得数に依存するため逐次。
+  // 全件モードでは同一 Occurrence の概念がないため sameOccurrenceRows は常に空。
   const sameOccTake = Math.max(0, DUMMY_POOL_SIZE - targetRows.length);
   const sameOccurrenceRows =
-    sameOccTake === 0
+    occ === null || sameOccTake === 0
       ? []
       : await prisma.word.findMany({
           where: {
             ownerId: { in: allowed },
             ...eligibleWord,
-            ...linkedToOccurrence,
-            NOT: inRangeWordOccurrence,
+            ...occ.linkedToOccurrence,
+            NOT: occ.inRange,
             // ensure 指定の単語は target 側で取得済み（範囲外でも）。ダミー候補と二重に
             // 取得すると retargetMaterial の union で同一単語が重複出題されるため除外する。
             ...(ensureIds.length > 0 ? { id: { notIn: [...ensureIds] } } : {}),
@@ -169,6 +197,7 @@ export async function fetchQuizSource(
           take: sameOccTake,
         });
 
+  // 補完プール。掲載箇所指定モードは Occurrence 外、全件モードは全登録単語（ブックマーク外含む）。
   const fallbackTake = Math.max(0, DUMMY_POOL_SIZE - targetRows.length - sameOccurrenceRows.length);
   const fallbackRows =
     fallbackTake === 0
@@ -177,7 +206,7 @@ export async function fetchQuizSource(
           where: {
             ownerId: { in: allowed },
             ...eligibleWord,
-            NOT: linkedToOccurrence,
+            ...(occ === null ? {} : { NOT: occ.linkedToOccurrence }),
             ...(ensureIds.length > 0 ? { id: { notIn: [...ensureIds] } } : {}),
           },
           select,
@@ -230,22 +259,41 @@ export type QuizSourceRow = Awaited<ReturnType<typeof fetchQuizSource>>["targetR
  *   `noMeaning` は null（count クエリを発行せず、UI も表示しない）。
  * `noNumber` は両形式共通（範囲指定に番号が要る）。各件数は独立カウント（番号なしの単語は
  * `noNumber` と `noMeaning`/`noTgExample` の両方に数えられうる）。
+ *
+ * `bookmarkedOnly: true`（省略時 false）で除外内訳もブックマーク済み単語にスコープする（例:
+ * `noNumber` は「ブックマーク済みだが掲載番号なしで対象外」の件数になる）。`occurrenceId: null`
+ * の全件モードでは掲載箇所の概念がないため `noNumber` は `null`（noMeaning / noTgExample の
+ * 形式排他 null と同じ流儀）、noMeaning / noTgExample はブックマーク済み全体にスコープして数える。
  */
 export async function countQuizSourceExclusions(
   userId: string,
-  occurrenceId: string,
-  options: { countTgExample?: boolean } = {},
-): Promise<{ noNumber: number; noMeaning: number | null; noTgExample: number | null }> {
+  occurrenceId: string | null,
+  options: { countTgExample?: boolean; bookmarkedOnly?: boolean } = {},
+): Promise<{ noNumber: number | null; noMeaning: number | null; noTgExample: number | null }> {
   const allowed = scopedOwnerIds(userId);
+  // 「ブックマークのみ」時は除外内訳もブックマーク済み単語へスコープする。
+  const bookmarkedWord = options.bookmarkedOnly ? { bookmarks: { some: { userId } } } : {};
+  // noMeaning / noTgExample の母集団。掲載箇所指定モードは当該 Occurrence 紐付き、全件モードは
+  // ブックマーク条件のみ（掲載箇所の概念がない）。
+  const linkedWord =
+    occurrenceId === null
+      ? { ...bookmarkedWord }
+      : {
+          wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+          ...bookmarkedWord,
+        };
   const [noNumber, noMeaning, noTgExample] = await Promise.all([
-    prisma.wordOccurrence.count({
-      where: {
-        occurrenceId,
-        ownerId: { in: allowed },
-        occurrenceNumber: null,
-        word: { ownerId: { in: allowed } },
-      },
-    }),
+    // 全件モードは掲載箇所の概念がないため noNumber は null。
+    occurrenceId === null
+      ? Promise.resolve(null)
+      : prisma.wordOccurrence.count({
+          where: {
+            occurrenceId,
+            ownerId: { in: allowed },
+            occurrenceNumber: null,
+            word: { ownerId: { in: allowed }, ...bookmarkedWord },
+          },
+        }),
     // 意味未登録は非 TG 形式の除外理由。TG 形式では meaning を問わないため数えず null を返す
     // （TG の除外は noTgExample が捕捉する）。noTgExample とちょうど排他になる。
     options.countTgExample
@@ -253,7 +301,7 @@ export async function countQuizSourceExclusions(
       : prisma.word.count({
           where: {
             ownerId: { in: allowed },
-            wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+            ...linkedWord,
             NOT: { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } },
           },
         }),
@@ -261,7 +309,7 @@ export async function countQuizSourceExclusions(
       ? prisma.word.count({
           where: {
             ownerId: { in: allowed },
-            wordOccurrences: { some: { occurrenceId, ownerId: { in: allowed } } },
+            ...linkedWord,
             NOT: { examples: { some: usableTgExampleWhere(allowed) } },
           },
         })
@@ -282,33 +330,43 @@ export async function countQuizSourceExclusions(
  * - TG 例文形式（`requireTgExample: true`）: 「使える TG 例文を持つ」。可視 MeaningText は問わない
  *   （TG 四択は Example の text/meaning だけで成立するため）。生成側（buildChoiceTgQuestions の
  *   usable targets）と件数を一致させる。
+ *
+ * `bookmarkedOnly: true`（省略時 false）でブックマーク済み単語に絞る。`occurrenceId: null` の
+ * 全件モードでは掲載箇所・掲載番号の条件を課さず、ブックマーク済みの適格単語を数える。
  */
 export async function countQuizTargets(
   userId: string,
-  occurrenceId: string,
+  occurrenceId: string | null,
   range: { from?: number; to?: number },
-  options: { requireTgExample?: boolean } = {},
+  options: { requireTgExample?: boolean; bookmarkedOnly?: boolean } = {},
 ): Promise<number> {
   const allowed = scopedOwnerIds(userId);
+  const bookmarkedWord = options.bookmarkedOnly ? { bookmarks: { some: { userId } } } : {};
   return prisma.word.count({
     where: {
       ownerId: { in: allowed },
-      wordOccurrences: {
-        some: {
-          occurrenceId,
-          ownerId: { in: allowed },
-          occurrenceNumber: {
-            not: null,
-            ...(range.from !== undefined ? { gte: range.from } : {}),
-            ...(range.to !== undefined ? { lte: range.to } : {}),
-          },
-        },
-      },
+      // 全件モード（掲載箇所未指定）では掲載箇所・掲載番号の条件を課さない。
+      ...(occurrenceId === null
+        ? {}
+        : {
+            wordOccurrences: {
+              some: {
+                occurrenceId,
+                ownerId: { in: allowed },
+                occurrenceNumber: {
+                  not: null,
+                  ...(range.from !== undefined ? { gte: range.from } : {}),
+                  ...(range.to !== undefined ? { lte: range.to } : {}),
+                },
+              },
+            },
+          }),
       // TG 例文形式は「使える TG 例文を持つ単語」だけを対象とし可視 MeaningText は問わない。
       // 非 TG 形式は可視 MeaningText 1 件以上を要求する。fetchQuizSource の eligibleWord と一致。
       ...(options.requireTgExample
         ? { examples: { some: usableTgExampleWhere(allowed) } }
         : { meanings: { some: { texts: { some: { ownerId: { in: allowed } } } } } }),
+      ...bookmarkedWord,
     },
   });
 }

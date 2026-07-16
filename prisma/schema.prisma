@@ -35,6 +35,7 @@ model User {
   quizDefaultSetting       QuizDefaultSetting?
   quizDefaultTimeouts      QuizDefaultTimeout[]
   preference               UserPreference?
+  bookmarks                Bookmark[]
 
   @@unique([email])
   @@map("user")
@@ -129,6 +130,7 @@ model Word {
   wordOccurrences        WordOccurrence[]
   quizAnswers            QuizAnswer[]
   drillWords             DrillWord[]
+  bookmarks              Bookmark[]
 
   @@unique([ownerId, headword])
   @@index([ownerId])
@@ -396,6 +398,7 @@ model QuizDefaultSetting {
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
   choiceFirstMeaningTextOnly Boolean? @map("choice_first_meaning_text_only") // 四択（英→日）の選択肢で先頭の訳語のみ表示。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
+  bookmarkedOnly Boolean? @map("bookmarked_only") // 出題対象を「ブックマークのみ」に絞る。null = アプリ既定 OFF。occurrence 削除（SetNull）で occurrenceId が null になっても残す（全件モードの初期値として成立）
   drillIncludeCorrect Boolean? @map("drill_include_correct") // 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題
   // 定着までの回数（残数設定）の初期値。各 null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。各 1..9
   resetRemaining          Int? @map("drill_reset_remaining")
@@ -432,13 +435,18 @@ model QuizDefaultTimeout {
 model Drill {
   id             String     @id @default(cuid())
   ownerId        String     @map("owner_id")
-  occurrenceId   String     @map("occurrence_id")
-  rangeFrom      Int        @map("range_from")
-  rangeTo        Int        @map("range_to")
+  // 掲載箇所なし（ブックマーク全件モード）の drill では occurrenceId / rangeFrom / rangeTo が
+  // 3 つとも null（実効範囲の min/max は掲載箇所ありのときだけ計算する）
+  occurrenceId   String?    @map("occurrence_id")
+  rangeFrom      Int?       @map("range_from")
+  rangeTo        Int?       @map("range_to")
   // 元テストの範囲。null = 元テストが範囲指定なし（Occurrence 全体）。完了画面の
   // 「同じ範囲でもう一度テストする」に使う（既存行は実効範囲 range_from/to で backfill 済み）
   sourceRangeFrom Int? @map("source_range_from")
   sourceRangeTo   Int? @map("source_range_to")
+  // 元テストの「ブックマークのみ」指定。sourceRangeFrom/To と同役割の再テスト導線用
+  // （開始時に今のブックマーク集合で再評価する。ADR-0042 と一貫）
+  sourceBookmarkedOnly Boolean @default(false) @map("source_bookmarked_only")
   format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
   timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
   choiceFirstMeaningTextOnly Boolean @default(false) @map("choice_first_meaning_text_only") // 元テストの「四択で先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ
@@ -452,7 +460,8 @@ model Drill {
   completedAt    DateTime?  @map("completed_at") // 全単語定着時に設定。進行中一覧は completedAt IS NULL
 
   owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  occurrence Occurrence  @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  // 掲載箇所なし drill では occurrenceId が null。onDelete: Cascade は維持（null 行は削除連鎖の対象外になるだけ）
+  occurrence Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   words      DrillWord[]
 
   @@index([ownerId])
@@ -473,4 +482,20 @@ model DrillWord {
   @@id([drillId, wordId])
   @@index([wordId])
   @@map("drill_word")
+}
+
+// ブックマーク: ユーザー × 単語の per-user side table。行があればその単語をブックマーク中（ON）。
+// 共有マスタ単語（ownerId=system）にも本人の行を張れる。個別 @@index([userId]) は張らない
+// （PK 先頭列 prefix と完全重複するため。手本 OccurrencePresetSetting との差異は意図的）。
+model Bookmark {
+  userId    String   @map("user_id")
+  wordId    String   @map("word_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([userId, wordId])
+  @@index([wordId])
+  @@map("bookmark")
 }

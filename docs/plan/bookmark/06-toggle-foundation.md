@@ -1,6 +1,6 @@
 # 06. toggle-foundation
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -45,4 +45,7 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- `BookmarkButton` の props を実装裁量で確定: `{ wordId, bookmarked, size?: "icon-xs"|"icon-sm"|"icon"（既定 "icon-sm"）, onBookmarkChange?: (bookmarked: boolean) => void }`。`variant="ghost"` のアイコンのみ（テキストラベルなし、`aria-label="ブックマーク"`）。`RowBookmarkButton` は同 props をそのまま委譲 → **07・08 の設置時はこの props で呼び出す**
+- `onBookmarkChange` は楽観確定・巻き戻しの両方で呼ぶ（07 の「ブックマークのみ」フィルタ中に親が行の表示可否を追随する用途を想定）
+- `toggleBookmark` は目標状態を受け取る冪等 set。`revalidatePath` は呼ばない。ボタンは `disabled={isPending}` で pending 中無効化
+- テスト追加なし（DoD の方針どおり action 層の専用テストは作らない。画面確認は 07 以降）

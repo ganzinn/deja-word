@@ -15,15 +15,15 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-bookmark-schema.md](01-bookmark-schema.md) | Bookmark モデル新設（migration）＋ naming-book 登録＋ ADR「per-user side table＋開始時評価」起票 | なし | 未着手 | - |
-| [02-bookmark-settings.md](02-bookmark-settings.md) | UseCase `setBookmarkForUser` / `getBookmarkedWordIdsForUser` ＋入力スキーマ `schema/bookmark.ts` | 01 | 未着手 | - |
-| [03-quiz-source.md](03-quiz-source.md) | quiz-source 3 関数へのブックマーク述語・全件モード対応（後方互換のシグネチャ拡張）＋ ADR「全件モード」起票 | 01 | 未着手 | - |
-| [04-quiz-persist.md](04-quiz-persist.md) | Drill / QuizDefaultSetting の migration ＋ schema/quiz 拡張＋ quiz-generate / drill-create / quiz-default-settings / drill 系 3 ファイルの対応 | 01, 03 | 未着手 | - |
-| [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 未着手 | - |
-| [06-toggle-foundation.md](06-toggle-foundation.md) | server action `toggleBookmark` / `getBookmarkStates` ＋共有部品 BookmarkButton / RowBookmarkButton（UI 未設置） | 02 | 未着手 | - |
-| [07-words-ui.md](07-words-ui.md) | 単語一覧の行・toolbar フィルタトグル・単語詳細への設置＋ E2E | 02, 05, 06 | 未着手 | - |
-| [08-quiz-result-ui.md](08-quiz-result-ui.md) | quiz 結果一覧・単語詳細ダイアログへの設置（getWordDetailForDialog 拡張）＋ E2E | 02, 06 | 未着手 | - |
-| [09-quiz-start-ui.md](09-quiz-start-ui.md) | quiz 開始フォーム「指定なし」＋「ブックマークのみ」・プレビュー連動・設定画面・drill ラベル＋ E2E | 03, 04 | 未着手 | - |
+| [01-bookmark-schema.md](01-bookmark-schema.md) | Bookmark モデル新設（migration）＋ naming-book 登録＋ ADR「per-user side table＋開始時評価」起票 | なし | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [02-bookmark-settings.md](02-bookmark-settings.md) | UseCase `setBookmarkForUser` / `getBookmarkedWordIdsForUser` ＋入力スキーマ `schema/bookmark.ts` | 01 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [03-quiz-source.md](03-quiz-source.md) | quiz-source 3 関数へのブックマーク述語・全件モード対応（後方互換のシグネチャ拡張）＋ ADR「全件モード」起票 | 01 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [04-quiz-persist.md](04-quiz-persist.md) | Drill / QuizDefaultSetting の migration ＋ schema/quiz 拡張＋ quiz-generate / drill-create / quiz-default-settings / drill 系 3 ファイルの対応 | 01, 03 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [05-words-list.md](05-words-list.md) | words-list に bookmarked 列＋「ブックマークのみ」フィルタ（バックエンドのみ） | 01 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [06-toggle-foundation.md](06-toggle-foundation.md) | server action `toggleBookmark` / `getBookmarkStates` ＋共有部品 BookmarkButton / RowBookmarkButton（UI 未設置） | 02 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [07-words-ui.md](07-words-ui.md) | 単語一覧の行・toolbar フィルタトグル・単語詳細への設置＋ E2E | 02, 05, 06 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [08-quiz-result-ui.md](08-quiz-result-ui.md) | quiz 結果一覧・単語詳細ダイアログへの設置（getWordDetailForDialog 拡張）＋ E2E | 02, 06 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
+| [09-quiz-start-ui.md](09-quiz-start-ui.md) | quiz 開始フォーム「指定なし」＋「ブックマークのみ」・プレビュー連動・設定画面・drill ラベル＋ E2E | 03, 04 | 完了（2026-07-16） | [#136](https://github.com/ganzinn/deja-word/pull/136) |
 
 ## 依存関係図
 
@@ -49,20 +49,21 @@ graph LR
 - 01 のマージ後、02・03・05 は並行可
 - 04（03 の後）と 06（02 の後）は互いに並行可
 - 07・08 は 06 の後に並行可（07 は 05 のマージも必要）
-- 09 は 04 の後（07・08 とは並行可）
+- 09 は 04 の後（07 とは並行可）。08 は quiz-flow.tsx を 09 と共有するため 09 の完了後に着手する
 
 ## チケット横断の共通事項
 
 ### 共有物・競合点
 
-原則として同一ファイルは 1 チケットだけが触る分割にしてある。例外は以下の 3 ファイルで、いずれも依存関係または着手順序で直列化する。
+原則として同一ファイルは 1 チケットだけが触る分割にしてある。例外は以下の 4 ファイルで、いずれも依存関係または着手順序で直列化する。
 
 - `prisma/schema.prisma` / migration: **01（Bookmark 新設）と 04（Drill nullable 化・sourceBookmarkedOnly・QuizDefaultSetting.bookmarkedOnly）の 2 チケットが migration を持つ**。04 は 01 に依存するため migration は必ず直列になる。他のチケットでスキーマ変更を追加しない（必要が生じたら ticket-split の見直し・追加モードへ）
   - Drill の nullable 化を 01 に同居させないのは、nullable 化が `drill-list.ts` 等の型を壊すため（コード対応と同一 PR でないと typecheck が通らない）
 - `src/app/quiz/_components/start-form.tsx`: **03 が 1 行だけ触り**（除外内訳 `noNumber` の null 許容化に伴う型ガード）、本対応は 09。09 は 03 に依存するため直列になる
 - `src/lib/quiz-preview.ts`: **03 が型のみ触り**（`QuizPreview.excluded.noNumber` の null 許容化）、本対応（入力の optional 化・bookmarkedOnly 受け渡し・assertOccurrenceVisible の条件化）は 04。04 は 03 に依存するため直列になる
 - `src/lib/schema/quiz.ts`: 触るのは 04 のみ。extend 先（getQuizPreviewInputSchema / startQuizInputSchema）へは自動波及するため、09 はスキーマを変更せずフォーム側の対応のみ行う
-- `src/app/quiz/actions.ts`: 触るのは 08 のみ（getQuizPreview は quiz-preview.ts へ委譲しているだけのため、プレビュー対応で変更しない。実装時に変更が必要と判明したら ticket-split の見直しへ）
+- `src/app/quiz/_components/quiz-flow.tsx`: **09（drill ラベル・再テストプレビュー、完了済み 2026-07-16）と 08（ブックマーク配線: 状態マップ・ResultList への props・WordDetailDialog への onBookmarkChange 受け渡し）が触る**。09 完了後に 08 が着手する順序のため競合しない。08 は 09 の成果物を論理的に消費しない（純粋な着手順序の制約のみ）ため、依存列・依存図には載せない
+- `src/app/quiz/actions.ts`: 触るのは 08 のみ（getWordDetailForDialog への bookmarked 並置）。getQuizPreview は quiz-preview.ts へ委譲しているだけのためプレビュー対応で変更せず、09 完了時点でも変更不要と確認済み
 
 ### 共通規約
 
@@ -76,6 +77,7 @@ graph LR
 - ブランチ名: `feature/bookmark-NN-<チケット名>`
 - PR タイトル: `bookmark: NN <チケット名>`
 - マージは依存順（依存先チケットの PR がマージされてから着手・マージする）
+- 運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feature/bookmark`。チケット完了 = 統合ブランチへマージ、PR は全チケット完了後に一括作成）
 
 ## ステータス運用ルール
 

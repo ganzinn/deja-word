@@ -1,6 +1,6 @@
 # 07. words-ui
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-07-16）**　PR: （未作成）
 
 ## 目的
 
@@ -45,4 +45,8 @@ Bookmark アイコントグルを WordView 用（word-list-toolbar.tsx）・Occu
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- チケットの変更列挙外だが `src/app/words/_lib/search-params.ts` の buildWordsHref に `bookmarked?: boolean` を追加（ページ送りリンクがフィルタを落とさないために必要。デフォルト OFF は URL 非搭載の既存規約に従い true 時のみ `bookmarked=1`）
+- 単語詳細の ScreenHeader `actions` を「canEdit || canDelete のとき」条件描画から**常時描画**へ変更（ブックマークは権限に依らず全ユーザー可のため。編集・削除は従来どおり権限で個別出し分け）
+- 「ブックマークのみ」トグルは WordView / OccurrenceView 共通部品 `bookmark-filter-toggle.tsx` に切り出し
+- 隣接ナビ（詳細の prev/next・戻る）には bookmarked を引き継がない（05 の申し送りどおり findAdjacentWordsByOccurrence が bookmarkedOnly 非対応・設計スコープ外。決定 3 とも整合）
+- E2E は WordView で自動実施しパス（行トグル → 詳細一致 → 詳細 OFF → 一覧 reload 反映、フィルタと URL の付与・削除）。**OccurrenceView 側トグルの UI 走行は未実施**（共通部品・同一 buildHref でコード等価、バックエンドは 05 の integration で担保済み。厳密確認が要るなら追加 E2E を検討）

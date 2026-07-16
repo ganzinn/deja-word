@@ -15,6 +15,7 @@ import {
   ensureAdminDemoInvitee,
   ensureDemoWord,
   ensureQuizDeck,
+  ensureQuizDeckBookmarks,
   ensureUser,
   getLargestSharedOccurrence,
   makePrisma,
@@ -365,6 +366,89 @@ async function sectionQuiz(browser: Browser): Promise<void> {
   }
 }
 
+/**
+ * ブックマーク（単語一覧のフィルタ・quiz 開始フォームの全件モード・テスト結果一覧とダイアログのトグル）。
+ * 被写体は ensureQuizDeck のデッキ＋ ensureQuizDeckBookmarks が付けるブックマーク 3 件。
+ * quiz の操作ヘルパは sectionQuiz と同型の最小版（セクション自己完結の方針で局所に持つ）。
+ */
+async function sectionBookmark(browser: Browser): Promise<void> {
+  const user = await docsContext(browser);
+  try {
+    const page = await login(user, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
+    const main = page.getByRole("main");
+
+    // 単語一覧の「ブックマークのみ」フィルタ表示中（行のトグルは ON 塗りつぶしで並ぶ）。
+    await page.goto("/words?bookmarked=1");
+    await shot(
+      page,
+      "bookmark-words-list",
+      page.getByRole("button", { name: "ブックマークのみ" }),
+      main,
+    );
+
+    // quiz 開始フォームの全件モード（掲載箇所「指定なし」＋ブックマークのみ ON、範囲 Input は disabled）。
+    await page.goto("/quiz");
+    await page.locator("#quiz-occurrence").click();
+    await page.getByRole("option", { name: "指定なし", exact: true }).click();
+    await page.getByRole("checkbox", { name: "ブックマークのみ" }).click();
+    await shot(page, "bookmark-quiz-start", page.getByText(/対象\s*\d+語/), main);
+
+    // テスト結果一覧（行のブックマークトグル）: デッキ No.1〜3 を自己判定で完走して結果へ。
+    // No.1 brisk はブックマーク済み・No.2〜3 は未ブックマークで、ON/OFF が混在した結果を撮る。
+    await page.goto("/quiz");
+    await page.locator("#quiz-occurrence").click();
+    await page.getByRole("option", { name: quizDeckLocation }).click();
+    await page.locator("#quiz-range-from").fill("1");
+    await page.getByLabel("掲載番号（まで）").fill("3");
+    await page.locator("#quiz-format").click();
+    await page.getByRole("option", { name: "自己判定" }).first().click();
+    const secInput = page.getByLabel("制限時間（秒）");
+    const appeared = await secInput
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (appeared) {
+      await page.getByRole("checkbox", { name: "1 問ごとに制限時間を設定する" }).click();
+      await secInput.waitFor({ state: "hidden", timeout: 5_000 });
+    }
+    await page.getByRole("button", { name: "開始", exact: true }).click();
+
+    const judges = ["合っていた", "間違っていた", "うろ覚え"];
+    const reveal = page.getByRole("button", { name: "解答を表示", exact: true });
+    for (let i = 0; i < judges.length; i++) {
+      await reveal.waitFor({ state: "visible", timeout: 8_000 });
+      await reveal.click();
+      await page.getByRole("button", { name: judges[i] as string, exact: true }).click();
+    }
+    // 結果送信の完了と、ブックマーク状態の一括取得（トグル描画）を待ってから撮る。
+    await page.getByRole("heading", { name: "テスト結果" }).waitFor({ timeout: 15_000 });
+    await page
+      .getByRole("button", { name: "ブックマーク" })
+      .first()
+      .waitFor({ state: "visible", timeout: 15_000 });
+    await shot(
+      page,
+      "bookmark-quiz-result",
+      page.getByRole("heading", { name: "テスト結果" }),
+      main,
+    );
+
+    // 行タップで開く単語詳細ダイアログ（ヘッダ右上のトグルが行と同じ状態で出る）。
+    // dialog 要素はビューポート全幅のフルスクリーンダイアログのため、余白を省いて
+    // 内側の中央カラム（mx-auto コンテナ）にクリップする。
+    await page.getByRole("main").getByText("brisk", { exact: true }).first().click();
+    const dialog = page.getByRole("dialog");
+    await shot(
+      page,
+      "bookmark-quiz-result-dialog",
+      dialog.getByRole("button", { name: "ブックマーク" }),
+      dialog.locator("div.mx-auto").first(),
+    );
+  } finally {
+    await user.close();
+  }
+}
+
 /** 設定（設定トップ・単語全般・掲載箇所・単語テストのデフォルト）。すべて test1 の一般ユーザー画面。 */
 async function sectionSettings(browser: Browser): Promise<void> {
   const user = await docsContext(browser);
@@ -431,6 +515,9 @@ const SECTIONS: Record<string, (browser: Browser) => Promise<void>> = {
   common: sectionCommon,
   account: sectionAccount,
   words: sectionWords,
+  // bookmark は quiz より先に撮る（quiz が進行中の定着モードを残し、開始フォームの撮影に写り込むため。
+  // 進行中 drill は main() の DB 準備（ensureQuizDeck）が掃除する）。
+  bookmark: sectionBookmark,
   quiz: sectionQuiz,
   settings: sectionSettings,
   admin: sectionAdmin,
@@ -462,6 +549,7 @@ async function main(): Promise<void> {
 
   const needsWords = targets.some(([name]) => name === "words");
   const needsQuiz = targets.some(([name]) => name === "quiz");
+  const needsBookmark = targets.some(([name]) => name === "bookmark");
   // 設定の「掲載箇所」画面は test1 のデモ掲載箇所（②③が作る「デモ単語帳」「デモ英単語帳」）を被写体にする。
   const needsSettings = targets.some(([name]) => name === "settings");
   const needsAdmin = targets.some(([name]) => name === "admin");
@@ -474,10 +562,13 @@ async function main(): Promise<void> {
     if (needsWords) {
       sharedOccurrenceId = (await getLargestSharedOccurrence(prisma)).id;
     }
-    if (needsQuiz || needsSettings) {
+    if (needsQuiz || needsSettings || needsBookmark) {
       const deck = await ensureQuizDeck(prisma, TEST_USER1_EMAIL);
       quizDeckLocation = deck.location;
       quizDeckWordCount = deck.wordCount;
+    }
+    if (needsBookmark) {
+      await ensureQuizDeckBookmarks(prisma, TEST_USER1_EMAIL);
     }
     if (needsAdmin) {
       await assertSystemUserReady(prisma);

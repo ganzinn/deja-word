@@ -142,7 +142,7 @@ herdr agent start <機能名>-NN --cwd <worktree絶対パス> --split down --no-
 ```
 
 - **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` は可変長のため、後置した位置引数を許可リストとして飲み込み、プロンプト未実行の空セッションが起動する
-- devman 経由で検証させる場合は `"Bash(devman *)"` を許可リストに追加する
+- devman 経由で検証させる場合は `"Bash(devman run *)"` を許可リストに追加する（`devman *` にはしない — `devman server` はリポジトリにつき 1 つのサーバ仕様のため、実装エージェントが起動するとユーザーの dev サーバを停止させてしまう）
 - 同名エージェントが残っていると `agent_name_taken` で起動に失敗する。起動前（特に再開時）に `herdr agent list` で確認し、残骸ペインは回収・close してから起動する
 - ペインが増えて見づらければ専用タブ（`herdr tab create --label "<機能名> impl"` → `--tab <id>`）を使ってよい
 - 起動確認: `herdr agent wait <名前> --status working --timeout 90000` で着手を確認する（以後の idle 待ちが「完了」を意味するようになる）。タイムアウトしたら `herdr agent read <名前> --source visible` で停止原因（trust ダイアログ等）を確認する

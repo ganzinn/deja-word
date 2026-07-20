@@ -115,7 +115,8 @@ export function QuestionChoice({
                 disabled={answered !== null}
                 onClick={() => handleSelect(index)}
                 className={cn(
-                  "h-auto min-h-16 w-full justify-start py-4 text-left whitespace-normal",
+                  // 意味テキストの改行（\n）を保持しつつ文字数でも折り返す（MeaningBlocks と同じ扱い）
+                  "h-auto min-h-16 w-full justify-start py-4 text-left whitespace-pre-wrap",
                   isCorrect &&
                     "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
                   isWrongSelected &&

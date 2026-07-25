@@ -1,6 +1,6 @@
 {
   "packageId": "io.github.ganzinn.dejaword",
-  "host": "deja-word.vercel.app",
+  "host": "deja-word.su-dx.com",
   "name": "DejaWord",
   "launcherName": "DejaWord",
   "display": "standalone",
@@ -13,18 +13,18 @@
   "backgroundColor": "#18181B",
   "enableNotifications": false,
   "startUrl": "/",
-  "iconUrl": "https://deja-word.vercel.app/icons/512",
-  "maskableIconUrl": "https://deja-word.vercel.app/icons/512",
+  "iconUrl": "https://deja-word.su-dx.com/icons/512",
+  "maskableIconUrl": "https://deja-word.su-dx.com/icons/512",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1",
-  "appVersionCode": 1,
+  "appVersionName": "2",
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "unknown",
-  "webManifestUrl": "https://deja-word.vercel.app/manifest.webmanifest",
+  "webManifestUrl": "https://deja-word.su-dx.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
@@ -33,7 +33,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://deja-word.vercel.app/",
+  "fullScopeUrl": "https://deja-word.su-dx.com/",
   "minSdkVersion": 21,
   "orientation": "default",
   "fingerprints": [],
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1"
+  "appVersion": "2"
 }

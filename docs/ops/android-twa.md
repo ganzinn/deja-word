@@ -1,6 +1,6 @@
 # Android TWA（APK ビルド・配布）
 
-DejaWord の Android アプリは **TWA (Trusted Web Activity)**：本番 `https://deja-word.vercel.app` を端末の Chrome がフルスクリーン表示する薄いシェル。採用判断は [ADR-0071](../adr/0071-twa-android-app.md)。
+DejaWord の Android アプリは **TWA (Trusted Web Activity)**：本番 `https://deja-word.su-dx.com` を端末の Chrome がフルスクリーン表示する薄いシェル。採用判断は [ADR-0071](../adr/0071-twa-android-app.md)。
 
 **Web の変更（ページ・機能・スタイル）はリリースだけでアプリに自動反映される。APK の再ビルド・再配布は不要。** 再ビルドが必要になるのは次のときだけ:
 
@@ -61,7 +61,7 @@ USB 接続で:
 
 ## 検証チェックリスト
 
-1. `curl https://deja-word.vercel.app/.well-known/assetlinks.json` — 200 / fingerprint が keystore と一致
+1. `curl https://deja-word.su-dx.com/.well-known/assetlinks.json` — 200 / fingerprint が keystore と一致
 2. アプリ起動 → スプラッシュ（#18181b）→ **URL バーが表示されない**（= Asset Links 検証成功。URL バーが出る場合は assetlinks 未反映か fingerprint 不一致。`adb logcat | grep -i origin` と Google の Statement List Tester で切り分け）
 3. サインイン → アプリを強制終了 → 再起動してセッション維持（cookie）
 4. クイズ一連（開始 → 回答 → 結果送信）

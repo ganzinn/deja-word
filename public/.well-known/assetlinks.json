@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.ganzinn.dejaword",
+      "sha256_cert_fingerprints": [
+        "47:27:4D:11:AE:C7:2E:45:45:8A:A9:3C:DD:FD:20:89:C1:58:B3:05:15:0B:B8:39:00:55:5F:16:A1:51:A6:74"
+      ]
+    }
+  }
+]

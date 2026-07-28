@@ -22,6 +22,7 @@ import type { StartFormDefaults } from "@/lib/quiz-default-settings";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
+import { buildStartDrillInput } from "../_lib/build-start-drill-input";
 import {
   getQuizPreview,
   startDrill,
@@ -519,28 +520,17 @@ export function QuizFlow({
     ) {
       return;
     }
-    const input = {
-      occurrenceId: startInput.occurrenceId,
-      // 元テストの範囲を Drill に保存する（完了画面の「同じ範囲でもう一度テストする」用）
-      sourceRangeFrom: startInput.rangeFrom,
-      sourceRangeTo: startInput.rangeTo,
-      format: quiz.format,
-      // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
-      timeoutSeconds: quiz.timeoutSeconds,
-      // 元テストの「四択で先頭の訳語のみ表示」設定も Drill に保存して引き継ぐ
-      choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
-      // 元テストの「掲載番号順に出題する」設定も Drill に保存し、全ラウンド・再テストで引き継ぐ
-      // （掲載番号順の drill はラウンドごとの再シャッフルをしない。ADR-0072）
-      orderByOccurrenceNumber: startInput.orderByOccurrenceNumber,
-      // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
+    // 元テストの範囲・設定の引き継ぎ配線は純関数に集約（引き継ぎ漏れは回帰テストで検知）
+    const input = buildStartDrillInput({
+      startInput,
+      quiz,
       drillIncludeCorrect,
-      // 結果画面で設定した定着までの回数（残数設定）を Drill に保存し、生成・全ラウンドで引き継ぐ
       resetRemaining,
       vagueRemaining,
       initialCorrectRemaining,
       // result をそのまま渡し、投入要否（CORRECT のみトグル依存）と初期残数は drill-create が導出する
       results: rows.map((row) => ({ wordId: row.wordId, result: row.result })),
-    };
+    });
     const runId = ++runIdRef.current;
     setMode("DRILL");
     setDrill(null);

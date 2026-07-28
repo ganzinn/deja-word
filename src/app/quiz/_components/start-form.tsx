@@ -136,6 +136,10 @@ export function StartForm({
   const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
     defaults.choiceFirstMeaningTextOnly ?? true,
   );
+  // 掲載番号順に出題する。初期値はデフォルト設定（未設定は OFF＝ランダム）。
+  const [orderByOccurrenceNumber, setOrderByOccurrenceNumber] = useState(
+    defaults.orderByOccurrenceNumber ?? false,
+  );
   // 「この設定をデフォルト設定とする」トグル。初期状態は設定画面のメタ設定由来。
   // ON のままテスト開始すると開始画面の入力でデフォルトを部分上書きする（メタ設定自体は変えない）。
   const [saveAsDefault, setSaveAsDefault] = useState(saveAsDefaultInitial);
@@ -155,6 +159,9 @@ export function StartForm({
   // これにより「掲載箇所未選択＋範囲指定」をスキーマが拒否する組が UI から送られない。
   const rangeFrom = occurrenceId === null ? undefined : parseRangeValue(rangeFromText);
   const rangeTo = occurrenceId === null ? undefined : parseRangeValue(rangeToText);
+  // 掲載番号順も掲載箇所を指定したときだけ送る（全件モードは掲載番号を持たない。ADR-0072）。
+  // 範囲入力と同じく、チェック状態は保持したまま送信値だけ false に落とす。
+  const sendOrderByOccurrenceNumber = occurrenceId !== null && orderByOccurrenceNumber;
   // TG 例文形式のときだけ format をプレビューへ渡す（対象件数が TG 例文の有無で絞られる）
   const tgPreviewFormat = format !== null && isTgExampleFormat(format) ? format : undefined;
   // プレビューを取得するのは「掲載箇所が指定あり、または bookmarkedOnly=true」（＝開始しうる入力）のとき。
@@ -241,6 +248,7 @@ export function StartForm({
       format,
       timeoutSeconds: timeoutSeconds ?? null,
       choiceFirstMeaningTextOnly,
+      orderByOccurrenceNumber: sendOrderByOccurrenceNumber,
     };
     // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
     if (saveAsDefault) {
@@ -397,6 +405,29 @@ export function StartForm({
       </section>
 
       <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-order-by-occurrence-number"
+            className="size-6"
+            checked={orderByOccurrenceNumber}
+            onCheckedChange={(checked) => setOrderByOccurrenceNumber(checked === true)}
+            disabled={occurrenceId === null}
+          />
+          <Label
+            htmlFor="quiz-order-by-occurrence-number"
+            className={cn("font-normal", occurrenceId === null && "opacity-50")}
+          >
+            掲載番号順に出題する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          {occurrenceId === null
+            ? "掲載箇所を選ぶと、掲載番号の小さい順に出題できます。「指定なし」では掲載番号が無いため、順番はランダムです。"
+            : "オフのときは順番がランダムになります。選択肢の並びは掲載番号順でもランダムです。"}
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <Label>制限時間</Label>
         <div className="flex items-center gap-2">
           <Checkbox
@@ -450,7 +481,7 @@ export function StartForm({
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題形式・制限時間をデフォルト設定として保存します。
+          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題形式・掲載番号順・制限時間をデフォルト設定として保存します。
         </p>
       </section>
 

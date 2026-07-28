@@ -103,6 +103,10 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
     defaults.choiceFirstMeaningTextOnly ?? true,
   );
+  // 掲載番号順に出題するか。未設定（null）は OFF（ランダム）。掲載箇所を指定したときのみ有効。
+  const [orderByOccurrenceNumber, setOrderByOccurrenceNumber] = useState(
+    defaults.orderByOccurrenceNumber ?? false,
+  );
   // 定着モードに正答単語も含めるか（テスト結果画面トグルの初期値）。未設定（null）は OFF（誤答のみ）。
   const [drillIncludeCorrect, setDrillIncludeCorrect] = useState(
     defaults.drillIncludeCorrect ?? false,
@@ -143,6 +147,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         enableAnswerSound,
         autoplayAnswerAudioJaEn,
         choiceFirstMeaningTextOnly,
+        // 掲載箇所「指定なし」では掲載番号順が成立しないため、範囲と同じく false に正規化して保存する。
+        orderByOccurrenceNumber: occurrenceId === null ? false : orderByOccurrenceNumber,
         drillIncludeCorrect,
         resetRemaining: parseRangeValue(resetRemainingText),
         vagueRemaining: parseRangeValue(vagueRemainingText),
@@ -171,6 +177,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
     setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
     setChoiceFirstMeaningTextOnly(DEFAULT_QUIZ_SETTINGS.choiceFirstMeaningTextOnly ?? true);
+    setOrderByOccurrenceNumber(DEFAULT_QUIZ_SETTINGS.orderByOccurrenceNumber ?? false);
     setDrillIncludeCorrect(DEFAULT_QUIZ_SETTINGS.drillIncludeCorrect ?? false);
     setResetRemainingText(
       (DEFAULT_QUIZ_SETTINGS.resetRemaining ?? DEFAULT_RESET_REMAINING).toString(),
@@ -258,6 +265,27 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         </div>
         <p className="text-muted-foreground text-xs">
           ブックマークした単語だけを出題対象にします。掲載箇所「指定なし」でも全件からテストできます。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="quiz-defaults-order-by-occurrence-number"
+            checked={orderByOccurrenceNumber}
+            onCheckedChange={(checked) => setOrderByOccurrenceNumber(checked === true)}
+            disabled={occurrenceId === null}
+          />
+          <Label
+            htmlFor="quiz-defaults-order-by-occurrence-number"
+            className={cn("font-normal", occurrenceId === null && "opacity-50")}
+          >
+            掲載番号順に出題する
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          掲載番号の小さい順に出題します。オフのときは順番がランダムです。掲載箇所「指定なし」では
+          掲載番号が無いため設定できません。
         </p>
       </section>
 

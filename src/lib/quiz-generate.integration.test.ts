@@ -30,6 +30,7 @@ describe("generateQuizForUser (TG four-choice, meaning-independent)", () => {
       format: "CHOICE_TG",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      orderByOccurrenceNumber: false,
     });
 
     expect(payload.format).toBe("CHOICE_TG");
@@ -60,6 +61,7 @@ describe("generateQuizForUser (TG four-choice, meaning-independent)", () => {
       format: "SELF_JUDGE_TG",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      orderByOccurrenceNumber: false,
     });
 
     expect(payload.format).toBe("SELF_JUDGE_TG");
@@ -99,11 +101,71 @@ describe("generateQuizForUser (all-bookmark mode / bookmarkedOnly の pass-throu
       format: "SELF_JUDGE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      orderByOccurrenceNumber: false,
     });
 
     expect(payload.format).toBe("SELF_JUDGE");
     const askedIds = new Set(payload.questions.map((q) => q.wordId));
     expect(askedIds).toEqual(new Set([bmUnnumbered.id, bmUnlinked.id]));
     expect(askedIds.has(other.id)).toBe(false);
+  });
+});
+
+describe("generateQuizForUser (掲載番号順出題 / docs/adr/0072-quiz-order-by-occurrence-number.md)", () => {
+  /** 掲載番号を降順に登録した単語（登録順と掲載番号順が一致しないようにする）。 */
+  async function createNumberedWords(userId: string, occurrenceId: string, numbers: number[]) {
+    const byNumber = new Map<number, string>();
+    for (const number of numbers) {
+      const word = await createQuizWordRow(userId, `word-${number}`, {
+        occurrence: { id: occurrenceId, occurrenceNumber: number },
+      });
+      byNumber.set(number, word.id);
+    }
+    return byNumber;
+  }
+
+  test("orderByOccurrenceNumber: true で掲載番号の昇順に出題する", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "番号順テスト帳");
+    // 登録順は 5,4,3,2,1（＝掲載番号の降順）。番号順出題なら 1..5 の昇順で返る。
+    const byNumber = await createNumberedWords(user.id, occurrence.id, [5, 4, 3, 2, 1]);
+
+    const payload = await generateQuizForUser(user.id, {
+      occurrenceId: occurrence.id,
+      rangeFrom: 1,
+      rangeTo: 5,
+      format: "SELF_JUDGE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      orderByOccurrenceNumber: true,
+    });
+
+    expect(payload.questions.map((q) => q.wordId)).toEqual([
+      byNumber.get(1),
+      byNumber.get(2),
+      byNumber.get(3),
+      byNumber.get(4),
+      byNumber.get(5),
+    ]);
+  });
+
+  test("全件モード（掲載箇所なし）では orderByOccurrenceNumber: true でも無視する（掲載番号が無いため）", async () => {
+    const user = await createTestUser();
+    const occurrence = await createOccurrenceRow(user.id, "全件モード番号順テスト帳");
+    const byNumber = await createNumberedWords(user.id, occurrence.id, [1, 2, 3]);
+    await prisma.bookmark.createMany({
+      data: [...byNumber.values()].map((wordId) => ({ userId: user.id, wordId })),
+    });
+
+    // 掲載箇所を指定していないので並べ替えキーが無く、出題は成立する（順序は保証しない）。
+    const payload = await generateQuizForUser(user.id, {
+      bookmarkedOnly: true,
+      format: "SELF_JUDGE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      orderByOccurrenceNumber: true,
+    });
+
+    expect(new Set(payload.questions.map((q) => q.wordId))).toEqual(new Set(byNumber.values()));
   });
 });

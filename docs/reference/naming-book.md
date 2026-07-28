@@ -297,6 +297,14 @@
 - 混同注意: 出題生成（`buildQuiz`、`generation/` 配下）は RNG を引数注入する純関数で、シードは永続しない。
 - 出典: src/lib/quiz/queries/quiz-source.ts:31, src/lib/quiz/queries/quiz-source.ts:67, src/lib/quiz/payload.ts:70
 
+#### orderByOccurrenceNumber（掲載番号順出題）
+
+- 英語名: `orderByOccurrenceNumber`（DB カラム `order_by_occurrence_number`。`QuizDefaultSetting` / `Drill` / テスト開始入力）
+- 日本語名: 掲載番号順に出題する
+- 定義: 出題順を掲載番号（occurrenceNumber）の昇順に固定する設定。OFF（既定）はランダム（Fisher–Yates）。掲載箇所を指定したときのみ有効で、ブックマーク全件モードでは無視する。元テストの指定は `Drill` に保存され、定着モードの全ラウンド・再テストへ引き継がれる（設計: docs/adr/0072-quiz-order-by-occurrence-number.md）。
+- 混同注意: 固定するのは**出題順だけ**で、選択肢（ダミー）の並びは掲載番号順でもランダム。「ソート順」「並び替え」は単語一覧の表示順を指す語なので、出題順には使わない。
+- 出典: prisma/schema.prisma:402, src/lib/quiz/generation/order.ts
+
 #### countdown（カウントダウン）
 
 - 英語名: `countdown`（quiz-flow の状態名）、`showCountdown`（設定フラグ）

@@ -56,6 +56,8 @@ export async function createDrillForUser(
     format: QuizFormat;
     timeoutSeconds: number | null;
     choiceFirstMeaningTextOnly: boolean;
+    /** 元テストの「掲載番号順に出題する」指定（省略時 false）。全ラウンド・再テストへ引き継ぐ（docs/adr/0072-quiz-order-by-occurrence-number.md）。 */
+    orderByOccurrenceNumber?: boolean;
     /** false（既定）= 誤答のみ Drill に入れる。true で正答単語も入れる（従来挙動）。 */
     drillIncludeCorrect: boolean;
     /** 定着までの回数（残数設定）。テスト開始時に解決済みの具体値（各 1..9）。 */
@@ -135,6 +137,7 @@ export async function createDrillForUser(
         format: input.format,
         timeoutSeconds: input.timeoutSeconds,
         choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+        orderByOccurrenceNumber: input.orderByOccurrenceNumber ?? false,
         resetRemaining: input.resetRemaining,
         vagueRemaining: input.vagueRemaining,
         initialCorrectRemaining: input.initialCorrectRemaining,

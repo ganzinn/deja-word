@@ -52,6 +52,8 @@ function usableTgExampleWhere(allowed: string[]) {
  * 範囲（range）判定を SQL に寄せ、ダミー候補プールを {@link DUMMY_POOL_SIZE} 件まで優先順で
  * **不足分だけ**取得する（最大 3 クエリ、逐次）:
  * - `targetRows`: 範囲内の出題対象。仕様『範囲内全出題』のため上限なしで全件取得。
+ *   出題対象だけは対象 Occurrence への紐付き（`wordOccurrences`）の掲載番号も持つ
+ *   （掲載番号順出題の並べ替えキー。docs/adr/0072-quiz-order-by-occurrence-number.md）。
  * - `sameOccurrenceRows`: 同一 Occurrence の範囲外・番号なし単語（優先ダミー）。
  *   不足分 `DUMMY_POOL_SIZE - targets` 件だけ取得（0 なら取得しない）。
  * - `fallbackRows`: Occurrence 外の全登録単語（補完ダミー）。
@@ -151,6 +153,20 @@ export async function fetchQuizSource(
       },
     },
   } as const;
+  // 出題対象だけ、対象 Occurrence への紐付きの掲載番号も取る（掲載番号順出題 `orderByOccurrenceNumber`
+  // の並べ替えキー。`@@unique([wordId, occurrenceId])` により該当行は高々 1 件）。全件モード
+  // （occurrenceId が null）は掲載箇所の概念が無いため `in: []` で常に空配列にし、分岐で行の型が
+  // 変わらないようにする（掲載番号順は全件モードでは無効。ADR-0072）。
+  const targetSelect = {
+    ...select,
+    wordOccurrences: {
+      where: {
+        occurrenceId: occurrenceId === null ? { in: [] } : occurrenceId,
+        ownerId: { in: allowed },
+      },
+      select: { occurrenceNumber: true },
+    },
+  } as const;
 
   // 出題対象。掲載箇所指定モードは範囲内（∧ ブックマーク）、全件モードはブックマーク済み全件
   // （掲載番号なし・掲載箇所未紐付けの単語も含む）。ensureTargetWordIds の単語はどちらのモードでも
@@ -172,7 +188,7 @@ export async function fetchQuizSource(
             }
           : { ...occ.inRange, ...bookmarkedWord }),
     },
-    select,
+    select: targetSelect,
   });
 
   // ダミー候補プールを DUMMY_POOL_SIZE 件まで、同一 Occurrence（範囲外）→ 他 Occurrence の

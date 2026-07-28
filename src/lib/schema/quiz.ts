@@ -128,6 +128,10 @@ export const startQuizInputSchema = quizRangeInputObject
     timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
     // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
     choiceFirstMeaningTextOnly: z.boolean(),
+    // 掲載番号の昇順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。
+    // 掲載箇所未指定（全件モード）では掲載番号が無いため下流で無視される。`.default(false)` で
+    // 省略時 false（未更新フォームも後方互換で通る。bookmarkedOnly と同じ流儀）。
+    orderByOccurrenceNumber: z.boolean().default(false),
   })
   .superRefine(checkQuizRangeCrossField);
 
@@ -168,6 +172,9 @@ export const saveQuizDefaultsInputSchema = z.object({
   enableAnswerSound: z.boolean().nullable(),
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
   choiceFirstMeaningTextOnly: z.boolean().nullable(),
+  // 掲載番号順出題のデフォルト。null = アプリ既定 OFF（＝ランダム）。`.default(null)` で
+  // 省略時は null（この項目を送らない旧フォームとの後方互換。bookmarkedOnly と同じ流儀）。
+  orderByOccurrenceNumber: z.boolean().nullable().default(null),
   drillIncludeCorrect: z.boolean().nullable(),
   // 定着までの回数（残数設定）。null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。
   resetRemaining: quizRemainingCountSchema.nullable(),
@@ -203,6 +210,9 @@ export const startDrillInputSchema = z.object({
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
   choiceFirstMeaningTextOnly: z.boolean(),
+  // 元テストの「掲載番号順に出題する」指定。`Drill` に保存し全ラウンド・再テストへ引き継ぐ
+  // （docs/adr/0072-quiz-order-by-occurrence-number.md）。省略時 false（後方互換）。
+  orderByOccurrenceNumber: z.boolean().default(false),
   // テスト結果画面で解決済みのトグル値。false（既定）= 誤答のみ、true = 正答も出題。
   drillIncludeCorrect: z.boolean(),
   // 定着までの回数（残数設定）。テスト開始時の値をそのまま受け取り `Drill` 行へ保存する。
@@ -248,7 +258,7 @@ export const submitDrillRetryInputSchema = z.object({
   answers: z.array(answerInputSchema).min(1).max(QUIZ_ANSWERS_MAX_COUNT),
 });
 
-// bookmarkedOnly / sourceBookmarkedOnly は `.default(false)` のため、パース後（z.infer）の型では必須になる。
+// bookmarkedOnly / sourceBookmarkedOnly / orderByOccurrenceNumber は `.default(false)` のため、パース後（z.infer）の型では必須になる。
 // action 呼び出し元（start-form / quiz-flow）はこれらを未指定のまま送る後方互換があるため、
 // 呼び出し元が満たす「パース前」の入力型（z.input）を公開する（省略時 false は zod 側の default が補う）。
 export type StartQuizInput = z.input<typeof startQuizInputSchema>;

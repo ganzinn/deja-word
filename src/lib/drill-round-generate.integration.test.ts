@@ -14,6 +14,7 @@ async function setupDrill(
     timeoutSeconds?: number | null;
     sourceRangeFrom?: number;
     sourceRangeTo?: number;
+    orderByOccurrenceNumber?: boolean;
   } = {},
 ) {
   const user = await createTestUser();
@@ -33,6 +34,7 @@ async function setupDrill(
     format: "SELF_JUDGE",
     timeoutSeconds: options.timeoutSeconds ?? null,
     choiceFirstMeaningTextOnly: false,
+    orderByOccurrenceNumber: options.orderByOccurrenceNumber,
     drillIncludeCorrect: true,
     resetRemaining: 3,
     vagueRemaining: 2,
@@ -71,6 +73,8 @@ describe("generateDrillRoundForUser", () => {
       format: "SELF_JUDGE",
       timeoutSeconds: 7,
       choiceFirstMeaningTextOnly: false,
+      // 元テストの「掲載番号順に出題する」指定（Drill.orderByOccurrenceNumber の既定 false）
+      orderByOccurrenceNumber: false,
     });
   });
 
@@ -89,7 +93,30 @@ describe("generateDrillRoundForUser", () => {
       format: "SELF_JUDGE",
       timeoutSeconds: null,
       choiceFirstMeaningTextOnly: false,
+      // 元テストの「掲載番号順に出題する」指定（Drill.orderByOccurrenceNumber の既定 false）
+      orderByOccurrenceNumber: false,
     });
+  });
+
+  test("掲載番号順の drill はラウンドを繰り返しても掲載番号の昇順で出題する（ADR-0039 の例外）", async () => {
+    // 登録順（＝ DrillWord の作成順）と掲載番号順が一致しないようにする
+    const { user, drillId, wordIds } = await setupDrill(
+      [
+        { headword: "epsilon", number: 50, correct: false },
+        { headword: "delta", number: 40, correct: false },
+        { headword: "gamma", number: 30, correct: false },
+        { headword: "beta", number: 20, correct: false },
+        { headword: "alpha", number: 10, correct: false },
+      ],
+      { orderByOccurrenceNumber: true },
+    );
+    const ascending = [...wordIds].reverse();
+
+    // 再生成しても毎回同じ昇順（＝ラウンドごとの再シャッフルをしない）
+    for (let round = 0; round < 3; round++) {
+      const { quiz } = await generateDrillRoundForUser(user.id, { drillId });
+      expect(quiz.questions.map((q) => q.wordId)).toEqual(ascending);
+    }
   });
 
   test("a member whose occurrenceNumber moved outside the range is still asked", async () => {

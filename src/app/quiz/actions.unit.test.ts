@@ -265,8 +265,12 @@ describe("startQuiz (Server Action)", () => {
     mockedGenerate.mockResolvedValue(quiz);
     const res = await startQuiz(input);
     expect(res).toEqual({ ok: true, quiz });
-    // スキーマの bookmarkedOnly `.default(false)` がパース後に補われる。
-    expect(mockedGenerate).toHaveBeenCalledWith("u_1", { ...input, bookmarkedOnly: false });
+    // スキーマの bookmarkedOnly / orderByOccurrenceNumber `.default(false)` がパース後に補われる。
+    expect(mockedGenerate).toHaveBeenCalledWith("u_1", {
+      ...input,
+      bookmarkedOnly: false,
+      orderByOccurrenceNumber: false,
+    });
   });
 });
 
@@ -440,10 +444,11 @@ describe("startDrill (Server Action)", () => {
     mockedDrillCreate.mockResolvedValue({ drillId: "d_1" });
     const res = await startDrill(input);
     expect(res).toEqual({ ok: true, drillId: "d_1" });
-    // スキーマの sourceBookmarkedOnly `.default(false)` がパース後に補われる。
+    // スキーマの sourceBookmarkedOnly / orderByOccurrenceNumber `.default(false)` がパース後に補われる。
     expect(mockedDrillCreate).toHaveBeenCalledWith("u_1", {
       ...input,
       sourceBookmarkedOnly: false,
+      orderByOccurrenceNumber: false,
     });
   });
 });

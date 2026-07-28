@@ -529,6 +529,9 @@ export function QuizFlow({
       timeoutSeconds: quiz.timeoutSeconds,
       // 元テストの「四択で先頭の訳語のみ表示」設定も Drill に保存して引き継ぐ
       choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
+      // 元テストの「掲載番号順に出題する」設定も Drill に保存し、全ラウンド・再テストで引き継ぐ
+      // （掲載番号順の drill はラウンドごとの再シャッフルをしない。ADR-0072）
+      orderByOccurrenceNumber: startInput.orderByOccurrenceNumber,
       // 結果画面トグル: false（既定）= 誤答のみ、true で正答も出題
       drillIncludeCorrect,
       // 結果画面で設定した定着までの回数（残数設定）を Drill に保存し、生成・全ラウンドで引き継ぐ

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import { buildQuiz } from "@/lib/quiz/generation/build-quiz";
 import { partitionMaterial, retargetMaterial } from "@/lib/quiz/generation/material";
+import { occurrenceNumbersOf } from "@/lib/quiz/generation/order";
 import { DrillNotFoundError } from "@/lib/quiz/handlers/drill-round-handler";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
@@ -30,8 +31,10 @@ export class EmptyDrillRetryError extends Error {
  * - remaining は見ない（そのラウンドで定着した remaining=0 の単語も出題する）
  * - 対象単語は `ensureTargetWordIds` で範囲と独立に取得する（ラウンド生成と同じ救済。
  *   番号が範囲外へ移動したメンバーも再テストできる。issue #106）
- * - 形式・制限時間・四択の選択肢表示は `Drill` から導出（docs/adr/0038-drill-inherits-format-timeout.md）
- * - 出題順・選択肢は毎回サーバー再生成（docs/adr/0039-drill-reshuffle-each-round.md）
+ * - 形式・制限時間・四択の選択肢表示・掲載番号順は `Drill` から導出（docs/adr/0038-drill-inherits-format-timeout.md）
+ * - 出題順・選択肢は毎回サーバー再生成（docs/adr/0039-drill-reshuffle-each-round.md）。
+ *   掲載番号順の drill だけは再シャッフルせず毎回同じ昇順になる
+ *   （docs/adr/0072-quiz-order-by-occurrence-number.md）
  * - roundCount は返さない（再テスト送信は残数に触れず CAS 不要のため）
  */
 export async function generateDrillRetryForUser(
@@ -45,6 +48,7 @@ export async function generateDrillRetryForUser(
       format: true,
       timeoutSeconds: true,
       choiceFirstMeaningTextOnly: true,
+      orderByOccurrenceNumber: true,
       rangeFrom: true,
       rangeTo: true,
       words: { select: { wordId: true } },
@@ -76,6 +80,11 @@ export async function generateDrillRetryForUser(
     quiz: {
       ...buildQuiz(drill.format, material, Math.random, {
         choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+        // 掲載箇所なし drill は掲載番号を持たないため常にランダム（全件モードの扱いと一貫）。
+        occurrenceNumberByWordId:
+          drill.orderByOccurrenceNumber && drill.occurrenceId !== null
+            ? occurrenceNumbersOf(targetRows)
+            : undefined,
       }),
       timeoutSeconds: drill.timeoutSeconds,
     },

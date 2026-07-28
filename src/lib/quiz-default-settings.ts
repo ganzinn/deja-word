@@ -26,6 +26,8 @@ export type QuizDefaults = {
   autoplayAnswerAudioJaEn: boolean | null;
   /** 四択（英→日）の選択肢で先頭の訳語のみ表示する。null = ON（デフォルト＝先頭の訳語のみ）。OFF（false）で全訳語を「; 」連結。 */
   choiceFirstMeaningTextOnly: boolean | null;
+  /** 掲載番号の昇順に出題する。null = アプリ既定 OFF（＝ランダム）。掲載箇所を指定したときのみ有効（docs/adr/0072-quiz-order-by-occurrence-number.md）。 */
+  orderByOccurrenceNumber: boolean | null;
   /** 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題。 */
   drillIncludeCorrect: boolean | null;
   /** 定着までの回数（残数設定）の初期値。各 null = アプリ既定（誤答3 / うろ覚え2 / 正答1）。各 1..9。 */
@@ -125,6 +127,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
       choiceFirstMeaningTextOnly: null,
+      orderByOccurrenceNumber: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -148,6 +151,9 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     enableAnswerSound: setting.enableAnswerSound,
     autoplayAnswerAudioJaEn: setting.autoplayAnswerAudioJaEn,
     choiceFirstMeaningTextOnly: setting.choiceFirstMeaningTextOnly,
+    // 掲載番号順も occurrence 削除（SetNull）で occurrenceId が null になっても残す
+    // （掲載箇所を選び直せばそのまま効く。bookmarkedOnly と同じ扱い）。
+    orderByOccurrenceNumber: setting.orderByOccurrenceNumber,
     drillIncludeCorrect: setting.drillIncludeCorrect,
     resetRemaining: setting.resetRemaining,
     vagueRemaining: setting.vagueRemaining,
@@ -176,7 +182,7 @@ export async function saveQuizDefaultsForUser(userId: string, input: QuizDefault
 /**
  * 開始画面で設定した内容をデフォルトに上書きする（開始画面トグル ON でテスト開始時）。
  * 開始画面にある項目だけの部分更新: occurrence / range / format / 四択先頭訳語のみ表示
- * （choiceFirstMeaningTextOnly）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
+ * （choiceFirstMeaningTextOnly）/ 掲載番号順（orderByOccurrenceNumber）と、選択中形式の制限時間のみを書き換える。他形式の制限時間・
  * カウントダウン/発音/効果音などの挙動設定・定着までの回数（残数設定）・saveOnStart 自体は既存値を保持する
  * （upsert の update に開始画面の項目しか渡さないため温存される）。
  *
@@ -203,6 +209,8 @@ export async function saveStartSettingsAsDefaultsForUser(
     bookmarkedOnly: input.bookmarkedOnly ?? false,
     format: input.format,
     choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+    // 「掲載番号順に出題する」も開始画面項目。省略時 false（bookmarkedOnly と同じ流儀）。
+    orderByOccurrenceNumber: input.orderByOccurrenceNumber ?? false,
   };
 
   // 初回保存（設定行・timeout 行ともゼロ）の判定。getQuizDefaultsForUser が null を返す状態。

@@ -5,6 +5,7 @@ import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import { buildQuiz, checkFormatAvailability } from "@/lib/quiz/generation/build-quiz";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import { partitionMaterial } from "@/lib/quiz/generation/material";
+import { occurrenceNumbersOf } from "@/lib/quiz/generation/order";
 import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import type { QuizRangeInput } from "@/lib/quiz-preview";
@@ -19,6 +20,9 @@ import type { QuizRangeInput } from "@/lib/quiz-preview";
  * 不成立の場合は QuizGenerationError（カウントダウン画面でメッセージ表示）。
  *
  * Occurrence の可視性確認（不在は OccurrenceNotFoundError）は `fetchQuizSource` 冒頭で行われる。
+ *
+ * 出題順は既定でランダム。`orderByOccurrenceNumber` が true かつ掲載箇所を指定している場合のみ
+ * 掲載番号の昇順にする（docs/adr/0072-quiz-order-by-occurrence-number.md）。
  */
 export async function generateQuizForUser(
   userId: string,
@@ -26,6 +30,7 @@ export async function generateQuizForUser(
     format: QuizFormat;
     timeoutSeconds: number | null;
     choiceFirstMeaningTextOnly: boolean;
+    orderByOccurrenceNumber: boolean;
   },
 ): Promise<QuizPayload> {
   const { targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows } = await fetchQuizSource(
@@ -40,7 +45,14 @@ export async function generateQuizForUser(
   );
   const material = partitionMaterial(targetRows, sameOccurrenceRows, fallbackRows, tgExampleRows);
 
-  const buildOptions = { choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly };
+  // 掲載番号順は掲載箇所を指定したときだけ有効（全件モードは掲載番号を持たない。ADR-0072）。
+  const buildOptions = {
+    choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+    occurrenceNumberByWordId:
+      input.orderByOccurrenceNumber && input.occurrenceId !== undefined
+        ? occurrenceNumbersOf(targetRows)
+        : undefined,
+  };
   const availability = checkFormatAvailability(input.format, material, buildOptions);
   if (!availability.available) {
     throw new QuizGenerationError(availability.reason);

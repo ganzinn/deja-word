@@ -195,6 +195,27 @@ describe("startQuizInputSchema", () => {
     ).toBe(false);
   });
 
+  test("orderByOccurrenceNumber defaults to false when omitted and accepts a boolean", () => {
+    const base = {
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    } as const;
+    // 省略時は `.default(false)` = ランダム出題（この項目を送らない旧フォームの後方互換）。
+    const omitted = startQuizInputSchema.safeParse(base);
+    expect(omitted.success).toBe(true);
+    if (omitted.success) expect(omitted.data.orderByOccurrenceNumber).toBe(false);
+
+    const on = startQuizInputSchema.safeParse({ ...base, orderByOccurrenceNumber: true });
+    expect(on.success).toBe(true);
+    if (on.success) expect(on.data.orderByOccurrenceNumber).toBe(true);
+
+    expect(
+      startQuizInputSchema.safeParse({ ...base, orderByOccurrenceNumber: "true" }).success,
+    ).toBe(false);
+  });
+
   test("timeoutSeconds accepts null and 1..60 integers, rejects out-of-range / non-integer / missing", () => {
     const base = {
       occurrenceId: "occ_1",
@@ -693,6 +714,38 @@ describe("saveQuizDefaultsInputSchema", () => {
     expect(saveQuizDefaultsInputSchema.safeParse({ ...base, bookmarkedOnly: "true" }).success).toBe(
       false,
     );
+  });
+
+  test("orderByOccurrenceNumber accepts true / false / null, defaults to null when omitted, rejects non-boolean", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
+      drillIncludeCorrect: null,
+      resetRemaining: null,
+      vagueRemaining: null,
+      initialCorrectRemaining: null,
+      saveOnStart: null,
+    };
+    for (const orderByOccurrenceNumber of [true, false, null]) {
+      expect(
+        saveQuizDefaultsInputSchema.safeParse({ ...base, orderByOccurrenceNumber }).success,
+      ).toBe(true);
+    }
+    // 省略時は `.default(null)` で null が補われる（この項目を送らない旧フォームの後方互換）。
+    const r = saveQuizDefaultsInputSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.orderByOccurrenceNumber).toBeNull();
+    expect(
+      saveQuizDefaultsInputSchema.safeParse({ ...base, orderByOccurrenceNumber: "true" }).success,
+    ).toBe(false);
   });
 
   test("saveOnStart accepts true / false / null, rejects non-boolean / missing", () => {

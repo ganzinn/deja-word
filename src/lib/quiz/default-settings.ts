@@ -29,6 +29,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   enableAnswerSound: true,
   autoplayAnswerAudioJaEn: true,
   choiceFirstMeaningTextOnly: true,
+  orderByOccurrenceNumber: false,
   drillIncludeCorrect: false,
   resetRemaining: 3,
   vagueRemaining: 2,

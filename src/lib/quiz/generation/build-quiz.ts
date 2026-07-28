@@ -18,13 +18,17 @@ import {
   type TgQuizWord,
 } from "@/lib/quiz/generation/material";
 import { buildMultiMeaningQuestions } from "@/lib/quiz/generation/multi-meaning";
+import {
+  orderQuestionsByOccurrenceNumber,
+  type OccurrenceNumberByWordId,
+} from "@/lib/quiz/generation/order";
 import { buildSelfJudgeQuestions } from "@/lib/quiz/generation/self-judge";
 import { buildSelfJudgeJaEnQuestions } from "@/lib/quiz/generation/self-judge-ja-en";
 import { buildSelfJudgeTgQuestions } from "@/lib/quiz/generation/self-judge-tg";
 import { buildSelfJudgeTgJaEnQuestions } from "@/lib/quiz/generation/self-judge-tg-ja-en";
 import { buildSpellingQuestions } from "@/lib/quiz/generation/spelling";
 import type { Rng } from "@/lib/quiz/generation/shuffle";
-import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
+import type { QuestionBase, QuizQuestionsPayload } from "@/lib/quiz/payload";
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected quiz format: ${String(value)}`);
@@ -34,14 +38,45 @@ function assertNever(value: never): never {
 export type BuildQuizOptions = {
   /** 四択（英→日）の選択肢を先頭の訳語のみで表示する（false = 全訳語を「; 」連結）。 */
   choiceFirstMeaningTextOnly?: boolean;
+  /**
+   * 掲載番号順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。指定すると
+   * 生成後の問題を掲載番号の昇順へ並べ替える。未指定（ランダム出題）は従来どおり各ビルダーの
+   * Fisher–Yates の結果をそのまま使う。
+   */
+  occurrenceNumberByWordId?: OccurrenceNumberByWordId;
 };
 
-/** 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成する。 */
+/**
+ * 選択肢構成・シャッフルまで済んだ完成品の問題データ一式を生成する。
+ *
+ * 出題順の決定はこの関数に集約する: 各形式ビルダーは常に Fisher–Yates で組み立て、
+ * 掲載番号順（`options.occurrenceNumberByWordId`）のときだけ**生成後に並べ替える**。
+ * ビルダー側で分岐しないのは RNG の消費列を出題順設定に依存させないため（ADR-0028 の
+ * シード付きテストが設定によらず同じ問題データを再現できる）。選択肢（ダミー）の並びは
+ * 掲載番号順でもランダムのまま。
+ */
 export function buildQuiz(
   format: QuizFormat,
   material: QuizSourceMaterial,
   rng: Rng,
   options: BuildQuizOptions = {},
+): QuizQuestionsPayload {
+  const built = buildQuestions(format, material, rng, options);
+  const numbers = options.occurrenceNumberByWordId;
+  if (numbers === undefined) return built;
+  // 並べ替えは QuestionBase の wordId / headword しか見ないため、要素の実体は形式ごとの型の
+  // まま変わらない（順序だけが変わる）。ただし discriminated union の spread では TS が
+  // format と questions の対応を保てないため、ここだけ明示的な cast で組み直す。
+  const questions = orderQuestionsByOccurrenceNumber<QuestionBase>(built.questions, numbers);
+  return { ...built, questions } as QuizQuestionsPayload;
+}
+
+/** 形式ディスパッチ（出題順は各ビルダーの Fisher–Yates のまま）。並べ替えは `buildQuiz` が行う。 */
+function buildQuestions(
+  format: QuizFormat,
+  material: QuizSourceMaterial,
+  rng: Rng,
+  options: BuildQuizOptions,
 ): QuizQuestionsPayload {
   switch (format) {
     case "CHOICE":

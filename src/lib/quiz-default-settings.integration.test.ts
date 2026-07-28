@@ -46,6 +46,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     enableAnswerSound: null,
     autoplayAnswerAudioJaEn: null,
     choiceFirstMeaningTextOnly: null,
+    orderByOccurrenceNumber: null,
     drillIncludeCorrect: null,
     resetRemaining: null,
     vagueRemaining: null,
@@ -330,6 +331,8 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         choiceFirstMeaningTextOnly: true,
         // bookmarkedOnly も開始画面項目。入力で未指定 = false へ上書きされる（決定 6）
         bookmarkedOnly: false,
+        // 掲載番号順も開始画面項目。入力で未指定 = false へ上書きされる（ADR-0072）
+        orderByOccurrenceNumber: false,
         // 定着までの回数は開始画面に項目が無いため触らない（null のまま温存）
         // 挙動設定・メタ設定はすべて温存
         showCountdown: true,
@@ -364,6 +367,8 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         choiceFirstMeaningTextOnly: true,
         // bookmarkedOnly も開始画面項目。入力で未指定 = false（決定 6）
         bookmarkedOnly: false,
+        // 掲載番号順も開始画面項目。入力で未指定 = false（ADR-0072）
+        orderByOccurrenceNumber: false,
       }),
     );
   });

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import { buildQuiz } from "@/lib/quiz/generation/build-quiz";
 import { partitionMaterial, retargetMaterial } from "@/lib/quiz/generation/material";
+import { occurrenceNumbersOf } from "@/lib/quiz/generation/order";
 import { DrillNotFoundError } from "@/lib/quiz/handlers/drill-round-handler";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import { fetchQuizSource } from "@/lib/quiz/queries/quiz-source";
@@ -24,7 +25,9 @@ export class DrillNoAskableWordsError extends Error {
  * drill ラウンド 1 回分の問題を再生成する（初回・再開とも単一経路）。
  *
  * - 出題形式は `Drill.format` から導出（docs/adr/0038-drill-inherits-format-timeout.md）
- * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。docs/adr/0039-drill-reshuffle-each-round.md）
+ * - 出題順・選択肢は毎回サーバー再生成（シード永続化なし。docs/adr/0039-drill-reshuffle-each-round.md）。
+ *   元テストが掲載番号順（`Drill.orderByOccurrenceNumber`）だったラウンドは再シャッフルせず
+ *   毎回同じ掲載番号の昇順になる（ADR-0039 の明示的な例外。docs/adr/0072-quiz-order-by-occurrence-number.md）
  * - 出題対象は未定着（remaining > 0）の DrillWord の単語**全て**（docs/adr/0036-drill-remaining-count-model.md）。
  *   未定着メンバーは `ensureTargetWordIds` で範囲と独立に取得する（作成後に番号が
  *   範囲外へ移動しても出題し続け、完了不能化を防ぐ。issue #106）。範囲ベースの
@@ -60,6 +63,7 @@ export async function generateDrillRoundForUser(
       format: true,
       timeoutSeconds: true,
       choiceFirstMeaningTextOnly: true,
+      orderByOccurrenceNumber: true,
       rangeFrom: true,
       rangeTo: true,
       sourceRangeFrom: true,
@@ -116,6 +120,11 @@ export async function generateDrillRoundForUser(
     quiz: {
       ...buildQuiz(drill.format, material, Math.random, {
         choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+        // 掲載箇所なし drill は掲載番号を持たないため常にランダム（全件モードの扱いと一貫）。
+        occurrenceNumberByWordId:
+          drill.orderByOccurrenceNumber && drill.occurrenceId !== null
+            ? occurrenceNumbersOf(targetRows)
+            : undefined,
       }),
       timeoutSeconds: drill.timeoutSeconds,
     },
@@ -131,6 +140,8 @@ export async function generateDrillRoundForUser(
       format: drill.format,
       timeoutSeconds: drill.timeoutSeconds,
       choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+      // 元テストの「掲載番号順に出題する」指定。再テストにも引き継ぐ（ADR-0042 の同じ範囲と同流儀）
+      orderByOccurrenceNumber: drill.orderByOccurrenceNumber,
     },
     occurrenceName: drill.occurrence?.location ?? "",
   };

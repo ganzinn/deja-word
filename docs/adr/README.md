@@ -84,6 +84,7 @@
 | [0034](0034-per-format-timeout-setting.md) | 制限時間は形式別オプション設定 | 高 | — |
 | [0035](0035-vague-self-judge-option.md) | 自己判定に「うろ覚え」導入、GAVE_UP 転用 | 高 | — |
 | [0070](0070-bookmark-all-scope-quiz.md) | ブックマーク全件モード（掲載箇所なし出題、0022 の明示的例外） | 高 | — |
+| [0072](0072-quiz-order-by-occurrence-number.md) | 掲載番号順出題（出題順の決定を buildQuiz に集約、0039 の明示的例外） | 高 | — |
 
 ### E. drill（定着モード）
 

@@ -142,6 +142,66 @@ describe("buildQuiz", () => {
       true,
     );
   });
+
+  // 掲載番号順出題（docs/adr/0072-quiz-order-by-occurrence-number.md）
+  describe("occurrenceNumberByWordId (掲載番号順出題)", () => {
+    // 順序が観測できるよう出題対象を増やした素材（シャッフル結果が昇順と一致する確率を下げる）
+    const orderedMaterial = material({
+      targets: [
+        word("t1", [["走る"]]),
+        word("t2", [["歩く"]]),
+        word("t3", [["泳ぐ"]]),
+        word("t4", [["飛ぶ"]]),
+        word("t5", [["跳ねる"]]),
+      ],
+      sameOccurrencePool: [word("d1", [["読む"]]), word("d2", [["書く"]])],
+    });
+    const numbers = new Map([
+      ["t1", 5],
+      ["t2", 4],
+      ["t3", 3],
+      ["t4", 2],
+      ["t5", 1],
+    ]);
+
+    test("orders questions by ascending occurrence number for every format", () => {
+      for (const format of ["CHOICE", "SELF_JUDGE", "MULTI_MEANING", "SPELLING"] as const) {
+        const quiz = buildQuiz(format, orderedMaterial, seededRng(1), {
+          occurrenceNumberByWordId: numbers,
+        });
+        expect(quiz.questions.map((q) => q.wordId)).toEqual(["t5", "t4", "t3", "t2", "t1"]);
+      }
+    });
+
+    test("keeps the choices shuffled while the question order is fixed", () => {
+      // 選択肢の並びはランダムのまま（正解が常に同じ位置に来ない）。シードを変えると
+      // 同じ出題順のまま correctIndex の並びが変わることで確認する。
+      const a = buildQuiz("CHOICE", orderedMaterial, seededRng(1), {
+        occurrenceNumberByWordId: numbers,
+      });
+      const b = buildQuiz("CHOICE", orderedMaterial, seededRng(7), {
+        occurrenceNumberByWordId: numbers,
+      });
+      if (a.format !== "CHOICE" || b.format !== "CHOICE") throw new Error("unreachable");
+      expect(a.questions.map((q) => q.wordId)).toEqual(b.questions.map((q) => q.wordId));
+      expect(a.questions.map((q) => q.correctIndex)).not.toEqual(
+        b.questions.map((q) => q.correctIndex),
+      );
+    });
+
+    test("leaves the shuffled order untouched when the option is omitted (ランダム出題)", () => {
+      // 未指定なら従来どおり RNG 由来の順序（シードが同じなら並べ替えの有無だけが差になる）。
+      const random = buildQuiz("SELF_JUDGE", orderedMaterial, seededRng(1));
+      const ordered = buildQuiz("SELF_JUDGE", orderedMaterial, seededRng(1), {
+        occurrenceNumberByWordId: numbers,
+      });
+      expect(random.questions.map((q) => q.wordId)).not.toEqual(["t5", "t4", "t3", "t2", "t1"]);
+      // 並べ替えは同じ問題集合の順序だけを変える（欠落・重複を作らない）
+      expect(new Set(random.questions.map((q) => q.wordId))).toEqual(
+        new Set(ordered.questions.map((q) => q.wordId)),
+      );
+    });
+  });
 });
 
 describe("checkFormatAvailability", () => {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Light テーマ（values-night が dark 側を上書きする）。targetSdk 33+ では WebView の
+      prefers-color-scheme がテーマの isLightTheme に追従するため、DayNight 切替だけで
+      サイト側の CSS ダークモードが機能する。
+    -->
+    <style name="Theme.DejaWord" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.DejaWord.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_maskable</item>
+        <item name="postSplashScreenTheme">@style/Theme.DejaWord</item>
+    </style>
+</resources>

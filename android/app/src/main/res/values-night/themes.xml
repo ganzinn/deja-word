@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 非 Light parent により isLightTheme=false → WebView の prefers-color-scheme: dark が成立 -->
+    <style name="Theme.DejaWord" parent="android:Theme.Material.NoActionBar" />
+</resources>

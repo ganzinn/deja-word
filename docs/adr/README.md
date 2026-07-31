@@ -121,7 +121,7 @@
 | [0053](0053-intermediate-csv-import.md) | 中間 CSV 分解パイプラインでの取り込み | 高 | — |
 | [0054](0054-worktree-shared-db-blob.md) | worktree 並行開発（DB・.dev-blob 共有） | 高 | — |
 | [0055](0055-occurrence-presets-opt-in.md) | 共有掲載箇所プリセット既定 OFF（オプトイン） | 高 | — |
-| [0071](0071-twa-android-app.md) | Android 提供は TWA + APK サイドロード（Capacitor 不採用） | 高 | — |
+| [0073](0073-webview-android-app.md) | Android 提供は WebView シェル + ネイティブ TTS ブリッジ | 高 | — |
 
 ### H. テスト・開発プロセス
 
@@ -150,6 +150,7 @@
 | ID | タイトル | 置換先 |
 | --- | --- | --- |
 | [0062](0062-system-word-promotion-merge.md) | system 単語作成時の「昇格マージ」（暗黙統合と所有権移譲） | [0065](0065-system-word-coexistence.md)（作成）/ [0066](0066-system-word-deletion-guard.md)（削除） |
+| [0071](0071-twa-android-app.md) | Android 提供は TWA + APK サイドロード（Capacitor 不採用） | [0073](0073-webview-android-app.md) |
 
 ## 人間への確認質問（レビュー時にまとめて回答用）
 

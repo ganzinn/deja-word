@@ -50,11 +50,13 @@ yarn-error.log*
 # vercel
 .vercel
 
-# android TWA (署名鍵・ビルド生成物は git 管理外)
+# android (署名鍵・ビルド生成物は git 管理外)
 /android/*.keystore
 /android/.gradle/
+/android/.kotlin/
 /android/build/
 /android/app/build/
+/android/local.properties
 /android/*.apk
 /android/*.aab
 /android/*.idsig

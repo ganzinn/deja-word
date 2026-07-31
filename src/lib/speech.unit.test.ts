@@ -12,6 +12,31 @@ type SpeechGlobals = {
   SpeechSynthesisUtterance?: unknown;
 };
 
+type TtsDispatch = (id: string, event: "start" | "end" | "error", detail: string) => void;
+
+/**
+ * Android WebView シェルが注入するネイティブ TTS ブリッジ（window.DejaWordTts）のスタブを
+ * 差し込む。既に window がある場合（speechSynthesis モックとの併用）はそこへ追加する。
+ */
+function installBridgeMock({ available = true } = {}) {
+  const speak = vi.fn();
+  const cancel = vi.fn();
+  const bridge = { speak, cancel, isAvailable: () => available };
+  const g = globalThis as SpeechGlobals;
+  const w = (g.window ?? {}) as Record<string, unknown>;
+  w.DejaWordTts = bridge;
+  g.window = w;
+  return {
+    speak,
+    cancel,
+    dispatch: (...args: Parameters<TtsDispatch>) => {
+      const fn = w.__dejaWordTtsDispatch as TtsDispatch | undefined;
+      fn?.(...args);
+    },
+    lastUtteranceId: () => speak.mock.calls.at(-1)?.[1] as string,
+  };
+}
+
 function installSpeechMock() {
   const speak = vi.fn();
   const cancel = vi.fn();
@@ -112,5 +137,89 @@ describe("cancelSpeech", () => {
     const { cancel } = installSpeechMock();
     cancelSpeech();
     expect(cancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("native bridge (Android WebView)", () => {
+  it("isSpeechSupported returns true with bridge only (no speechSynthesis)", () => {
+    installBridgeMock();
+    expect(isSpeechSupported()).toBe(true);
+  });
+
+  it("ignores an unavailable bridge: unsupported, speakEnglish no-ops with onEnd", () => {
+    installBridgeMock({ available: false });
+    expect(isSpeechSupported()).toBe(false);
+    const onEnd = vi.fn();
+    speakEnglish("hello", { onEnd });
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("speaks via the bridge and installs the dispatch receiver", () => {
+    const { speak, lastUtteranceId } = installBridgeMock();
+    speakEnglish("hello");
+    expect(speak).toHaveBeenCalledTimes(1);
+    expect(speak.mock.calls[0][0]).toBe("hello");
+    expect(lastUtteranceId()).toMatch(/^tts-\d+$/);
+    const w = (globalThis as SpeechGlobals).window as Record<string, unknown>;
+    expect(typeof w.__dejaWordTtsDispatch).toBe("function");
+  });
+
+  it("routes start/end events to onStart/onEnd", () => {
+    const bridge = installBridgeMock();
+    const onStart = vi.fn();
+    const onEnd = vi.fn();
+    speakEnglish("hello", { onStart, onEnd });
+    const id = bridge.lastUtteranceId();
+    bridge.dispatch(id, "start", "");
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onEnd).not.toHaveBeenCalled();
+    bridge.dispatch(id, "end", "");
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes error events to onError (with detail) and onEnd", () => {
+    const bridge = installBridgeMock();
+    const onEnd = vi.fn();
+    const onError = vi.fn();
+    speakEnglish("hello", { onEnd, onError });
+    bridge.dispatch(bridge.lastUtteranceId(), "error", "tts-unavailable");
+    expect(onError).toHaveBeenCalledWith("tts-unavailable");
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("guarantees onEnd fires once even if the same id is dispatched twice", () => {
+    const bridge = installBridgeMock();
+    const onEnd = vi.fn();
+    speakEnglish("hello", { onEnd });
+    const id = bridge.lastUtteranceId();
+    bridge.dispatch(id, "end", "");
+    bridge.dispatch(id, "end", "");
+    bridge.dispatch(id, "error", "late");
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores dispatches for unknown utterance ids", () => {
+    const bridge = installBridgeMock();
+    speakEnglish("hello");
+    expect(() => bridge.dispatch("tts-unknown", "end", "")).not.toThrow();
+  });
+
+  it("issues distinct utterance ids per speak", () => {
+    const bridge = installBridgeMock();
+    speakEnglish("one");
+    const first = bridge.lastUtteranceId();
+    speakEnglish("two");
+    expect(bridge.lastUtteranceId()).not.toBe(first);
+  });
+
+  it("prefers the bridge over speechSynthesis for speak and cancel", () => {
+    const speech = installSpeechMock();
+    const bridge = installBridgeMock();
+    speakEnglish("hello");
+    expect(bridge.speak).toHaveBeenCalledTimes(1);
+    expect(speech.speak).not.toHaveBeenCalled();
+    cancelSpeech();
+    expect(bridge.cancel).toHaveBeenCalledTimes(1);
+    expect(speech.cancel).not.toHaveBeenCalled();
   });
 });

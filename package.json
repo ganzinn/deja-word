@@ -62,7 +62,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@bubblewrap/cli": "^1.24.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

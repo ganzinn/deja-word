@@ -21,7 +21,7 @@ DejaWord の Android アプリは **ネイティブ WebView シェル**：本番
 
 ## 前提環境
 
-- **JDK 17 以上**（Gradle 8.11 は Java 21 対応・AGP 8.9 は JDK 17 以上要求。手元は mise の OpenJDK 21 が既定で、`java --version` が 17+ なら `JAVA_HOME` の指定は不要）と Android SDK。Bubblewrap CLI は撤去済みで、**ビルドはコミット済みの `./gradlew` を直接実行**する。SDK の場所は環境変数で渡す:
+- **JDK は `.mise.toml` で pin**（java 21.0.2。mise が `JAVA_HOME` も設定するため手動指定は不要。要件としては Gradle 8.11 が Java 21 対応・AGP 8.9 が JDK 17 以上要求）と Android SDK。Bubblewrap CLI は撤去済みで、**ビルドはコミット済みの `./gradlew` を直接実行**する。SDK の場所は環境変数で渡す:
 
   ```sh
   export ANDROID_HOME=~/.bubblewrap/android_sdk

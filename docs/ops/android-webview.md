@@ -21,13 +21,14 @@ DejaWord の Android アプリは **ネイティブ WebView シェル**：本番
 
 ## 前提環境
 
-- **JDK は `.mise.toml` で pin**（java 21.0.2。mise が `JAVA_HOME` も設定するため手動指定は不要。要件としては Gradle 8.11 が Java 21 対応・AGP 8.9 が JDK 17 以上要求）と Android SDK。Bubblewrap CLI は撤去済みで、**ビルドはコミット済みの `./gradlew` を直接実行**する。SDK の場所は環境変数で渡す:
+- **JDK は `.mise.toml` で pin**（java 21.0.2。mise が `JAVA_HOME` も設定するため手動指定は不要。要件としては Gradle 8.11 が Java 21 対応・AGP 8.9 が JDK 17 以上要求）と Android SDK。Bubblewrap CLI は撤去済みで、**ビルドはコミット済みの `./gradlew` を直接実行**する。SDK の場所は **`android/local.properties`（gitignore 済み・要フルパス）に書く**。clone 直後は存在しないので各自で作成する:
 
-  ```sh
-  export ANDROID_HOME=~/.bubblewrap/android_sdk
+  ```properties
+  # android/local.properties
+  sdk.dir=/Users/<you>/.bubblewrap/android_sdk
   ```
 
-  （`android/local.properties` に `sdk.dir` を書いてもよい。gitignore 済み）
+  （一時的なシェルなら `export ANDROID_HOME=~/.bubblewrap/android_sdk` でも可。未設定なら Gradle が設定方法をエラーで案内する）
 - 実機インストールには adb（`~/.bubblewrap/android_sdk/platform-tools/adb`）と、端末側の開発者オプション + USB デバッグ有効化。
 
 ## 署名鍵（keystore）の運用

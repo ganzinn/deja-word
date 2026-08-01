@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ダーク時のシステムバー帯。manifest.ts の background_color と同色 -->
+    <color name="page_background">#18181B</color>
+</resources>

@@ -2,4 +2,6 @@
 <resources>
     <!-- Web 側の theme_color / background_color（src/app/manifest.ts の #18181b）と揃える -->
     <color name="background">#18181B</color>
+    <!-- システムバー帯の色。サイトの背景色（globals.css の background 変数）と DayNight で揃える -->
+    <color name="page_background">#FFFFFF</color>
 </resources>

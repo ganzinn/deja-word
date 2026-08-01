@@ -20,7 +20,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -49,9 +48,13 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // targetSdk 35 の edge-to-edge: root 背景をサイトのテーマ色にし、システムバー・IME の
-        // 分だけ WebView に padding を入れる（Web 側は viewport-fit=cover 非対応のため）
-        val root = FrameLayout(this).apply { setBackgroundColor(BACKGROUND_COLOR.toColorInt()) }
+        // targetSdk 35 の edge-to-edge: システムバー・IME の分だけ root に padding を入れて
+        // WebView を安全領域内に収める（WebView 自身への padding は描画に反映されないため
+        // 親側で処理する。Web 側も viewport-fit=cover 非対応）。padding で見える帯は
+        // サイト背景と同色の page_background（DayNight 連動）
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(getColor(R.color.page_background))
+        }
         webView = buildWebView()
         root.addView(
             webView,
@@ -60,12 +63,12 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime(),
             )
-            webView.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            WindowInsetsCompat.CONSUMED
         }
         setContentView(root)
 

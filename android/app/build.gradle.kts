@@ -20,8 +20,8 @@ android {
         // 本アプリの前提のため（docs/adr/0073-webview-android-app.md）
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "3"
+        versionCode = 4
+        versionName = "4"
     }
 
     signingConfigs {

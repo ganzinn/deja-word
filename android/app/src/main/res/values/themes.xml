@@ -5,7 +5,11 @@
       prefers-color-scheme がテーマの isLightTheme に追従するため、DayNight 切替だけで
       サイト側の CSS ダークモードが機能する。
     -->
-    <style name="Theme.DejaWord" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.DejaWord" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- edge-to-edge の帯（page_background=白）上でシステムバーのアイコンを暗色にする -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 
     <style name="Theme.DejaWord.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/background</item>

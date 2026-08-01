@@ -45,6 +45,12 @@ DejaWord の Android アプリは **ネイティブ WebView シェル**：本番
 ## APK のビルド
 
 ```sh
+scripts/apk-release.sh
+```
+
+パスワード取得（1Password CLI → 対話入力の順でフォールバック）〜署名付きビルド〜配布ファイルの場所・インストール方法の表示までを一括で行う。手動で行う場合:
+
+```sh
 cd android
 DEJAWORD_KEYSTORE_PASSWORD=<pw> ./gradlew assembleRelease
 ```

@@ -10,7 +10,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 設計判断（採用理由・却下した代替案・影響）は `docs/adr/` を参照。設計判断に迷ったら該当 ADR を読み、新しい判断をしたら ADR を起票する。
 
-**共有すべき知識・規約・再現ノウハウは repo 内に一元化する**（ドメイン用語→naming-book、設計判断→ADR、E2E・運用手順→スキル `.claude/skills/` と `docs/ops/`、機能設計→`docs/design/`）。エージェントの個人メモには共有知識を重複させない（個人メモは repo クローンに含まれず共有されないため、二重管理・乖離を生む）。ノウハウを残したくなったら、まず上記いずれの置き場に書くべきかを検討する。
+**共有すべき知識・規約・再現ノウハウは repo 内に一元化する**（ドメイン用語→naming-book、設計判断→ADR、E2E・運用手順→スキル `.claude/skills/` と `docs/ops/`、機能設計→`docs/design/`、機能紹介→`docs/features/`）。エージェントの個人メモには共有知識を重複させない（個人メモは repo クローンに含まれず共有されないため、二重管理・乖離を生む）。ノウハウを残したくなったら、まず上記いずれの置き場に書くべきかを検討する。
+
+**ユーザー向け機能を追加・変更・削除したら、同じ PR で `docs/features/` の機能紹介ドキュメントも更新する**（該当ページの本文と、画面が変わる場合はスクリーンショットの再撮影。部分再撮影は `pnpm e2e:capture-docs --only <section>`、再生成レシピと目視レビューの注意は `docs/features/README.md`）。実装だけ済ませて機能紹介を置き去りにしない。
 
 ## Testing
 

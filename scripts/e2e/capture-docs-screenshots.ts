@@ -13,6 +13,7 @@ import {
   assertSystemUserReady,
   DEMO_WORD_HEADWORD,
   ensureAdminDemoInvitee,
+  ensureDemoAudio,
   ensureDemoWord,
   ensureQuizDeck,
   ensureQuizDeckBookmarks,
@@ -560,6 +561,8 @@ async function main(): Promise<void> {
     await ensureUser(prisma, TEST_USER1_EMAIL, TEST_USER1_PASSWORD, DOCS_USER_NAME);
     if (needsWords || needsSettings) {
       demoWordId = await ensureDemoWord(prisma, TEST_USER1_EMAIL);
+      // 単語詳細の再生ボタンと、設定の「発音音源のダウンロード」の対象件数の被写体
+      await ensureDemoAudio(prisma, demoWordId);
     }
     if (needsWords) {
       sharedOccurrenceId = (await getLargestSharedOccurrence(prisma)).id;

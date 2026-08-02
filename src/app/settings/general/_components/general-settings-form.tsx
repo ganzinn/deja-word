@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,18 @@ import { saveGeneralSettings } from "../actions";
 type Props = {
   /** 発音音源未登録時の自動音声フォールバックの現在値（未設定は既定で true に解決済み）。 */
   ttsFallbackEnabled: boolean;
+  /**
+   * 「保存」の対象ではない操作系セクション（発音音源のダウンロード）を保存ボタンの手前に挿す。
+   * 保存対象の設定と同じ画面に並べつつ、押した瞬間に動く操作であることを枠線と説明文で示す。
+   */
+  children?: ReactNode;
 };
 
 /**
  * 単語全般の設定フォーム。将来のセクション追加を見込んで section 単位で構成する。
- * 初回は「音声」セクション（自動音声フォールバック）のみ。
+ * 保存対象は「音声」セクション（自動音声フォールバック）のみ。
  */
-export function GeneralSettingsForm({ ttsFallbackEnabled }: Props) {
+export function GeneralSettingsForm({ ttsFallbackEnabled, children }: Props) {
   const [ttsFallback, setTtsFallback] = useState(ttsFallbackEnabled);
   const [isPending, startTransition] = useTransition();
 
@@ -58,6 +63,8 @@ export function GeneralSettingsForm({ ttsFallbackEnabled }: Props) {
           などで、読み上げエンジンと英語の音声データが有効になっているかご確認ください。
         </p>
       </section>
+
+      {children}
 
       <div className="flex flex-col gap-2">
         <Button size="lg" disabled={isPending} onClick={handleSave}>

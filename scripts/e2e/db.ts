@@ -3,8 +3,11 @@
 // 接続文字列は DIRECT_URL → DATABASE_URL_UNPOOLED → DATABASE_URL）に従う。
 // 掃除はアプリ層の削除ガードを迂回して直に消す（cascade で子行も落ちる）。
 import { randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { DEV_BLOB_ROOT, DEV_BLOB_URL_PREFIX } from "../../src/lib/blob-client-impl";
 import { PrismaClient } from "../../src/generated/prisma/client";
 
 export type PrismaClientType = InstanceType<typeof PrismaClient>;
@@ -188,6 +191,46 @@ export async function ensureDemoWord(
     select: { id: true },
   });
   return word.id;
+}
+
+/**
+ * デモ単語の意味・関連語に発音音源を付ける（冪等）。DB に音源付きの語が 1 件も無いと、
+ * 単語詳細の再生ボタンと設定の「発音音源のダウンロード」（対象件数）が撮れないため。
+ *
+ * 音源は fixtures の無音 mp3 を**固定 key** で dev blob に置く（addRandomSuffix を使わないので
+ * 再実行しても実体が増えない）。ローカルディスク driver（dev）前提の撮影専用ヘルパ。
+ */
+export async function ensureDemoAudio(prisma: PrismaClientType, wordId: string): Promise<number> {
+  const silentMp3 = await readFile(join(__dirname, "fixtures", "silent.mp3"));
+
+  async function putFixedKey(slug: string): Promise<string> {
+    const key = `audio/docs-demo-${slug}.mp3`;
+    const full = join(DEV_BLOB_ROOT, key);
+    await mkdir(dirname(full), { recursive: true });
+    await writeFile(full, silentMp3);
+    return `${DEV_BLOB_URL_PREFIX}${key}`;
+  }
+
+  const meanings = await prisma.meaning.findMany({ where: { wordId }, select: { id: true } });
+  for (const [i, meaning] of meanings.entries()) {
+    await prisma.meaning.update({
+      where: { id: meaning.id },
+      data: { pronunciationAudioUrl: await putFixedKey(`meaning-${i}`) },
+    });
+  }
+
+  const relatedWords = await prisma.relatedWord.findMany({
+    where: { wordId },
+    select: { id: true },
+  });
+  for (const [i, relatedWord] of relatedWords.entries()) {
+    await prisma.relatedWord.update({
+      where: { id: relatedWord.id },
+      data: { pronunciationAudioUrl: await putFixedKey(`related-${i}`) },
+    });
+  }
+
+  return meanings.length + relatedWords.length;
 }
 
 /** quiz デッキを収める掲載箇所名（test1 所有）。②の「デモ単語帳」とは別掲載箇所にして両セクションを独立させる。 */

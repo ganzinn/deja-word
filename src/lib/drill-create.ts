@@ -53,6 +53,8 @@ export async function createDrillForUser(
     sourceRangeTo?: number;
     /** 元テストの「ブックマークのみ」指定（省略時 false）。`Drill.sourceBookmarkedOnly` に保存し再テストで再評価する。 */
     sourceBookmarkedOnly?: boolean;
+    /** 元テストの出題数指定（undefined = 指定なし）。再テストで同じ出題数の再抽選に使う。 */
+    sourceQuestionCount?: number;
     format: QuizFormat;
     timeoutSeconds: number | null;
     choiceFirstMeaningTextOnly: boolean;
@@ -134,6 +136,7 @@ export async function createDrillForUser(
         sourceRangeFrom: input.sourceRangeFrom ?? null,
         sourceRangeTo: input.sourceRangeTo ?? null,
         sourceBookmarkedOnly: input.sourceBookmarkedOnly ?? false,
+        sourceQuestionCount: input.sourceQuestionCount ?? null,
         format: input.format,
         timeoutSeconds: input.timeoutSeconds,
         choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,

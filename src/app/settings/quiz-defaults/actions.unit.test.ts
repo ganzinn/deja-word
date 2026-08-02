@@ -107,10 +107,11 @@ describe("saveQuizDefaults (Server Action)", () => {
     mockedSave.mockResolvedValue();
     const res = await saveQuizDefaults(VALID_INPUT);
     expect(res).toEqual({ ok: true });
-    // スキーマの bookmarkedOnly / orderByOccurrenceNumber `.default(null)` がパース後に補われる。
+    // スキーマの bookmarkedOnly / questionCount / orderByOccurrenceNumber `.default(null)` がパース後に補われる。
     expect(mockedSave).toHaveBeenCalledWith("u_1", {
       ...VALID_INPUT,
       bookmarkedOnly: null,
+      questionCount: null,
       orderByOccurrenceNumber: null,
     });
     expect(mockedRevalidatePath).toHaveBeenCalledWith("/settings/quiz-defaults");
@@ -149,10 +150,11 @@ describe("saveQuizDefaults (Server Action)", () => {
     };
     const res = await saveQuizDefaults(input);
     expect(res).toEqual({ ok: true });
-    // スキーマの bookmarkedOnly / orderByOccurrenceNumber `.default(null)` がパース後に補われる。
+    // スキーマの bookmarkedOnly / questionCount / orderByOccurrenceNumber `.default(null)` がパース後に補われる。
     expect(mockedSave).toHaveBeenCalledWith("u_1", {
       ...input,
       bookmarkedOnly: null,
+      questionCount: null,
       orderByOccurrenceNumber: null,
     });
   });

@@ -86,6 +86,10 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
   // 「ブックマークのみ」絞り込みのデフォルト。未設定（null）は OFF。
   const [bookmarkedOnly, setBookmarkedOnly] = useState(defaults.bookmarkedOnly ?? false);
+  // 出題数のデフォルト。未設定（null）は空欄（全問出題）。掲載箇所に従属しないため常に入力可。
+  const [questionCountText, setQuestionCountText] = useState(
+    defaults.questionCount?.toString() ?? "",
+  );
   const [format, setFormat] = useState<QuizFormat | null>(defaults.format);
   const [timeoutByFormat, setTimeoutByFormat] = useState<Record<QuizFormat, TimeoutFieldState>>(
     () => initTimeoutState(defaults.timeoutByFormat),
@@ -140,6 +144,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         rangeFrom: occurrenceId === null ? null : parseRangeValue(rangeFromText),
         rangeTo: occurrenceId === null ? null : parseRangeValue(rangeToText),
         bookmarkedOnly,
+        questionCount: parseRangeValue(questionCountText),
         format,
         timeoutByFormat: timeoutByFormatInput,
         showCountdown,
@@ -170,6 +175,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setRangeFromText(DEFAULT_QUIZ_SETTINGS.rangeFrom?.toString() ?? "");
     setRangeToText(DEFAULT_QUIZ_SETTINGS.rangeTo?.toString() ?? "");
     setBookmarkedOnly(DEFAULT_QUIZ_SETTINGS.bookmarkedOnly ?? false);
+    setQuestionCountText(DEFAULT_QUIZ_SETTINGS.questionCount?.toString() ?? "");
     setFormat(DEFAULT_QUIZ_SETTINGS.format);
     setTimeoutByFormat(initTimeoutState(DEFAULT_QUIZ_SETTINGS.timeoutByFormat));
     setShowCountdown(DEFAULT_QUIZ_SETTINGS.showCountdown ?? false);
@@ -265,6 +271,27 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         </div>
         <p className="text-muted-foreground text-xs">
           ブックマークした単語だけを出題対象にします。掲載箇所「指定なし」でも全件からテストできます。
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Label htmlFor="quiz-defaults-question-count">出題数</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="quiz-defaults-question-count"
+            type="number"
+            min={1}
+            inputMode="numeric"
+            placeholder="全問"
+            value={questionCountText}
+            onChange={(e) => setQuestionCountText(e.target.value)}
+            aria-label="出題数"
+            className="w-24"
+          />
+          <span className="text-muted-foreground shrink-0 text-sm">問</span>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          対象からランダムに選んで出題します。空欄は全問出題。対象より多い場合は全問出題します。
         </p>
       </section>
 

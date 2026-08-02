@@ -69,6 +69,7 @@ export async function generateDrillRoundForUser(
       sourceRangeFrom: true,
       sourceRangeTo: true,
       sourceBookmarkedOnly: true,
+      sourceQuestionCount: true,
       roundCount: true,
       words: { where: { remaining: { gt: 0 } }, select: { wordId: true } },
     },
@@ -137,6 +138,8 @@ export async function generateDrillRoundForUser(
       rangeTo: drill.sourceRangeTo ?? undefined,
       // 元テストの「ブックマークのみ」指定。再テストは開始時に今のブックマーク集合で再評価する（決定 5）
       bookmarkedOnly: drill.sourceBookmarkedOnly,
+      // 元テストの出題数指定。再テストは同じ出題数で範囲から再抽選する（ADR-0074）
+      questionCount: drill.sourceQuestionCount ?? undefined,
       format: drill.format,
       timeoutSeconds: drill.timeoutSeconds,
       choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,

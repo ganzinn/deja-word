@@ -125,6 +125,10 @@ export function StartForm({
   const [rangeToText, setRangeToText] = useState(defaults.rangeTo?.toString() ?? "");
   // 「ブックマークのみ」絞り込み。初期値はデフォルト設定（未設定 null は OFF）。
   const [bookmarkedOnly, setBookmarkedOnly] = useState(defaults.bookmarkedOnly ?? false);
+  // 出題数（空欄 = 全問出題）。初期値はデフォルト設定（未設定 null は空欄）。
+  const [questionCountText, setQuestionCountText] = useState(
+    defaults.questionCount?.toString() ?? "",
+  );
   const initialFormat = defaults.format;
   // 初期選択形式があれば、その形式の保存済み制限時間を初期値に（未選択なら制限なし）
   const initialTimeout =
@@ -162,6 +166,8 @@ export function StartForm({
   // 掲載番号順も掲載箇所を指定したときだけ送る（全件モードは掲載番号を持たない。ADR-0072）。
   // 範囲入力と同じく、チェック状態は保持したまま送信値だけ false に落とす。
   const sendOrderByOccurrenceNumber = occurrenceId !== null && orderByOccurrenceNumber;
+  // 出題数は掲載箇所に従属しない（ブックマーク全件モードでも有効）。空欄は undefined（全問出題）。
+  const questionCount = parseRangeValue(questionCountText);
   // TG 例文形式のときだけ format をプレビューへ渡す（対象件数が TG 例文の有無で絞られる）
   const tgPreviewFormat = format !== null && isTgExampleFormat(format) ? format : undefined;
   // プレビューを取得するのは「掲載箇所が指定あり、または bookmarkedOnly=true」（＝開始しうる入力）のとき。
@@ -245,6 +251,7 @@ export function StartForm({
       rangeFrom,
       rangeTo,
       bookmarkedOnly,
+      questionCount,
       format,
       timeoutSeconds: timeoutSeconds ?? null,
       choiceFirstMeaningTextOnly,
@@ -341,6 +348,27 @@ export function StartForm({
         </p>
       </section>
 
+      <section className="flex flex-col gap-2">
+        <Label htmlFor="quiz-question-count">出題数</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="quiz-question-count"
+            type="number"
+            min={1}
+            inputMode="numeric"
+            placeholder="全問"
+            value={questionCountText}
+            onChange={(e) => setQuestionCountText(e.target.value)}
+            aria-label="出題数"
+            className="h-14 w-24"
+          />
+          <span className="text-muted-foreground shrink-0 text-sm">問</span>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          対象からランダムに選んで出題します。空欄は全問出題。対象より多い場合は全問出題します。
+        </p>
+      </section>
+
       <section className="flex flex-col gap-1" aria-live="polite">
         {previewState.status === "idle" ? (
           <p className="text-muted-foreground text-sm">
@@ -355,6 +383,15 @@ export function StartForm({
             <p className="text-sm">
               対象{" "}
               <span className="text-base font-semibold">{previewState.preview.targetCount}</span>語
+              {questionCount !== undefined && previewState.preview.targetCount > 0 ? (
+                <span>
+                  ・うち{" "}
+                  <span className="text-base font-semibold">
+                    {Math.min(questionCount, previewState.preview.targetCount)}
+                  </span>{" "}
+                  問を出題
+                </span>
+              ) : null}
             </p>
             <ExcludedNote excluded={previewState.preview.excluded} />
           </>
@@ -481,7 +518,7 @@ export function StartForm({
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題形式・掲載番号順・制限時間をデフォルト設定として保存します。
+          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題数・出題形式・掲載番号順・制限時間をデフォルト設定として保存します。
         </p>
       </section>
 

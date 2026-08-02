@@ -14,6 +14,8 @@ export type QuizDefaults = {
   rangeTo: number | null;
   /** 「ブックマークのみ」絞り込みのデフォルト。null = アプリ既定 OFF。occurrence 削除で occurrenceId が null になっても残す（全件モードの初期値として成立）。 */
   bookmarkedOnly: boolean | null;
+  /** 出題数のデフォルト。null = 未設定（範囲の全問出題）。掲載箇所に従属しないため occurrence 削除でも残す。 */
+  questionCount: number | null;
   format: QuizFormat | null;
   /** 出題形式ごとの制限時間（秒）。全形式キーを持ち、null = その形式は制限なし（行なし）。 */
   timeoutByFormat: Record<QuizFormat, number | null>;
@@ -120,6 +122,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
       rangeFrom: null,
       rangeTo: null,
       bookmarkedOnly: null,
+      questionCount: null,
       format: null,
       timeoutByFormat,
       showCountdown: null,
@@ -144,6 +147,7 @@ export async function getQuizDefaultsForUser(userId: string): Promise<QuizDefaul
     rangeTo: setting.rangeTo,
     // occurrence 削除（SetNull）で occurrenceId が null になっても bookmarkedOnly は残す（決定 6）。
     bookmarkedOnly: setting.bookmarkedOnly,
+    questionCount: setting.questionCount,
     format: setting.format,
     timeoutByFormat,
     showCountdown: setting.showCountdown,
@@ -207,6 +211,8 @@ export async function saveStartSettingsAsDefaultsForUser(
     rangeTo: input.rangeTo ?? null,
     // 「ブックマークのみ」も開始画面項目。省略時 false（決定 6）。
     bookmarkedOnly: input.bookmarkedOnly ?? false,
+    // 出題数も開始画面項目。空欄（undefined）は「全問出題」の意思として null で上書きする。
+    questionCount: input.questionCount ?? null,
     format: input.format,
     choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
     // 「掲載番号順に出題する」も開始画面項目。省略時 false（bookmarkedOnly と同じ流儀）。

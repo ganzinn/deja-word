@@ -30,6 +30,9 @@ export function buildStartDrillInput(params: {
     // 元テストの「ブックマークのみ」指定も Drill に保存し、再テスト導線で今のブックマーク
     // 集合を再評価する（ADR-0070 決定 5）。進行中一覧の「（ブックマークのみ）」注記もこの値
     sourceBookmarkedOnly: startInput.bookmarkedOnly,
+    // 元テストの出題数指定も Drill に保存する。再テストは同じ出題数で範囲から再抽選する
+    // （docs/adr/0074-quiz-question-count-sampling.md）
+    sourceQuestionCount: startInput.questionCount,
     format: quiz.format,
     // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
     timeoutSeconds: quiz.timeoutSeconds,

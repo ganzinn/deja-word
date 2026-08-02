@@ -101,13 +101,19 @@ grep -c '^BLOB_READ_WRITE_TOKEN=".\+"' .env.production.local   # → 1 である
 # dry-run（無変更・件数とメモ不一致の確認）
 pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/1900_split/EN
 
-# 確認・納得してから実登録（ログを残すと後追いしやすい）
+# ★ 全件の前に 2〜3 件だけで通す（音源ディレクトリの一部をコピーした別ディレクトリを渡す）。
+#    登録済みは次回スキップされるので、この 3 件はそのまま本番データとして残る
+mkdir -p tmp/audio-smoke && cp tmp/1900_split/EN/000[123]_*.mp3 tmp/audio-smoke/
+pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/audio-smoke --execute
+#    → 登録 3 件・失敗 0 を確認し、次節の検算（URL が Blob ホスト・GET 200・md5 一致）まで済ませる
+
+# 問題なければ全件（先の 3 件はスキップされる。ログを残すと後追いしやすい）
 pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/1900_split/EN --execute 2>&1 | tee tmp/import-audio.log
 ```
 
 `pnpm dotenv -e ...` が先に本番 env を `process.env` に載せ、スクリプト内の `import "dotenv/config"`（`.env` 読み込み）は既存値を上書きしないため、ローカル `.env` と混ざらない。
 
-実登録後は、**URL が実際に Vercel Blob を指しているか**を必ず確認する（ガードを通っていれば起きないが、最終確認として）。
+実登録後（**先行する 2〜3 件の時点で必ず一度**）は、**URL が実際に Vercel Blob を指しているか**を確認する（ガードを通っていれば起きないが、最終確認として）。あわせて 1 件を実際に GET し、元ファイルと md5 が一致することまで見ておくと確実。
 
 ```sh
 URL="$(grep -E '^DATABASE_URL_UNPOOLED=' .env.production.local | cut -d= -f2- | tr -d '"')"

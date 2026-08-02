@@ -42,6 +42,7 @@ tmp/1900_split/EN/
 | `scripts/import-audio.ts` | CLI（dotenv + PrismaPg、ディレクトリ走査・ファイル名パース・対話・進捗/レポート整形） |
 | `src/lib/audio-import.ts` | コアロジック（prisma / blob を引数注入、`server-only` 非依存）。突合・仕分け・put/update |
 | `src/lib/blob-client-impl.ts` | Blob ドライバ選択の実体（本番=Vercel Blob / dev=ローカルディスク `.dev-blob/`） |
+| `src/lib/blob-driver-guard.ts` | 「リモート DB × ローカルディスク driver」の組み合わせ検出（`--execute` の直前に実行） |
 
 接続先は `DIRECT_URL → DATABASE_URL_UNPOOLED → DATABASE_URL` の順で解決する。Blob ドライバは「`NODE_ENV=production` もしくは `BLOB_READ_WRITE_TOKEN` あり → Vercel Blob、それ以外 → ローカルディスク」で選ばれる。
 
@@ -84,10 +85,18 @@ curl -s -o /tmp/a.mp3 -w '%{http_code} %{content_type}\n' "http://localhost:3000
 
 ## 本番（Neon + Vercel Blob）での手順
 
-スクリプトは**ローカルマシンから本番リソースに向けて**実行する（Vercel 上では動かない）。DB だけでなく **`BLOB_READ_WRITE_TOKEN` が必須**（未設定だと本番 Blob 経路で明示エラーになる）。
+スクリプトは**ローカルマシンから本番リソースに向けて**実行する（Vercel 上では動かない）。DB だけでなく **`BLOB_READ_WRITE_TOKEN` が必須**。
+
+> ⚠️ **`vercel env pull` は `BLOB_READ_WRITE_TOKEN` を空文字で書き出すことがある**（Vercel 側で sensitive 扱いの値は pull で復元されない）。空のまま実行すると driver 選択が「`NODE_ENV != production` かつトークン無し → **ローカルディスク**」に倒れ、**DB は本番・Blob はローカル**という組み合わせが成立する。この状態で登録すると本番 DB に `/api/dev-blob/…`（本番では 404）の URL が入り、音源が再生できないうえ `pronunciationAudioUrl` が非 NULL になるため **TTS フォールバックも効かない**行が量産される（2026-08-03 に実際に発生。1900 件を登録 → DB を NULL に戻して復旧）。
+>
+> 現在は `db:import-audio` の `--execute` 時に **リモート DB × ローカルディスク driver を検出して中止する**ガード（`src/lib/blob-driver-guard.ts`）が入っている。中止メッセージが出たらトークンを入れ直すこと。
 
 ```sh
-pnpm exec vercel env pull .env.production.local --environment=production  # DIRECT_URL / BLOB_READ_WRITE_TOKEN を取得
+pnpm exec vercel env pull .env.production.local --environment=production  # DB 接続情報を取得
+
+# BLOB_READ_WRITE_TOKEN が空でないことを必ず確認する（空ならダッシュボードの
+# Storage → Blob store → Tokens から取得して .env.production.local に手で入れる）
+grep -c '^BLOB_READ_WRITE_TOKEN=".\+"' .env.production.local   # → 1 であること
 
 # dry-run（無変更・件数とメモ不一致の確認）
 pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/1900_split/EN
@@ -97,6 +106,19 @@ pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲ
 ```
 
 `pnpm dotenv -e ...` が先に本番 env を `process.env` に載せ、スクリプト内の `import "dotenv/config"`（`.env` 読み込み）は既存値を上書きしないため、ローカル `.env` と混ざらない。
+
+実登録後は、**URL が実際に Vercel Blob を指しているか**を必ず確認する（ガードを通っていれば起きないが、最終確認として）。
+
+```sh
+URL="$(grep -E '^DATABASE_URL_UNPOOLED=' .env.production.local | cut -d= -f2- | tr -d '"')"
+docker exec -i deja-word-db psql "$URL" -c \
+  "select count(*) filter (where pronunciation_audio_url like 'https://%.public.blob.vercel-storage.com/%') as blob_urls,
+          count(*) filter (where pronunciation_audio_url like '/api/dev-blob/%') as dev_urls
+     from meaning where pronunciation_audio_url is not null;"
+# → blob_urls が全件、dev_urls は 0 であること。dev_urls が付いていたら誤登録なので
+#   `update meaning set pronunciation_audio_url = null where pronunciation_audio_url like '/api/dev-blob/%';`
+#   で戻してから、トークンを設定して入れ直す（Blob 実体はローカルに書かれているだけなので本番には残らない）
+```
 
 ### 所要時間・進捗確認・中断時の注意
 

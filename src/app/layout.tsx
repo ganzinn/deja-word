@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SwRegister } from "@/components/sw-register";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "./_components/site-header";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
         <SiteHeader />
         <div className="flex flex-1 flex-col">{children}</div>
         <Toaster position="top-center" />
+        <SwRegister />
       </body>
     </html>
   );

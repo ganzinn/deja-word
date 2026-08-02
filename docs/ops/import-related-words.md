@@ -69,6 +69,8 @@ pnpm db:import-related-words "ターゲット1900" tmp/target1900.related.csv
 pnpm db:import-related-words "ターゲット1900" tmp/target1900.related.csv --execute
 ```
 
+発音音源（mp3）を入れる場合は、この後に [`db:import-audio`](./import-audio.md) を実行する。
+
 ドライラン例（実データ）:
 
 ```text

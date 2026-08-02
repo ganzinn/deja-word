@@ -11,6 +11,7 @@ const baseParams = {
     rangeFrom: 1,
     rangeTo: 100,
     bookmarkedOnly: false,
+    questionCount: 20,
     format: "CHOICE" as const,
     timeoutSeconds: 10,
     choiceFirstMeaningTextOnly: true,
@@ -35,6 +36,7 @@ describe("buildStartDrillInput", () => {
       sourceRangeFrom: 1,
       sourceRangeTo: 100,
       sourceBookmarkedOnly: false,
+      sourceQuestionCount: 20,
       format: "CHOICE",
       timeoutSeconds: 10,
       choiceFirstMeaningTextOnly: true,
@@ -77,6 +79,21 @@ describe("buildStartDrillInput", () => {
     expect(parsed.sourceRangeFrom).toBeUndefined();
     expect(parsed.sourceRangeTo).toBeUndefined();
     expect(parsed.sourceBookmarkedOnly).toBe(true);
+  });
+
+  test("出題数指定の元テストは sourceQuestionCount で引き継ぎ、未指定は undefined のまま", () => {
+    // 渡し忘れるとスキーマの optional に吸収されて型では検出できず、再テストが全問出題に化ける
+    // （sourceBookmarkedOnly の issue #144 と同型）。パース後の値まで検証する。
+    const withCount = startDrillInputSchema.parse(buildStartDrillInput(baseParams));
+    expect(withCount.sourceQuestionCount).toBe(20);
+
+    const withoutCount = startDrillInputSchema.parse(
+      buildStartDrillInput({
+        ...baseParams,
+        startInput: { ...baseParams.startInput, questionCount: undefined },
+      }),
+    );
+    expect(withoutCount.sourceQuestionCount).toBeUndefined();
   });
 
   test("bookmarkedOnly 未指定（後方互換の省略入力）はスキーマの default で false になる", () => {

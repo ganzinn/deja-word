@@ -274,6 +274,14 @@
 - 混同注意: 似た名前だが別概念。source は「出典・掲載元」の意ではない。
 - 出典: prisma/schema.prisma:436, prisma/schema.prisma:440, src/lib/schema/quiz.ts:139
 
+#### questionCount（出題数）と sourceQuestionCount（元テストの出題数）
+
+- 英語名: `questionCount`（テスト開始入力 / `QuizDefaultSetting`）と `sourceQuestionCount`（`Drill`）
+- 日本語名: 出題数と元テストの出題数
+- 定義: 範囲の出題対象からランダムに N 語を抽選して出題する指定。未指定（null / undefined）= 全問出題。対象数 ≤ 指定数は全問出題（min 挙動）。`sourceQuestionCount` は Drill 生成元テストの指定で、「同じ範囲でもう一度テストする」が同じ出題数で**再抽選**する（同じ単語集合は再現しない。設計: docs/adr/0074-quiz-question-count-sampling.md）。
+- 混同注意: 定着モードのラウンド出題には適用しない（ラウンドは残単語全部を出題）。範囲（rangeFrom/To）と違い掲載箇所に従属せず、ブックマーク全件モードでも指定できる。
+- 出典: prisma/schema.prisma, src/lib/schema/quiz.ts, src/lib/quiz-generate.ts
+
 #### QuizDefaultSetting（テスト開始画面デフォルト）
 
 - 英語名: `QuizDefaultSetting`（モデル）

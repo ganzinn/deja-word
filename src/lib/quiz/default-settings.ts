@@ -11,6 +11,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizDefaults = {
   rangeFrom: null,
   rangeTo: null,
   bookmarkedOnly: null,
+  questionCount: null,
   format: "CHOICE",
   timeoutByFormat: {
     CHOICE: 5,

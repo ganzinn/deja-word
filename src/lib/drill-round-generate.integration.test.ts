@@ -14,6 +14,7 @@ async function setupDrill(
     timeoutSeconds?: number | null;
     sourceRangeFrom?: number;
     sourceRangeTo?: number;
+    sourceQuestionCount?: number;
     orderByOccurrenceNumber?: boolean;
   } = {},
 ) {
@@ -31,6 +32,7 @@ async function setupDrill(
     occurrenceId: occurrence.id,
     sourceRangeFrom: options.sourceRangeFrom,
     sourceRangeTo: options.sourceRangeTo,
+    sourceQuestionCount: options.sourceQuestionCount,
     format: "SELF_JUDGE",
     timeoutSeconds: options.timeoutSeconds ?? null,
     choiceFirstMeaningTextOnly: false,
@@ -76,6 +78,20 @@ describe("generateDrillRoundForUser", () => {
       // 元テストの「掲載番号順に出題する」指定（Drill.orderByOccurrenceNumber の既定 false）
       orderByOccurrenceNumber: false,
     });
+  });
+
+  test("sourceQuestionCount は Drill に保存され sourceTest.questionCount として復元される（ADR-0074）", async () => {
+    const { user, drillId } = await setupDrill(
+      [
+        { headword: "alpha", number: 5, correct: false },
+        { headword: "beta", number: 12, correct: false },
+      ],
+      { sourceQuestionCount: 20 },
+    );
+
+    const { sourceTest } = await generateDrillRoundForUser(user.id, { drillId });
+    // 再テスト（「同じ範囲でもう一度テストする」）が同じ出題数で再抽選するための引き継ぎ。
+    expect(sourceTest.questionCount).toBe(20);
   });
 
   test("NULL sourceRange (source test had no range) maps to undefined rangeFrom/rangeTo", async () => {

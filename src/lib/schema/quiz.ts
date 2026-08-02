@@ -74,6 +74,13 @@ export const quizRangeInputSchema = quizRangeInputObject.superRefine(checkQuizRa
 // 形式追加は enum 値＋FORMAT_GROUPS への追記だけでここに波及する。
 export const quizFormatSchema = z.enum(ALL_QUIZ_FORMATS as [QuizFormat, ...QuizFormat[]]);
 
+/**
+ * 出題数の指定。範囲の出題対象からランダムに N 語を抽選する（docs/adr/0074-quiz-question-count-sampling.md）。
+ * 未指定（optional / null）= 範囲の全問出題。対象数 < 指定数は全問出題（min 挙動）とするため
+ * 対象数との大小はスキーマでは検証しない。上限は解答系配列と同じ QUIZ_ANSWERS_MAX_COUNT。
+ */
+export const quizQuestionCountSchema = z.number().int().min(1).max(QUIZ_ANSWERS_MAX_COUNT);
+
 /** 1 問あたりの制限時間（秒）。null = 制限なしは各入力スキーマ側で .nullable() を付けて表現する。 */
 export const quizTimeoutSecondsSchema = z
   .number()
@@ -124,6 +131,9 @@ export const getQuizPreviewInputSchema = quizRangeInputObject
  */
 export const startQuizInputSchema = quizRangeInputObject
   .extend({
+    // 出題数の指定（省略 = 全問出題）。範囲と違い掲載箇所に従属しないため、
+    // ブックマーク全件モード（掲載箇所未指定）でも指定できる（クロスフィールド検証の対象外）。
+    questionCount: quizQuestionCountSchema.optional(),
     format: quizFormatSchema,
     timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
     // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
@@ -165,6 +175,9 @@ export const saveQuizDefaultsInputSchema = z.object({
   // 「ブックマークのみ」絞り込みのデフォルト。null = アプリ既定 OFF（既存の nullable Boolean 項目と同じ流儀。決定 6）。
   // `.default(null)` で省略時は null（09 未実装の設定フォームが bookmarkedOnly を送らない後方互換）。
   bookmarkedOnly: z.boolean().nullable().default(null),
+  // 出題数のデフォルト。null = 未設定（全問出題）。`.default(null)` で省略時は null
+  // （この項目を送らない旧フォームとの後方互換。bookmarkedOnly と同じ流儀）。
+  questionCount: quizQuestionCountSchema.nullable().default(null),
   format: quizFormatSchema.nullable(),
   timeoutByFormat: quizTimeoutByFormatSchema,
   showCountdown: z.boolean().nullable(),
@@ -204,6 +217,9 @@ export const startDrillInputSchema = z.object({
   // `Drill` へ保存する（実効範囲 rangeFrom/rangeTo とは別物）。
   sourceRangeFrom: z.number().int().positive().optional(),
   sourceRangeTo: z.number().int().positive().optional(),
+  // 元テストの出題数指定（省略 = 指定なし）。完了画面の「同じ範囲でもう一度テストする」用に
+  // `Drill` へ保存し、再テストのたびに範囲から再抽選する（docs/adr/0074-quiz-question-count-sampling.md）。
+  sourceQuestionCount: quizQuestionCountSchema.optional(),
   // 元テストの「ブックマークのみ」指定（省略時 false）。`Drill.sourceBookmarkedOnly` に保存し、
   // 再テスト開始時に今のブックマーク集合で再評価する（決定 5）。
   sourceBookmarkedOnly: z.boolean().default(false),

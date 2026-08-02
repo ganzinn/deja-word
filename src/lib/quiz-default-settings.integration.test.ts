@@ -39,6 +39,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     rangeFrom: null,
     rangeTo: null,
     bookmarkedOnly: null,
+    questionCount: null,
     format: null,
     timeoutByFormat: timeoutMap({}),
     showCountdown: null,
@@ -148,6 +149,16 @@ describe("saveQuizDefaultsForUser", () => {
     const saved = await getQuizDefaultsForUser(user.id);
     expect(saved?.occurrenceId).toBeNull();
     expect(saved?.bookmarkedOnly).toBe(true);
+  });
+
+  test("persists questionCount (round-trips a value and null)", async () => {
+    const user = await createTestUser();
+    await saveQuizDefaultsForUser(user.id, defaults({ questionCount: 20 }));
+    expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBe(20);
+
+    // null（未設定 = 全問出題）での上書きも保存できる
+    await saveQuizDefaultsForUser(user.id, defaults({ questionCount: null }));
+    expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBeNull();
   });
 
   test("syncs per-format timeout rows: upsert for values, delete for null on re-save", async () => {
@@ -434,6 +445,31 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         choiceFirstMeaningTextOnly: false,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
+  });
+
+  test("questionCount は開始画面項目として部分上書きされる（指定 = 値、未指定 = null へ）", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "出題数上書き", 0);
+    await saveQuizDefaultsForUser(user.id, defaults({ questionCount: 50 }));
+
+    // 開始画面で出題数を指定してトグル ON → デフォルトが上書きされる
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      occurrenceId: occ.id,
+      questionCount: 10,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    });
+    expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBe(10);
+
+    // 開始画面で空欄（未指定 = 全問出題）にしてトグル ON → null へ上書き（range と同じ流儀）
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      occurrenceId: occ.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    });
+    expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBeNull();
   });
 
   test("all-bookmark mode (no occurrence) stores bookmarkedOnly with a null occurrence (決定 6)", async () => {

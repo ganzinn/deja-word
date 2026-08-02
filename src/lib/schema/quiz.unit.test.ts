@@ -233,6 +233,35 @@ describe("startQuizInputSchema", () => {
 
   // 定着までの回数（残数設定）は startQuiz の入力から外れ、`startDrillInputSchema` で受け取る
   // （テスト結果画面で設定し drill 開始時に渡す）。検証はそちらの describe を参照。
+
+  test("questionCount is optional (omitted = 全問出題) and bounded to 1..QUIZ_ANSWERS_MAX_COUNT", () => {
+    const base = {
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    } as const;
+    const omitted = startQuizInputSchema.safeParse(base);
+    expect(omitted.success).toBe(true);
+    if (omitted.success) expect(omitted.data.questionCount).toBeUndefined();
+    for (const questionCount of [1, 20, QUIZ_ANSWERS_MAX_COUNT]) {
+      expect(startQuizInputSchema.safeParse({ ...base, questionCount }).success).toBe(true);
+    }
+    for (const questionCount of [0, -1, 2.5, QUIZ_ANSWERS_MAX_COUNT + 1, null]) {
+      expect(startQuizInputSchema.safeParse({ ...base, questionCount }).success).toBe(false);
+    }
+  });
+
+  test("questionCount は掲載箇所に従属しない（全件モードでも指定できる）", () => {
+    const r = startQuizInputSchema.safeParse({
+      bookmarkedOnly: true,
+      questionCount: 10,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("submitQuizAnswersInputSchema", () => {
@@ -748,6 +777,36 @@ describe("saveQuizDefaultsInputSchema", () => {
     ).toBe(false);
   });
 
+  test("questionCount accepts null / 1..QUIZ_ANSWERS_MAX_COUNT, defaults to null when omitted, rejects out-of-range", () => {
+    const base = {
+      occurrenceId: null,
+      rangeFrom: null,
+      rangeTo: null,
+      format: null,
+      timeoutByFormat: ALL_NULL,
+      showCountdown: null,
+      autoplayPronunciation: null,
+      enableAnswerSound: null,
+      autoplayAnswerAudioJaEn: null,
+      choiceFirstMeaningTextOnly: null,
+      drillIncludeCorrect: null,
+      resetRemaining: null,
+      vagueRemaining: null,
+      initialCorrectRemaining: null,
+      saveOnStart: null,
+    };
+    for (const questionCount of [null, 1, 20, QUIZ_ANSWERS_MAX_COUNT]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, questionCount }).success).toBe(true);
+    }
+    for (const questionCount of [0, -1, 2.5, QUIZ_ANSWERS_MAX_COUNT + 1]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, questionCount }).success).toBe(false);
+    }
+    // 省略時は `.default(null)` で null が補われる（この項目を送らない旧フォームの後方互換）。
+    const r = saveQuizDefaultsInputSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.questionCount).toBeNull();
+  });
+
   test("saveOnStart accepts true / false / null, rejects non-boolean / missing", () => {
     const base = {
       occurrenceId: null,
@@ -871,6 +930,29 @@ describe("startDrillInputSchema", () => {
     });
     expect(r2.success).toBe(true);
     if (r2.success) expect(r2.data.sourceBookmarkedOnly).toBe(true);
+  });
+
+  test("sourceQuestionCount is optional (省略 = 元テストが出題数指定なし) and bounded to 1..QUIZ_ANSWERS_MAX_COUNT", () => {
+    const base = {
+      occurrenceId: "occ_1",
+      format: "CHOICE",
+      timeoutSeconds: null,
+      choiceFirstMeaningTextOnly: false,
+      drillIncludeCorrect: false,
+      resetRemaining: 3,
+      vagueRemaining: 2,
+      initialCorrectRemaining: 1,
+      results: [{ wordId: "w_1", result: "CORRECT" }],
+    } as const;
+    const omitted = startDrillInputSchema.safeParse(base);
+    expect(omitted.success).toBe(true);
+    if (omitted.success) expect(omitted.data.sourceQuestionCount).toBeUndefined();
+    for (const sourceQuestionCount of [1, QUIZ_ANSWERS_MAX_COUNT]) {
+      expect(startDrillInputSchema.safeParse({ ...base, sourceQuestionCount }).success).toBe(true);
+    }
+    for (const sourceQuestionCount of [0, 2.5, QUIZ_ANSWERS_MAX_COUNT + 1, null]) {
+      expect(startDrillInputSchema.safeParse({ ...base, sourceQuestionCount }).success).toBe(false);
+    }
   });
 
   test("remaining counts are required integers in 1..9", () => {

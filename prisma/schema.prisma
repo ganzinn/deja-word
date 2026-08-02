@@ -392,6 +392,7 @@ model QuizDefaultSetting {
   occurrenceId   String?     @map("occurrence_id")
   rangeFrom      Int?        @map("range_from")
   rangeTo        Int?        @map("range_to")
+  questionCount  Int?        @map("question_count") // 出題数のデフォルト。null = 未設定（範囲の全問出題）
   format         QuizFormat?
   showCountdown  Boolean?    @map("show_countdown") // 開始時カウントダウン演出の表示。null = 非表示（デフォルト）
   autoplayPronunciation Boolean? @map("autoplay_pronunciation") // 発音の自動再生。null = 有効（デフォルト）
@@ -445,6 +446,9 @@ model Drill {
   // 「同じ範囲でもう一度テストする」に使う（既存行は実効範囲 range_from/to で backfill 済み）
   sourceRangeFrom Int? @map("source_range_from")
   sourceRangeTo   Int? @map("source_range_to")
+  // 元テストの出題数指定。null = 指定なし（範囲の全問出題）。「同じ範囲でもう一度テストする」で
+  // 引き継ぎ、再テストのたびに範囲から再抽選する（同じ単語集合の再現はしない）
+  sourceQuestionCount Int? @map("source_question_count")
   // 元テストの「ブックマークのみ」指定。sourceRangeFrom/To と同役割の再テスト導線用
   // （開始時に今のブックマーク集合で再評価する。ADR-0042 と一貫）
   sourceBookmarkedOnly Boolean @default(false) @map("source_bookmarked_only")

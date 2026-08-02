@@ -6,6 +6,8 @@
 // 静的配信物のままユニットテストするため、pure 関数群を末尾の self.__swInternals で
 // 公開している（テストは src/lib/sw.unit.test.ts が本ファイルを評価して検証する）。
 
+// src/lib/audio-cache.ts の AUDIO_CACHE_NAME と同値（一括プリフェッチが同じキャッシュへ書く）。
+// このファイルは静的配信物で import を持ち込まない方針のため二重管理。変えるときは両方直す。
 const AUDIO_CACHE = "audio-v1";
 
 // 本番の音源ホスト（<store-id>.public.blob.vercel-storage.com）

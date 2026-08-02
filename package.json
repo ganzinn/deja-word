@@ -21,6 +21,7 @@
     "db:reset-prod": "tsx scripts/reset-prod-db.ts",
     "db:import-words": "tsx scripts/import-words.ts",
     "db:import-related-words": "tsx scripts/import-related-words.ts",
+    "db:import-audio": "tsx scripts/import-audio.ts",
     "e2e:audio-cache": "tsx scripts/e2e/verify-audio-cache.ts",
     "e2e:guard": "tsx scripts/e2e/verify-deletion-guard.ts",
     "e2e:capture-docs": "tsx scripts/e2e/capture-docs-screenshots.ts",

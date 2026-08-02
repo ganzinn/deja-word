@@ -51,7 +51,7 @@ concise,adjective,簡潔な
 ### 関連語を含む元 CSV（ターゲット1900）の取り込み手順
 
 `tmp/target1900.csv` は意味欄に関連語（同意語 `≒` / 反意語 `⇔`、`⇒ N` で掲載番号リンク）が埋め込まれている。
-取り込みは **3 段** で行う:
+取り込みは **4 段** で行う:
 
 1. **分解**（使い捨て生成スクリプト）— 意味本文と関連語を 2 ファイルに切り出す。
 
@@ -67,6 +67,12 @@ concise,adjective,簡潔な
    ```
 
 3. **関連語登録** — `related.csv` を**人手レビュー後**、`db:import-related-words` で取り込む（→ `docs/ops/import-related-words.md`）。掲載番号リンクは単語登録済みであることが前提（このとき掲載番号＝本の見出し番号になる＝スキップ 0 のため）。
+
+4. **発音音源登録** — 掲載番号で名付けた mp3 群を `db:import-audio` で取り込む（→ `docs/ops/import-audio.md`）。こちらも掲載番号＝本の見出し番号が前提。
+
+   ```sh
+   pnpm db:import-audio "ターゲット1900" tmp/1900_split/EN --execute
+   ```
 
 ## 仕様
 

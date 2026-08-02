@@ -368,6 +368,35 @@ export async function ensureQuizDeckBookmarks(
 }
 
 /**
+ * 撮影用に単語テストのデフォルト設定を冪等に確定させる（掲載箇所 = quiz デッキ、出題形式 = 四択、
+ * 四択の制限時間 = 推奨 5 秒）。開始画面・設定画面のスクリーンショットが「未設定／未選択」で
+ * 写らないようにする。必ず ensureQuizDeck の後に呼ぶ（掲載箇所 id を渡す）。
+ */
+export async function ensureQuizDefaultsForDocs(
+  prisma: PrismaClientType,
+  ownerEmailRaw: string,
+  occurrenceId: string,
+): Promise<void> {
+  const email = ownerEmailRaw.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) {
+    throw new Error(
+      `ensureQuizDefaultsForDocs: ユーザー ${email} が未用意です（先に ensureUser を呼んでください）。`,
+    );
+  }
+  await prisma.quizDefaultSetting.upsert({
+    where: { userId: user.id },
+    update: { occurrenceId, format: "CHOICE" },
+    create: { userId: user.id, occurrenceId, format: "CHOICE" },
+  });
+  await prisma.quizDefaultTimeout.upsert({
+    where: { userId_format: { userId: user.id, format: "CHOICE" } },
+    update: { timeoutSeconds: 5 },
+    create: { userId: user.id, format: "CHOICE", timeoutSeconds: 5 },
+  });
+}
+
+/**
  * 掲載箇所ビューの撮影用に、最も単語数の多い共有（system 所有）掲載箇所を返す（読み取りのみ）。
  * 番号付きの一覧を映すのに使い、無ければ明示エラーにする（ターゲット1900 等を db:import-words で用意する）。
  */

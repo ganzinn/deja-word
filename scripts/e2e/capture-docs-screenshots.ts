@@ -16,6 +16,7 @@ import {
   ensureDemoWord,
   ensureQuizDeck,
   ensureQuizDeckBookmarks,
+  ensureQuizDefaultsForDocs,
   ensureUser,
   getLargestSharedOccurrence,
   makePrisma,
@@ -301,7 +302,8 @@ async function sectionQuiz(browser: Browser): Promise<void> {
       }
     }
 
-    // 開始画面（掲載箇所・掲載番号範囲・対象語数プレビュー）。形式は未選択のまま全体を映す。
+    // 開始画面（掲載箇所・掲載番号範囲・対象語数プレビュー）。出題形式・制限時間はデフォルト設定
+    // （ensureQuizDefaultsForDocs: 四択・5 秒）が初期表示されたまま全体を映す。
     await page.goto("/quiz");
     await selectOccurrence();
     await page.locator("#quiz-range-from").fill("1");
@@ -566,6 +568,9 @@ async function main(): Promise<void> {
       const deck = await ensureQuizDeck(prisma, TEST_USER1_EMAIL);
       quizDeckLocation = deck.location;
       quizDeckWordCount = deck.wordCount;
+      // 開始画面・設定画面が「未設定／未選択」で写らないよう、デフォルト設定
+      // （掲載箇所 = デッキ、出題形式 = 四択）を確定させる（撮影の再現性を DB 状態に依存させない）。
+      await ensureQuizDefaultsForDocs(prisma, TEST_USER1_EMAIL, deck.occurrenceId);
     }
     if (needsBookmark) {
       await ensureQuizDeckBookmarks(prisma, TEST_USER1_EMAIL);

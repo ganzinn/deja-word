@@ -91,12 +91,31 @@ const ANNOTATION_PATTERN = /【[^】]*】/g;
 const PLACEHOLDER_PATTERN = /\.{3,}|[…~〜～]/g;
 
 /**
+ * 角括弧のペア（`compare A with [to] B`）。角括弧の中身は言い換え候補で、読み上げると
+ * 文として破綻するため中身ごと落とす。開き／閉じは半角・全角の混在も受ける。
+ * 中身に括弧を含めない（＝ペアが取れない箇所は一致しない）ことで、不一致・入れ子は
+ * 後段の BRACKET_CHAR_PATTERN による「記号だけ落として中身は読む」に倒れる。
+ */
+const SQUARE_BRACKET_PAIR_PATTERN = /[[［][^[\]［］]*[\]］]/g;
+
+/**
+ * 上で落ちなかった残りの括弧記号。丸括弧（`(be) similar to`）は中身が読める語なので
+ * 記号だけ落とす。角括弧のペア不一致・入れ子もここに流れてくる。
+ */
+const BRACKET_CHAR_PATTERN = /[()[\]（）［］]/g;
+
+/**
  * 読み上げ用テキストへ正規化する（docs/adr/0078-speech-text-normalization.md）。
  * 表示のための記号を落とし、語だけを残す。
+ *
+ * 置換先が空文字でなく空白 1 個なのは、語の結合（`A(B)` → `AB`）を防ぐため。
+ * 余った空白は最後の畳み込みで 1 個に潰れる。
  */
 export function toSpokenText(raw: string): string {
   return stripRichTextMarkup(raw)
     .replace(ANNOTATION_PATTERN, " ")
+    .replace(SQUARE_BRACKET_PAIR_PATTERN, " ")
+    .replace(BRACKET_CHAR_PATTERN, " ")
     .replace(PLACEHOLDER_PATTERN, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -106,7 +125,7 @@ export function toSpokenText(raw: string): string {
  * 英語（en-US）として `text` を読み上げる。実行中の発話は cancel してから話す
  * （複数ボタンが同時に鳴らないようにする）。非対応時は何もせず onEnd を呼ぶ。
  *
- * 表示用の記号（装飾記法・プレースホルダ・注記）は `toSpokenText` でここで落とす。
+ * 表示用の記号（装飾記法・プレースホルダ・注記・括弧）は `toSpokenText` でここで落とす。
  * 記号の扱いは合成エンジン任せ（読み上げる／区切りになる）でネイティブとブラウザで揃わないため、
  * 読み上げの一本道であるこの関数で正規化し、呼び出し側が気をつけなくて済むようにする。
  */

@@ -105,7 +105,67 @@ describe("speakEnglish", () => {
     speakEnglish("be certain that ...");
     speakEnglish("suggest (to 〜) that …");
     const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
-    expect(texts).toEqual(["so that", "check", "be certain that", "suggest (to ) that"]);
+    expect(texts).toEqual(["so that", "check", "be certain that", "suggest to that"]);
+  });
+
+  // 括弧は意味で出し分ける: (…) は中身が読める語なので記号だけ落とし、
+  // [...] は言い換え候補なので中身ごと落とす。
+  it("keeps the contents of round brackets, dropping only the symbols", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("(be) similar to 〜");
+    speakEnglish("consider A (to be) B");
+    speakEnglish("demand that A (should) do");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["be similar to", "consider A to be B", "demand that A should do"]);
+  });
+
+  it("drops square brackets along with their contents", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("compare A with [to] B");
+    const utterance = speak.mock.calls[0][0] as { text: string };
+    expect(utterance.text).toBe("compare A with B");
+  });
+
+  it("drops only the symbol when a square bracket has no pair", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("compare A with [to B");
+    speakEnglish("consider A (to be B");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["compare A with to B", "consider A to be B"]);
+  });
+
+  it("treats full-width brackets the same as half-width", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("（be） similar to 〜");
+    speakEnglish("compare A with ［to］ B");
+    // 開き・閉じの字形が混在しても角括弧のペアとして扱う
+    speakEnglish("compare A with [to］ B");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["be similar to", "compare A with B", "compare A with B"]);
+  });
+
+  it("drops a square bracket pair nested in round brackets", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("compare A with (to [or] from) B");
+    // 丸括弧は入れ子でも記号が全部落ちる
+    speakEnglish("(a (b) c)");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["compare A with to from B", "a b c"]);
+  });
+
+  it("keeps the placeholder words A/B/do/doing", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("(be) worth doing");
+    speakEnglish("A is to B what C is to D");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["be worth doing", "A is to B what C is to D"]);
+  });
+
+  it("does not glue words together when a bracket sits between them", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("A(B)C");
+    const utterance = speak.mock.calls[0][0] as { text: string };
+    expect(utterance.text).toBe("A B C");
   });
 
   it("keeps sentence-ending periods（省略記号だけを落とす）", () => {

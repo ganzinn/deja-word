@@ -50,7 +50,8 @@ function renderHighlighted(
 
 // TG 例文の英文（ベース = 青太字）で体裁を変えるプレースホルダ記号。
 // A/B/do/doing は非太字＋斜体、括弧・チルダは非太字。
-const TG_TEXT_PATTERN = /\bdoing\b|\bdo\b|\bA\b|\bB\b|[[\]()〜]/g;
+// 括弧は読み上げ側（speech.ts の toSpokenText）と対象字形を揃えるため半角・全角の両方を見る。
+const TG_TEXT_PATTERN = /\bdoing\b|\bdo\b|\bA\b|\bB\b|[[\]()（）［］〜]/g;
 const tgTextClass = (token: string) =>
   /^(?:A|B|do|doing)$/.test(token) ? "font-normal italic" : "font-normal";
 

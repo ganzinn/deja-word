@@ -1,4 +1,4 @@
-// 発音音源のローカルキャッシュ Service Worker（docs/design/audio-local-cache.md）。
+// 発音音源のローカルキャッシュ Service Worker（docs/adr/0075-audio-local-cache-and-prefetch.md）。
 // 対象は発音音源のリクエストのみで、ページ・Server Action・API には一切触れない。
 // 音源 URL は addRandomSuffix で不変（src/lib/blob-client-impl.ts）のため、URL を
 // そのままキーにした cache-first で無効化ロジックが要らない。

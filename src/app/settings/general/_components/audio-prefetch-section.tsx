@@ -44,7 +44,7 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * 発音音源の一括プリフェッチ（docs/design/audio-prefetch.md）の操作 UI。
+ * 発音音源の一括プリフェッチ（docs/adr/0075-audio-local-cache-and-prefetch.md）の操作 UI。
  *
  * 同じ画面の「音声」設定は保存ボタン型だが、こちらはその場で実行される操作系のため、
  * 枠で囲って独立していることを見せる。実処理は `@/lib/audio-cache`（Cache Storage 直操作）。

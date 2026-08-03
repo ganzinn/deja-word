@@ -24,7 +24,7 @@ example-audio の実装完了を受けて、`docs/reference/naming-book.md` の�
 
 ### naming-book（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 7）
 
-**既存エントリの修正（5 件）**（決定 7 の見出しは「既存 4 エントリ」と書いているが、本文の表は 5 行あり、設計ハブの確定事項サマリも「既存 5 エントリ」としている。実体の 5 件を採る）
+**既存エントリの修正（5 件）**
 
 | エントリ | 修正内容 |
 | --- | --- |

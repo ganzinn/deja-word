@@ -43,7 +43,7 @@ TG 4 形式（`CHOICE_TG` / `SELF_JUDGE_TG` / `CHOICE_TG_JA_EN` / `SELF_JUDGE_TG
   | payload 型 | `src/lib/quiz/payload.ts` | `QuestionBase` に `ttsText: string` を足す |
   | UI | 4 箇所 | `ttsText={question.ttsText}` を渡すだけ（形式分岐なし） |
 
-  ※ `revealed-headword-card.tsx` は現状 `question` を受け取らず `ttsText` を内部で組み立てているため、props 追加とその呼び出し元 3 本の追随が要る（実装内容を参照）。設計の 4 箇所という数え方は「差し替え対象の表示箇所」を指す。
+  ※ 「4 箇所」は差し替え対象の**表示箇所**の数。`revealed-headword-card.tsx` だけは `question` を受け取らず `ttsText` を内部で組み立てているため、props 追加とその呼び出し元 3 本の追随が要る（[05-ui-playback.md](../../design/example-audio/05-ui-playback.md) 決定 3。具体的な変更は実装内容を参照）。
 
 - `questionBaseOf` の実装（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 1）
 

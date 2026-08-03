@@ -11,7 +11,7 @@
 - 音源の登録 UI・Server Action（→ 02）。本チケットで追加する公開 API 2 本は、02 がマージされるまで未参照のままでよい（設計は 02 と同一チケットを想定していたが、PR サイズの都合で分割した。設計の意図が保たれる理由は [plan ハブ](README.md#01-と-02-の分割について設計の着手順序ヒントとの差分)を参照）
 - `audio-manifest.ts` のグループ分け（音源 URL を扱う 6 経路目だが削除経路ではないため → 06）
 - 単語詳細・単語テストの再生 UI（→ 04 / 05）
-- `db:import-audio`（`src/lib/audio-import.ts`）は対象外。`Meaning` 専用のまま変更しない（[02-data-model.md](../../design/example-audio/02-data-model.md) 決定 6。設計ハブと [01-requirements.md](../../design/example-audio/01-requirements.md) 決定 7 は「見出し語・関連語のまま」と書いているが、現行実装は `prisma.meaning` のみを更新しており `RelatedWord` を扱わない。実態は 02 決定 6 の記述が正しい）
+- `db:import-audio`（`src/lib/audio-import.ts`）は対象外。`Meaning` 専用のまま変更しない（[02-data-model.md](../../design/example-audio/02-data-model.md) 決定 6 ／ [01-requirements.md](../../design/example-audio/01-requirements.md) 決定 7）
 - `src/lib/words-detail.ts` は**変更しない**（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 2）
 
 ## 依存チケット
@@ -99,7 +99,7 @@ orphan URL 収集（`where: { wordId, ownerId: userId, id: { notIn } }`）に `e
 ## 完了条件（Definition of Done）
 
 - [ ] unit（`pnpm test:unit`）: `src/lib/pronunciation-audio.unit.test.ts` に example ターゲットのケースを追加 — blob パスが `audio/example/<id>/pronunciation.mp3` になる／owner 本人は可／他人は不可／一般ユーザーは SYSTEM 所有行を操作不可／不存在は `ExampleNotFoundError`／delete が動く（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5）
-- [ ] unit（`pnpm test:unit`）: `src/lib/blob-purge.unit.test.ts` の既存ケースで、例文の音源も収集・削除対象になること（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5。決定 5 の表は blob-purge を integration に置いているが、repo に存在するのは `blob-purge.unit.test.ts` のみ。実ファイルに合わせて unit とする）
+- [ ] unit（`pnpm test:unit`）: `src/lib/blob-purge.unit.test.ts` の既存ケースで、例文の音源も収集・削除対象になること（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5）
 - [ ] integration（`pnpm test:integration`）: `src/lib/pronunciation-audio.integration.test.ts` に example の 3 グループを既存の meaning・related-word と同じ構成で追加 — upload → 差し替え → 削除で DB と blob が追随／Word 削除・編集の orphan 削除で blob が消える／認可（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5）
 - [ ] integration: `src/lib/words-update.integration.test.ts` — フォームから消えた例文の音源が orphan として削除されること。あわせて、**本文・種別を編集しても音源が保持される**こと（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5、[02-data-model.md](../../design/example-audio/02-data-model.md) 決定 4）
 - [ ] integration: `src/lib/occurrence-purge.integration.test.ts` の既存ケースで、例文の音源も収集・削除対象になること（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 5）

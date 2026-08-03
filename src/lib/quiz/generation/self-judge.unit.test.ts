@@ -26,7 +26,9 @@ describe("buildSelfJudgeQuestions", () => {
     const [q] = buildSelfJudgeQuestions(material([target]), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
+    // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
+    expect(q.ttsText).toBe("run");
     expect(q.answer).toEqual([
       { partOfSpeech: "動詞", texts: ["走る", "駆ける"] },
       { partOfSpeech: null, texts: ["経営する"] },
@@ -42,6 +44,7 @@ describe("buildSelfJudgeQuestions", () => {
     };
     const [q] = buildSelfJudgeQuestions(material([target]), seededRng(1));
     expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.ttsText).toBe("walk");
   });
 
   test("shuffles question order reproducibly (Fisher–Yates with rng always 0)", () => {

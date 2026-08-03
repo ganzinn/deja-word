@@ -99,7 +99,7 @@ export async function updateWordForUser(
 
   const allowed = await resolveChildAllowedIds(userId, values, scopedOwnerIds(userId));
 
-  // orphan delete で消える Meaning の音源 URL を tx 前に控え、commit 後に Blob を消す
+  // orphan delete で消える Meaning / 関連語 / 例文の音源 URL を tx 前に控え、commit 後に Blob を消す
   // （ネットワーク I/O を tx に入れない）。
   let orphanedAudioUrls: ReadonlyArray<string | null> = [];
 
@@ -131,7 +131,8 @@ export async function updateWordForUser(
 
       const meaningIdsArray = Array.from(meaningIdsInForm);
       const relatedIdsArray = Array.from(relatedIdsInForm);
-      const [orphanedMeanings, orphanedRelated] = await Promise.all([
+      const exampleIdsArray = Array.from(exampleIdsInForm);
+      const [orphanedMeanings, orphanedRelated, orphanedExamples] = await Promise.all([
         tx.meaning.findMany({
           where: {
             wordId,
@@ -148,8 +149,16 @@ export async function updateWordForUser(
           },
           select: { pronunciationAudioUrl: true },
         }),
+        tx.example.findMany({
+          where: {
+            wordId,
+            ownerId: userId,
+            ...(exampleIdsArray.length > 0 ? { id: { notIn: exampleIdsArray } } : {}),
+          },
+          select: { pronunciationAudioUrl: true },
+        }),
       ]);
-      orphanedAudioUrls = [...orphanedMeanings, ...orphanedRelated].map(
+      orphanedAudioUrls = [...orphanedMeanings, ...orphanedRelated, ...orphanedExamples].map(
         (row) => row.pronunciationAudioUrl,
       );
 

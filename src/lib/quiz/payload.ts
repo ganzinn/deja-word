@@ -5,7 +5,13 @@
 export type QuestionBase = {
   wordId: string;
   headword: string;
+  /**
+   * この問題の発音ボタンが鳴らす音源の URL（未登録なら null）。TG 例文形式では TG 例文の音源、
+   * それ以外の形式では見出し語（最初の Meaning）の音源。「見出し語の音源」ではないことに注意。
+   */
   pronunciationAudioUrl: string | null;
+  /** 上記の音源が無いときに読み上げる英語（TG 例文形式は例文の英文、それ以外は headword）。 */
+  ttsText: string;
 };
 
 /** Meaning 1 件分の表示用データ（自己判定の解答／日本語→英語の問題文で共用）。 */

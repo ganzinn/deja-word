@@ -243,7 +243,7 @@ export async function fetchQuizSource(
             ...usableTgExampleWhere(allowed),
           },
           orderBy: { sortOrder: "asc" },
-          select: { wordId: true, text: true, meaning: true },
+          select: { wordId: true, text: true, meaning: true, pronunciationAudioUrl: true },
         }),
       );
 
@@ -252,13 +252,23 @@ export async function fetchQuizSource(
 
 // sortOrder 昇順の取得行から単語ごとに先頭 1 件を選抜する（meaning 非 null は where 済みだが型を絞る）。
 function pickFirstTgExamples(
-  rows: { wordId: string; text: string; meaning: string | null }[],
+  rows: {
+    wordId: string;
+    text: string;
+    meaning: string | null;
+    pronunciationAudioUrl: string | null;
+  }[],
 ): TgExampleRow[] {
   const picked = new Map<string, TgExampleRow>();
   for (const row of rows) {
     if (row.meaning === null || row.meaning === "") continue;
     if (!picked.has(row.wordId)) {
-      picked.set(row.wordId, { wordId: row.wordId, text: row.text, meaning: row.meaning });
+      picked.set(row.wordId, {
+        wordId: row.wordId,
+        text: row.text,
+        meaning: row.meaning,
+        pronunciationAudioUrl: row.pronunciationAudioUrl,
+      });
     }
   }
   return [...picked.values()];

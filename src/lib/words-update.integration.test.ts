@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { BlobClient } from "@/lib/blob-client";
 import { prisma } from "@/lib/prisma";
 import type { WordFormValues } from "@/lib/schema/word-form";
 import { wordDetailToFormValues } from "@/lib/schema/word-form";
@@ -26,6 +27,20 @@ function minimalForm(headword: string): WordFormValues {
     memos: [],
     occurrences: [],
   };
+}
+
+/** del された URL を記録するインメモリ BlobClient（pronunciation-audio の test と同型）。 */
+function fakeBlob() {
+  const deleted = new Set<string>();
+  const blob: BlobClient = {
+    async put(pathname) {
+      return { url: `https://blob.test/${pathname}` };
+    },
+    async del(url) {
+      for (const u of Array.isArray(url) ? url : [url]) deleted.add(u);
+    },
+  };
+  return { blob, deleted };
 }
 
 describe("updateWordForUser", () => {
@@ -227,5 +242,69 @@ describe("updateWordForUser", () => {
     });
     expect(wo.occurrence.ownerId).toBe(user.id);
     expect(wo.occurrenceNumber).toBe(7);
+  });
+
+  test("例文をフォームから落とすと orphan として音源 Blob も削除される", async () => {
+    const user = await createTestUser();
+    const base = minimalForm("example-orphan");
+    base.examples = [
+      { kind: "SENTENCE", text: "keep me.", meaning: "", notes: [] },
+      { kind: "SENTENCE", text: "drop me.", meaning: "", notes: [] },
+    ];
+    const word = await createWordForUser(user.id, base);
+    const examples = await prisma.example.findMany({
+      where: { wordId: word.id },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, text: true },
+    });
+    const droppedUrl = "https://blob.test/audio/example/dropped/pronunciation.mp3";
+    const keptUrl = "https://blob.test/audio/example/kept/pronunciation.mp3";
+    await prisma.example.update({
+      where: { id: examples[1].id },
+      data: { pronunciationAudioUrl: droppedUrl },
+    });
+    await prisma.example.update({
+      where: { id: examples[0].id },
+      data: { pronunciationAudioUrl: keptUrl },
+    });
+    const { blob, deleted } = fakeBlob();
+
+    const detail = await getWordDetailForUser(user.id, word.id);
+    const form = wordDetailToFormValues(detail!);
+    form.examples = form.examples.filter((e) => e.id === examples[0].id);
+    await updateWordForUser(user.id, word.id, form, blob);
+
+    expect(await prisma.example.findUnique({ where: { id: examples[1].id } })).toBeNull();
+    expect(deleted.has(droppedUrl)).toBe(true);
+    expect(deleted.has(keptUrl)).toBe(false);
+  });
+
+  test("例文の本文・種別を編集しても音源は保持される", async () => {
+    const user = await createTestUser();
+    const base = minimalForm("example-audio-kept");
+    base.examples = [{ kind: "SENTENCE", text: "before edit.", meaning: "", notes: [] }];
+    const word = await createWordForUser(user.id, base);
+    const created = await prisma.example.findFirstOrThrow({
+      where: { wordId: word.id },
+      select: { id: true },
+    });
+    const audioUrl = "https://blob.test/audio/example/kept/pronunciation.mp3";
+    await prisma.example.update({
+      where: { id: created.id },
+      data: { pronunciationAudioUrl: audioUrl },
+    });
+    const { blob, deleted } = fakeBlob();
+
+    const detail = await getWordDetailForUser(user.id, word.id);
+    const form = wordDetailToFormValues(detail!);
+    form.examples[0].text = "after edit.";
+    form.examples[0].kind = "PHRASE";
+    await updateWordForUser(user.id, word.id, form, blob);
+
+    const after = await prisma.example.findUniqueOrThrow({ where: { id: created.id } });
+    expect(after.text).toBe("after edit.");
+    expect(after.kind).toBe("PHRASE");
+    expect(after.pronunciationAudioUrl).toBe(audioUrl);
+    expect(deleted.size).toBe(0);
   });
 });

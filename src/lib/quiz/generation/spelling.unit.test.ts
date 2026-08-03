@@ -23,7 +23,9 @@ describe("buildSpellingQuestions", () => {
     const [q] = buildSpellingQuestions(material([target]), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
+    // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
+    expect(q.ttsText).toBe("run");
     // 最初の Meaning のみ「; 」連結（2 件目「経営する」・品詞は含めない）
     expect(q.prompt).toBe("走る; 駆ける");
   });

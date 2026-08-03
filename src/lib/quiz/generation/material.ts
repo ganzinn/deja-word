@@ -2,6 +2,8 @@
 // （docs/adr/0030-dummy-pool-bounded-fetch.md。プレビューはこの分割を使わず件数のみ取得する）。
 // 取得クエリ `fetchQuizSource` は別ファイル。本ファイルは DB 非依存。
 
+import { isTgExampleFormat } from "@/lib/quiz/format-options";
+import type { QuizFormat } from "@/generated/prisma/enums";
 import type { MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
 
 /**
@@ -30,7 +32,13 @@ export type QuizMeaning = {
  * 使える TG 例文の取得行（単語ごとに sortOrder 最小の 1 件へ選抜済み。`fetchQuizSource` の
  * `tgExampleRows`）。text = 英文、meaning = 意味（非 null・非空へ取得側で選抜済み）。
  */
-export type TgExampleRow = { wordId: string; text: string; meaning: string };
+export type TgExampleRow = {
+  wordId: string;
+  text: string;
+  meaning: string;
+  /** 例文の発音音源 URL（未登録なら null）。TG 例文形式の発音ボタン・自動再生が鳴らす音源。 */
+  pronunciationAudioUrl: string | null;
+};
 
 export type QuizWord = {
   id: string;
@@ -41,7 +49,7 @@ export type QuizWord = {
    */
   meanings: QuizMeaning[];
   /** 使える TG 例文（sortOrder 最小の 1 件）。TG 例文形式以外の生成時・未登録の単語は null。 */
-  tgExample: { text: string; meaning: string } | null;
+  tgExample: { text: string; meaning: string; pronunciationAudioUrl: string | null } | null;
 };
 
 /**
@@ -67,7 +75,13 @@ function toQuizWord(row: QuizSourceRow, tgExampleByWordId: Map<string, TgExample
       pronunciationAudioUrl: m.pronunciationAudioUrl,
       texts: m.texts.map((t) => t.text),
     })),
-    tgExample: tgExample ? { text: tgExample.text, meaning: tgExample.meaning } : null,
+    tgExample: tgExample
+      ? {
+          text: tgExample.text,
+          meaning: tgExample.meaning,
+          pronunciationAudioUrl: tgExample.pronunciationAudioUrl,
+        }
+      : null,
   };
 }
 
@@ -164,11 +178,29 @@ export function firstMeaningHeadText(word: QuizWord): string {
   return word.meanings[0]?.texts[0] ?? "";
 }
 
-/** 問題の共通項目。発音音源 URL は最初の Meaning のもの（未登録なら null）。 */
-export function questionBaseOf(word: QuizWord): QuestionBase {
+/**
+ * 問題の共通項目。「この問題の発音ボタンが鳴らす対象」（音源 URL ＋ 音源が無いときの読み上げ語）を
+ * ここで 1 組に決め、UI 側は形式を見た分岐を持たない。
+ *
+ * - TG 例文形式（4 形式）: TG 例文の音源と英文。**見出し語の音源へフォールバックしない**
+ *   （TG 例文の音源が未登録なら null のまま → 例文の英文を TTS で読み上げる）。
+ * - それ以外: 最初の Meaning の音源と headword（従来どおり）。
+ *
+ * TG 形式で `tgExample` が null になるのは不変条件違反だが、防御的に `ttsText: ""` へ落とす
+ * （`AudioPlayButton` は空なら TTS を出さないため、見出し語が鳴る事故ではなくボタンが消えるだけになる）。
+ */
+export function questionBaseOf(word: QuizWord, format: QuizFormat): QuestionBase {
+  const base = { wordId: word.id, headword: word.headword };
+  if (isTgExampleFormat(format)) {
+    return {
+      ...base,
+      pronunciationAudioUrl: word.tgExample?.pronunciationAudioUrl ?? null,
+      ttsText: word.tgExample?.text ?? "",
+    };
+  }
   return {
-    wordId: word.id,
-    headword: word.headword,
+    ...base,
     pronunciationAudioUrl: word.meanings[0]?.pronunciationAudioUrl ?? null,
+    ttsText: word.headword,
   };
 }

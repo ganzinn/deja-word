@@ -3,8 +3,10 @@ import { describe, expect, test } from "vitest";
 import type { BlobClient } from "@/lib/blob-client";
 import {
   ForbiddenUpdateError,
+  deleteExampleAudioForUser,
   deletePronunciationAudioForUser,
   deleteRelatedWordAudioForUser,
+  uploadExampleAudioForUser,
   uploadPronunciationAudioForUser,
   uploadRelatedWordAudioForUser,
 } from "@/lib/pronunciation-audio";
@@ -59,8 +61,18 @@ async function firstRelatedWordId(wordId: string): Promise<string> {
   return r.id;
 }
 
+async function firstExampleId(wordId: string): Promise<string> {
+  const e = await prisma.example.findFirst({ where: { wordId }, select: { id: true } });
+  if (!e) throw new Error("example not found");
+  return e.id;
+}
+
 function relatedWord(term: string): WordFormValues["relatedWords"][number] {
   return { term, partOfSpeech: "", pronunciation: "", meaning: "", notes: [] };
+}
+
+function example(text: string): WordFormValues["examples"][number] {
+  return { kind: "SENTENCE", text, meaning: "", notes: [] };
 }
 
 function mp3(): File {
@@ -299,5 +311,140 @@ describe("related-word-audio: 認可（owner 不一致）", () => {
     await expect(
       uploadRelatedWordAudioForUser(stranger.id, relatedId, mp3(), blob),
     ).rejects.toBeInstanceOf(ForbiddenUpdateError);
+  });
+});
+
+describe("example-audio: upload → 差し替え → 削除", () => {
+  test("DB カラムが更新され、差し替え・削除で旧 Blob が del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("exTerm", { examples: [example("He is audible.")] }),
+    );
+    const exampleId = await firstExampleId(word.id);
+    const { blob, puts, deleted } = fakeBlob();
+
+    const first = await uploadExampleAudioForUser(user.id, exampleId, mp3(), blob);
+    expect(puts[0]).toBe(`audio/example/${exampleId}/pronunciation.mp3`);
+    expect(
+      (await prisma.example.findUniqueOrThrow({ where: { id: exampleId } })).pronunciationAudioUrl,
+    ).toBe(first.url);
+
+    const second = await uploadExampleAudioForUser(user.id, exampleId, mp3(), blob);
+    expect(
+      (await prisma.example.findUniqueOrThrow({ where: { id: exampleId } })).pronunciationAudioUrl,
+    ).toBe(second.url);
+    expect(deleted.has(first.url)).toBe(true);
+
+    await deleteExampleAudioForUser(user.id, exampleId, blob);
+    expect(
+      (await prisma.example.findUniqueOrThrow({ where: { id: exampleId } })).pronunciationAudioUrl,
+    ).toBeNull();
+    expect(deleted.has(second.url)).toBe(true);
+  });
+});
+
+describe("example-audio: Blob クリーンアップ", () => {
+  test("Word 削除で配下 例文の発音音源が一括 del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("exToDelete", { examples: [example("A sentence.")] }),
+    );
+    const exampleId = await firstExampleId(word.id);
+    const { blob, deleted } = fakeBlob();
+
+    const pron = await uploadExampleAudioForUser(user.id, exampleId, mp3(), blob);
+
+    await deleteWordForUser(user.id, word.id, blob);
+
+    expect(await prisma.word.findUnique({ where: { id: word.id } })).toBeNull();
+    expect(deleted.has(pron.url)).toBe(true);
+  });
+
+  test("編集の orphan delete で消えた 例文の音源も del される", async () => {
+    const user = await createTestUser();
+    const word = await createWordForUser(
+      user.id,
+      form("exEditable", { examples: [example("keep me."), example("drop me.")] }),
+    );
+    const examples = await prisma.example.findMany({
+      where: { wordId: word.id },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, ownerId: true, kind: true, text: true },
+    });
+    const keep = examples[0];
+    const drop = examples[1];
+    const { blob, deleted } = fakeBlob();
+
+    const dropped = await uploadExampleAudioForUser(user.id, drop.id, mp3(), blob);
+
+    // フォームから drop を落として更新 → orphan delete → 音源も del
+    await updateWordForUser(
+      user.id,
+      word.id,
+      form("exEditable", {
+        examples: [
+          {
+            id: keep.id,
+            ownerId: user.id,
+            kind: keep.kind,
+            text: keep.text,
+            meaning: "",
+            notes: [],
+          },
+        ],
+      }),
+      blob,
+    );
+
+    expect(await prisma.example.findUnique({ where: { id: drop.id } })).toBeNull();
+    expect(await prisma.example.findUnique({ where: { id: keep.id } })).not.toBeNull();
+    expect(deleted.has(dropped.url)).toBe(true);
+  });
+});
+
+describe("example-audio: 認可（owner 不一致）", () => {
+  test("他人の例文は mutate 拒否", async () => {
+    const owner = await createTestUser();
+    const stranger = await createTestUser();
+    const word = await createWordForUser(
+      owner.id,
+      form("exOwners", { examples: [example("Owner's sentence.")] }),
+    );
+    const exampleId = await firstExampleId(word.id);
+    const { blob } = fakeBlob();
+
+    await expect(
+      uploadExampleAudioForUser(stranger.id, exampleId, mp3(), blob),
+    ).rejects.toBeInstanceOf(ForbiddenUpdateError);
+  });
+
+  test("一般ユーザーは SYSTEM 所有の共通例文を mutate できない", async () => {
+    const sysWord = await createWordForUser(
+      SYSTEM_USER_ID,
+      form("exSystem", { examples: [example("System sentence.")] }),
+    );
+    const exampleId = await firstExampleId(sysWord.id);
+    const user = await createTestUser();
+    const { blob } = fakeBlob();
+
+    await expect(uploadExampleAudioForUser(user.id, exampleId, mp3(), blob)).rejects.toBeInstanceOf(
+      ForbiddenUpdateError,
+    );
+  });
+
+  test("SYSTEM は自身の例文を mutate できる", async () => {
+    const sysWord = await createWordForUser(
+      SYSTEM_USER_ID,
+      form("exSystemOwn", { examples: [example("System own sentence.")] }),
+    );
+    const exampleId = await firstExampleId(sysWord.id);
+    const { blob } = fakeBlob();
+
+    const result = await uploadExampleAudioForUser(SYSTEM_USER_ID, exampleId, mp3(), blob);
+    expect(
+      (await prisma.example.findUniqueOrThrow({ where: { id: exampleId } })).pronunciationAudioUrl,
+    ).toBe(result.url);
   });
 });

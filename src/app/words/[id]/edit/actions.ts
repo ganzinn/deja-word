@@ -1,11 +1,14 @@
 "use server";
 
 import {
+  ExampleNotFoundError,
   InvalidAudioError,
   MeaningNotFoundError,
   RelatedWordNotFoundError,
+  deleteExampleAudioForUser,
   deletePronunciationAudioForUser,
   deleteRelatedWordAudioForUser,
+  uploadExampleAudioForUser,
   uploadPronunciationAudioForUser,
   uploadRelatedWordAudioForUser,
 } from "@/lib/pronunciation-audio";
@@ -60,7 +63,11 @@ function mapAudioError(e: unknown): { error: AudioActionError; message: string }
   if (e instanceof ForbiddenUpdateError) {
     return { error: "forbidden", message: "音源を操作する権限がありません。" };
   }
-  if (e instanceof MeaningNotFoundError || e instanceof RelatedWordNotFoundError) {
+  if (
+    e instanceof MeaningNotFoundError ||
+    e instanceof RelatedWordNotFoundError ||
+    e instanceof ExampleNotFoundError
+  ) {
     return { error: "not_found", message: "対象が見つかりません。" };
   }
   console.error("[pronunciation-audio] action failed", e);
@@ -135,4 +142,15 @@ export async function uploadRelatedWordAudio(
 
 export async function deleteRelatedWordAudio(relatedWordId: string): Promise<DeleteAudioResult> {
   return runDelete(relatedWordId, deleteRelatedWordAudioForUser);
+}
+
+export async function uploadExampleAudio(
+  exampleId: string,
+  fd: FormData,
+): Promise<UploadAudioResult> {
+  return runUpload(exampleId, fd, uploadExampleAudioForUser);
+}
+
+export async function deleteExampleAudio(exampleId: string): Promise<DeleteAudioResult> {
+  return runDelete(exampleId, deleteExampleAudioForUser);
 }

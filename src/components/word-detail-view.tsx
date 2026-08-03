@@ -168,6 +168,9 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   const isTarget = example.kind === "TARGET";
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
+      <div className={metaRowClassName}>
+        <AudioPlayButton src={example.pronunciationAudioUrl} label="発音" ttsText={example.text} />
+      </div>
       <p className="text-sm whitespace-pre-wrap">
         {isTarget ? <TgExampleText text={example.text} /> : <RichText text={example.text} />}
       </p>

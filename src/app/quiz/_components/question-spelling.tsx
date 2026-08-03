@@ -141,6 +141,7 @@ export function QuestionSpelling({
           <RevealedHeadwordCard
             headword={question.headword}
             pronunciationAudioUrl={question.pronunciationAudioUrl}
+            ttsText={question.ttsText}
             onShowDetail={onShowDetail}
           />
         ) : null}

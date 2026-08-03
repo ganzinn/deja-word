@@ -194,8 +194,12 @@ export async function ensureDemoWord(
 }
 
 /**
- * デモ単語の意味・関連語に発音音源を付ける（冪等）。DB に音源付きの語が 1 件も無いと、
+ * デモ単語の意味・関連語・一部の例文に発音音源を付ける（冪等）。DB に音源付きの語が 1 件も無いと、
  * 単語詳細の再生ボタンと設定の「発音音源のダウンロード」（対象件数）が撮れないため。
+ *
+ * 例文は TARGET / SENTENCE にだけ付ける。全例文に付けると単語詳細の例文カードが
+ * 「音源あり（マイク）」だけになり、未登録時の「自動音声（再生）」の見た目が撮れない
+ * （描き分けは docs/adr/0076-audio-source-visual-distinction.md）。
  *
  * 音源は fixtures の無音 mp3 を**固定 key** で dev blob に置く（addRandomSuffix を使わないので
  * 再実行しても実体が増えない）。ローカルディスク driver（dev）前提の撮影専用ヘルパ。
@@ -230,7 +234,19 @@ export async function ensureDemoAudio(prisma: PrismaClientType, wordId: string):
     });
   }
 
-  return meanings.length + relatedWords.length;
+  // key は index ではなく種別で決める（撮影のたびに blob の実体が増えないよう固定する）
+  const examples = await prisma.example.findMany({
+    where: { wordId, kind: { in: ["TARGET", "SENTENCE"] } },
+    select: { id: true, kind: true },
+  });
+  for (const example of examples) {
+    await prisma.example.update({
+      where: { id: example.id },
+      data: { pronunciationAudioUrl: await putFixedKey(`example-${example.kind.toLowerCase()}`) },
+    });
+  }
+
+  return meanings.length + relatedWords.length + examples.length;
 }
 
 /** quiz デッキを収める掲載箇所名（test1 所有）。②の「デモ単語帳」とは別掲載箇所にして両セクションを独立させる。 */

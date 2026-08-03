@@ -18,7 +18,7 @@ export default async function GeneralSettingsPage() {
   const session = await getCurrentSession();
   if (!session) redirect("/sign-in?redirect=/settings/general");
 
-  const [ttsFallbackEnabled, audioCount] = await Promise.all([
+  const [ttsFallbackEnabled, audioCounts] = await Promise.all([
     getTtsFallbackEnabled(session.user.id),
     countAudioUrlsForUser(session.user.id),
   ]);
@@ -29,7 +29,7 @@ export default async function GeneralSettingsPage() {
 
       <div className="px-4 pt-4">
         <GeneralSettingsForm ttsFallbackEnabled={ttsFallbackEnabled}>
-          <AudioPrefetchSection totalCount={audioCount} />
+          <AudioPrefetchSection totalCounts={audioCounts} />
         </GeneralSettingsForm>
       </div>
     </main>

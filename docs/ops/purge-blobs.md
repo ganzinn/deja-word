@@ -1,6 +1,6 @@
 # Purge Blobs（発音音源 Blob を全削除）
 
-DB に記録された**すべての発音音源 Blob**（`Meaning.pronunciationAudioUrl` / `RelatedWord.pronunciationAudioUrl`）をまとめて削除する運用スクリプト。`pnpm db:purge-blobs` が単一エントリポイント。既定はドライラン（件数表示のみ・無変更）で、`--execute` 指定時のみ実削除する。
+DB に記録された**すべての発音音源 Blob**（`Meaning.pronunciationAudioUrl` / `RelatedWord.pronunciationAudioUrl` / `Example.pronunciationAudioUrl`）をまとめて削除する運用スクリプト。`pnpm db:purge-blobs` が単一エントリポイント。既定はドライラン（件数表示のみ・無変更）で、`--execute` 指定時のみ実削除する。
 
 ```sh
 pnpm db:purge-blobs             # ドライラン（件数表示のみ・無変更）
@@ -11,7 +11,7 @@ pnpm db:purge-blobs --execute   # 実削除
 
 `prisma migrate reset` は DB を全削除して再構築するが、**Blob の実体は消さない**（DB には URL 文字列だけが入る）。DB を消した後では URL を辿れず孤児 Blob が残るため、**reset の前段で**本スクリプトを実行し、URL がまだ読めるうちに Blob を消しておく。
 
-- **対象は全件**: オーナーや掲載箇所を問わず、`Meaning` / `RelatedWord` に記録された発音音源 URL を全件収集し、重複排除して `blob.del` で一括削除する。
+- **対象は全件**: オーナーや掲載箇所を問わず、`Meaning` / `RelatedWord` / `Example` に記録された発音音源 URL を全件収集し、重複排除して `blob.del` で一括削除する。
 - **ベストエフォート**: Blob 削除に失敗しても DB は触らない（DB を真実とする方針）。失敗時は孤児 Blob が残るが整合性は保たれる。ただし**成功と混同させない**ため、失敗時は `✓` を出さずに `✗ Blob を削除できませんでした（N 件がそのまま残存）。` と原因を表示し、**終了コード 1** で終わる。URL は 1 回の `blob.del` にまとめて渡すので、失敗の粒度は全件 or 0 件。
 - **DB は変更しない**: 本スクリプトは Blob 実体のみを消す。DB レコードの削除は後続の `prisma migrate reset` 等が担う。
 

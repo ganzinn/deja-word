@@ -31,6 +31,13 @@ export class RelatedWordNotFoundError extends Error {
   }
 }
 
+export class ExampleNotFoundError extends Error {
+  constructor() {
+    super("EXAMPLE_NOT_FOUND");
+    this.name = "ExampleNotFoundError";
+  }
+}
+
 const PRONUNCIATION_FILENAME = "pronunciation.mp3";
 
 function validateAudioFile(file: File): void {
@@ -56,7 +63,7 @@ async function bestEffortDel(blob: BlobClient, url: string | string[]): Promise<
 
 /**
  * 「発音音源（mp3）の Blob 管理」という単一の関心を、保持先 entity ごとの差分だけ
- * 差し込んで共有するためのディスクリプタ。meaning / related-word の違いは
+ * 差し込んで共有するためのディスクリプタ。meaning / related-word / example の違いは
  * 「どの行を読むか / どこに URL を書くか / Blob パス接頭辞 / NotFound エラー型」だけ。
  */
 type AudioTarget = {
@@ -152,6 +159,24 @@ const relatedWordTarget: AudioTarget = {
   notFound: () => new RelatedWordNotFoundError(),
 };
 
+// 例文種別（kind）は編集フォームで変更できるため Blob パスに含めない。
+const exampleTarget: AudioTarget = {
+  dir: "example",
+  loadOwned: (id) =>
+    prisma.example.findUnique({
+      where: { id },
+      select: { ownerId: true, pronunciationAudioUrl: true },
+    }),
+  writeUrl: async (id, url) => {
+    await prisma.example.update({
+      where: { id },
+      data: { pronunciationAudioUrl: url },
+      select: { id: true },
+    });
+  },
+  notFound: () => new ExampleNotFoundError(),
+};
+
 export function uploadPronunciationAudioForUser(
   userId: string,
   meaningId: string,
@@ -184,6 +209,23 @@ export function deleteRelatedWordAudioForUser(
   blob: BlobClient = defaultBlobClient,
 ): Promise<void> {
   return deleteAudio(relatedWordTarget, userId, relatedWordId, blob);
+}
+
+export function uploadExampleAudioForUser(
+  userId: string,
+  exampleId: string,
+  file: File,
+  blob: BlobClient = defaultBlobClient,
+): Promise<{ url: string }> {
+  return uploadAudio(exampleTarget, userId, exampleId, file, blob);
+}
+
+export function deleteExampleAudioForUser(
+  userId: string,
+  exampleId: string,
+  blob: BlobClient = defaultBlobClient,
+): Promise<void> {
+  return deleteAudio(exampleTarget, userId, exampleId, blob);
 }
 
 /**

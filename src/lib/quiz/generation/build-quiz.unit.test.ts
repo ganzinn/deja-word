@@ -19,7 +19,10 @@ function word(id: string, meaningTexts: string[][]): QuizWord {
 
 /** 使える TG 例文つきの単語（TG四択の素材用）。 */
 function tgWord(id: string, meaningTexts: string[][]): QuizWord {
-  return { ...word(id, meaningTexts), tgExample: { text: `sentence ${id}`, meaning: `例文${id}` } };
+  return {
+    ...word(id, meaningTexts),
+    tgExample: { text: `sentence ${id}`, meaning: `例文${id}`, pronunciationAudioUrl: null },
+  };
 }
 
 function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
@@ -352,7 +355,7 @@ describe("checkFormatAvailability", () => {
     const meaninglessTarget: QuizWord = {
       id: "mt",
       headword: "hw-mt",
-      tgExample: { text: "sentence mt", meaning: "例文mt" },
+      tgExample: { text: "sentence mt", meaning: "例文mt", pronunciationAudioUrl: null },
       meanings: [],
     };
     const m = material({

@@ -12,7 +12,7 @@ import type { SpellingQuestion } from "@/lib/quiz/payload";
 export function buildSpellingQuestions(material: QuizSourceMaterial, rng: Rng): SpellingQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
-    ...questionBaseOf(target),
+    ...questionBaseOf(target, "SPELLING"),
     prompt: firstMeaningText(target),
   }));
 }

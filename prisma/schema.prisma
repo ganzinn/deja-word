@@ -194,6 +194,7 @@ model Example {
   text      String
   meaning   String?
   sortOrder Int         @default(0) @map("sort_order")
+  pronunciationAudioUrl String? @map("pronunciation_audio_url") // 例文の発音音源
 
   word  Word          @relation(fields: [wordId], references: [id], onDelete: Cascade)
   owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)

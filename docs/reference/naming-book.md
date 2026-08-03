@@ -65,17 +65,17 @@
 
 - 英語名: `pronunciationAudioUrl`（DB カラム `pronunciation_audio_url`）
 - 日本語名: 発音音源
-- 定義: 英単語（Meaning）・関連語（RelatedWord）の発音音声ファイル（mp3）の URL。dev 環境では相対 key を保存し実体は `.dev-blob/` に置く。
-- 混同注意: 「意味読み上げ音源」`translation_audio_url` は 2026-06-14 に廃止済み（migration `20260614071602_remove_translation_audio_url`）。translation audio という概念は使わない。
-- 出典: prisma/schema.prisma:145, prisma/schema.prisma:231
+- 定義: 英単語（Meaning）・関連語（RelatedWord）・例文（Example）の発音音声ファイル（mp3）の URL。dev 環境では相対 key を保存し実体は `.dev-blob/` に置く。
+- 混同注意: 「意味読み上げ音源」`translation_audio_url` は 2026-06-14 に廃止済み（migration `20260614071602_remove_translation_audio_url`）。translation audio という概念は使わない。例文の音源は英文（`Example.text`）の読み上げで、和訳（`Example.meaning`）の音源ではない。
+- 出典: prisma/schema.prisma:147, prisma/schema.prisma:197, prisma/schema.prisma:234
 
 #### Example（例文）
 
 - 英語名: `Example`（モデル）
 - 日本語名: 例文
-- 定義: 単語に付く例文。`kind`（ExampleKind）で種別分けされ、`meaning` フィールドに日本語訳を持つ。
-- 混同注意: `Example.meaning` は「例文の訳」であり Meaning エンティティへの参照ではない（→ブレ一覧 4）。
-- 出典: prisma/schema.prisma:187
+- 定義: 単語に付く例文。`kind`（ExampleKind）で種別分けされ、`meaning` フィールドに日本語訳を持つ。意味・関連語と同じく発音音源（`pronunciationAudioUrl`）を持てる（全種別が対象）。
+- 混同注意: `Example.meaning` は「例文の訳」であり Meaning エンティティへの参照ではない（→ブレ一覧 4）。音源を書けるのは専用の Server Action（`uploadExampleAudio` / `deleteExampleAudio` → `uploadExampleAudioForUser` / `deleteExampleAudioForUser`）だけで、`upsertExamples` は音源カラムを読み書きしない（本文・種別を編集しても音源は残る）。フォーム値の `pronunciationAudioUrl` は UI 表示専用の pass-through。
+- 出典: prisma/schema.prisma:189, src/lib/pronunciation-audio.ts, src/app/words/[id]/edit/actions.ts
 
 #### ExampleKind（例文種別）
 
@@ -89,8 +89,8 @@
 
 - 英語名: `Example.kind = TARGET`。関連定数 `TG_EXAMPLE_FORMATS`、述語 `isTgExampleFormat` / `usableTgExampleWhere`
 - 日本語名: TG例文（ターゲット例文）
-- 定義: quiz の TG 形式の素材となる例文。「使える TG 例文」= `kind=TARGET` かつ `meaning` が非 null・非空。出題は使える TG 例文のうち `sortOrder` 最小の 1 件・1 単語 1 問。A / B / do / doing / 〜 / 括弧のプレースホルダをハイライト描画する（英文=`tg-text` 青太字、和訳=`tg-meaning` 赤）。
-- 混同注意: TG 形式では単語自身の意味（MeaningText）の有無を問わない（meaning 非依存）。TG は enum 値 `TARGET` の UI 略記。
+- 定義: quiz の TG 形式の素材となる例文。「使える TG 例文」= `kind=TARGET` かつ `meaning` が非 null・非空。出題は使える TG 例文のうち `sortOrder` 最小の 1 件・1 単語 1 問。A / B / do / doing / 〜 / 括弧（半角 `(` `)` `[` `]` と全角 `（` `）` `［` `］`）のプレースホルダをハイライト描画する（英文=`tg-text` 青太字、和訳=`tg-meaning` 赤）。
+- 混同注意: TG 形式では単語自身の意味（MeaningText）の有無を問わない（meaning 非依存）。TG は enum 値 `TARGET` の UI 略記。TG 4 形式（形式 7〜10）では発音ボタン・自動再生・プリロードの対象が**見出し語ではなく TG例文**になり、それに伴い `QuestionBase.pronunciationAudioUrl` の意味は「この問題の発音ボタンが鳴らす音源」（見出し語の音源とは限らない）、`QuestionBase.ttsText` は「その音源が無いとき読み上げる文字列」。対象の選択は `questionBaseOf(word, format)` の 1 箇所で決まり、UI 側は形式で分岐しない。
 - 出典: src/lib/quiz/queries/quiz-source.ts:41, src/components/tg-example-text.tsx
 
 #### MP例文（MINIMAL / ミニマルフレーズ）
@@ -445,9 +445,9 @@
 
 #### AudioTarget
 
-- 英語名: `AudioTarget`（`meaningTarget` / `relatedWordTarget`）
+- 英語名: `AudioTarget`（`meaningTarget` / `relatedWordTarget` / `exampleTarget`）
 - 日本語名: 音源の保持先ディスクリプタ
-- 定義: 発音音源のアップロード・削除ロジックを Meaning / RelatedWord で共通化するための「保持先だけ差し替える」記述子。
+- 定義: 発音音源のアップロード・削除ロジックを Meaning / RelatedWord / Example で共通化するための「保持先だけ差し替える」記述子。差し替えるのは 4 点（`dir` / `loadOwned` / `writeUrl` / `notFound`）だけで、共通コアは触らない。
 - 混同注意: 音源の更新順序は **put → update → 旧 del** の契約（DB が削除済み URL を指す瞬間を作らない）。孤児 Blob は `bestEffortDeleteAudioUrls` で回収。
 - 出典: src/lib/pronunciation-audio.ts:62, src/lib/pronunciation-audio.ts:155
 
@@ -455,9 +455,25 @@
 
 - 英語名: `UserPreference.ttsFallback`
 - 日本語名: TTS 代替（端末内蔵音声での代用）
-- 定義: 発音音源が未登録のとき、端末内蔵の自動音声（Web Speech API）で代用する設定。
-- 混同注意: TTS は「登録済み音源の再生」ではなく「未登録時のフォールバック」。
+- 定義: 発音音源が未登録のとき、端末内蔵の自動音声（Web Speech API / Android はネイティブ TTS）で代用する設定。対象は見出し語・関連語に加えて**例文の英文**（単語詳細の全種別と quiz の TG 形式）。
+- 混同注意: TTS は「登録済み音源の再生」ではなく「未登録時のフォールバック」。TG例文の音源が未登録でも見出し語の音源へはフォールバックしない（TTS → ボタン非表示の順に落ちる）。読み上げるテキストは `toSpokenText` で正規化される（→ 読み上げ正規化）。
 - 出典: prisma/schema.prisma:47
+
+#### 読み上げ正規化（`toSpokenText`）
+
+- 英語名: `toSpokenText`（`src/lib/speech.ts`）
+- 日本語名: 読み上げ正規化
+- 定義: 自動音声へ渡す直前に、表示のための記号を落として語だけを残す純関数。読み上げの一本道 `speakEnglish` の入口 1 箇所からのみ呼ばれ、見出し語・関連語・例文のすべての読み上げに同じ規則が効く。除去順は「装飾記法 → 注記 `【…】`（中身ごと）→ 角括弧 `[…]`（中身ごと）→ 残った括弧記号（記号だけ）→ プレースホルダ（チルダ・省略記号）」で、最後に連続空白を 1 個へ畳んで trim する。
+- 混同注意: 括弧は意味で出し分ける（`(…)` は省略可能な語なので記号だけ落として**中身は読む**／`[…]` は言い換え候補なので**中身ごと落とす**）。`A` / `B` / `do` / `doing` はプレースホルダだが落とさず英語として読ませる。正規化されるのは合成へ渡す文字列だけで、**表示と登録済み音源（mp3）の再生には影響しない**。読み上げ対象の種別による分岐・引数は持たせない。
+- 出典: src/lib/speech.ts, src/lib/speech.unit.test.ts, docs/adr/0078-speech-text-normalization.md, docs/adr/0081-speech-bracket-normalization.md
+
+#### 音源グループ（`word` / `example`）
+
+- 英語名: `AudioGroup`（`"word"` / `"example"`）、`AudioUrlGroups` / `AudioCountGroups`
+- 日本語名: 音源グループ。UI ラベルは `word`=見出し語・関連語、`example`=例文
+- 定義: 設定画面の一括プリフェッチで、音源を分けてダウンロードするための分類。`word` は Meaning ＋ RelatedWord の音源、`example` は Example の音源。manifest（`GET /api/audio/manifest`）は常に両グループの URL を返し、件数（`countAudioUrlsForUser`）もグループ別に返す。
+- 混同注意: 分かれているのはダウンロード操作と件数表示だけ。Cache Storage は 1 つ（`audio-v1`）のままで、prune（manifest から消えた音源の掃除）と「端末から削除」は**両グループの和集合**に対して行う（片方のグループの manifest だけで prune すると、もう一方のキャッシュが消える）。グループの振り分けは由来テーブルで決めるもので、blob key の接頭辞（`audio/example/`）で判定しない。
+- 出典: src/lib/audio-manifest.ts, src/lib/audio-cache.ts（`unionAudioUrlGroups`）, src/app/settings/general/_components/audio-prefetch-section.tsx, docs/adr/0080-audio-prefetch-grouping.md
 
 ### 1-7. ops・インポート系
 

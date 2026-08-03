@@ -44,7 +44,7 @@ export function buildChoiceJaEnQuestions(
       rng,
     );
     return {
-      ...questionBaseOf(target),
+      ...questionBaseOf(target, "CHOICE_JA_EN"),
       prompt: firstMeaningText(target),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),

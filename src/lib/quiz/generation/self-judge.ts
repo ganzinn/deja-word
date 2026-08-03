@@ -14,7 +14,7 @@ export function buildSelfJudgeQuestions(
 ): SelfJudgeQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
-    ...questionBaseOf(target),
+    ...questionBaseOf(target, "SELF_JUDGE"),
     answer: meaningDisplaysOf(target),
   }));
 }

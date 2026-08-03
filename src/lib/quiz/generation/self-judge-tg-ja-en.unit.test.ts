@@ -11,8 +11,8 @@ import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function word(
   id: string,
-  tgExample: { text: string; meaning: string } | null,
-  options: { audio?: string | null } = {},
+  tgExample: QuizWord["tgExample"],
+  options: { headwordAudio?: string | null } = {},
 ): QuizWord {
   return {
     id,
@@ -21,15 +21,16 @@ function word(
     meanings: [
       {
         partOfSpeech: null,
-        pronunciationAudioUrl: options.audio ?? null,
+        pronunciationAudioUrl: options.headwordAudio ?? null,
         texts: [`${id}の意味`],
       },
     ],
   };
 }
 
-function tg(id: string): { text: string; meaning: string } {
-  return { text: `sentence ${id}`, meaning: `例文${id}の意味` };
+/** 使える TG 例文。audio は例文の発音音源 URL（省略時は未登録）。 */
+function tg(id: string, audio: string | null = null): NonNullable<QuizWord["tgExample"]> {
+  return { text: `sentence ${id}`, meaning: `例文${id}の意味`, pronunciationAudioUrl: audio };
 }
 
 function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
@@ -38,11 +39,15 @@ function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
 
 describe("buildSelfJudgeTgJaEnQuestions", () => {
   test("prompt is the TG meaning and answer is the TG text", () => {
-    const target = word("t", tg("t"), { audio: "https://audio/t" });
+    // 発音ボタンが鳴らすのは TG 例文の音源。見出し語（Meaning）の音源は使わない
+    const target = word("t", tg("t", "https://audio/example-t"), {
+      headwordAudio: "https://audio/hw-t",
+    });
     const [q] = buildSelfJudgeTgJaEnQuestions(material({ targets: [target] }), seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
-    expect(q.pronunciationAudioUrl).toBe("https://audio/t");
+    expect(q.pronunciationAudioUrl).toBe("https://audio/example-t");
+    expect(q.ttsText).toBe("sentence t");
     expect(q.prompt).toBe("例文tの意味");
     expect(q.answer).toBe("sentence t");
   });
@@ -62,8 +67,17 @@ describe("buildSelfJudgeTgJaEnQuestions", () => {
     expect(q.wordId).toBe("mt");
     expect(q.headword).toBe("hw-mt");
     expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.ttsText).toBe("sentence mt");
     expect(q.prompt).toBe("例文mtの意味");
     expect(q.answer).toBe("sentence mt");
+  });
+
+  test("does not fall back to the headword audio when the TG example has no audio", () => {
+    const target = word("t", tg("t"), { headwordAudio: "https://audio/hw-t" });
+    const [q] = buildSelfJudgeTgJaEnQuestions(material({ targets: [target] }), seededRng(1));
+    expect(q.pronunciationAudioUrl).toBeNull();
+    // 音源が無ければ読み上げも例文の英文（見出し語は鳴らさない）
+    expect(q.ttsText).toBe("sentence t");
   });
 
   test("asks only targets that have a usable TG example (one question per usable word)", () => {

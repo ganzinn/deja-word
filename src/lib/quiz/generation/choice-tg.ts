@@ -58,7 +58,7 @@ export function buildChoiceTgQuestions(material: QuizSourceMaterial, rng: Rng): 
       rng,
     );
     return {
-      ...questionBaseOf(target),
+      ...questionBaseOf(target, "CHOICE_TG"),
       prompt: target.tgExample.text,
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),

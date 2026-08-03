@@ -1,20 +1,32 @@
 // 発音音源の一括プリフェッチ（docs/adr/0075-audio-local-cache-and-prefetch.md）を E2E で検証する。
-//   1) test1@example.com が mp3 付きの単語を 3 件作る
-//   2) 設定 → 単語全般 の「ダウンロード」で 3 件が Cache Storage（audio-v1）に入る
-//   3) 本命 A: origin の実体ファイルを全部消しても、キャッシュから 200 で応答できる（＝オフライン成立）
-//   4) 単語を 1 件削除して再実行 → 本命 B: 掃除で該当エントリが消え、
-//      残り 2 件は「すべて保存済み」＝再ダウンロードされない（origin の実体は無いので、
+// manifest は「見出し語・関連語（word）」「例文（example）」のグループ別で、設定画面も 2 行に分かれる。
+//   1) test1@example.com が mp3 付きの単語を 3 件作り、うち 2 件に mp3 付きの例文を足す
+//   2) 設定 → 単語全般 の 2 行に、グループ別の対象件数が出る
+//   3) 本命 A: 「例文」だけダウンロード → 例文グループだけがキャッシュに入る
+//   4) 本命 B: 続けて「見出し語・関連語」をダウンロード → 例文のキャッシュは掃除されず残る
+//      （prune の判定が両グループの和集合であることの直接の証跡）
+//   5) origin の実体を全部消しても、キャッシュから 200 で応答できる（＝オフライン成立）
+//   6) 単語を 1 件削除して再実行 → 本命 C: 消えた単語の意味音源・例文音源の両方が掃除され、
+//      残りは「すべて保存済み」＝再ダウンロードされない（origin の実体は無いので、
 //      もし取りに行っていれば失敗して別のトーストになる）
+//   7) 「端末から削除」は 1 つのまま、両グループまとめて消える
+//
+// 例文の音源は prisma ＋ dev blob への直接書き込みで用意する（音源登録 UI を経由しない）。
+// 本 E2E の検証対象は manifest のグループ分けとキャッシュ挙動であって登録 UI ではないため。
 //
 // 前提: dev サーバ稼働・DB seed 済み。実行: pnpm e2e:audio-prefetch
 //       （GUI で見るなら E2E_HEADED=1 pnpm e2e:audio-prefetch）
 import "dotenv/config";
-import { readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
-import { DEV_BLOB_URL_PREFIX, resolveDevBlobPath } from "../../src/lib/blob-client-impl";
+import {
+  DEV_BLOB_ROOT,
+  DEV_BLOB_URL_PREFIX,
+  resolveDevBlobPath,
+} from "../../src/lib/blob-client-impl";
 import { TEST_USER1_EMAIL, TEST_USER1_PASSWORD, login } from "./auth";
-import { cleanupWordsByPrefix, ensureUser, makePrisma } from "./db";
+import { cleanupWordsByPrefix, ensureUser, makePrisma, type PrismaClientType } from "./db";
 import { baseUrl, launchBrowser, newContext, waitForToast, waitForWordDetail } from "./harness";
 
 import type { Page } from "playwright-core";
@@ -23,8 +35,14 @@ const MEANING_PLACEHOLDER = "例: 短命の、つかの間の";
 const HEADWORD_PLACEHOLDER = "例: ephemeral";
 const PREFIX = "e2e-audioprefetch-";
 
+/** 設定画面のグループ行（`AudioGroup` と表示ラベルの対応）。 */
+const WORD_GROUP_LABEL = "見出し語・関連語";
+const EXAMPLE_GROUP_LABEL = "例文";
+
 // verify-audio-cache.ts と同じ、デコード可能な無音 mp3（約 1.6KB）
 const FIXTURE_MP3 = join(__dirname, "fixtures", "silent.mp3");
+
+type ManifestGroups = { word: string[]; example: string[] };
 
 function log(msg: string): void {
   console.log(`  ${msg}`);
@@ -32,6 +50,11 @@ function log(msg: string): void {
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error(`ASSERT FAILED: ${msg}`);
+}
+
+/** 画面表示と同じ桁区切り（`formatCount` = `toLocaleString("ja-JP")`）。 */
+function jp(count: number): string {
+  return count.toLocaleString("ja-JP");
 }
 
 /** 単語を作り、その詳細ページで mp3 を登録して word id を返す。 */
@@ -53,15 +76,56 @@ async function createWordWithAudio(page: Page, headword: string, mp3: Buffer): P
   return wordId;
 }
 
-/** アプリの manifest エンドポイントから音源 URL 一覧を取り、絶対 URL に揃えて返す。 */
-async function fetchManifest(page: Page): Promise<string[]> {
-  const urls = await page.evaluate(async () => {
+/**
+ * 音源付きの例文を prisma ＋ dev blob 直書きで足し、blob 実体のパスを返す。
+ * `scripts/e2e/db.ts` の `ensureDemoAudio` と同じ方式（ローカルディスク driver 前提）。
+ */
+async function addExampleWithAudio(
+  prisma: PrismaClientType,
+  wordId: string,
+  mp3: Buffer,
+  slug: string,
+): Promise<string> {
+  const word = await prisma.word.findUniqueOrThrow({
+    where: { id: wordId },
+    select: { ownerId: true },
+  });
+  const example = await prisma.example.create({
+    data: {
+      wordId,
+      ownerId: word.ownerId,
+      kind: "SENTENCE",
+      text: `This is an e2e example (${slug}).`,
+      meaning: "これは E2E 用の例文です。",
+      sortOrder: 0,
+    },
+    select: { id: true },
+  });
+
+  const key = `audio/example/${example.id}/pronunciation-${slug}.mp3`;
+  const full = join(DEV_BLOB_ROOT, key);
+  await mkdir(dirname(full), { recursive: true });
+  await writeFile(full, mp3);
+  await prisma.example.update({
+    where: { id: example.id },
+    data: { pronunciationAudioUrl: `${DEV_BLOB_URL_PREFIX}${key}` },
+  });
+  return full;
+}
+
+/** アプリの manifest エンドポイントからグループ別の音源 URL を取り、絶対 URL に揃えて返す。 */
+async function fetchManifest(page: Page): Promise<ManifestGroups> {
+  return page.evaluate(async () => {
     const res = await fetch("/api/audio/manifest");
     if (!res.ok) throw new Error(`manifest fetch failed: ${res.status}`);
-    const body = (await res.json()) as { urls: string[] };
-    return body.urls.map((url) => new URL(url, location.href).href);
+    const body = (await res.json()) as { urls: { word: string[]; example: string[] } };
+    // 名前付きの関数を置くと tsx（esbuild）の keepNames が `__name` を注入して評価に失敗するため、
+    // 正規化は無名のインライン関数のまま書く
+    return {
+      word: body.urls.word.map((url) => new URL(url, location.href).href),
+      example: body.urls.example.map((url) => new URL(url, location.href).href),
+    };
   });
-  return urls;
 }
 
 /** Cache Storage（audio-v1）に入っている URL 一覧。 */
@@ -72,10 +136,32 @@ async function cachedUrls(page: Page): Promise<string[]> {
   });
 }
 
-/** ダウンロードボタンを押して、指定文言のトーストが出るまで待つ。 */
-async function clickDownload(page: Page, expectToast: string): Promise<string> {
-  await page.getByRole("button", { name: "ダウンロード", exact: true }).click();
+/** グループ行の「対象 n 件 ／ 端末に保存済み n' 件」が出るまで待つ。 */
+async function waitForGroupCounts(
+  page: Page,
+  label: string,
+  total: number,
+  saved: number,
+): Promise<void> {
+  await page
+    .getByRole("group", { name: label, exact: true })
+    .getByText(`対象 ${jp(total)} 件 ／ 端末に保存済み ${jp(saved)} 件`)
+    .waitFor({ timeout: 15_000 });
+}
+
+/** 指定グループの「ダウンロード」を押して、指定文言のトーストが出るまで待つ。 */
+async function clickDownload(page: Page, label: string, expectToast: string): Promise<string> {
+  await page.getByRole("button", { name: `${label}をダウンロード`, exact: true }).click();
   return waitForToast(page, { contains: expectToast, timeout: 30_000 });
+}
+
+/** dev blob の URL からローカル実体のパスを解決する（見つからなければ throw）。 */
+function devBlobPathOf(url: string): string {
+  const path = new URL(url).pathname;
+  assert(path.startsWith(DEV_BLOB_URL_PREFIX), `expected dev-blob url, got ${url}`);
+  const file = resolveDevBlobPath(decodeURIComponent(path.slice(DEV_BLOB_URL_PREFIX.length)));
+  assert(!!file, `dev-blob key must resolve to a local path: ${url}`);
+  return file!;
 }
 
 async function main(): Promise<void> {
@@ -94,9 +180,9 @@ async function main(): Promise<void> {
     const ctx = await newContext(browser);
     const page = await login(ctx, TEST_USER1_EMAIL, TEST_USER1_PASSWORD);
 
-    // ===== 準備: mp3 付きの単語を 3 件 =====
+    // ===== 準備: mp3 付きの単語 3 件 ＋ mp3 付きの例文 2 件 =====
     // dev DB には撮影用デモ音源など他の音源も居るので、実行前後の manifest 差分で
-    // 「このテストが作った 3 件」を特定する（実体を消してよいのはこの 3 件だけ）
+    // 「このテストが作った音源」を特定する（実体を消してよいのはその分だけ）
     const baseline = await fetchManifest(page);
     const wordIds: string[] = [];
     for (let i = 1; i <= 3; i++) {
@@ -104,39 +190,83 @@ async function main(): Promise<void> {
     }
     log(`created 3 words with mp3 (${mp3.byteLength} bytes each)`);
 
-    const manifest = await fetchManifest(page);
-    const testUrls = manifest.filter((url) => !baseline.includes(url));
-    assert(testUrls.length === 3, `manifest should grow by exactly 3, got ${testUrls.length}`);
-    for (const url of testUrls) {
-      const path = new URL(url).pathname;
-      assert(path.startsWith(DEV_BLOB_URL_PREFIX), `expected dev-blob url, got ${url}`);
-      const file = resolveDevBlobPath(decodeURIComponent(path.slice(DEV_BLOB_URL_PREFIX.length)));
-      assert(!!file, `dev-blob key must resolve to a local path: ${url}`);
-      blobFilePaths.push(file!);
+    for (const [i, wordId] of wordIds.slice(0, 2).entries()) {
+      blobFilePaths.push(await addExampleWithAudio(prisma, wordId, mp3, `${stamp}-${i + 1}`));
     }
-    console.log("PASS ✅ /api/audio/manifest が新規登録した 3 件を含めて返した");
+    log("added 2 examples with mp3 (prisma + dev blob direct write)");
+
+    const manifest = await fetchManifest(page);
+    const newWordUrls = manifest.word.filter((url) => !baseline.word.includes(url));
+    const newExampleUrls = manifest.example.filter((url) => !baseline.example.includes(url));
+    assert(newWordUrls.length === 3, `word group should grow by 3, got ${newWordUrls.length}`);
+    assert(
+      newExampleUrls.length === 2,
+      `example group should grow by 2, got ${newExampleUrls.length}`,
+    );
+    for (const url of newWordUrls) blobFilePaths.push(devBlobPathOf(url));
+    for (const url of newExampleUrls) {
+      // 例文側は直書き時にパスを控えてある。manifest の URL がその実体を指していることを確かめる
+      assert(
+        blobFilePaths.includes(devBlobPathOf(url)),
+        `example audio url should point at the file we wrote: ${url}`,
+      );
+    }
+    console.log("PASS ✅ /api/audio/manifest が word / example のグループ別に新規音源を返した");
 
     // ===== SW が制御下に入るのを待ってから設定画面へ =====
     await page.goto("/settings/general");
     await page.waitForFunction(() => navigator.serviceWorker?.controller != null, undefined, {
       timeout: 15_000,
     });
-    await page
-      .getByText(`対象 ${manifest.length} 件`, { exact: false })
-      .waitFor({ timeout: 10_000 });
+    await waitForGroupCounts(page, WORD_GROUP_LABEL, manifest.word.length, 0);
+    await waitForGroupCounts(page, EXAMPLE_GROUP_LABEL, manifest.example.length, 0);
+    console.log(
+      "PASS ✅ 設定画面がグループ別 2 行の件数を表示した（新規 context なので保存済み 0）",
+    );
 
-    // ===== 一括ダウンロード（新規 context なのでキャッシュは空 = manifest 全件が対象） =====
-    const downloadToast = await clickDownload(page, `${manifest.length} 件をダウンロードしました`);
-    log(`toast: ${downloadToast}`);
+    // ===== 本命 A: 「例文」だけダウンロード → 例文グループだけがキャッシュに入る =====
+    const exampleToast = await clickDownload(
+      page,
+      EXAMPLE_GROUP_LABEL,
+      `${jp(manifest.example.length)} 件をダウンロードしました`,
+    );
+    log(`toast: ${exampleToast}`);
 
-    const afterDownload = await cachedUrls(page);
-    for (const url of manifest) {
-      assert(afterDownload.includes(url), `cache should contain ${url}`);
+    const afterExample = await cachedUrls(page);
+    for (const url of manifest.example) {
+      assert(afterExample.includes(url), `example cache should contain ${url}`);
     }
-    console.log(`PASS ✅ 一括ダウンロードで ${manifest.length} 件すべてが audio-v1 に入った`);
+    for (const url of manifest.word) {
+      assert(!afterExample.includes(url), `word audio must not be downloaded yet: ${url}`);
+    }
+    await waitForGroupCounts(
+      page,
+      EXAMPLE_GROUP_LABEL,
+      manifest.example.length,
+      manifest.example.length,
+    );
+    await waitForGroupCounts(page, WORD_GROUP_LABEL, manifest.word.length, 0);
+    console.log("PASS ✅ 「例文」だけをダウンロードでき、保存済み件数もグループ別に出た");
 
-    // ===== 本命 A: origin の実体を消してもキャッシュから応答できる =====
-    // 実体を消すのはこのテストが作った 3 件だけ（デモ音源は残す）
+    // ===== 本命 B: 続けて「見出し語・関連語」→ 例文のキャッシュは消えない（和集合 prune） =====
+    const wordToast = await clickDownload(
+      page,
+      WORD_GROUP_LABEL,
+      `${jp(manifest.word.length)} 件をダウンロードしました`,
+    );
+    log(`toast: ${wordToast}`);
+
+    const afterWord = await cachedUrls(page);
+    for (const url of [...manifest.word, ...manifest.example]) {
+      assert(afterWord.includes(url), `cache should contain ${url}`);
+    }
+    console.log(
+      "PASS ✅ 片方をダウンロードしても、もう一方のキャッシュが掃除されない（和集合 prune）",
+    );
+
+    // ===== オフライン成立: origin の実体を消してもキャッシュから応答できる =====
+    // 実体を消すのはこのテストが作った 5 件だけ（デモ音源は残す）
+    const testUrls = [...newWordUrls, ...newExampleUrls];
     await Promise.all(blobFilePaths.map((path) => rm(path, { force: true })));
     const statuses = await page.evaluate(async (urls) => {
       const results: { status: number; bytes: number }[] = [];
@@ -152,40 +282,58 @@ async function main(): Promise<void> {
     }
     console.log("PASS ✅ origin の実体を消してもキャッシュから 200（オフライン成立）");
 
-    // ===== 本命 B: 単語を 1 件消して再実行 → 掃除される / 残りは再取得しない =====
+    // ===== 本命 C: 単語を 1 件消して再実行 → 意味音源も例文音源も掃除される =====
+    // 消す単語（wordIds[0]）は意味音源と例文音源の両方を持つ
     await page.goto(`/words/${wordIds[0]}`);
     await page.getByLabel("削除", { exact: true }).click();
     await page.getByRole("button", { name: "削除する", exact: true }).click();
     await waitForToast(page, { contains: "削除しました" });
 
-    const remaining = await (async () => {
-      await page.goto("/settings/general");
-      return fetchManifest(page);
-    })();
+    await page.goto("/settings/general");
+    const remaining = await fetchManifest(page);
     assert(
-      remaining.length === manifest.length - 1,
-      `manifest should shrink by 1, got ${remaining.length} (was ${manifest.length})`,
+      remaining.word.length === manifest.word.length - 1,
+      `word group should shrink by 1, got ${remaining.word.length} (was ${manifest.word.length})`,
+    );
+    assert(
+      remaining.example.length === manifest.example.length - 1,
+      `example group should shrink by 1, got ${remaining.example.length} (was ${manifest.example.length})`,
     );
 
     // 「すべて保存済み」= 未取得 0 件。取得済みを取りに行っていないことの直接の証跡
-    const secondToast = await clickDownload(page, "すべての発音音源がこの端末に保存されています");
+    const secondToast = await clickDownload(
+      page,
+      WORD_GROUP_LABEL,
+      `${WORD_GROUP_LABEL}の音源はすべてこの端末に保存されています`,
+    );
     log(`toast: ${secondToast}`);
 
     const afterPrune = await cachedUrls(page);
-    const removedUrl = manifest.find((url) => !remaining.includes(url));
-    assert(!!removedUrl, "deleted word's audio url must be identified");
-    assert(!afterPrune.includes(removedUrl!), `stale entry should be pruned: ${removedUrl}`);
-    for (const url of remaining) {
+    const removedWordUrl = manifest.word.find((url) => !remaining.word.includes(url));
+    const removedExampleUrl = manifest.example.find((url) => !remaining.example.includes(url));
+    assert(!!removedWordUrl, "deleted word's meaning audio url must be identified");
+    assert(!!removedExampleUrl, "deleted word's example audio url must be identified");
+    assert(
+      !afterPrune.includes(removedWordUrl!),
+      `stale entry should be pruned: ${removedWordUrl}`,
+    );
+    assert(
+      !afterPrune.includes(removedExampleUrl!),
+      `stale example entry should be pruned even when downloading the word group: ${removedExampleUrl}`,
+    );
+    for (const url of [...remaining.word, ...remaining.example]) {
       assert(afterPrune.includes(url), `entry in manifest should stay cached: ${url}`);
     }
-    console.log("PASS ✅ 削除済み音源のエントリが掃除され、取得済みは再ダウンロードされない");
+    console.log(
+      "PASS ✅ 消えた単語の意味音源・例文音源が掃除され、取得済みは再ダウンロードされない",
+    );
 
-    // ===== 端末から削除（容量を戻す操作） =====
+    // ===== 端末から削除（容量を戻す操作。グループ共通の 1 つのまま） =====
     await page.getByRole("button", { name: "端末から削除", exact: true }).click();
     await page.getByRole("button", { name: "削除する", exact: true }).click();
     await waitForToast(page, { contains: "この端末に保存した発音音源を削除しました" });
     assert((await cachedUrls(page)).length === 0, "audio-v1 should be empty after clearing");
-    console.log("PASS ✅ 「端末から削除」で audio-v1 が空になった");
+    console.log("PASS ✅ 「端末から削除」で audio-v1 が両グループまとめて空になった");
   } finally {
     await browser.close();
     await Promise.all(blobFilePaths.map((path) => rm(path, { force: true })));

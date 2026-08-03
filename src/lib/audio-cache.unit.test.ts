@@ -8,6 +8,7 @@ import {
   prefetchAudioUrls,
   pruneAudioCache,
   toAbsoluteAudioUrl,
+  unionAudioUrlGroups,
 } from "@/lib/audio-cache";
 
 const ORIGIN = "https://example.test";
@@ -104,6 +105,46 @@ describe("diffAudioCache", () => {
     const { missing, stale } = diffAudioCache([audioUrl("a")], [audioUrl("a")]);
     expect(missing).toEqual([]);
     expect(stale).toEqual([]);
+  });
+});
+
+describe("unionAudioUrlGroups", () => {
+  test("両グループの URL を 1 本に畳む", () => {
+    expect(
+      unionAudioUrlGroups({
+        word: [audioUrl("meaning"), audioUrl("related")],
+        example: [audioUrl("example")],
+      }),
+    ).toEqual([audioUrl("meaning"), audioUrl("related"), audioUrl("example")]);
+  });
+
+  test("空のグループがあっても畳める", () => {
+    expect(unionAudioUrlGroups({ word: [], example: [audioUrl("example")] })).toEqual([
+      audioUrl("example"),
+    ]);
+    expect(unionAudioUrlGroups({ word: [], example: [] })).toEqual([]);
+  });
+
+  test("和集合で掃除を判定すれば、片方のグループだけダウンロードしても、もう一方のキャッシュが stale にならない", () => {
+    const groups = { word: [audioUrl("meaning")], example: [audioUrl("example")] };
+    // 例文グループだけを取得済みの端末で、見出し語グループをダウンロードする状況
+    const cached = [audioUrl("example")];
+
+    const union = diffAudioCache(unionAudioUrlGroups(groups), cached);
+    expect(union.stale).toEqual([]);
+
+    // グループ単体の manifest で判定すると、もう一方のキャッシュが消える（回避したい壊れ方）
+    const groupOnly = diffAudioCache(groups.word, cached);
+    expect(groupOnly.stale).toEqual([audioUrl("example")]);
+  });
+
+  test("和集合でも、どちらのグループにも無い URL は stale になる（掃除は効いたまま）", () => {
+    const groups = { word: [audioUrl("meaning")], example: [audioUrl("example")] };
+    const { stale } = diffAudioCache(unionAudioUrlGroups(groups), [
+      audioUrl("example"),
+      audioUrl("deleted"),
+    ]);
+    expect(stale).toEqual([audioUrl("deleted")]);
   });
 });
 

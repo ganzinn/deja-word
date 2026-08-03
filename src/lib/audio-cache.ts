@@ -5,6 +5,8 @@
 // SW に代行させず（postMessage を使わず）ページから直接読み書きする。SW が未制御の状態でも
 // 同じ結果になる。server-only は付けない（client component から import する）。
 
+import type { AudioUrlGroups } from "@/lib/audio-manifest";
+
 /**
  * public/sw.js の `AUDIO_CACHE` と同じ値。sw.js は静的配信物でありビルド工程を持ち込まない
  * 方針（docs/adr/0075-audio-local-cache-and-prefetch.md）のため import で共有できず、二重管理になっている。
@@ -49,6 +51,17 @@ export function diffAudioCache(manifestUrls: string[], cachedUrls: string[]): Au
     missing: [...manifest].filter((url) => !cached.has(url)),
     stale: [...cached].filter((url) => !manifest.has(url)),
   };
+}
+
+/**
+ * グループ別 URL を 1 本に畳んだ和集合（掃除の判定用）。
+ *
+ * manifest はグループ別（見出し語・関連語 / 例文）だが、Cache Storage は 1 つのままなので、
+ * `diffAudioCache` の `stale` を求めるときは必ずこの和集合を渡す。選んだグループの URL だけで
+ * 判定すると、もう一方のグループのキャッシュが「manifest に無い」扱いになって消える。
+ */
+export function unionAudioUrlGroups(groups: AudioUrlGroups): string[] {
+  return [...new Set(Object.values(groups).flat())];
 }
 
 /** 端末のキャッシュに入っている音源 URL（絶対 URL）。未対応環境では空配列。 */

@@ -1,10 +1,13 @@
 "use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { PronunciationAudioManager } from "@/components/pronunciation-audio-manager";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
+
+import { deleteExampleAudio, uploadExampleAudio } from "@/app/words/[id]/edit/actions";
 
 import { exampleKindLabels, exampleKinds } from "@/lib/mock/example-kinds";
 import { emptyExample, type WordFormValues } from "@/lib/schema/word-form";
@@ -22,6 +25,11 @@ type ExampleCardProps = {
 function ExampleCard({ index, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`examples.${index}.ownerId`);
+  const exampleId = useWatch({ control: form.control, name: `examples.${index}.id` });
+  const pronunciationAudioUrl = useWatch({
+    control: form.control,
+    name: `examples.${index}.pronunciationAudioUrl`,
+  });
 
   return (
     <FieldCard
@@ -79,6 +87,21 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
           </FormItem>
         )}
       />
+
+      {!isSystemOwned ? (
+        <FormItem>
+          <FormLabel>音源</FormLabel>
+          {exampleId ? (
+            <PronunciationAudioManager
+              value={pronunciationAudioUrl}
+              onUpload={(fd) => uploadExampleAudio(exampleId, fd)}
+              onDelete={() => deleteExampleAudio(exampleId)}
+            />
+          ) : (
+            <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
+          )}
+        </FormItem>
+      ) : null}
 
       <FormField
         control={form.control}

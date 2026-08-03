@@ -81,6 +81,9 @@ const exampleSchema = z.object({
   notes: z
     .array(noteSchema)
     .max(CONTENT_ITEMS_MAX_COUNT, `補足説明は ${CONTENT_ITEMS_MAX_COUNT} 件以内で入力してください`),
+  // 発音音源の URL は別 Server Action で管理する読み取り専用フィールド。フォーム送信時は
+  // 単語本体の書き込み handler が無視する（編集 UI の表示状態の初期値にのみ使う）。
+  pronunciationAudioUrl: z.string().nullable().optional(),
 });
 
 const relatedWordSchema = z.object({
@@ -285,6 +288,7 @@ export function wordDetailToFormValues(word: WordDetail): WordFormValues {
         e.notes.length > 0
           ? e.notes.map((n) => ({ id: n.id, ownerId: n.ownerId, text: n.text }))
           : [{ text: "" }],
+      pronunciationAudioUrl: e.pronunciationAudioUrl,
     })),
     relatedWords: word.relatedWords.map((r) => ({
       id: r.id,

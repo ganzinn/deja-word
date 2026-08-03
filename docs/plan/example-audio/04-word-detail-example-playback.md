@@ -1,6 +1,6 @@
 # 04. word-detail-example-playback（単語詳細の例文再生 UI）
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-04）　PR: （未作成）
 
 ## 目的
 
@@ -54,4 +54,6 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし。チケット記載のコードブロックどおり（`word-detail-view.tsx` に +3 行のみ）。`reserveSpaceWhenEmpty` は渡さず、音源・自動音声とも不可のときは `empty:hidden` でメタ行ごと畳まれる。
+- `MeaningCard` / `RelatedWordCard` は `nonEmpty(...)` を通して `src` に渡すが、`ExampleCard` はチケット指定どおり `example.pronunciationAudioUrl` を直渡し。`AudioPlayButton` は `hasAudio = Boolean(src)` 判定のため空文字は同挙動で、差が出るのは空白のみの文字列が DB に入った場合だけ（01 / 02 の登録経路では生じない）。
+- 手動確認項目は**すべて未実施**。1 項目め（登録済み音源の再生）は音源登録 UI（02）に依存するため、02 と合わせた確認が妥当。

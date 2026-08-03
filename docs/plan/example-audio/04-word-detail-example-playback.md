@@ -1,6 +1,6 @@
 # 04. word-detail-example-playback（単語詳細の例文再生 UI）
 
-状態: **未着手**　PR: （未作成）
+状態: **実装中**　PR: （未作成）
 
 ## 目的
 

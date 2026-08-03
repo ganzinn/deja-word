@@ -1,6 +1,6 @@
 # 02. example-audio-upload-ui（音源の登録 UI と Server Action）
 
-状態: **未着手**　PR: （未作成）
+状態: **実装中**　PR: （未作成）
 
 ## 目的
 

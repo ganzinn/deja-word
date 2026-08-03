@@ -91,12 +91,23 @@ curl -s -o /tmp/a.mp3 -w '%{http_code} %{content_type}\n' "http://localhost:3000
 >
 > 現在は `db:import-audio` の `--execute` 時に **リモート DB × ローカルディスク driver を検出して中止する**ガード（`src/lib/blob-driver-guard.ts`）が入っている。中止メッセージが出たらトークンを入れ直すこと。
 
+> ⚠️ **`vercel env pull` が書き出す `VERCEL_OIDC_TOKEN` は development スコープ**で、`@vercel/blob` はこれを `BLOB_READ_WRITE_TOKEN` より優先する。残したまま実登録すると全件が次のエラーで失敗する（DB も Blob も無変更なので害は無いが 1 件も入らない）。
+>
+> ```text
+> Vercel Blob: OIDC is enabled for this project, but not for the "development" environment.
+> ```
+>
+> `.env.production.local` の `VERCEL_OIDC_TOKEN=` の行を**コメントアウトしてから**実行する。
+
 ```sh
 pnpm exec vercel env pull .env.production.local --environment=production  # DB 接続情報を取得
 
 # BLOB_READ_WRITE_TOKEN が空でないことを必ず確認する（空ならダッシュボードの
 # Storage → Blob store → Tokens から取得して .env.production.local に手で入れる）
 grep -c '^BLOB_READ_WRITE_TOKEN=".\+"' .env.production.local   # → 1 であること
+
+# development スコープの OIDC トークンを無効化する（@vercel/blob が rw トークンより優先するため）
+sed -i '' 's/^VERCEL_OIDC_TOKEN=/#VERCEL_OIDC_TOKEN=/' .env.production.local
 
 # dry-run（無変更・件数とメモ不一致の確認）
 pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/1900_split/EN
@@ -128,7 +139,7 @@ docker exec -i deja-word-db psql "$URL" -c \
 
 ### 所要時間・進捗確認・中断時の注意
 
-1 件あたり「Blob put 1 往復 + DB update 1 往復」を逐次実行する（ローカル docker + ディスク driver では 1900 件で 10 秒弱だが、本番は往復遅延が支配的）。**1900 件で十数分〜30 分程度**を見込み、その間プロンプトは返らない。50 件ごとに `... 350/1900 件 (経過 …s / 残り目安 …s)` と進捗が出るので、それが進んでいる限り正常。
+1 件あたり「Blob put 1 往復 + DB update 1 往復」を逐次実行する（ローカル docker + ディスク driver では 1900 件で 10 秒弱だが、本番は往復遅延が支配的）。**実測: 1900 件で約 42 分**（2026-08-03、日本から `sin1` の Blob ストア + `ap-southeast-1` の Neon。1 件あたり 1.3 秒前後）。その間プロンプトは返らない。50 件ごとに `... 350/1900 件 (経過 …s / 残り目安 …s)` と進捗が出るので、それが進んでいる限り正常。
 
 - **中断しても壊れない**。登録済みは次回スキップされるので、同じコマンドを再実行すれば続きから再開する（`import-words` / `import-related-words` と違い、やり直しに掃除は不要）。
 - 途中経過は別ターミナルからも数えられる:

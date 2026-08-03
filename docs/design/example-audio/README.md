@@ -43,6 +43,13 @@
 - **除去順序は「装飾記法 → `【…】` → `[…]` → 残存括弧記号 → プレースホルダ → 空白畳み込み」**。除去は空白 1 個への置換とする。→ [04](04-speech-normalization.md)
 - **括弧規則は `toSpokenText` の 1 箇所に足し、見出し語・関連語を含む読み上げ全経路に効かせる**。例文専用の分岐・引数は設けない。登録済み音源の再生は正規化を通らない。→ [04](04-speech-normalization.md)
 - **スラッシュ・引用符など括弧以外の記号は今回扱わない**（本番の英文データに 0 件）。→ [04](04-speech-normalization.md)
+- **単語詳細の例文カード上部にメタ行を新設し、発音ボタンを 1 つ置く**（全種別、`ttsText` は例文の英文）。見出し語・関連語のボタンは変更しない。→ [05](05-ui-playback.md)
+- **音源も自動音声も使えないときはボタンごと非表示にする**（`reserveSpaceWhenEmpty` は使わず、メタ行は `empty:hidden` で畳む）。→ [05](05-ui-playback.md)
+- **TG 4 形式では発音ボタンの鳴らす対象を TG例文に差し替える（4 箇所）。TG例文の音源が未登録でも見出し語の音源へはフォールバックしない**（TTS → 非表示の順に落ちる）。→ [05](05-ui-playback.md)
+- **「鳴らす対象」は payload 側で音源 URL と読み上げテキストの 1 組に決め、UI 側では形式分岐しない**。→ [05](05-ui-playback.md)
+- **自動再生・プリロードも TG例文に揃える**。日→英での出題時早期 return（解答漏れ防止）は維持する。→ [05](05-ui-playback.md)
+- **ダミー選択肢には音源・読み上げを持たせない**（既存の「正解選択肢のみ」を踏襲）。→ [05](05-ui-playback.md)
+- **設定画面は 1 セクション内にグループ別 2 行を並べ、「端末から削除」は共通 1 つのまま**。同時ダウンロードはしない。→ [05](05-ui-playback.md)
 
 ## トピック状態表
 
@@ -54,12 +61,12 @@
 | [02-data-model.md](02-data-model.md) | 確定 | Example の音源カラム、削除 / orphan / manifest / purge の横断影響 |
 | [03-audio-registration.md](03-audio-registration.md) | 確定 | アップロード・削除の経路、AudioTarget 拡張、認可、blob の公開前提 |
 | [04-speech-normalization.md](04-speech-normalization.md) | 確定 | 読み上げ時の括弧 (…) / […] の正規化 |
-| [05-ui-playback.md](05-ui-playback.md) | 未着手 | 単語詳細・単語テストの発音ボタン、TG 例文への差し替え、自動再生 / プリロード |
+| [05-ui-playback.md](05-ui-playback.md) | 確定 | 単語詳細・単語テストの発音ボタン、TG 例文への差し替え、自動再生 / プリロード |
 | [06-architecture.md](06-architecture.md) | 未着手 | モジュール構成・データフロー・テスト戦略 |
 
-想定順序（残り）: 05 → 06。要求次第で入れ替え可。
+想定順序（残り）: 06。
 
-**次セッションの推奨トピック: 05（UI・再生挙動）**。引き継ぎ論点: (1) 単語詳細の例文行への発音ボタンの置き方（種別ごとの見せ方・レイアウト・ADR-0076 の描き分け）、(2) 単語テスト TG 形式での差し替え箇所（`quiz-flow.tsx` の promptView / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx`）と自動再生・プリロードを TG例文へ揃えるか、(3) 音源も TTS も使えないときの表示（非表示 / 無効化）、(4) 設定画面の「発音音源のダウンロード」をグループ別（見出し語・関連語 / 例文）にどう見せるか、「端末から削除」もグループ別にするか。
+**次セッションの推奨トピック: 06（アーキテクチャ・テスト戦略）**。これが設計最終セッションで、確定後はハブに「実装への引き継ぎ」を追記して閉じる。引き継ぎ論点: (1) quiz のデータフロー（`quiz-source.ts` の TG例文クエリ → `TgExampleRow` → `QuizWord.tgExample` → `questionBaseOf` → `payload.ts`）に音源 URL と読み上げテキストの組をどう載せるか（05 決定 4 のフィールド名・型）、(2) `pronunciation-audio.ts` 以外のモジュール配置と共有コンポーネントの切り出し単位、(3) テスト戦略（unit / integration の割り当て、既存 E2E `pnpm e2e:audio-cache` / `e2e:audio-prefetch` のグループ分けへの追随、`speech.unit.test.ts` の期待値更新）、(4) `docs/features/` の更新対象とスクリーンショット再撮影の要否（`scripts/e2e/db.ts` の `ensureDemoAudio` は現在 Meaning / RelatedWord のみ）、(5) naming-book への用語追加と実装後に起票する ADR の候補。
 
 ## セッション運用ルール
 

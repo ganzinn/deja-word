@@ -18,6 +18,11 @@
 - `exampleSchema` に `pronunciationAudioUrl` を足すが UI 表示専用で、`upsertExamples` は読み書きしない（03 確定）。
 - 読み上げ正規化の括弧規則は `toSpokenText`（`src/lib/speech.ts`）1 箇所への追加で、除去順序は「装飾記法 → `【…】` → `[…]` → 残存括弧記号 → プレースホルダ → 空白畳み込み」（04 確定）。既存テスト `speech.unit.test.ts` の期待値 `suggest (to ) that` は更新対象。
 - 括弧は半角・全角の両字形が対象で、表示側 `TG_TEXT_PATTERN`（`src/components/tg-example-text.tsx`）にも全角括弧を足して同一チケットで揃える（04 確定）。表示変更を伴うため `docs/features/` の再撮影要否を棚卸しする。
+- 単語詳細の例文カード上部にメタ行を新設し、`AudioPlayButton`（`src` = 例文の音源、`ttsText` = 例文の英文）を 1 つ置く（05 確定）。`AudioPlayButton` 自体は変更しない。
+- TG 4 形式では発音ボタン・自動再生・プリロードの対象を TG例文に差し替え、見出し語の音源へはフォールバックしない（05 確定）。差し替え箇所は `quiz-flow.tsx` / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx` の 4 つ。
+- 「鳴らす対象」は `questionBaseOf` の段階で音源 URL と読み上げテキストの 1 組に決め、`QuestionBase` に載せる。UI 側は形式分岐しない（05 確定）。フィールド名・型は 06 で決める。
+- ダミー選択肢には音源・読み上げを持たせない（05 確定）。
+- 設定画面は 1 セクション内にグループ別 2 行を並べ、「端末から削除」は共通 1 つのまま（05 確定）。同時ダウンロードはしない。
 
 ## 検討事項リスト
 

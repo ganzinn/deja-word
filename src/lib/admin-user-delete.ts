@@ -15,7 +15,7 @@ export class UserNotFoundError extends Error {
 /**
  * 管理者によるユーザー削除。User の全子リレーションは onDelete: Cascade のため
  * DB は `prisma.user.delete()` 一発でクリーンになるが、発音音源（Meaning /
- * RelatedWord の pronunciationAudioUrl）の Blob 実体は cascade で消えないため、
+ * RelatedWord / Example の pronunciationAudioUrl）の Blob 実体は cascade で消えないため、
  * 削除前に URL を収集し、delete 成功後にベストエフォートで後始末する
  * （`words-delete.ts` と同じ方針）。
  */
@@ -30,12 +30,16 @@ export async function deleteUserForAdmin(
   if (!existing) throw new UserNotFoundError();
 
   // onDelete: Cascade は Blob に効かないため、削除前に配下の音源 URL を収集する。
-  const [meanings, relatedWords] = await Promise.all([
+  const [meanings, relatedWords, examples] = await Promise.all([
     prisma.meaning.findMany({
       where: { ownerId: userId },
       select: { pronunciationAudioUrl: true },
     }),
     prisma.relatedWord.findMany({
+      where: { ownerId: userId },
+      select: { pronunciationAudioUrl: true },
+    }),
+    prisma.example.findMany({
       where: { ownerId: userId },
       select: { pronunciationAudioUrl: true },
     }),
@@ -45,7 +49,7 @@ export async function deleteUserForAdmin(
 
   // DB を真実とし、delete 成功後にベストエフォートで Blob を消す。
   await bestEffortDeleteAudioUrls(
-    [...meanings, ...relatedWords].map((row) => row.pronunciationAudioUrl),
+    [...meanings, ...relatedWords, ...examples].map((row) => row.pronunciationAudioUrl),
     blob,
   );
 }

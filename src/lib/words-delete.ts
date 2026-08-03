@@ -77,17 +77,18 @@ export async function deleteWordForUser(
     descendantOwnerRows.flat().map((row) => row.ownerId),
   );
 
-  // onDelete: Cascade は Blob に効かないため、削除前に配下の音源 URL（Meaning / 関連語）を収集する。
-  const [meanings, relatedWords] = await Promise.all([
+  // onDelete: Cascade は Blob に効かないため、削除前に配下の音源 URL（Meaning / 関連語 / 例文）を収集する。
+  const [meanings, relatedWords, examples] = await Promise.all([
     prisma.meaning.findMany({ where: { wordId }, select: { pronunciationAudioUrl: true } }),
     prisma.relatedWord.findMany({ where: { wordId }, select: { pronunciationAudioUrl: true } }),
+    prisma.example.findMany({ where: { wordId }, select: { pronunciationAudioUrl: true } }),
   ]);
 
   await prisma.word.delete({ where: { id: wordId } });
 
   // DB を真実とし、delete 成功後にベストエフォートで Blob を消す。
   await bestEffortDeleteAudioUrls(
-    [...meanings, ...relatedWords].map((row) => row.pronunciationAudioUrl),
+    [...meanings, ...relatedWords, ...examples].map((row) => row.pronunciationAudioUrl),
     blob,
   );
 }

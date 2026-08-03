@@ -51,7 +51,7 @@ export type PurgeReport = {
   relatedWords: number;
   memos: number;
   quizAnswers: number;
-  audioFiles: number; // 削除対象の発音音源 Blob 数（Meaning + RelatedWord）
+  audioFiles: number; // 削除対象の発音音源 Blob 数（Meaning + RelatedWord + Example）
   drills: number;
   presetSettings: number;
   executed: boolean; // dryRun=false で実削除したか
@@ -102,7 +102,10 @@ export async function purgeOccurrence(
       where: { wordId: { in: wordIds } },
       select: { pronunciationAudioUrl: true },
     }),
-    prisma.example.count({ where: { wordId: { in: wordIds } } }),
+    prisma.example.findMany({
+      where: { wordId: { in: wordIds } },
+      select: { pronunciationAudioUrl: true },
+    }),
     prisma.memo.count({ where: { wordId: { in: wordIds } } }),
     prisma.quizAnswer.count({ where: { wordId: { in: wordIds } } }),
     prisma.wordOccurrence.findMany({
@@ -113,7 +116,7 @@ export async function purgeOccurrence(
     prisma.drill.count({ where: { occurrenceId } }),
   ]);
 
-  const audioUrls = [...meanings, ...relatedWords]
+  const audioUrls = [...meanings, ...relatedWords, ...examples]
     .map((r) => r.pronunciationAudioUrl)
     .filter((u): u is string => !!u);
 
@@ -122,7 +125,7 @@ export async function purgeOccurrence(
     words: wordIds.length,
     sharedWords: new Set(sharedLinks.map((l) => l.wordId)).size,
     meanings: meanings.length,
-    examples,
+    examples: examples.length,
     relatedWords: relatedWords.length,
     memos,
     quizAnswers,

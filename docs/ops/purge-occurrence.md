@@ -27,7 +27,7 @@ pnpm db:purge-occurrence <occurrenceId> --execute   # 非対話・実削除
 - **共有単語も完全削除**: 対象掲載箇所と別の掲載箇所の両方に紐づく単語も削除する（他掲載箇所からも消える）。ドライランで「うち他掲載箇所と共有: N」を表示するので影響を確認できる。
 - **掲載箇所本体も削除**: 単語削除後に `Occurrence` 行も削除する。オーナー非依存で id を直接指定するため、system 所有の掲載箇所も対象にできる。
 - **カスケード**: `Word` 削除で `Meaning` / `Example` / `RelatedWord` / `Memo` / `QuizAnswer` / `WordOccurrence`(→`OccurrenceDetail`) / `DrillWord` が、`Occurrence` 削除で残る `OccurrencePresetSetting` / `Drill` が連鎖削除される。`QuizDefaultSetting` は `occurrenceId` が `null` になるだけ（設定自体は残る）。
-- **Blob は手動削除**: 発音音源は DB の cascade では消えない（DB には URL 文字列だけが入る）。スクリプトが削除前に `Meaning` / `RelatedWord` の `pronunciationAudioUrl` を収集し、DB 削除確定後にベストエフォートで `blob.del` する。Blob 削除が失敗しても DB 削除は通り、孤児 Blob が残るだけ（後追い回収可）。
+- **Blob は手動削除**: 発音音源は DB の cascade では消えない（DB には URL 文字列だけが入る）。スクリプトが削除前に `Meaning` / `RelatedWord` / `Example` の `pronunciationAudioUrl` を収集し、DB 削除確定後にベストエフォートで `blob.del` する。Blob 削除が失敗しても DB 削除は通り、孤児 Blob が残るだけ（後追い回収可）。
 
 > ⚠️ **不可逆**。実削除前に必ず**同一接続先**でドライランして件数を確認すること。
 

@@ -17,7 +17,7 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-example-audio-column.md](01-example-audio-column.md) | `Example.pronunciationAudioUrl` 追加、`exampleTarget` ＋サービス API 2 本、削除・orphan 5 経路への Example 追加 | なし | 実装中 | - |
+| [01-example-audio-column.md](01-example-audio-column.md) | `Example.pronunciationAudioUrl` 追加、`exampleTarget` ＋サービス API 2 本、削除・orphan 5 経路への Example 追加 | なし | 完了（2026-08-04） | - |
 | [02-example-audio-upload-ui.md](02-example-audio-upload-ui.md) | 例文カードへの音源登録 UI と Server Action 2 本、フォーム値への pass-through | 01 | 未着手 | - |
 | [03-speech-bracket-normalization.md](03-speech-bracket-normalization.md) | 読み上げの括弧正規化（`(…)` は中身を読む／`[…]` は落とす）と `TG_TEXT_PATTERN` の全角括弧追加 | なし | 実装中 | - |
 | [04-word-detail-example-playback.md](04-word-detail-example-playback.md) | 単語詳細の例文カード上部にメタ行を新設し発音ボタンを 1 つ置く | 01 | 未着手 | - |

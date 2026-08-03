@@ -1,6 +1,6 @@
 # 01. example-audio-column（音源カラムとクリーンアップ経路）
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-04）　PR: （未作成）
 
 ## 目的
 
@@ -108,4 +108,9 @@ orphan URL 収集（`where: { wordId, ownerId: userId, id: { notIn } }`）に `e
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **計画外の変更**: `docs/ops/purge-blobs.md` / `docs/ops/purge-occurrence.md` が収集対象を「`Meaning` / `RelatedWord`」と明示列挙しており本チケットの変更で事実と食い違うため、モデル名 `Example` の追記のみ（計 3 箇所）を実施。担当表・07 のスコープに `docs/ops/` が無く放置されるため。
+- **`pnpm db:migrate` だけでは Prisma Client が再生成されない**: `prisma migrate dev` 後に typecheck が `pronunciationAudioUrl does not exist on type` で落ちるため、`pnpm db:generate` を併せて実行する必要がある。**他チケットの worktree でも `pnpm db:migrate` の後に `pnpm db:generate` を実行すること**。
+- **`words-update.ts` の orphan URL 収集位置**: チケット本文は「収集は tx の前」と書いているが、既存の Meaning / RelatedWord 実装は `$transaction` コールバック内で DB 読み取りし `bestEffortDeleteAudioUrls` のみ commit 後に呼ぶ構造。「tx 内でネットワーク I/O を呼ばない」という設計意図に従い既存構造を踏襲した（tx 内は DB 読み取りのみ）。
+- **02 への申し送り**: `src/lib/schema/word-form.ts` の `exampleSchema` と `wordDetailToFormValues` の examples マッピングに `pronunciationAudioUrl` の pass-through は未追加（02 のスコープどおり）。
+- **04 / 05 / 06 への申し送り**: `Example.pronunciationAudioUrl` は `words-detail.ts` 無変更のまま `WordDetail["examples"][number]` に載ることを typecheck で確認済み。
+- 公開 API `uploadExampleAudioForUser` / `deleteExampleAudioForUser` は 02 のマージまで未参照（想定どおり。lint / typecheck とも問題なし）。

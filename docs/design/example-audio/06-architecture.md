@@ -12,6 +12,10 @@
 - `Example` に `pronunciationAudioUrl String?` を追加し、blob key は `audio/example/<exampleId>/pronunciation.mp3`（02 確定）。
 - 音源 URL を横断で扱う 6 経路すべてに Example を追加し、カラム追加・登録・削除経路は同一チケットで揃える（02 確定）。
 - 一括プリフェッチはグループ別（見出し語・関連語 / 例文）にダウンロードでき、Cache Storage は 1 つのまま prune は和集合で判定する（02 確定）。
+- `pronunciation-audio.ts` は `exampleTarget` ディスクリプタと公開 API 2 本（`uploadExampleAudioForUser` / `deleteExampleAudioForUser`）の追加のみで、共通コアは無改造（03 確定）。`ExampleNotFoundError` を新設する。
+- 入口は `words/[id]/edit/actions.ts` への action 2 本追加で、route handler は新設しない（03 確定）。
+- 音源の登録 UI は例文カードの例文テキスト直後に `PronunciationAudioManager` を再利用して置く（03 確定）。
+- `exampleSchema` に `pronunciationAudioUrl` を足すが UI 表示専用で、`upsertExamples` は読み書きしない（03 確定）。
 
 ## 検討事項リスト
 

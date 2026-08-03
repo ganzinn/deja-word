@@ -729,7 +729,7 @@ export function QuizFlow({
       return;
     }
     // 発音音源が無いときは自動音声フォールバック（設定 ON のとき）で読み上げる
-    if (ttsFallbackEnabled && question?.headword) speakEnglish(question.headword);
+    if (ttsFallbackEnabled && question?.ttsText) speakEnglish(question.ttsText);
   }
 
   // アンマウント時に保留中のフラッシュ消去タイマーを解放する
@@ -810,6 +810,7 @@ export function QuizFlow({
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,
         pronunciationAudioUrl: question.pronunciationAudioUrl,
+        ttsText: question.ttsText,
       },
     ];
     setRows(nextRows);
@@ -948,8 +949,8 @@ export function QuizFlow({
       return () => audio.pause();
     }
     // 発音音源が無いときは自動音声フォールバック（設定 ON のとき）で読み上げる
-    if (ttsFallbackEnabled && question?.headword) {
-      speakEnglish(question.headword);
+    if (ttsFallbackEnabled && question?.ttsText) {
+      speakEnglish(question.ttsText);
       return () => cancelSpeech();
     }
   }, [playIndex, quiz, autoplayPronunciation, ttsFallbackEnabled]);
@@ -1016,10 +1017,11 @@ export function QuizFlow({
               <TgExampleText text={promptView.text} />
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* 鳴らす対象（TG 例文の音源／英文）は payload 側で決まっている（形式分岐しない） */}
               <AudioPlayButton
                 src={question.pronunciationAudioUrl}
                 label="発音"
-                ttsText={question.headword}
+                ttsText={question.ttsText}
               />
               {answerShown ? (
                 <WordDetailButton onClick={() => setDialogStack([question.wordId])} />

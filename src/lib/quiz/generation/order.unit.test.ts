@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { occurrenceNumbersOf, orderQuestionsByOccurrenceNumber } from "./order";
 
 function question(wordId: string, headword: string) {
-  return { wordId, headword, pronunciationAudioUrl: null };
+  return { wordId, headword, pronunciationAudioUrl: null, ttsText: headword };
 }
 
 describe("occurrenceNumbersOf", () => {

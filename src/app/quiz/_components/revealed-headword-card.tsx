@@ -5,10 +5,12 @@ import { AudioPlayButton } from "@/components/audio-play-button";
 import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
-  /** 解答の英単語（headword）。display 未指定時の表示と発音（TTS フォールバック）に使う。 */
+  /** 解答の英単語（headword）。display 未指定時の表示に使う。 */
   headword: string;
-  /** 発音音源の URL。null のとき AudioPlayButton 側で自動音声にフォールバックする。 */
+  /** この問題の発音ボタンが鳴らす音源の URL。null のとき AudioPlayButton 側で自動音声にフォールバックする。 */
   pronunciationAudioUrl: string | null;
+  /** 上記の音源が無いとき自動音声で読み上げる英語（`QuestionBase.ttsText`）。 */
+  ttsText: string;
   /** 「詳細」ボタンのタップ。指定時のみ英単語の隣に詳細ボタンを出す。 */
   onShowDetail?: () => void;
   /** 解答の表示ノード。TG自己判定（日→英）が TG 例文ハイライトを渡す。既定は headword。 */
@@ -23,6 +25,7 @@ type Props = {
 export function RevealedHeadwordCard({
   headword,
   pronunciationAudioUrl,
+  ttsText,
   onShowDetail,
   display,
 }: Props) {
@@ -33,7 +36,7 @@ export function RevealedHeadwordCard({
       </span>
       {/* 英単語と分けて、発音・詳細は1段下にまとめて横並びにする。 */}
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={headword} />
+        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={ttsText} />
         {onShowDetail ? <WordDetailButton onClick={onShowDetail} /> : null}
       </div>
     </div>

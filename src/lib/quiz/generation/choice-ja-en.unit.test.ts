@@ -36,7 +36,9 @@ describe("buildChoiceJaEnQuestions", () => {
     const [q] = buildChoiceJaEnQuestions(m, seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
+    // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
     expect(q.pronunciationAudioUrl).toBe("https://audio/t");
+    expect(q.ttsText).toBe("hw-t");
     // 問題文は最初の Meaning のみ「; 」連結（2 件目「走行」は含めない）
     expect(q.prompt).toBe("走る; 駆ける");
     // 正解は target の headword、選択肢はすべて headword

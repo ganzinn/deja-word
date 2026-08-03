@@ -48,6 +48,9 @@ describe("buildMultiMeaningQuestions", () => {
     const [q] = buildMultiMeaningQuestions(m, seededRng(1));
     const correct = q.options.filter((o) => o.isCorrect).map((o) => o.text);
     expect([...correct].sort()).toEqual(["走る", "駆ける"].sort());
+    // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
+    expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.ttsText).toBe("hw-t");
   });
 
   test("dummies never collide with a non-first meaning of the target", () => {

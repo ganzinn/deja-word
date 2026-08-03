@@ -11,8 +11,8 @@ import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function word(
   id: string,
-  tgExample: { text: string; meaning: string } | null,
-  options: { audio?: string | null } = {},
+  tgExample: QuizWord["tgExample"],
+  options: { headwordAudio?: string | null } = {},
 ): QuizWord {
   return {
     id,
@@ -21,15 +21,16 @@ function word(
     meanings: [
       {
         partOfSpeech: null,
-        pronunciationAudioUrl: options.audio ?? null,
+        pronunciationAudioUrl: options.headwordAudio ?? null,
         texts: [`${id}の意味`],
       },
     ],
   };
 }
 
-function tg(id: string): { text: string; meaning: string } {
-  return { text: `sentence ${id}`, meaning: `例文${id}の意味` };
+/** 使える TG 例文。audio は例文の発音音源 URL（省略時は未登録）。 */
+function tg(id: string, audio: string | null = null): NonNullable<QuizWord["tgExample"]> {
+  return { text: `sentence ${id}`, meaning: `例文${id}の意味`, pronunciationAudioUrl: audio };
 }
 
 function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
@@ -38,7 +39,10 @@ function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
 
 describe("buildChoiceTgJaEnQuestions", () => {
   test("builds a 4-choice question: prompt is the TG meaning, correct choice is the TG text", () => {
-    const target = word("t", tg("t"), { audio: "https://audio/t" });
+    // 発音ボタンが鳴らすのは TG 例文の音源。見出し語（Meaning）の音源は使わない
+    const target = word("t", tg("t", "https://audio/example-t"), {
+      headwordAudio: "https://audio/hw-t",
+    });
     const m = material({
       targets: [target],
       sameOccurrencePool: [word("d1", tg("d1")), word("d2", tg("d2")), word("d3", tg("d3"))],
@@ -46,7 +50,8 @@ describe("buildChoiceTgJaEnQuestions", () => {
     const [q] = buildChoiceTgJaEnQuestions(m, seededRng(1));
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
-    expect(q.pronunciationAudioUrl).toBe("https://audio/t");
+    expect(q.pronunciationAudioUrl).toBe("https://audio/example-t");
+    expect(q.ttsText).toBe("sentence t");
     expect(q.prompt).toBe("例文tの意味");
     expect(q.choices).toHaveLength(4);
     expect(q.choices[q.correctIndex].text).toBe("sentence t");
@@ -70,8 +75,18 @@ describe("buildChoiceTgJaEnQuestions", () => {
     expect(q.wordId).toBe("mt");
     expect(q.headword).toBe("hw-mt");
     expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.ttsText).toBe("sentence mt");
     expect(q.prompt).toBe("例文mtの意味");
     expect(q.choices[q.correctIndex].text).toBe("sentence mt");
+  });
+
+  test("does not fall back to the headword audio when the TG example has no audio", () => {
+    const target = word("t", tg("t"), { headwordAudio: "https://audio/hw-t" });
+    const m = material({ targets: [target], sameOccurrencePool: [word("d1", tg("d1"))] });
+    const [q] = buildChoiceTgJaEnQuestions(m, seededRng(1));
+    expect(q.pronunciationAudioUrl).toBeNull();
+    // 音源が無ければ読み上げも例文の英文（見出し語は鳴らさない）
+    expect(q.ttsText).toBe("sentence t");
   });
 
   test("asks only targets that have a usable TG example (one question per usable word)", () => {
@@ -104,9 +119,9 @@ describe("buildChoiceTgJaEnQuestions", () => {
 
   test("excludes dummies whose TG text trim-matches the target's TG text", () => {
     const m = material({
-      targets: [word("t", { text: "same sentence", meaning: "例文tの意味" })],
+      targets: [word("t", { ...tg("t"), text: "same sentence" })],
       sameOccurrencePool: [
-        word("d1", { text: " same sentence ", meaning: "例文d1の意味" }),
+        word("d1", { ...tg("d1"), text: " same sentence " }),
         word("d2", tg("d2")),
       ],
     });

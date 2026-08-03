@@ -40,6 +40,7 @@ export function QuestionSelfJudgeTgJaEn({
       <RevealedHeadwordCard
         headword={question.headword}
         pronunciationAudioUrl={question.pronunciationAudioUrl}
+        ttsText={question.ttsText}
         onShowDetail={onShowDetail}
         display={<TgExampleText text={question.answer} />}
       />

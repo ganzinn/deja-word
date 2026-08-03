@@ -1,6 +1,6 @@
 # 05. quiz-tg-example-audio（単語テスト TG 形式の発音対象を TG例文へ）
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-04）　PR: （未作成）
 
 ## 目的
 
@@ -136,4 +136,8 @@ TG例文の追加クエリの `select` に `pronunciationAudioUrl: true` を足�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **チケット明記外のテストファイル 3 本を型追随のため修正**（検証内容は変えていない）: `order.unit.test.ts`（`orderQuestionsByOccurrenceNumber<T extends QuestionBase>` の型制約に `ttsText` が加わるため）、`build-quiz.unit.test.ts` / `material.unit.test.ts`（`QuizWord.tgExample` に必須フィールド追加）、`quiz-source.integration.test.ts`（`select` 追加で戻り行の形が変わるため `toEqual` の期待値に追加）。
+- **`promptView.kind === "headword"` の見出し下の発音ボタンは `ttsText={question.headword}` のまま**。この分岐は非 TG 形式（`CHOICE` / `SELF_JUDGE` / `MULTI_MEANING`）専用で `ttsText === headword` が保証されており、TG 以外の promptView 変更はスコープ外のため。統一したい場合は `question.ttsText` に揃えても挙動は変わらない。
+- `Example.pronunciationAudioUrl` は変換せず `<audio src>` にそのまま流す（`Meaning.pronunciationAudioUrl` を quiz が扱う既存の流儀と同じ）。
+- `questionBaseOf(word, format)` に format 引数を追加し、TG 4 形式では TG例文の音源・英文の組を返す（見出し語へフォールバックしない／`tgExample` が null なら `ttsText: ""`）。
+- 手動確認項目（TG 4 形式の自動再生・発音ボタン、未登録時に見出し語が鳴らないこと、非 TG 形式の従来動作、結果一覧の TG 行）は**すべて未実施**。

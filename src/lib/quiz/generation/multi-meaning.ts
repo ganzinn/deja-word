@@ -53,6 +53,6 @@ export function buildMultiMeaningQuestions(
       ],
       rng,
     );
-    return { ...questionBaseOf(target), options };
+    return { ...questionBaseOf(target, "MULTI_MEANING"), options };
   });
 }

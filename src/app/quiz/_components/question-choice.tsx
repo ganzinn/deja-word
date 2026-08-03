@@ -133,7 +133,7 @@ export function QuestionChoice({
                     <AudioPlayButton
                       src={question.pronunciationAudioUrl}
                       label="発音"
-                      ttsText={question.headword}
+                      ttsText={question.ttsText}
                     />
                   ) : null}
                   {showDetail ? <WordDetailButton onClick={onShowDetail} /> : null}

@@ -49,8 +49,13 @@ export type ResultRow = {
   /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT・VAGUE は null）。
    *  うろ覚え（VAGUE）は全形式とも null で、結果一覧では一律「うろ覚え」と表示する。 */
   answerDisplay: string | null;
-  /** 英単語の発音音源 URL（最初の Meaning）。未登録なら null。 */
+  /**
+   * この行の発音ボタンが鳴らす音源 URL（未登録なら null）。TG 形式の行は TG 例文の音源、
+   * それ以外は英単語（最初の Meaning）の音源（`QuestionBase.pronunciationAudioUrl` のコピー）。
+   */
   pronunciationAudioUrl: string | null;
+  /** 上記の音源が無いとき自動音声で読み上げる英語（`QuestionBase.ttsText` のコピー）。 */
+  ttsText: string;
 };
 
 /**
@@ -295,7 +300,7 @@ export function ResultList({
                         <RowAudioButton
                           src={row.pronunciationAudioUrl}
                           label="発音"
-                          ttsText={row.headword}
+                          ttsText={row.ttsText}
                         />
                       ) : null}
                       {/* ボタンは内部 state 初期化子で表示するため、マップ値の変化（ダイアログでの
@@ -322,7 +327,7 @@ export function ResultList({
                         <RowAudioButton
                           src={row.pronunciationAudioUrl}
                           label="発音"
-                          ttsText={row.headword}
+                          ttsText={row.ttsText}
                         />
                       </div>
                     ) : null}

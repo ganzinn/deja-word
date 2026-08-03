@@ -24,7 +24,7 @@ export function buildSelfJudgeTgQuestions(
   }
   const orderedTargets = fisherYatesShuffle(usableTargets, rng);
   return orderedTargets.map((target) => ({
-    ...questionBaseOf(target),
+    ...questionBaseOf(target, "SELF_JUDGE_TG"),
     prompt: target.tgExample.text,
     answer: target.tgExample.meaning,
   }));

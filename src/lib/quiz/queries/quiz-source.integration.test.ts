@@ -363,7 +363,13 @@ describe("fetchQuizSource: TG examples (includeTgExamples)", () => {
       },
     );
     expect(tgExampleRows).toEqual([
-      { wordId: word.id, text: "first usable sentence", meaning: "最初の使える例文" },
+      {
+        wordId: word.id,
+        text: "first usable sentence",
+        meaning: "最初の使える例文",
+        // 例文の発音音源（fixtures では未登録）。TG 形式の発音ボタンはこの URL を鳴らす
+        pronunciationAudioUrl: null,
+      },
     ]);
   });
 

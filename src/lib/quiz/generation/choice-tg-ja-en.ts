@@ -61,7 +61,7 @@ export function buildChoiceTgJaEnQuestions(
       rng,
     );
     return {
-      ...questionBaseOf(target),
+      ...questionBaseOf(target, "CHOICE_TG_JA_EN"),
       prompt: target.tgExample.meaning,
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),

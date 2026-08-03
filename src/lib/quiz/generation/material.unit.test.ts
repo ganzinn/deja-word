@@ -38,19 +38,33 @@ describe("partitionMaterial", () => {
       [row("s1")],
       [row("f1")],
       [
-        { wordId: "t1", text: "sentence t1", meaning: "例文t1" },
-        { wordId: "s1", text: "sentence s1", meaning: "例文s1" },
-        { wordId: "f1", text: "sentence f1", meaning: "例文f1" },
+        {
+          wordId: "t1",
+          text: "sentence t1",
+          meaning: "例文t1",
+          pronunciationAudioUrl: "https://audio/example-t1",
+        },
+        { wordId: "s1", text: "sentence s1", meaning: "例文s1", pronunciationAudioUrl: null },
+        { wordId: "f1", text: "sentence f1", meaning: "例文f1", pronunciationAudioUrl: null },
       ],
     );
-    expect(material.targets[0].tgExample).toEqual({ text: "sentence t1", meaning: "例文t1" });
+    expect(material.targets[0].tgExample).toEqual({
+      text: "sentence t1",
+      meaning: "例文t1",
+      pronunciationAudioUrl: "https://audio/example-t1",
+    });
     // 使える TG 例文が無い単語は null
     expect(material.targets[1].tgExample).toBeNull();
     expect(material.sameOccurrencePool[0].tgExample).toEqual({
       text: "sentence s1",
       meaning: "例文s1",
+      pronunciationAudioUrl: null,
     });
-    expect(material.allWordsPool[0].tgExample).toEqual({ text: "sentence f1", meaning: "例文f1" });
+    expect(material.allWordsPool[0].tgExample).toEqual({
+      text: "sentence f1",
+      meaning: "例文f1",
+      pronunciationAudioUrl: null,
+    });
   });
 
   test("defaults every tgExample to null when TG rows are not fetched (non-TG formats)", () => {
@@ -104,7 +118,7 @@ describe("retargetMaterial", () => {
   });
 
   test("preserves tgExample through retargeting (drill rounds keep TG material)", () => {
-    const tg = { text: "sentence t1", meaning: "例文t1" };
+    const tg = { text: "sentence t1", meaning: "例文t1", pronunciationAudioUrl: null };
     const withTg: QuizSourceMaterial = {
       targets: [{ ...word("t1"), tgExample: tg }],
       sameOccurrencePool: [word("s1")],

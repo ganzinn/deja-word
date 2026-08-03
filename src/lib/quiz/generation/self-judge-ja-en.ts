@@ -15,7 +15,7 @@ export function buildSelfJudgeJaEnQuestions(
 ): SelfJudgeJaEnQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => ({
-    ...questionBaseOf(target),
+    ...questionBaseOf(target, "SELF_JUDGE_JA_EN"),
     prompt: firstMeaningText(target),
   }));
 }

@@ -39,6 +39,7 @@ export function QuestionSelfJudgeJaEn({
       <RevealedHeadwordCard
         headword={question.headword}
         pronunciationAudioUrl={question.pronunciationAudioUrl}
+        ttsText={question.ttsText}
         onShowDetail={onShowDetail}
       />
     </SelfJudgePanel>

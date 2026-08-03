@@ -68,7 +68,7 @@ export function buildChoiceQuestions(
       rng,
     );
     return {
-      ...questionBaseOf(target),
+      ...questionBaseOf(target, "CHOICE"),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
     };

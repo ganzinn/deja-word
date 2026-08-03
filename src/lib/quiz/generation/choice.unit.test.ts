@@ -36,7 +36,9 @@ describe("buildChoiceQuestions", () => {
     const [q] = buildChoiceQuestions(m, seededRng(1), false);
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("hw-t");
+    // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
     expect(q.pronunciationAudioUrl).toBe("https://audio/t");
+    expect(q.ttsText).toBe("hw-t");
     expect(q.choices).toHaveLength(4);
     expect(q.choices[q.correctIndex].text).toBe("走る; 駆ける");
     const dummyTexts = q.choices.filter((_, i) => i !== q.correctIndex).map((c) => c.text);
@@ -129,6 +131,7 @@ describe("buildChoiceQuestions", () => {
     });
     const [q] = buildChoiceQuestions(m, seededRng(1), false);
     expect(q.pronunciationAudioUrl).toBeNull();
+    expect(q.ttsText).toBe("hw-t");
   });
 
   describe("firstMeaningTextOnly = true", () => {

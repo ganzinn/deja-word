@@ -23,6 +23,13 @@
 - **単語テスト TG 形式ではボタンを増やさず、いま見出し語を鳴らしているボタンの対象を TG例文へ差し替える**。→ [01](01-requirements.md)
 - **例文音源の一括取り込みは行わない**。登録は 1 件ずつの手動アップロードのみ。→ [01](01-requirements.md)
 - **TTS 読み上げ時のテキスト正規化に括弧規則を追加することをスコープに含む**（規則の詳細は 04）。→ [01](01-requirements.md)
+- **`Example` に `pronunciationAudioUrl String?` を追加する**（`Meaning` / `RelatedWord` と同名・同型・index なし）。既存行は NULL 開始で backfill 不要。→ [02](02-data-model.md)
+- **blob key は `audio/example/<exampleId>/pronunciation.mp3`**。`AudioTarget.dir` に `"example"` を置く。→ [02](02-data-model.md)
+- **音源 URL を横断で扱う 6 経路すべてに Example を追加する**（`words-delete` / `words-update` の orphan / `admin-user-delete` / `occurrence-purge` / `blob-purge` / `audio-manifest`）。カラム追加・登録・削除経路は同一チケットで揃える。→ [02](02-data-model.md)
+- **例文の編集では音源を保持し、フォームから消えた例文の音源は orphan として消す**。`upsertExamples` は音源カラムを触らず、`words-update` の orphan 収集に example を足す。→ [02](02-data-model.md)
+- **`db:import-audio` は見出し語・関連語のまま変更しない**。purge 系（`occurrence-purge` / `blob-purge`）のみ例文に追随する。→ [02](02-data-model.md)
+- **一括プリフェッチは「見出し語・関連語の音源」と「例文の音源」を分けてダウンロードできるようにする**。manifest はグループ別に URL と件数を返す。→ [02](02-data-model.md)
+- **Cache Storage は 1 つのまま維持し、prune は両グループの和集合に対して行う**。グループ別 manifest だけで prune すると相手のキャッシュが消えるため。→ [02](02-data-model.md)
 
 ## トピック状態表
 
@@ -31,15 +38,15 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定 | 要求・ユースケース・スコープ外 |
-| [02-data-model.md](02-data-model.md) | 未着手 | Example の音源カラム、削除 / orphan / manifest / purge の横断影響 |
+| [02-data-model.md](02-data-model.md) | 確定 | Example の音源カラム、削除 / orphan / manifest / purge の横断影響 |
 | [03-audio-registration.md](03-audio-registration.md) | 未着手 | アップロード・削除の経路、AudioTarget 拡張、認可、blob の公開前提 |
 | [04-speech-normalization.md](04-speech-normalization.md) | 未着手 | 読み上げ時の括弧 (…) / […] の正規化 |
 | [05-ui-playback.md](05-ui-playback.md) | 未着手 | 単語詳細・単語テストの発音ボタン、TG 例文への差し替え、自動再生 / プリロード |
 | [06-architecture.md](06-architecture.md) | 未着手 | モジュール構成・データフロー・テスト戦略 |
 
-想定順序（残り）: 02 → 03 → 04 → 05 → 06。要求次第で入れ替え可。
+想定順序（残り）: 03 → 04 → 05 → 06。要求次第で入れ替え可。
 
-**次セッションの推奨トピック: 02（データモデル・音源ライフサイクル）**。引き継ぎ論点: `Example` へ音源カラムを足す形（既存 `Meaning` / `RelatedWord` の `pronunciationAudioUrl` に揃えるか）と、音源 URL を横断で扱う既存 6 経路（`words-delete.ts` / `words-update.ts` の orphan 収集 / `admin-user-delete.ts` / `occurrence-purge.ts` / `blob-purge.ts` / `audio-manifest.ts`）への追随漏れをどう防ぐか。例文は更新時に行ごと入れ替わり得るため、孤児 blob の発生経路を洗い出すこと。
+**次セッションの推奨トピック: 03（音源の登録・削除と認可）**。引き継ぎ論点: (1) `AudioTarget` に example を足すだけで済むか（`loadOwned` は `prisma.example.findUnique` で `{ ownerId, pronunciationAudioUrl }`、`notFound` は `ExampleNotFoundError` 新設）、(2) **system 所有の共通例文に音源を登録できるか**。既存の `loadOwnedRow` は `row.ownerId !== userId` で弾くため、pass-through 編集（ADR-0019）で共通行の本文は触れないのに音源だけ書けてしまう設計を選ぶと read/write 非対称が崩れる。`docs/reference/security-design-checklist.md` を通すこと、(3) blob を public 前提のまま例文音源に使ってよいか、(4) 登録 UI の置き場（既存の意味・関連語の音源登録 UI と同じ作りにできるか）。
 
 ## セッション運用ルール
 

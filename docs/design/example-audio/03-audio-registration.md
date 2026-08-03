@@ -9,6 +9,9 @@
 - 例文にも発音音源（mp3）を登録でき、未登録のときだけ TTS にフォールバックする（01 確定）。
 - 対象は全例文種別（TARGET / PHRASE / MINIMAL / SENTENCE）で、音源登録を種別で絞らない（01 確定）。
 - 例文音源の一括取り込みは行わず、登録は 1 件ずつの手動アップロードのみ（01 確定）。
+- `Example` に `pronunciationAudioUrl String?` を追加する（`Meaning` / `RelatedWord` と同名・同型）（02 確定）。
+- blob key は `audio/example/<exampleId>/pronunciation.mp3`（`AudioTarget.dir` = `"example"`）（02 確定）。
+- 例文の本文・種別を編集しても音源は保持される（`upsertExamples` は音源カラムを触らない）（02 確定）。
 
 ## 検討事項リスト
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { PauseIcon, PlayIcon } from "lucide-react";
+import { MicIcon, PauseIcon, PlayIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
@@ -50,6 +50,13 @@ type AudioPlayButtonProps = {
  * - どちらも無ければ何も描画しない（`reserveSpaceWhenEmpty` 指定時は同寸の不可視
  *   プレースホルダでスロットを確保する）。
  * click で play / 再 click で停止。`playing` 表示は音源・自動音声で共用する。
+ *
+ * 音源と自動音声は「信頼できる発音か」が違うため見た目でも区別する（ラベル文字は
+ * 変えない ＝ 一覧の列幅がズレないことを優先）。区別は形（アイコン）と濃淡の両方で
+ * 付ける（テーマが完全モノクロで色相を使えず、濃淡だけだと弱いため）。
+ * - 音源あり: マイクアイコン＋通常コントラストの枠線（＝登録済みの正しい発音）
+ * - 自動音声: 再生アイコン＋muted な文字色（＝端末合成の代用）
+ * aria-label / title でも同じ区別を伝える（アイコンと濃淡だけに頼らない）。
  */
 export function AudioPlayButton({
   src,
@@ -127,10 +134,22 @@ export function AudioPlayButton({
       variant="outline"
       size="xs"
       onClick={toggle}
-      aria-label={`${label}を再生`}
+      aria-label={hasAudio ? `${label}を再生` : `${label}を自動音声で再生`}
       aria-pressed={playing}
+      title={
+        hasAudio
+          ? "登録済みの発音音源を再生します"
+          : "発音音源が未登録のため、端末内蔵の自動音声で読み上げます"
+      }
+      // outline の hover:text-foreground / dark:border-input を上書きするため、
+      // 同じ variant の指定を className 側に置いて tailwind-merge に勝たせる。
+      className={
+        hasAudio
+          ? "border-foreground/30 dark:border-foreground/30"
+          : "text-muted-foreground hover:text-muted-foreground"
+      }
     >
-      {playing ? <PauseIcon /> : <PlayIcon />}
+      {playing ? <PauseIcon /> : hasAudio ? <MicIcon /> : <PlayIcon />}
       <span>{label}</span>
       {hasAudio ? (
         <audio

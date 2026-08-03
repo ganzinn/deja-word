@@ -55,7 +55,8 @@ export function GeneralSettingsForm({ ttsFallbackEnabled, children }: Props) {
         <p className="text-muted-foreground text-xs">
           オンにすると、発音音源が登録されていない単語でも、端末内蔵の音声で読み上げる再生ボタンが
           表示されます（発音音源が登録されている場合は常にそちらを再生します）。音声の品質や声は
-          端末・ブラウザによって異なり、未対応の端末では表示されません。
+          端末・ブラウザによって異なり、未対応の端末では表示されません。自動音声のボタンは
+          三角の再生アイコンで薄い表示になり、登録済みの発音音源のボタン（マイクのアイコン）と区別できます。
         </p>
         <p className="text-muted-foreground text-xs">
           自動音声の再生には、端末側の音声合成（テキスト読み上げ）機能と英語の音声データが必要です。

@@ -36,9 +36,15 @@ pnpm e2e:capture-docs  # docs/features/images/ に一括出力
 
 - 前提: `pnpm db:seed`・`pnpm db:set-system-password` 済みのローカル DB と、
   システムにインストール済みの Google Chrome（playwright-core が `channel: "chrome"` で利用）。
+- 単語管理（`words` セクション）を撮るときは `AI_GATEWAY_API_KEY` を設定した環境で流す。
+  未設定だと単語登録フォームから「AI入力」導線が消えて `word-new.png` が劣化し、
+  `word-new-ai-button.png` は warn でスキップされる（既存画像は残るため気づきにくい）。
 - `--only <section>[,<section>]` でセクション単位の部分再撮影ができる
-  （セクション名はスクリプト内 `SECTIONS` を参照）。
+  （セクション名はスクリプト内 `SECTIONS` を参照）。`quiz` / `settings` / `bookmark` の
+  いずれかを含めると撮影用デッキ語（brisk 等）が作り直され、共有している dev DB 上の
+  進行中の定着モードは消える（ブックマークはスクリプトが自動で付け直す）。
 - 撮影内容はローカル DB の登録データに依存する。commit 前に画像を目視レビューし、
-  公開して問題ない内容かを確認すること。
+  公開して問題ない内容かを確認すること。特に部分再撮影では、意図した画面以外の画像に
+  被写体の欠落（ブックマークの塗り潰し・AI入力導線など）が出ていないかを差分で確認する。
 - 端末やフォントの差でピクセル単位の差分は出るため、完全一致は求めない
   （意味のある変更があったときのみ再生成・コミットする）。

@@ -29,6 +29,10 @@ import {
   importPronunciationAudio,
 } from "../src/lib/audio-import";
 import { defaultBlobClient } from "../src/lib/blob-client-impl";
+import {
+  BlobDriverMismatchError,
+  assertBlobDriverMatchesDatabase,
+} from "../src/lib/blob-driver-guard";
 
 /** `0004.mp3` / `0004_mean.mp3` を掲載番号と見出し語メモに分解する。 */
 const FILE_NAME_PATTERN = /^(\d+)(?:_(.+))?\.mp3$/i;
@@ -169,11 +173,15 @@ function createProgressPrinter(): (done: number, total: number) => void {
 
 async function runImport(
   prisma: PrismaClient,
+  connectionString: string,
   email: string | undefined,
   location: string,
   rows: AudioImportRow[],
   execute: boolean,
 ): Promise<AudioImportReport> {
+  // DB 接続先と Blob driver は別々に決まるため、実書き込みの直前に組み合わせを検査する
+  // （本番 DB × dev のローカルディスク driver で本番に /api/dev-blob/… を書く事故の防止）。
+  if (execute) assertBlobDriverMatchesDatabase(connectionString, defaultBlobClient);
   return importPronunciationAudio(
     prisma,
     defaultBlobClient,
@@ -202,6 +210,7 @@ function printOutcome(report: AudioImportReport): void {
 
 async function runWithArgs(
   prisma: PrismaClient,
+  connectionString: string,
   email: string | undefined,
   location: string,
   dirPath: string,
@@ -212,12 +221,12 @@ async function runWithArgs(
     process.exitCode = 1;
     return;
   }
-  const report = await runImport(prisma, email, location, rows, execute);
+  const report = await runImport(prisma, connectionString, email, location, rows, execute);
   printReport(report);
   printOutcome(report);
 }
 
-async function runInteractive(prisma: PrismaClient): Promise<void> {
+async function runInteractive(prisma: PrismaClient, connectionString: string): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     const emailRaw = (
@@ -244,7 +253,7 @@ async function runInteractive(prisma: PrismaClient): Promise<void> {
       return;
     }
 
-    const preview = await runImport(prisma, email, location, rows, false);
+    const preview = await runImport(prisma, connectionString, email, location, rows, false);
     console.log("");
     printReport(preview);
 
@@ -255,7 +264,7 @@ async function runInteractive(prisma: PrismaClient): Promise<void> {
       console.log("\n[dry-run] 変更はありません。");
       return;
     }
-    const report = await runImport(prisma, email, location, rows, true);
+    const report = await runImport(prisma, connectionString, email, location, rows, true);
     console.log("");
     printReport(report);
     printOutcome(report);
@@ -289,12 +298,12 @@ async function main() {
         console.error("対話モードには TTY が必要です。<location> <audioDir> を指定してください。");
         usage();
       }
-      await runInteractive(prisma);
+      await runInteractive(prisma, connectionString);
       return;
     }
     const [location, dirPath] = positional;
     if (!location || !dirPath) usage();
-    await runWithArgs(prisma, emailArg || undefined, location, dirPath, execute);
+    await runWithArgs(prisma, connectionString, emailArg || undefined, location, dirPath, execute);
   } catch (e) {
     if (e instanceof UserNotFoundByEmailError) {
       console.error(`ユーザーが見つかりません: ${e.email}`);
@@ -307,6 +316,18 @@ async function main() {
     if (e instanceof OccurrenceNotFoundError) {
       console.error(
         `掲載箇所「${e.location}」が見つかりません。先に db:import-words で単語を登録してください。`,
+      );
+      process.exit(1);
+    }
+    if (e instanceof BlobDriverMismatchError) {
+      console.error(
+        `中止: DB 接続先 (${e.databaseHost}) はリモートですが、Blob は dev のローカルディスク driver です。`,
+      );
+      console.error(
+        "  そのまま登録すると本番 DB に /api/dev-blob/… の URL（本番では 404）が入ります。",
+      );
+      console.error(
+        "  BLOB_READ_WRITE_TOKEN を設定してから再実行してください（vercel env pull では sensitive な値が空で落ちてくることがあります）。",
       );
       process.exit(1);
     }

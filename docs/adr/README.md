@@ -113,6 +113,9 @@
 | [0075](0075-audio-local-cache-and-prefetch.md) | SW cache-first で端末に保持 + 設定画面から一括プリフェッチ（掃除は manifest 差分） | 高 | — |
 | [0076](0076-audio-source-visual-distinction.md) | 発音ボタンは音源／自動音声をアイコン＋濃淡で区別（ラベル文字は変えない） | 高 | — |
 | [0078](0078-speech-text-normalization.md) | 自動音声は表示用の記号（装飾記法・チルダ・【…】）を落として読む | 高 | — |
+| [0079](0079-example-pronunciation-audio.md) | 例文にも発音音源を持たせ、TG 形式の発音ボタンは TG例文を鳴らす | 高 | — |
+| [0080](0080-audio-prefetch-grouping.md) | 一括プリフェッチは見出し語・関連語／例文のグループ別（Cache Storage は 1 つ・掃除は和集合） | 高 | — |
+| [0081](0081-speech-bracket-normalization.md) | 読み上げの括弧は意味で出し分け（`(…)` は中身を読む／`[…]` は中身ごと落とす） | 高 | — |
 
 ### G. 認証・デプロイ・運用
 

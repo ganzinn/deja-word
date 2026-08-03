@@ -23,7 +23,7 @@
 | [04-word-detail-example-playback.md](04-word-detail-example-playback.md) | 単語詳細の例文カード上部にメタ行を新設し発音ボタンを 1 つ置く | 01 | 完了（2026-08-04） | - |
 | [05-quiz-tg-example-audio.md](05-quiz-tg-example-audio.md) | TG 4 形式の発音ボタン・自動再生・プリロードの対象を TG例文へ差し替え（`QuestionBase.ttsText`） | 01 | 完了（2026-08-04） | - |
 | [06-audio-prefetch-grouping.md](06-audio-prefetch-grouping.md) | manifest をグループ別（`word` / `example`）にし、設定画面を 2 行構成へ。prune は和集合 | 01 | 完了（2026-08-04） | - |
-| [07-docs-and-adr.md](07-docs-and-adr.md) | naming-book・`docs/features/` 4 ページ更新、スクリーンショット再撮影、ADR 0079〜起票、設計ドキュメントの削除 | 01, 02, 03, 04, 05, 06 | 未着手 | - |
+| [07-docs-and-adr.md](07-docs-and-adr.md) | naming-book・`docs/features/` 4 ページ更新、スクリーンショット再撮影、ADR 0079〜起票、設計ドキュメントの削除 | 01, 02, 03, 04, 05, 06 | 実装中 | - |
 
 ### 01 と 02 の分割について（設計の着手順序ヒントとの差分）
 

@@ -37,6 +37,12 @@
 - **音源登録 UI は例文カードの例文テキスト直後に置き、`PronunciationAudioManager` を再利用する**。system 所有行では欄を出さず、未保存の新規行では「音源は保存してから追加できます。」を表示する。→ [03](03-audio-registration.md)
 - **`pronunciationAudioUrl` は `exampleSchema` に載せるが UI 表示専用**。`upsertExamples` は読み書きせず、音源 URL を書ける経路は専用 action のみ。→ [03](03-audio-registration.md)
 - **入力検証は既存の `validateAudioFile`（audio/mpeg 限定・空ファイル拒否・4MB 上限）をそのまま共有する**。例文用の別上限は設けない。→ [03](03-audio-registration.md)
+- **読み上げの括弧は意味で出し分ける。`(…)` は括弧記号だけ落として中身を読み、`[…]` は中身ごと落とす**。`A` / `B` / `do` / `doing` は落とさない。→ [04](04-speech-normalization.md)
+- **ペアが取れない括弧・ネストは「記号だけ落として中身は読む」に倒す**。`[…]` のペア除去 → 残存括弧記号の一律除去、の 2 段で実装する。→ [04](04-speech-normalization.md)
+- **括弧は半角・全角の両字形を対象とし、表示側 `TG_TEXT_PATTERN` にも全角括弧を足して同一チケットで揃える**。→ [04](04-speech-normalization.md)
+- **除去順序は「装飾記法 → `【…】` → `[…]` → 残存括弧記号 → プレースホルダ → 空白畳み込み」**。除去は空白 1 個への置換とする。→ [04](04-speech-normalization.md)
+- **括弧規則は `toSpokenText` の 1 箇所に足し、見出し語・関連語を含む読み上げ全経路に効かせる**。例文専用の分岐・引数は設けない。登録済み音源の再生は正規化を通らない。→ [04](04-speech-normalization.md)
+- **スラッシュ・引用符など括弧以外の記号は今回扱わない**（本番の英文データに 0 件）。→ [04](04-speech-normalization.md)
 
 ## トピック状態表
 
@@ -47,13 +53,13 @@
 | [01-requirements.md](01-requirements.md) | 確定 | 要求・ユースケース・スコープ外 |
 | [02-data-model.md](02-data-model.md) | 確定 | Example の音源カラム、削除 / orphan / manifest / purge の横断影響 |
 | [03-audio-registration.md](03-audio-registration.md) | 確定 | アップロード・削除の経路、AudioTarget 拡張、認可、blob の公開前提 |
-| [04-speech-normalization.md](04-speech-normalization.md) | 未着手 | 読み上げ時の括弧 (…) / […] の正規化 |
+| [04-speech-normalization.md](04-speech-normalization.md) | 確定 | 読み上げ時の括弧 (…) / […] の正規化 |
 | [05-ui-playback.md](05-ui-playback.md) | 未着手 | 単語詳細・単語テストの発音ボタン、TG 例文への差し替え、自動再生 / プリロード |
 | [06-architecture.md](06-architecture.md) | 未着手 | モジュール構成・データフロー・テスト戦略 |
 
-想定順序（残り）: 04 → 05 → 06。要求次第で入れ替え可。
+想定順序（残り）: 05 → 06。要求次第で入れ替え可。
 
-**次セッションの推奨トピック: 04（読み上げ時のテキスト正規化）**。引き継ぎ論点: (1) 01 でスコープに含めた括弧規則の詳細（`(…)` と `[…]` をそれぞれ読み飛ばすか読むか、種別ごとに変えるか）、(2) 正規化を適用する対象の範囲（TTS 読み上げのみか、既存の見出し語・関連語の読み上げにも及ぶか＝既存挙動の変更になるか）、(3) 正規化関数の置き場と純関数化（既存の読み上げ経路のどこに挟むか。テストしやすさの観点で unit テスト対象の純関数に切り出せるか）、(4) 例文特有の記号（省略記号・話者記号・引用符など）が括弧以外にもあるか。
+**次セッションの推奨トピック: 05（UI・再生挙動）**。引き継ぎ論点: (1) 単語詳細の例文行への発音ボタンの置き方（種別ごとの見せ方・レイアウト・ADR-0076 の描き分け）、(2) 単語テスト TG 形式での差し替え箇所（`quiz-flow.tsx` の promptView / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx`）と自動再生・プリロードを TG例文へ揃えるか、(3) 音源も TTS も使えないときの表示（非表示 / 無効化）、(4) 設定画面の「発音音源のダウンロード」をグループ別（見出し語・関連語 / 例文）にどう見せるか、「端末から削除」もグループ別にするか。
 
 ## セッション運用ルール
 

@@ -16,6 +16,8 @@
 - 入口は `words/[id]/edit/actions.ts` への action 2 本追加で、route handler は新設しない（03 確定）。
 - 音源の登録 UI は例文カードの例文テキスト直後に `PronunciationAudioManager` を再利用して置く（03 確定）。
 - `exampleSchema` に `pronunciationAudioUrl` を足すが UI 表示専用で、`upsertExamples` は読み書きしない（03 確定）。
+- 読み上げ正規化の括弧規則は `toSpokenText`（`src/lib/speech.ts`）1 箇所への追加で、除去順序は「装飾記法 → `【…】` → `[…]` → 残存括弧記号 → プレースホルダ → 空白畳み込み」（04 確定）。既存テスト `speech.unit.test.ts` の期待値 `suggest (to ) that` は更新対象。
+- 括弧は半角・全角の両字形が対象で、表示側 `TG_TEXT_PATTERN`（`src/components/tg-example-text.tsx`）にも全角括弧を足して同一チケットで揃える（04 確定）。表示変更を伴うため `docs/features/` の再撮影要否を棚卸しする。
 
 ## 検討事項リスト
 

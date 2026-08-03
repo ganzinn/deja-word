@@ -50,6 +50,14 @@
 - **自動再生・プリロードも TG例文に揃える**。日→英での出題時早期 return（解答漏れ防止）は維持する。→ [05](05-ui-playback.md)
 - **ダミー選択肢には音源・読み上げを持たせない**（既存の「正解選択肢のみ」を踏襲）。→ [05](05-ui-playback.md)
 - **設定画面は 1 セクション内にグループ別 2 行を並べ、「端末から削除」は共通 1 つのまま**。同時ダウンロードはしない。→ [05](05-ui-playback.md)
+- **`QuestionBase` に `ttsText` を足し、`questionBaseOf(word, format)` が形式で組を選ぶ**。`pronunciationAudioUrl` の意味は「この問題の発音ボタンが鳴らす音源」に再定義する。→ [06](06-architecture.md)
+- **単語詳細のデータ取得（`words-detail.ts`）は変更しない**（examples は `include` 取得のため列が自動的に載る）。→ [06](06-architecture.md)
+- **manifest はグループキー `word` / `example` を持つオブジェクトを返し、常に両グループを返す**。prune の和集合はクライアント側で作る。→ [06](06-architecture.md)
+- **新規モジュールは作らず既存ファイルの拡張に閉じる**（新規作成はマイグレーションのみ）。`AudioPlayButton` / `PronunciationAudioManager` は無改造で再利用。→ [06](06-architecture.md)
+- **テストは既存ファイルへのケース追加を基本とし、E2E は `e2e:audio-prefetch` のみ追随する**（`e2e:audio-cache` は変更なし、コンポーネントテストは新設しない）。→ [06](06-architecture.md)
+- **`docs/features/` は 4 ページを更新し、再撮影は `--only words,settings` を必須とする**。`ensureDemoAudio` は一部の例文にだけ音源を付ける。→ [06](06-architecture.md)
+- **naming-book は既存 5 エントリを修正し、読み上げ正規化・音源グループの 2 エントリを追加する**。→ [06](06-architecture.md)
+- **ADR は実装後に 0079 から起票する**（例文の発音音源／プリフェッチのグループ分け／括弧の読み上げ正規化。いずれも既存 ADR の追補で supersede しない）。→ [06](06-architecture.md)
 
 ## トピック状態表
 
@@ -62,11 +70,90 @@
 | [03-audio-registration.md](03-audio-registration.md) | 確定 | アップロード・削除の経路、AudioTarget 拡張、認可、blob の公開前提 |
 | [04-speech-normalization.md](04-speech-normalization.md) | 確定 | 読み上げ時の括弧 (…) / […] の正規化 |
 | [05-ui-playback.md](05-ui-playback.md) | 確定 | 単語詳細・単語テストの発音ボタン、TG 例文への差し替え、自動再生 / プリロード |
-| [06-architecture.md](06-architecture.md) | 未着手 | モジュール構成・データフロー・テスト戦略 |
+| [06-architecture.md](06-architecture.md) | 確定 | モジュール構成・データフロー・テスト戦略 |
 
-想定順序（残り）: 06。
+**全トピック確定（2026-08-04）。設計は完了しており、次は下記「実装への引き継ぎ」をもとに ticket-split スキルでチケット分割する。**
 
-**次セッションの推奨トピック: 06（アーキテクチャ・テスト戦略）**。これが設計最終セッションで、確定後はハブに「実装への引き継ぎ」を追記して閉じる。引き継ぎ論点: (1) quiz のデータフロー（`quiz-source.ts` の TG例文クエリ → `TgExampleRow` → `QuizWord.tgExample` → `questionBaseOf` → `payload.ts`）に音源 URL と読み上げテキストの組をどう載せるか（05 決定 4 のフィールド名・型）、(2) `pronunciation-audio.ts` 以外のモジュール配置と共有コンポーネントの切り出し単位、(3) テスト戦略（unit / integration の割り当て、既存 E2E `pnpm e2e:audio-cache` / `e2e:audio-prefetch` のグループ分けへの追随、`speech.unit.test.ts` の期待値更新）、(4) `docs/features/` の更新対象とスクリーンショット再撮影の要否（`scripts/e2e/db.ts` の `ensureDemoAudio` は現在 Meaning / RelatedWord のみ）、(5) naming-book への用語追加と実装後に起票する ADR の候補。
+## 実装への引き継ぎ
+
+### 変更対象の一覧
+
+**スキーマ・マイグレーション**
+
+- `prisma/schema.prisma` の `Example` に `pronunciationAudioUrl String? @map("pronunciation_audio_url")` を追加（index なし、既存行は NULL 開始で backfill 不要）。
+
+**新規ファイル**
+
+- マイグレーションのみ。ロジックの新規モジュールは作らない（→ [06 決定 4](06-architecture.md)）。
+
+**既存ファイルの変更（サーバー・ロジック）**
+
+| ファイル | 内容 |
+| --- | --- |
+| `src/lib/pronunciation-audio.ts` | `exampleTarget` ディスクリプタ、公開 API 2 本、`ExampleNotFoundError`。共通コアは無改造 |
+| `src/app/words/[id]/edit/actions.ts` | `uploadExampleAudio` / `deleteExampleAudio` と `mapAudioError` の分岐追加 |
+| `src/lib/schema/word-form.ts` | `exampleSchema` に `pronunciationAudioUrl`（表示専用）、`wordDetailToFormValues` のマッピング |
+| `src/lib/speech.ts` | 括弧の読み上げ正規化 |
+| `src/lib/audio-manifest.ts` | グループ別（`word` / `example`）の URL・件数 |
+| `src/lib/audio-cache.ts` | グループ別 URL から prune 用の和集合を作る純関数 |
+| `src/app/api/audio/manifest/route.ts` | グループ別レスポンス |
+| `src/lib/quiz/queries/quiz-source.ts` / `generation/material.ts` / `payload.ts` ＋ ビルダー 10 本 | TG例文の音源 URL、`QuestionBase.ttsText`、`questionBaseOf(word, format)` |
+| `src/lib/words-delete.ts` / `words-update.ts` / `admin-user-delete.ts` / `occurrence-purge.ts` / `blob-purge.ts` | 音源 URL 収集に Example を追加 |
+| `src/lib/words-detail.ts` | **変更不要**（`include` 取得のため列が自動的に載る） |
+| `src/lib/audio-import.ts`（`db:import-audio`） | **変更不要**（見出し語・関連語のまま） |
+
+**既存ファイルの変更（UI）**
+
+| ファイル | 内容 |
+| --- | --- |
+| `src/app/words/new/_components/examples-fields.tsx` | 例文テキスト直後に音源登録 UI（`PronunciationAudioManager` 再利用） |
+| `src/components/word-detail-view.tsx` | 例文カード上部にメタ行を新設し `AudioPlayButton` を 1 つ |
+| `src/components/tg-example-text.tsx` | `TG_TEXT_PATTERN` に全角括弧 |
+| `src/app/quiz/_components/quiz-flow.tsx` / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx` | `ttsText={question.ttsText}` を渡す（形式分岐なし）。`quiz-flow.tsx` は自動再生・プリロードの対象も差し替え |
+| `src/app/settings/general/_components/audio-prefetch-section.tsx` | グループ別 2 行、削除は共通 1 つ |
+| `src/components/audio-play-button.tsx` / `pronunciation-audio-manager.tsx` | **変更不要**（無改造で再利用） |
+
+**ドキュメント・運用**
+
+- `docs/reference/naming-book.md`（既存 5 エントリ修正＋新規 2 エントリ）
+- `docs/features/` 4 ページ（README / word-management / word-quiz / settings）＋ `pnpm e2e:capture-docs --only words,settings`
+- `scripts/e2e/db.ts` の `ensureDemoAudio` に Example への音源付与（一部のみ）
+- `scripts/e2e/verify-audio-prefetch.ts` をグループ別 UI に追随
+- ADR 起票（実装後、0079 から）
+
+### 着手順序のヒント
+
+依存方向は「共有基盤 → 機能」。並行実装で競合しやすい共有物を先に確定させる。
+
+1. **スキーマ ＋ 音源の登録・削除・クリーンアップ経路**（02・03）。`Example.pronunciationAudioUrl` の追加と、`pronunciation-audio.ts` / action / フォーム UI / 削除・orphan の 5 経路（`words-delete` / `words-update` の orphan / `admin-user-delete` / `occurrence-purge` / `blob-purge`）までを**同一チケット**にまとめる（02 確定：カラム追加と削除経路を分けると、音源が登録できるのに消えない期間が生まれる）。6 経路目の `audio-manifest` は削除経路ではないので 5 に回す。
+2. **読み上げ正規化**（04）。`speech.ts` と `tg-example-text.tsx` のみで、1 とは独立。並行可。
+3. **単語詳細の再生 UI**（05 決定 1・2）。1 のカラムに依存。
+4. **quiz の TG例文差し替え**（05 決定 3〜6 ／ 06 決定 1）。1 のカラムに依存。2 とは独立だが、TG例文の読み上げ品質は 2 に依存するので後の方がよい。
+5. **一括プリフェッチのグループ分け**（02 ／ 05 決定 7 ／ 06 決定 3）。1 のカラムに依存。`audio-manifest.ts` / `audio-cache.ts` / 設定 UI / E2E をまとめる。
+6. **ドキュメント・スクリーンショット**（06 決定 6・7）。3〜5 の完了後。ADR 起票は最後。
+
+競合しやすい共有物: `src/lib/pronunciation-audio.ts`（1 のみが触る）、`src/lib/audio-manifest.ts`（5 のみ）、`src/lib/schema/word-form.ts`（1 のみ）、`quiz` の payload 型（4 のみ）。上記の分割ならチケット間でファイルが重ならない。
+
+### テスト戦略の要点（チケットの完了条件に転記できる粒度）
+
+- **unit**（`pnpm test:unit`、DB なし）
+  - `speech.unit.test.ts`: 括弧規則 6 ケース（丸括弧は中身を読む／角括弧は中身ごと落とす／ペア不一致／全角／丸括弧内の角括弧／`A`・`B`・`do`・`doing` を落とさない）。既存の `suggest (to ) that` を `suggest to that` に更新。
+  - `pronunciation-audio.unit.test.ts`: example ターゲットの blob パス・owner 本人可・他人不可・一般ユーザーは SYSTEM 行不可・不存在は `ExampleNotFoundError`・delete。
+  - TG ビルダー 4 本の unit テスト: `pronunciationAudioUrl` / `ttsText` が TG例文の値になる。非 TG ビルダーは見出し語のまま。
+  - `audio-cache.unit.test.ts`: 片方のグループだけダウンロードしても、もう一方の URL が stale と判定されない。
+- **integration**（`pnpm test:integration`、`dejaword_test`）
+  - `pronunciation-audio.integration.test.ts`: example の upload → 差し替え → 削除で DB と blob が追随／Word 削除・編集の orphan 削除で blob が消える／認可 3 ケース。
+  - `audio-manifest.integration.test.ts`: グループ別の URL・件数、他人の音源が混ざらない、system の音源は入る。
+  - `words-update.integration.test.ts`: フォームから消えた例文の音源が orphan として削除される。
+  - `occurrence-purge` / `blob-purge` の既存テスト: 例文の音源も収集・削除対象。
+- **E2E**
+  - `pnpm e2e:audio-prefetch`: グループ別 2 行の件数・ダウンロード・prune・削除。
+  - `pnpm e2e:audio-cache`: 変更しない。
+- **新設しないもの**: Server Action 層のテスト、コンポーネントテスト（→ [06 決定 5](06-architecture.md)）。
+
+### チケット分割
+
+チケットは ticket-split スキルで `docs/plan/example-audio/` に生成する（形式・優先順位・依存関係の記載は ticket-split 側で定義）。本ハブの「確定事項サマリ」と本セクションだけで分割を開始できる。詳細が必要な場合のみ各トピックの「決定 N」を参照する。
 
 ## セッション運用ルール
 

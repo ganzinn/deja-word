@@ -2,14 +2,22 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import { del, put } from "@vercel/blob";
 
 import {
   type BlobClient,
   createLocalDiskBlobClient,
   DEV_BLOB_URL_PREFIX,
   resolveDevBlobPath,
+  vercelBlobClient,
 } from "@/lib/blob-client";
+
+vi.mock("@vercel/blob", () => ({
+  put: vi.fn(async () => ({ url: "https://example.public.blob.vercel-storage.com/x.mp3" })),
+  del: vi.fn(async () => undefined),
+}));
 
 function keyFromUrl(url: string): string {
   return decodeURIComponent(url.slice(DEV_BLOB_URL_PREFIX.length));
@@ -70,5 +78,40 @@ describe("createLocalDiskBlobClient", () => {
   test("resolveDevBlobPath は root 外への脱出を弾く", () => {
     expect(resolveDevBlobPath("../escape.mp3", tmpRoot)).toBeNull();
     expect(resolveDevBlobPath("audio/ok.mp3", tmpRoot)).not.toBeNull();
+  });
+});
+
+// `@vercel/blob` の資格情報解決は options.token > env の VERCEL_OIDC_TOKEN > env の
+// BLOB_READ_WRITE_TOKEN の順。`vercel env pull` が書き出す development スコープの OIDC
+// トークンに rw トークンが負けないよう、常に options.token に載せていることを固定する。
+describe("vercelBlobClient", () => {
+  const originalToken = process.env.BLOB_READ_WRITE_TOKEN;
+  const BLOB_URL = "https://example.public.blob.vercel-storage.com/x.mp3";
+
+  afterEach(() => {
+    if (originalToken === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;
+    else process.env.BLOB_READ_WRITE_TOKEN = originalToken;
+    vi.mocked(put).mockClear();
+    vi.mocked(del).mockClear();
+  });
+
+  test("put / del は rw トークンを明示的に渡す", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
+
+    await vercelBlobClient.put("audio/x.mp3", new Blob([new Uint8Array([1])]));
+    expect(vi.mocked(put).mock.calls[0]?.[2]).toMatchObject({ token: "vercel_blob_rw_test" });
+
+    await vercelBlobClient.del(BLOB_URL);
+    expect(vi.mocked(del).mock.calls[0]).toEqual([BLOB_URL, { token: "vercel_blob_rw_test" }]);
+  });
+
+  test("トークンが空 / 未設定なら undefined を渡し、env 解決（Vercel 上の OIDC）に委ねる", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "";
+    await vercelBlobClient.del(BLOB_URL);
+    expect(vi.mocked(del).mock.calls[0]).toEqual([BLOB_URL, { token: undefined }]);
+
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    await vercelBlobClient.del(BLOB_URL);
+    expect(vi.mocked(del).mock.calls[1]).toEqual([BLOB_URL, { token: undefined }]);
   });
 });

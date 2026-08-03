@@ -24,6 +24,7 @@ pnpm db:purge-blobs --execute   # 実削除
 | `scripts/purge-blobs.ts` | CLI（dotenv + PrismaPg、ドライラン/`--execute`、件数レポート） |
 | `src/lib/blob-purge.ts` | コアロジック（prisma / blob を引数注入、`server-only` 非依存） |
 | `src/lib/blob-client-impl.ts` | Blob ドライバ選択の実体（本番=Vercel Blob / dev=ディスク）。スクリプトはここを直接 import |
+| `src/lib/blob-driver-guard.ts` | 「リモート DB × ローカルディスク driver」の組み合わせ検出（`--execute` の直前に実行） |
 
 接続先は `DIRECT_URL → DATABASE_URL_UNPOOLED → DATABASE_URL` の順で解決する。Blob ドライバは「`NODE_ENV=production` もしくは `BLOB_READ_WRITE_TOKEN` あり → Vercel Blob、それ以外 → ローカルディスク（`.dev-blob/`）」で選ばれる。
 
@@ -57,7 +58,19 @@ docker exec deja-word-db psql -U dejaword -d dejaword -c \
 
 本スクリプトは**全件削除**のため、本番で安易に使わない。本番で特定の単語セットを撤去したい場合は掲載箇所単位の [`purge-occurrence`](./purge-occurrence.md) を使うこと。どうしても本番 Blob を全削除する場合は、`DIRECT_URL`（直結）と `BLOB_READ_WRITE_TOKEN`（実 Vercel Blob 経路にするため必須）を設定し、必ずドライランで件数を確認してから実行する。
 
+> ⚠️ **`vercel env pull` は `BLOB_READ_WRITE_TOKEN` を空文字で書き出すことがある**（Vercel 側で sensitive 扱いの値は pull で復元されない）。空のまま実行すると driver 選択が「`NODE_ENV != production` かつトークン無し → **ローカルディスク**」に倒れ、**DB は本番・Blob はローカル**という組み合わせが成立する。ローカルディスク driver の `del` は `/api/dev-blob/` 以外の URL を**黙って無視する**（他 driver 由来の URL を消さないための仕様）ため、本番 Blob が 1 件も消えていないのに `発音音源(Blob): N` → `✓ Blob を削除しました。` と**成功したように見える**。
+>
+> 現在は `--execute` 時に **リモート DB × ローカルディスク driver を検出して中止する**ガード（`src/lib/blob-driver-guard.ts`）が入っている。中止メッセージが出たらトークンを入れ直すこと。**ドライランは従来どおり通る**（Blob を触らないため）。
+>
+> 同じ罠で `db:import-audio` が本番 DB に dev URL を 1900 件書き込む事故が 2026-08-03 に起きている。経緯は [import-audio](./import-audio.md#本番neon--vercel-blobでの手順) を参照。
+
 ```sh
+pnpm exec vercel env pull .env.production.local --environment=production
+
+# BLOB_READ_WRITE_TOKEN が空でないことを必ず確認する（空ならダッシュボードの
+# Storage → Blob store → Tokens から取得して .env.production.local に手で入れる）
+grep -c '^BLOB_READ_WRITE_TOKEN=".\+"' .env.production.local   # → 1 であること
+
 pnpm dotenv -e .env.production.local -- pnpm db:purge-blobs            # 本番ドライラン
 pnpm dotenv -e .env.production.local -- pnpm db:purge-blobs --execute  # 本番実削除
 ```

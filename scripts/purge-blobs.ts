@@ -8,6 +8,10 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { defaultBlobClient } from "../src/lib/blob-client-impl";
+import {
+  BlobDriverMismatchError,
+  assertBlobDriverMatchesDatabase,
+} from "../src/lib/blob-driver-guard";
 import { purgeAllAudioBlobs } from "../src/lib/blob-purge";
 
 async function main() {
@@ -25,6 +29,10 @@ async function main() {
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
+    // DB 接続先と Blob driver は別々に決まるため、実削除の直前に組み合わせを検査する。
+    // ローカルディスク driver の del は `/api/dev-blob/` 以外の URL を黙って無視するので、
+    // このまま走ると「1 件も消えていないのに成功表示」という静かな失敗になる。
+    if (execute) assertBlobDriverMatchesDatabase(connectionString, defaultBlobClient);
     const report = await purgeAllAudioBlobs(prisma, defaultBlobClient, { dryRun: !execute });
     console.log(`発音音源(Blob): ${report.audioFiles}`);
     if (report.executed) {
@@ -40,6 +48,19 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err instanceof BlobDriverMismatchError) {
+    console.error(
+      `中止: DB 接続先 (${err.databaseHost}) はリモートですが、Blob は dev のローカルディスク driver です。`,
+    );
+    console.error(
+      "  この driver の del は /api/dev-blob/ 以外の URL を無視するため、そのまま実行すると",
+    );
+    console.error("  Blob が 1 件も消えないまま「✓ 削除しました」と表示されます。");
+    console.error(
+      "  BLOB_READ_WRITE_TOKEN を設定してから再実行してください（vercel env pull では sensitive な値が空で落ちてくることがあります）。",
+    );
+    process.exit(1);
+  }
   console.error(err);
   process.exit(1);
 });

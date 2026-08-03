@@ -39,7 +39,11 @@
 | `[…]` の読み | 中身ごと落とす |
 | `A` / `B` / `do` / `doing` | 落とさない（英語として読む） |
 
-## チケット（1 チケット = 1 PR）
+## チケット
+
+**PR は全チケットまとめて 1 本**（機能として一体で、T1 だけ入っても画面からは何も変わらないため）。
+ただし**チケット単位でエージェントを分ける**（1 エージェント = 1 チケット）。コンテキスト肥大化を防ぎ、
+各エージェントが自分の担当範囲だけを読んで作業できるようにするため。
 
 ### T1. 例文に発音音源を持たせる（基盤）
 
@@ -103,9 +107,10 @@
   被写体が足りなければ `scripts/e2e/db.ts` に冪等 seed を足す）
 - `docs/reference/naming-book.md` — `pronunciationAudioUrl` の説明に Example を追加
 
-## 並行実行
+## 進め方（エージェント分割と並行実行）
 
-依存は「`Example.pronunciationAudioUrl` の Prisma 型があるか」だけで決まる。
+全チケットを 1 本のフィーチャーブランチ（`feat/example-audio`）に積み、最後に 1 PR にする。
+チケット間の依存は「`Example.pronunciationAudioUrl` の Prisma 型があるか」だけで決まる。
 
 ```
 T1 基盤 ──┬──▶ T2a 単語詳細の発音ボタン ─┐
@@ -116,11 +121,22 @@ T2b 括弧の読み上げ正規化 ───────────────
 
 - **T1 と T2b は最初から並行できる**。T2b は `src/lib/speech.ts` と `speech.unit.test.ts` だけで、
   DB も Prisma 型も触らない
-- **T2a と T3 は T1 のマージ後に並行できる**。触るファイルが分かれている
+- **T2a と T3 は T1 の完了後に並行できる**。触るファイルが分かれている
   （T2a = `word-detail-view.tsx` / T3 = `src/lib/quiz/**`・`src/app/quiz/_components/**`）
 - T2a / T3 を T1 より前に始めると、列が無いため型エラーで進まない
-- **worktree を使う場合**: DB は単一 `dejaword` を共有する（[ADR-0054](../../adr/0054-worktree-shared-db-blob.md)）。
-  migration を打つのは T1 だけなので、T1 マージ後に他レーンの worktree で `pnpm db:migrate` を回す
+- T4 は T2・T3 の画面が出来てから（スクリーンショットを撮るため）
+
+並行させる場合の注意:
+
+- 同時に編集するレーンは worktree で分ける。**PR は 1 本なので、各レーンの成果は
+  `feat/example-audio` へローカルで merge して集約する**（レーンごとに PR は作らない）。
+  上の依存グラフどおりに走らせればファイルが重ならないため、merge は衝突しない
+- DB は全 worktree で単一 `dejaword` を共有する（[ADR-0054](../../adr/0054-worktree-shared-db-blob.md)）。
+  migration を打つのは T1 だけなので、T1 の migration が入った後に他レーンで `pnpm db:migrate` を回す
+- 発音音源の実体（`.dev-blob/`）も共有する。worktree の `.env` に `DEV_BLOB_ROOT` が入っていることを
+  確認する（`scripts/wt-new.sh` が付ける）
+- 並行が煩雑なら**チケット順に 1 つずつエージェントを立てて直列に進めてもよい**。
+  エージェントを分ける主目的はコンテキスト分離であって、短縮ではない
 
 ## 検証
 

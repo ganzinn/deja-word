@@ -90,21 +90,29 @@ export function AudioPrefetchSection({ totalCounts }: Props) {
 
   useEffect(() => {
     let active = true;
+    const cacheSupported = isAudioCacheSupported();
+
     // 未対応環境では listCachedAudioUrls() が空配列を返す。判定と件数取得を同じ非同期の
     // 折り返しで行い、エフェクト本体からの同期 setState を避ける。
-    // manifest も併せて読むのは、グループ別の「端末に保存済み」件数が
-    // 「キャッシュ済み URL ∩ そのグループの URL」でしか出せないため（対象件数はサーバから来る）。
     void (async () => {
-      const cacheSupported = isAudioCacheSupported();
-      const [urls, groups] = await Promise.all([
-        listCachedAudioUrls(),
-        cacheSupported ? fetchAudioManifest() : Promise.resolve(null),
-      ]);
+      const urls = await listCachedAudioUrls();
       if (!active) return;
       setSupported(cacheSupported);
       setCachedUrls(urls);
-      setManifest(groups);
     })();
+
+    // manifest を読むのは、グループ別の「端末に保存済み」件数が「キャッシュ済み URL ∩
+    // そのグループの URL」でしか出せないため（対象件数はサーバから来る）。本番想定 1,900 件強で
+    // 遅いことがあるため、上の対応判定とは別の非同期にしてセクションの描画をブロックさせない
+    // （待っている間は保存済み件数だけが `…`。issue #179）。
+    if (cacheSupported) {
+      void (async () => {
+        const groups = await fetchAudioManifest();
+        if (!active) return;
+        setManifest(groups);
+      })();
+    }
+
     return () => {
       active = false;
     };
@@ -183,7 +191,10 @@ export function AudioPrefetchSection({ totalCounts }: Props) {
   const percent = progress && progress.total > 0 ? (processed / progress.total) * 100 : 0;
 
   const cached = cachedUrls === null ? null : new Set(cachedUrls);
-  /** 「端末に保存済み」件数（キャッシュ済み URL ∩ そのグループの URL）。判定前は null。 */
+  /**
+   * 「端末に保存済み」件数（キャッシュ済み URL ∩ そのグループの URL）。
+   * manifest 到着前（と取得失敗時）は null で、行には `…` が出る。
+   */
   function savedCount(group: AudioGroup): number | null {
     if (!cached || !manifest) return null;
     return manifest[group].filter((url) => cached.has(url)).length;

@@ -574,8 +574,8 @@ async function main(): Promise<void> {
       // 開始画面・設定画面が「未設定／未選択」で写らないよう、デフォルト設定
       // （掲載箇所 = デッキ、出題形式 = 四択）を確定させる（撮影の再現性を DB 状態に依存させない）。
       await ensureQuizDefaultsForDocs(prisma, TEST_USER1_EMAIL, deck.occurrenceId);
-    }
-    if (needsBookmark) {
+      // デッキ語の作り直しで Bookmark は cascade で消える。bookmark セクションを含まない部分実行
+      // （例: --only words,settings）でもブックマークが被写体から欠けないよう、常に付け直す。
       await ensureQuizDeckBookmarks(prisma, TEST_USER1_EMAIL);
     }
     if (needsAdmin) {

@@ -397,7 +397,9 @@ const BOOKMARKED_DECK_HEADWORDS = ["brisk", "remote", "gaze"];
 
 /**
  * ブックマーク機能の撮影用に、quiz デッキの一部の単語へ本人のブックマークを冪等に付ける。
- * ensureQuizDeck がデッキ語を作り直す（＝旧 Bookmark 行は cascade で消える）ため、必ずその後に呼ぶ。
+ * ensureQuizDeck がデッキ語を作り直す（＝旧 Bookmark 行は cascade で消える）ため、
+ * **ensureQuizDeck を呼んだら撮影セクションに関わらず必ずセットで直後に呼ぶ**
+ * （ブックマークは単語一覧など bookmark 以外のセクションにも被写体として写るため）。
  */
 export async function ensureQuizDeckBookmarks(
   prisma: PrismaClientType,

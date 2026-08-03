@@ -18,16 +18,30 @@ export interface BlobClient {
   del(url: string | string[]): Promise<void>;
 }
 
+/**
+ * rw トークンを**明示的に**渡すために読む（環境変数任せにしない）。`@vercel/blob` の
+ * 資格情報解決は `options.token` → env の `VERCEL_OIDC_TOKEN`(+`BLOB_STORE_ID`) →
+ * env の `BLOB_READ_WRITE_TOKEN` の順で、`vercel env pull` が書き出す **development
+ * スコープの OIDC トークンが rw トークンを押しのける**。本番リソースに向けて手元から
+ * 運用スクリプトを走らせると全操作が "OIDC is enabled for this project, but not for
+ * the development environment." で失敗するため、最優先の `options.token` に載せる。
+ * 未設定なら `undefined` を渡し、従来どおり env 解決に委ねる（Vercel 上の OIDC 運用は不変）。
+ */
+function readWriteToken(): string | undefined {
+  return process.env.BLOB_READ_WRITE_TOKEN || undefined;
+}
+
 export const vercelBlobClient: BlobClient = {
   async put(pathname, body) {
     const { url } = await put(pathname, body, {
       access: "public",
       addRandomSuffix: true,
+      token: readWriteToken(),
     });
     return { url };
   },
   async del(url) {
-    await del(url);
+    await del(url, { token: readWriteToken() });
   },
 };
 

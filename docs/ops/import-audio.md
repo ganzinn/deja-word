@@ -91,13 +91,13 @@ curl -s -o /tmp/a.mp3 -w '%{http_code} %{content_type}\n' "http://localhost:3000
 >
 > 現在は `db:import-audio` の `--execute` 時に **リモート DB × ローカルディスク driver を検出して中止する**ガード（`src/lib/blob-driver-guard.ts`）が入っている。中止メッセージが出たらトークンを入れ直すこと。
 
-> ⚠️ **`vercel env pull` が書き出す `VERCEL_OIDC_TOKEN` は development スコープ**で、`@vercel/blob` はこれを `BLOB_READ_WRITE_TOKEN` より優先する。残したまま実登録すると全件が次のエラーで失敗する（DB も Blob も無変更なので害は無いが 1 件も入らない）。
+> 📝 `vercel env pull` が書き出す `VERCEL_OIDC_TOKEN` は **development スコープ**で、`@vercel/blob` の資格情報解決はこれを env の `BLOB_READ_WRITE_TOKEN` より優先する。かつては全件が次のエラーで失敗していた（DB も Blob も無変更なので害は無いが 1 件も入らない）。
 >
 > ```text
 > Vercel Blob: OIDC is enabled for this project, but not for the "development" environment.
 > ```
 >
-> `.env.production.local` の `VERCEL_OIDC_TOKEN=` の行を**コメントアウトしてから**実行する。
+> 現在は `vercelBlobClient`（`src/lib/blob-client-impl.ts`）が rw トークンを**最優先の `options.token` で明示的に渡す**ため OIDC トークンは参照されない。`.env.production.local` の `VERCEL_OIDC_TOKEN=` をコメントアウトする回避策はもう不要。
 
 ```sh
 pnpm exec vercel env pull .env.production.local --environment=production  # DB 接続情報を取得
@@ -105,9 +105,6 @@ pnpm exec vercel env pull .env.production.local --environment=production  # DB �
 # BLOB_READ_WRITE_TOKEN が空でないことを必ず確認する（空ならダッシュボードの
 # Storage → Blob store → Tokens から取得して .env.production.local に手で入れる）
 grep -c '^BLOB_READ_WRITE_TOKEN=".\+"' .env.production.local   # → 1 であること
-
-# development スコープの OIDC トークンを無効化する（@vercel/blob が rw トークンより優先するため）
-sed -i '' 's/^VERCEL_OIDC_TOKEN=/#VERCEL_OIDC_TOKEN=/' .env.production.local
 
 # dry-run（無変更・件数とメモ不一致の確認）
 pnpm dotenv -e .env.production.local -- pnpm db:import-audio "英単語ターゲット1900(6訂版)" tmp/1900_split/EN

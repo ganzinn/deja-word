@@ -10,6 +10,8 @@
  * 2. ブラウザの Web Speech API（speechSynthesis）。
  */
 
+import { stripRichTextMarkup } from "@/lib/rich-text";
+
 /**
  * Android アプリ側（TtsBridge.kt）が注入するブリッジ。契約を変える場合は
  * アプリの再ビルド・再配布が必要（docs/ops/android-webview.md）。
@@ -79,11 +81,39 @@ function installNativeDispatcher(): void {
   };
 }
 
+/** 地域ラベル等の注記（`【米】check`）。英語として読ませたい語ではないので中身ごと落とす。 */
+const ANNOTATION_PATTERN = /【[^】]*】/g;
+
+/** 「ここに語が入る」プレースホルダのチルダ（`so that ~`）。3 つの字形すべてを対象にする。 */
+const PLACEHOLDER_PATTERN = /[~〜～]/g;
+
+/**
+ * 読み上げ用テキストへ正規化する（docs/adr/0078-speech-text-normalization.md）。
+ * 表示のための記号を落とし、語だけを残す。
+ */
+export function toSpokenText(raw: string): string {
+  return stripRichTextMarkup(raw)
+    .replace(ANNOTATION_PATTERN, " ")
+    .replace(PLACEHOLDER_PATTERN, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * 英語（en-US）として `text` を読み上げる。実行中の発話は cancel してから話す
  * （複数ボタンが同時に鳴らないようにする）。非対応時は何もせず onEnd を呼ぶ。
+ *
+ * 表示用の記号（装飾記法・プレースホルダ・注記）は `toSpokenText` でここで落とす。
+ * 記号の扱いは合成エンジン任せ（読み上げる／区切りになる）でネイティブとブラウザで揃わないため、
+ * 読み上げの一本道であるこの関数で正規化し、呼び出し側が気をつけなくて済むようにする。
  */
-export function speakEnglish(text: string, handlers?: SpeakHandlers): void {
+export function speakEnglish(rawText: string, handlers?: SpeakHandlers): void {
+  const text = toSpokenText(rawText);
+  // 記号だけの文字列は読む語が残らない。無音の発話を投げず、完了として扱う。
+  if (text.length === 0) {
+    handlers?.onEnd?.();
+    return;
+  }
   const bridge = nativeBridge();
   if (bridge) {
     installNativeDispatcher();

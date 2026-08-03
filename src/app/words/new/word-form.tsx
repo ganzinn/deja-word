@@ -24,6 +24,7 @@ import { MeaningsFields } from "./_components/meanings-fields";
 import { MemosFields } from "./_components/memos-fields";
 import { OccurrencesFields } from "./_components/occurrences-fields";
 import { RelatedWordsFields } from "./_components/related-words-fields";
+import { RichTextHelp } from "./_components/rich-text-help";
 import { WordFormPermissionsProvider } from "./_components/word-form-permissions-context";
 
 type WordFormProps = {
@@ -92,6 +93,8 @@ export function WordForm({
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-28 md:max-w-2xl">
       <ScreenHeader backHref={backHref} title={title} />
+
+      <RichTextHelp />
 
       <Form {...form}>
         <WordFormPermissionsProvider value={{ isCurrentUserSystem }}>

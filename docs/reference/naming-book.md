@@ -141,6 +141,14 @@
 - 混同注意: 「お気に入り」「スター」「フラグ」は使わない。quiz の定着マイルストーンは「定着」（→ 1-4）で、ブックマークとは無関係。
 - 出典: prisma/schema.prisma:483
 
+#### 装飾記法（rich text markup）
+
+- 英語名: `rich text markup`（実装は `src/lib/rich-text.ts` / `src/components/rich-text.tsx`）
+- 日本語名: 装飾記法
+- 定義: 文章系フィールドの本文中に書ける Markdown 風の囲み記号（`**太字**` / `*斜体*` / `***太字の斜体***` / `==赤==` / `__青下線__`）。DB には打った文字列がそのまま入り、描画時に解釈される（設計: docs/adr/0077-rich-text-markup.md）。
+- 混同注意: 「マークダウン」とは呼ばない（見出し・リンク・リスト等は解釈しない別物のため）。TG 例文の自動着色（TgExampleText）はユーザー入力ではなくベースの体裁で、装飾記法とは別の仕組み。見出し語・関連語の見出し・発音記号・掲載箇所名は対象外。
+- 出典: src/lib/rich-text.ts, docs/adr/0077-rich-text-markup.md
+
 ### 1-2. 掲載箇所系
 
 #### Occurrence（掲載箇所）

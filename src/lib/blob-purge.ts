@@ -10,13 +10,16 @@ import type { BlobClient } from "@/lib/blob-client";
 export type PurgeAllBlobsReport = {
   audioFiles: number; // 削除対象の発音音源 Blob 数（重複排除後）
   executed: boolean; // dryRun=false で実削除したか
+  deleteError?: unknown; // blob.del が投げた場合のエラー（= 1 件も消えていない）
 };
 
 /**
  * Meaning / RelatedWord に記録された発音音源 URL を全件収集し、`dryRun` でなければ
  * `blob.del` でまとめて削除する。Blob は DB の cascade では消えないため別操作。
- * 失敗してもログのみ（DB を真実とする方針。reset 後に孤児 Blob は残らない想定だが、
- * 削除失敗時は孤児が残るだけで整合性は保たれる）。
+ * 削除失敗は投げずに `deleteError` として返す（DB を真実とする方針。孤児 Blob が残る
+ * だけで整合性は保たれるため、ここで処理を止める必要は無い）。ただし呼び出し元が
+ * 成功と区別できないと「消えていないのに成功表示」になるため、握り潰さず報告する。
+ * URL は 1 回の `blob.del` にまとめて渡すので、失敗の粒度は全件 or 0 件。
  */
 export async function purgeAllAudioBlobs(
   prisma: PrismaClient,
@@ -50,7 +53,7 @@ export async function purgeAllAudioBlobs(
     try {
       await blob.del(audioUrls);
     } catch (e) {
-      console.error("[blob-purge] blob del failed", e);
+      return { audioFiles: audioUrls.length, executed: true, deleteError: e };
     }
   }
 

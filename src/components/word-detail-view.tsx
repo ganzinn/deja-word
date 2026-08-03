@@ -199,7 +199,11 @@ function RelatedWordCard({
 }) {
   const partOfSpeech = nonEmpty(related.partOfSpeech);
   const pronunciation = nonEmpty(related.pronunciation);
-  const pronunciationAudioUrl = nonEmpty(related.pronunciationAudioUrl);
+  // 関連語自身の音源が無くても、他の英単語にリンクされていればその単語の音源で発音できる
+  // （リンク先は同じ見出し語なので発音も同じ）。関連語に音源が登録されていればそちらが優先。
+  const pronunciationAudioUrl =
+    nonEmpty(related.pronunciationAudioUrl) ??
+    nonEmpty(related.linkedWord?.meanings[0]?.pronunciationAudioUrl);
   const meaning = nonEmpty(related.meaning);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">

@@ -4,7 +4,7 @@
 
 ## 目的
 
-example-audio の実装完了を受けて、`docs/reference/naming-book.md` の用語を更新し、`docs/features/` の機能紹介 4 ページとスクリーンショットを実態に合わせ、ADR を 0079 から起票する。
+example-audio の実装完了を受けて、`docs/reference/naming-book.md` の用語を更新し、`docs/features/` の機能紹介 4 ページとスクリーンショットを実態に合わせ、ADR を 0079 から起票する。最後に、役割を終えた `docs/design/example-audio/` を削除する。
 
 スコープ外:
 
@@ -90,6 +90,14 @@ example-audio の実装完了を受けて、`docs/reference/naming-book.md` の�
 
 前提の表のとおり起票し、`docs/adr/README.md` の一覧表に追記する。
 
+### 削除: `docs/design/example-audio/` （ADR 起票の完了後）
+
+`docs/design/` は実装済み分を削除していく運用で、長期の決定記録は `docs/adr/` が受け皿になる（[06-architecture.md](../../design/example-audio/06-architecture.md) 決定 7 の却下理由）。ADR 0079〜への転記が済んだことを確認してから、`docs/design/example-audio/` 一式（README.md ＋ 01〜06）を削除する。
+
+**削除順序の注意**: `docs/plan/example-audio/` の各チケットは設計トピックへの相対リンクを多数持っているため、設計だけを消すと plan 側のリンクが全滅する。**設計の削除と同じ PR で `docs/plan/example-audio/` も削除する**のを既定とする（全チケット完了時点で plan の役割も終わっており、経緯は git 履歴と ADR で追える）。plan を残す判断をした場合は、リンク切れを承知のうえで実装メモに理由を書き残すこと。
+
+削除前に、`docs/design/example-audio/` を参照している箇所が repo 内の他所（`docs/adr/` / `docs/features/` / `docs/reference/` / `AGENTS.md` など）に無いかを確認する。
+
 ## 完了条件（Definition of Done）
 
 - [ ] naming-book の既存 5 エントリ修正・新規 2 エントリ追加が入っている
@@ -97,6 +105,8 @@ example-audio の実装完了を受けて、`docs/reference/naming-book.md` の�
 - [ ] `pnpm e2e:capture-docs --only words,settings` を実行し、`word-detail.png` / `word-edit.png` / `word-new.png` / `settings-general.png` を目視レビュー済み。単語詳細で「音源あり」「自動音声」の両方の見た目が写っていること
 - [ ] `quiz-play-tg-choice.png` の差分を目視確認し、再撮影の要否を判断した（不要と判断した場合はその旨を実装メモに残す）
 - [ ] ADR 0079 / 0080 / 0081 を起票し、`docs/adr/README.md` の一覧表に追記した。0082（TG 形式の発音対象）を分けるか 0079 に含めるかを判断した
+- [ ] ADR に残すべき決定がすべて転記されていることを確認したうえで、`docs/design/example-audio/` を削除した
+- [ ] `docs/design/example-audio/` への参照リンクが repo 内に残っていない（`docs/plan/example-audio/` を同時に削除したか、残す場合はその理由を実装メモに記載した）
 - [ ] `pnpm lint` / `pnpm typecheck` / `pnpm test` が通る
 
 ## 実装メモ

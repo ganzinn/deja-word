@@ -104,6 +104,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/**
+ * カード上部の「品詞 / 関連語区分・発音記号・発音ボタン」を横並びにする行。
+ *
+ * 行を出すかどうかを props（品詞・発音記号・音源 URL）だけで判定してはいけない。
+ * `AudioPlayButton` は音源が無くても自動音声フォールバックで描画されうるため、
+ * props 判定だと「3 つとも空だが自動音声は使える」語で発音ボタンごと消える。
+ * 描画可否は各要素（とくに `AudioPlayButton`）に委ね、結果的に全部空になった
+ * ときだけ `empty:hidden` で行を畳む（親 flex-col の gap が余るのを防ぐ）。
+ */
+const metaRowClassName = "flex flex-wrap items-center gap-2 empty:hidden";
+
 function MeaningCard({
   meaning,
   headword,
@@ -118,19 +129,17 @@ function MeaningCard({
   const pronunciationAudioUrl = nonEmpty(meaning.pronunciationAudioUrl);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {partOfSpeech || pronunciation || pronunciationAudioUrl ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {partOfSpeech ? (
-            <Badge variant="outline" className="text-muted-foreground">
-              {commonPartOfSpeechFullLabel(partOfSpeech)}
-            </Badge>
-          ) : null}
-          {pronunciation ? (
-            <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
-          ) : null}
-          <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={headword} />
-        </div>
-      ) : null}
+      <div className={metaRowClassName}>
+        {partOfSpeech ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            {commonPartOfSpeechFullLabel(partOfSpeech)}
+          </Badge>
+        ) : null}
+        {pronunciation ? (
+          <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+        ) : null}
+        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={headword} />
+      </div>
       {meaning.texts.length === 1 ? (
         <p className={`text-sm whitespace-pre-wrap ${isFirst ? "font-bold text-red-400" : ""}`}>
           <RichText text={meaning.texts[0].text} />
@@ -194,17 +203,15 @@ function RelatedWordCard({
   const meaning = nonEmpty(related.meaning);
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
-      {related.kind || pronunciation || pronunciationAudioUrl ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {related.kind ? (
-            <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
-          ) : null}
-          {pronunciation ? (
-            <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
-          ) : null}
-          <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={related.term} />
-        </div>
-      ) : null}
+      <div className={metaRowClassName}>
+        {related.kind ? (
+          <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
+        ) : null}
+        {pronunciation ? (
+          <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+        ) : null}
+        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={related.term} />
+      </div>
       {related.linkedWord ? (
         onSelectRelated ? (
           <button

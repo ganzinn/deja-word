@@ -9,8 +9,9 @@ const MARK_CLASS_NAMES: Record<RichTextMark, string> = {
   bold: "font-bold",
   italic: "italic",
   red: "text-red-500",
-  // 「青下線」は色と下線をセットで表す 1 つの装飾（記法も __…__ の 1 種類）。
-  underline: "text-blue-500 underline underline-offset-2",
+  // 「青下線」は青いのは線だけ。文字色は変えない（変えたいなら ==…== と重ねる）。
+  // text-blue-500 を使うと文字まで青くなるため、線の色は decoration-* で指定する。
+  underline: "underline decoration-blue-500 underline-offset-2",
 };
 
 /**

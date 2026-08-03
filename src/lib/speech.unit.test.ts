@@ -98,12 +98,21 @@ describe("speakEnglish", () => {
     expect(utterance.text).toBe("He is bound to do it.");
   });
 
-  it("drops placeholder tildes and annotation brackets", () => {
+  it("drops placeholders (tilde / ellipsis) and annotation brackets", () => {
     const { speak } = installSpeechMock();
     speakEnglish("so that ~");
     speakEnglish("【米】check");
+    speakEnglish("be certain that ...");
+    speakEnglish("suggest (to 〜) that …");
     const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
-    expect(texts).toEqual(["so that", "check"]);
+    expect(texts).toEqual(["so that", "check", "be certain that", "suggest (to ) that"]);
+  });
+
+  it("keeps sentence-ending periods（省略記号だけを落とす）", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("He is bound to do it.");
+    const utterance = speak.mock.calls[0][0] as { text: string };
+    expect(utterance.text).toBe("He is bound to do it.");
   });
 
   it("no-ops with onEnd when nothing is left to speak", () => {

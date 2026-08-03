@@ -84,8 +84,11 @@ function installNativeDispatcher(): void {
 /** 地域ラベル等の注記（`【米】check`）。英語として読ませたい語ではないので中身ごと落とす。 */
 const ANNOTATION_PATTERN = /【[^】]*】/g;
 
-/** 「ここに語が入る」プレースホルダのチルダ（`so that ~`）。3 つの字形すべてを対象にする。 */
-const PLACEHOLDER_PATTERN = /[~〜～]/g;
+/**
+ * 「ここに語（節）が入る」プレースホルダ。チルダ（`so that ~`）と省略記号（`be certain that ...`）。
+ * 入力元で字形が揺れるため、チルダ 3 種と省略記号 2 種（連続ピリオド・`…`）すべてを対象にする。
+ */
+const PLACEHOLDER_PATTERN = /\.{3,}|[…~〜～]/g;
 
 /**
  * 読み上げ用テキストへ正規化する（docs/adr/0078-speech-text-normalization.md）。

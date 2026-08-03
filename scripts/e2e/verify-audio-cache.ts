@@ -1,4 +1,4 @@
-// 発音音源のローカルキャッシュ（docs/design/audio-local-cache.md、public/sw.js）を E2E で検証する。
+// 発音音源のローカルキャッシュ（docs/adr/0075-audio-local-cache-and-prefetch.md、public/sw.js）を E2E で検証する。
 //   1) test1@example.com が単語を作成し、編集ページで mp3 を登録する
 //   2) SW が制御下に入るのを待ち、試聴ボタンで再生 → media リクエストが SW を通り
 //      Cache Storage（audio-v1）にエントリが入ることを確認

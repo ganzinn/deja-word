@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * 発音音源キャッシュ SW（public/sw.js、docs/design/audio-local-cache.md）の登録。
+ * 発音音源キャッシュ SW（public/sw.js、docs/adr/0075-audio-local-cache-and-prefetch.md）の登録。
  * 描画なし。SW 非対応環境では何もせず従来動作（毎回ネットワーク）のまま。
  * storage.persist() はストレージ逼迫時のキャッシュ追い出しを軽減する best-effort 要求で、
  * 拒否されても挙動は変わらない。

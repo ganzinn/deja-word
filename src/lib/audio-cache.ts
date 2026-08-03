@@ -1,5 +1,5 @@
 // 発音音源のローカルキャッシュ（Cache Storage）をページ側から操作するユーティリティ。
-// 一括プリフェッチ（docs/design/audio-prefetch.md）で使う。
+// 一括プリフェッチ（docs/adr/0075-audio-local-cache-and-prefetch.md）で使う。
 //
 // Service Worker（public/sw.js）と window は同一オリジンの同じキャッシュを共有するため、
 // SW に代行させず（postMessage を使わず）ページから直接読み書きする。SW が未制御の状態でも
@@ -7,7 +7,7 @@
 
 /**
  * public/sw.js の `AUDIO_CACHE` と同じ値。sw.js は静的配信物でありビルド工程を持ち込まない
- * 方針（docs/design/audio-local-cache.md）のため import で共有できず、二重管理になっている。
+ * 方針（docs/adr/0075-audio-local-cache-and-prefetch.md）のため import で共有できず、二重管理になっている。
  * 変更するときは public/sw.js 側も必ず合わせること。
  */
 export const AUDIO_CACHE_NAME = "audio-v1";

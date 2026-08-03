@@ -109,6 +109,7 @@
 | [0045](0045-remove-translation-audio.md) | 意味読み上げ音源の廃止 | 高 | — |
 | [0046](0046-tts-fallback.md) | TTS フォールバック（mp3 優先） | 高 | — |
 | [0047](0047-quiz-audio-autoplay-preload.md) | quiz 中の自動再生 + プリロード、失敗非ブロック | 高 | — |
+| [0075](0075-audio-local-cache-and-prefetch.md) | SW cache-first で端末に保持 + 設定画面から一括プリフェッチ（掃除は manifest 差分） | 高 | — |
 
 ### G. 認証・デプロイ・運用
 

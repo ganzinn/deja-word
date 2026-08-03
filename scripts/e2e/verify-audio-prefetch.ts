@@ -1,4 +1,4 @@
-// 発音音源の一括プリフェッチ（docs/design/audio-prefetch.md）を E2E で検証する。
+// 発音音源の一括プリフェッチ（docs/adr/0075-audio-local-cache-and-prefetch.md）を E2E で検証する。
 //   1) test1@example.com が mp3 付きの単語を 3 件作る
 //   2) 設定 → 単語全般 の「ダウンロード」で 3 件が Cache Storage（audio-v1）に入る
 //   3) 本命 A: origin の実体ファイルを全部消しても、キャッシュから 200 で応答できる（＝オフライン成立）

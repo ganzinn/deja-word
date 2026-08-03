@@ -1,5 +1,5 @@
 // SUT は public/sw.js（静的配信物）。Vitest の include が src/**/*.unit.test.ts のため
-// SUT の隣に置けず、ここから読み込んで評価する（docs/design/audio-local-cache.md）。
+// SUT の隣に置けず、ここから読み込んで評価する（docs/adr/0075-audio-local-cache-and-prefetch.md）。
 // 出荷される sw.js そのものを評価するので、テスト用ソースと配信物の乖離が起きない。
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

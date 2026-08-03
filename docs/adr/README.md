@@ -62,6 +62,7 @@
 | [0018](0018-scoped-owner-ids-read-scope.md) | 読み取り認可は scopedOwnerIds の where 注入 | 高 | — |
 | [0019](0019-two-layer-write-authorization.md) | words の二層書き込み認可、quiz は意図的に不適用 | 高 | — |
 | [0068](0068-content-input-max-limits.md) | コンテンツ系入力テキスト・配列の zod 上限（短文 100 / 長文 2000 / 配列 50、quiz 解答系 5000） | 高 | — |
+| [0077](0077-rich-text-markup.md) | 文章系フィールドの装飾は Markdown 風記法・生テキスト保存（見出し語等は対象外） | 高 | — |
 
 ### D. quiz 機能
 
@@ -111,6 +112,7 @@
 | [0047](0047-quiz-audio-autoplay-preload.md) | quiz 中の自動再生 + プリロード、失敗非ブロック | 高 | — |
 | [0075](0075-audio-local-cache-and-prefetch.md) | SW cache-first で端末に保持 + 設定画面から一括プリフェッチ（掃除は manifest 差分） | 高 | — |
 | [0076](0076-audio-source-visual-distinction.md) | 発音ボタンは音源／自動音声をアイコン＋濃淡で区別（ラベル文字は変えない） | 高 | — |
+| [0078](0078-speech-text-normalization.md) | 自動音声は表示用の記号（装飾記法・チルダ・【…】）を落として読む | 高 | — |
 
 ### G. 認証・デプロイ・運用
 

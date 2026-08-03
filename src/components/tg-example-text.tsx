@@ -1,29 +1,50 @@
 // TG 例文（Example.kind=TARGET）のハイライト描画。
 // 単語詳細（word-detail-view）とクイズのTG四択（問題文・選択肢）で共用し、
 // プレースホルダ記号の体裁のドリフトを防ぐ。フックなしの純描画のためサーバー/クライアント両用。
+//
+// TG の自動着色（英文=青太字 / 意味=赤 / プレースホルダの体裁）はベースの体裁で、
+// ユーザーが入力した装飾記法（`**太字**` 等）はその上に重ねる。競合するプロパティは
+// cn（tailwind-merge）の後勝ちでユーザー記法が優先される（docs/adr/0077-rich-text-markup.md）。
 
+import { richTextMarkClassName } from "@/components/rich-text";
+import { parseRichText } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 
-// テキストを正規表現で分割し、一致部分だけを span で包んで返す。pattern は global フラグ必須。
+// 装飾記法を解いたうえで、各セグメント内のプレースホルダ記号だけ体裁を変えて返す。
+// pattern は global フラグ必須。
 function renderHighlighted(
   text: string,
   pattern: RegExp,
   classFor: (token: string) => string,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  let last = 0;
-  for (const m of text.matchAll(pattern)) {
-    const token = m[0];
-    const start = m.index ?? 0;
-    if (start > last) nodes.push(text.slice(last, start));
-    nodes.push(
-      <span key={start} className={classFor(token)}>
-        {token}
-      </span>,
-    );
-    last = start + token.length;
-  }
-  if (last < text.length) nodes.push(text.slice(last));
+  parseRichText(text).forEach((segment, segmentIndex) => {
+    const markClassName = richTextMarkClassName(segment.marks);
+    const push = (chunk: string, tokenClassName: string | null, key: string) => {
+      if (chunk.length === 0) return;
+      // ベース（プレースホルダ体裁）→ ユーザー記法の順に合成し、後者を勝たせる
+      const className = cn(tokenClassName, markClassName);
+      nodes.push(
+        className.length === 0 ? (
+          chunk
+        ) : (
+          <span key={key} className={className}>
+            {chunk}
+          </span>
+        ),
+      );
+    };
+
+    let last = 0;
+    for (const m of segment.text.matchAll(pattern)) {
+      const token = m[0];
+      const start = m.index ?? 0;
+      push(segment.text.slice(last, start), null, `${segmentIndex}-p${last}`);
+      push(token, classFor(token), `${segmentIndex}-t${start}`);
+      last = start + token.length;
+    }
+    push(segment.text.slice(last), null, `${segmentIndex}-p${last}`);
+  });
   return nodes;
 }
 

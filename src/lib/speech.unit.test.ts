@@ -91,6 +91,38 @@ describe("speakEnglish", () => {
     expect(utterance.lang).toBe("en-US");
   });
 
+  it("strips rich text markup before speaking", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("He is **bound** to *do* it.");
+    const utterance = speak.mock.calls[0][0] as { text: string };
+    expect(utterance.text).toBe("He is bound to do it.");
+  });
+
+  it("drops placeholders (tilde / ellipsis) and annotation brackets", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("so that ~");
+    speakEnglish("【米】check");
+    speakEnglish("be certain that ...");
+    speakEnglish("suggest (to 〜) that …");
+    const texts = speak.mock.calls.map((c) => (c[0] as { text: string }).text);
+    expect(texts).toEqual(["so that", "check", "be certain that", "suggest (to ) that"]);
+  });
+
+  it("keeps sentence-ending periods（省略記号だけを落とす）", () => {
+    const { speak } = installSpeechMock();
+    speakEnglish("He is bound to do it.");
+    const utterance = speak.mock.calls[0][0] as { text: string };
+    expect(utterance.text).toBe("He is bound to do it.");
+  });
+
+  it("no-ops with onEnd when nothing is left to speak", () => {
+    const { speak } = installSpeechMock();
+    const onEnd = vi.fn();
+    speakEnglish("〜", { onEnd });
+    expect(speak).not.toHaveBeenCalled();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onEnd on normal end", () => {
     const { speak } = installSpeechMock();
     const onEnd = vi.fn();
@@ -162,6 +194,12 @@ describe("native bridge (Android WebView)", () => {
     expect(lastUtteranceId()).toMatch(/^tts-\d+$/);
     const w = (globalThis as SpeechGlobals).window as Record<string, unknown>;
     expect(typeof w.__dejaWordTtsDispatch).toBe("function");
+  });
+
+  it("strips rich text markup before handing text to the bridge", () => {
+    const { speak } = installBridgeMock();
+    speakEnglish("He is **bound** to *do* it.");
+    expect(speak.mock.calls[0][0]).toBe("He is bound to do it.");
   });
 
   it("routes start/end events to onStart/onEnd", () => {

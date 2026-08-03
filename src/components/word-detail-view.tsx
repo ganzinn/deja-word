@@ -2,6 +2,7 @@ import { LinkIcon } from "lucide-react";
 import Link from "next/link";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
+import { RichText } from "@/components/rich-text";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
 import { exampleKindLabels, type ExampleKind } from "@/lib/mock/example-kinds";
@@ -74,7 +75,7 @@ export function WordDetailView({
                 key={m.id}
                 className="border-border bg-card/50 rounded-lg border p-3 text-sm whitespace-pre-wrap"
               >
-                {m.text}
+                <RichText text={m.text} />
               </li>
             ))}
           </ul>
@@ -132,7 +133,7 @@ function MeaningCard({
       ) : null}
       {meaning.texts.length === 1 ? (
         <p className={`text-sm whitespace-pre-wrap ${isFirst ? "font-bold text-red-400" : ""}`}>
-          {meaning.texts[0].text}
+          <RichText text={meaning.texts[0].text} />
         </p>
       ) : meaning.texts.length > 1 ? (
         <ul className="list-none text-sm leading-normal">
@@ -141,7 +142,7 @@ function MeaningCard({
               key={t.id}
               className={`whitespace-pre-wrap ${isFirst && i === 0 ? "font-bold text-red-400" : ""}`}
             >
-              {t.text}
+              <RichText text={t.text} />
             </li>
           ))}
         </ul>
@@ -159,14 +160,16 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   return (
     <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
       <p className="text-sm whitespace-pre-wrap">
-        {isTarget ? <TgExampleText text={example.text} /> : example.text}
+        {isTarget ? <TgExampleText text={example.text} /> : <RichText text={example.text} />}
       </p>
       {meaning ? (
         <p className="text-sm whitespace-pre-wrap">
           {isTarget ? (
             <TgExampleMeaning text={meaning} />
           ) : (
-            <span className="text-muted-foreground">{meaning}</span>
+            <span className="text-muted-foreground">
+              <RichText text={meaning} />
+            </span>
           )}
         </p>
       ) : null}
@@ -229,7 +232,9 @@ function RelatedWordCard({
             </Badge>
           ) : null}
           {meaning ? (
-            <p className="text-foreground text-sm whitespace-pre-wrap">{meaning}</p>
+            <p className="text-foreground text-sm whitespace-pre-wrap">
+              <RichText text={meaning} />
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -255,13 +260,13 @@ function OccurrenceCard({
       </p>
       {wordOccurrence.details.length === 1 ? (
         <p className="text-muted-foreground text-sm whitespace-pre-wrap">
-          {wordOccurrence.details[0].detail}
+          <RichText text={wordOccurrence.details[0].detail} />
         </p>
       ) : wordOccurrence.details.length > 1 ? (
         <ul className="text-muted-foreground ml-4 list-disc text-sm">
           {wordOccurrence.details.map((d) => (
             <li key={d.id} className="whitespace-pre-wrap">
-              {d.detail}
+              <RichText text={d.detail} />
             </li>
           ))}
         </ul>
@@ -273,14 +278,18 @@ function OccurrenceCard({
 // 補足説明（複数可）の表示。意味テキストと同様、1 件は段落・2 件以上は箇条書きにする。
 function NotesView({ notes }: { notes: ReadonlyArray<{ id: string; text: string }> }) {
   if (notes.length === 1) {
-    return <p className="text-muted-foreground text-sm whitespace-pre-wrap">{notes[0].text}</p>;
+    return (
+      <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+        <RichText text={notes[0].text} />
+      </p>
+    );
   }
   if (notes.length > 1) {
     return (
       <ul className="text-muted-foreground marker:text-muted-foreground ml-4 list-disc text-sm leading-normal marker:text-[0.5rem]">
         {notes.map((n) => (
           <li key={n.id} className="whitespace-pre-wrap">
-            {n.text}
+            <RichText text={n.text} />
           </li>
         ))}
       </ul>

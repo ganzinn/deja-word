@@ -3,6 +3,7 @@
 import { CheckIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { RichText } from "@/components/rich-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { MultiMeaningQuestion } from "@/lib/quiz/payload";
@@ -131,7 +132,7 @@ export function QuestionMultiMeaning({
               )}
             >
               <CheckIcon className={cn("size-4", !isSelected && "invisible")} />
-              {option.text}
+              <RichText text={option.text} />
             </Button>
           );
         })}

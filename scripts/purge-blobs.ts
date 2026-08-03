@@ -35,12 +35,19 @@ async function main() {
     if (execute) assertBlobDriverMatchesDatabase(connectionString, defaultBlobClient);
     const report = await purgeAllAudioBlobs(prisma, defaultBlobClient, { dryRun: !execute });
     console.log(`発音音源(Blob): ${report.audioFiles}`);
-    if (report.executed) {
-      console.log("\n✓ Blob を削除しました。");
-    } else {
+    if (!report.executed) {
       console.log(
         "\n[dry-run] 変更はありません。実削除するには --execute を付けて再実行してください。",
       );
+    } else if (report.deleteError) {
+      // 削除失敗で DB が壊れることは無い（孤児 Blob が残るだけ）が、成功と同じ表示にすると
+      // 「1 件も消えていないのに ✓」になるため、明示して終了コードも 1 にする。
+      console.error(`\n✗ Blob を削除できませんでした（${report.audioFiles} 件がそのまま残存）。`);
+      console.error("  DB は無変更なので、原因を解消して再実行すれば同じ URL をやり直せます。");
+      console.error("  原因:", report.deleteError);
+      process.exitCode = 1;
+    } else {
+      console.log("\n✓ Blob を削除しました。");
     }
   } finally {
     await prisma.$disconnect();

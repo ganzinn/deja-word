@@ -27,7 +27,7 @@
 - **blob key は `audio/example/<exampleId>/pronunciation.mp3`**。`AudioTarget.dir` に `"example"` を置く。→ [02](02-data-model.md)
 - **音源 URL を横断で扱う 6 経路すべてに Example を追加する**（`words-delete` / `words-update` の orphan / `admin-user-delete` / `occurrence-purge` / `blob-purge` / `audio-manifest`）。カラム追加・登録・削除経路は同一チケットで揃える。→ [02](02-data-model.md)
 - **例文の編集では音源を保持し、フォームから消えた例文の音源は orphan として消す**。`upsertExamples` は音源カラムを触らず、`words-update` の orphan 収集に example を足す。→ [02](02-data-model.md)
-- **`db:import-audio` は見出し語・関連語のまま変更しない**。purge 系（`occurrence-purge` / `blob-purge`）のみ例文に追随する。→ [02](02-data-model.md)
+- **`db:import-audio` は `Meaning` 専用のまま変更しない**。purge 系（`occurrence-purge` / `blob-purge`）のみ例文に追随する。→ [02](02-data-model.md)
 - **一括プリフェッチは「見出し語・関連語の音源」と「例文の音源」を分けてダウンロードできるようにする**。manifest はグループ別に URL と件数を返す。→ [02](02-data-model.md)
 - **Cache Storage は 1 つのまま維持し、prune は両グループの和集合に対して行う**。グループ別 manifest だけで prune すると相手のキャッシュが消えるため。→ [02](02-data-model.md)
 - **`pronunciation-audio.ts` に `exampleTarget` ディスクリプタと `uploadExampleAudioForUser` / `deleteExampleAudioForUser` を追加し、共通コアは無改造とする**。`ExampleNotFoundError` を新設。→ [03](03-audio-registration.md)
@@ -100,7 +100,7 @@
 | `src/lib/quiz/queries/quiz-source.ts` / `generation/material.ts` / `payload.ts` ＋ ビルダー 10 本 | TG例文の音源 URL、`QuestionBase.ttsText`、`questionBaseOf(word, format)` |
 | `src/lib/words-delete.ts` / `words-update.ts` / `admin-user-delete.ts` / `occurrence-purge.ts` / `blob-purge.ts` | 音源 URL 収集に Example を追加 |
 | `src/lib/words-detail.ts` | **変更不要**（`include` 取得のため列が自動的に載る） |
-| `src/lib/audio-import.ts`（`db:import-audio`） | **変更不要**（見出し語・関連語のまま） |
+| `src/lib/audio-import.ts`（`db:import-audio`） | **変更不要**（`Meaning` 専用のまま） |
 
 **既存ファイルの変更（UI）**
 
@@ -109,8 +109,10 @@
 | `src/app/words/new/_components/examples-fields.tsx` | 例文テキスト直後に音源登録 UI（`PronunciationAudioManager` 再利用） |
 | `src/components/word-detail-view.tsx` | 例文カード上部にメタ行を新設し `AudioPlayButton` を 1 つ |
 | `src/components/tg-example-text.tsx` | `TG_TEXT_PATTERN` に全角括弧 |
-| `src/app/quiz/_components/quiz-flow.tsx` / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx` | `ttsText={question.ttsText}` を渡す（形式分岐なし）。`quiz-flow.tsx` は自動再生・プリロードの対象も差し替え |
+| `src/app/quiz/_components/quiz-flow.tsx` / `question-choice.tsx` / `revealed-headword-card.tsx` / `result-list.tsx` | `ttsText={question.ttsText}` を渡す（形式分岐なし）。`quiz-flow.tsx` は自動再生・プリロードの対象も差し替え。`revealed-headword-card.tsx` は `question` を受け取らず `ttsText` を内部で組み立てているため、`ttsText` prop の新設が必要 |
+| `src/app/quiz/_components/question-self-judge-tg-ja-en.tsx` / `question-self-judge-ja-en.tsx` / `question-spelling.tsx` | `RevealedHeadwordCard` の呼び出し元 3 本。新設した `ttsText` prop に `question.ttsText` を渡す |
 | `src/app/settings/general/_components/audio-prefetch-section.tsx` | グループ別 2 行、削除は共通 1 つ |
+| `src/app/settings/general/page.tsx` | `countAudioUrlsForUser` の戻り値が `number` → `AudioCountGroups` になるため、セクションへの受け渡しを追随 |
 | `src/components/audio-play-button.tsx` / `pronunciation-audio-manager.tsx` | **変更不要**（無改造で再利用） |
 
 **ドキュメント・運用**
@@ -141,15 +143,17 @@
   - `pronunciation-audio.unit.test.ts`: example ターゲットの blob パス・owner 本人可・他人不可・一般ユーザーは SYSTEM 行不可・不存在は `ExampleNotFoundError`・delete。
   - TG ビルダー 4 本の unit テスト: `pronunciationAudioUrl` / `ttsText` が TG例文の値になる。非 TG ビルダーは見出し語のまま。
   - `audio-cache.unit.test.ts`: 片方のグループだけダウンロードしても、もう一方の URL が stale と判定されない。
+  - `blob-purge.unit.test.ts`: 例文の音源も収集・削除対象になる。
+  - `src/app/quiz/actions.unit.test.ts`: ケース追加ではなく**追随**。`QuestionBase` に必須の `ttsText` が増えるため、payload リテラルを組み立てている箇所に足さないと typecheck が落ちる。
 - **integration**（`pnpm test:integration`、`dejaword_test`）
   - `pronunciation-audio.integration.test.ts`: example の upload → 差し替え → 削除で DB と blob が追随／Word 削除・編集の orphan 削除で blob が消える／認可 3 ケース。
   - `audio-manifest.integration.test.ts`: グループ別の URL・件数、他人の音源が混ざらない、system の音源は入る。
   - `words-update.integration.test.ts`: フォームから消えた例文の音源が orphan として削除される。
-  - `occurrence-purge` / `blob-purge` の既存テスト: 例文の音源も収集・削除対象。
+  - `occurrence-purge.integration.test.ts`: 例文の音源も収集・削除対象。
 - **E2E**
   - `pnpm e2e:audio-prefetch`: グループ別 2 行の件数・ダウンロード・prune・削除。
   - `pnpm e2e:audio-cache`: 変更しない。
-- **新設しないもの**: Server Action 層のテスト、コンポーネントテスト（→ [06 決定 5](06-architecture.md)）。
+- **新設しないもの**: 音源 Server Action のテスト、コンポーネントテスト（→ [06 決定 5](06-architecture.md)）。
 
 ### チケット分割
 

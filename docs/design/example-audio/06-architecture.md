@@ -72,6 +72,8 @@ export function questionBaseOf(word: QuizWord, format: QuizFormat): QuestionBase
 - `pronunciationAudioUrl` は既存フィールドを使い回し、**意味を「この問題の発音ボタンが鳴らす音源」に再定義する**（見出し語の音源とは限らなくなる）。`headword` は表示・結果一覧の見出しに使われ続けるので残す。
 - TG 形式で `word.tgExample` が null になるのは不変条件違反（TG 形式は「使える TG例文」を持つ単語だけを対象に生成される）だが、防御的に `ttsText: ""` に落とす。`AudioPlayButton` は `ttsText` が空なら `showTts = false` になるため、見出し語が鳴ってしまう事故は起きずボタンが消えるだけになる（05 決定 3 の「見出し語へフォールバックしない」に沿う）。
 - `ResultRow`（`result-list.tsx`）も `pronunciationAudioUrl` / `headword` と同じ形で `ttsText` をコピーする。
+- `RevealedHeadwordCard`（`revealed-headword-card.tsx`）だけは「渡すだけ」で済まない。`question` を受け取らず `ttsText={headword}` を内部で組み立てているため、`ttsText` prop を新設し、呼び出し元 3 本（`question-self-judge-tg-ja-en` / `question-self-judge-ja-en` / `question-spelling`）が `question.ttsText` を渡すよう追随する。
+- `QuestionBase` に必須フィールドが増えるため、payload リテラルを組み立てているテスト（`src/app/quiz/actions.unit.test.ts`）の追随も要る（決定 5）。
 
 採用理由: 判断を `questionBaseOf` の 1 箇所に閉じられる（05 決定 4）。ビルダー 10 本は自分の format を知っているので引数を渡すだけで済み、UI 4 箇所とビルダー側に TG 判定が散らない。`ttsText` は `AudioPlayButton` の prop 名と一致するので、payload から UI までフィールド名が変わらず追跡しやすい。
 
@@ -127,8 +129,8 @@ type AudioCountGroups = Record<AudioGroup, number>;   // countAudioUrlsForUser
 | `src/components/tg-example-text.tsx` | `TG_TEXT_PATTERN` に全角括弧（04 確定） |
 | `src/components/word-detail-view.tsx` | 例文カードのメタ行（05 確定） |
 | `src/lib/quiz/{queries/quiz-source.ts, generation/material.ts, payload.ts}` ＋ ビルダー 10 本 | 決定 1 |
-| quiz UI 4 ファイル | 決定 1（`ttsText` を渡すだけ） |
-| `src/lib/audio-manifest.ts` ＋ `/api/audio/manifest` ＋ `settings/general` | 決定 3 |
+| quiz UI 4 ファイル ＋ `RevealedHeadwordCard` の呼び出し元 3 本 | 決定 1（原則は `ttsText` を渡すだけ。`revealed-headword-card.tsx` のみ prop 新設と呼び出し元の追随が要る） |
+| `src/lib/audio-manifest.ts` ＋ `src/app/api/audio/manifest/route.ts` ＋ `src/app/settings/general/page.tsx` | 決定 3（`countAudioUrlsForUser` の戻り値が `number` → `AudioCountGroups` になるため page 側の受け渡しも変わる） |
 | `src/lib/audio-cache.ts` | グループ別 URL から prune 用の和集合を作る純関数を追加（決定 5） |
 | `src/app/settings/general/_components/audio-prefetch-section.tsx` | グループ別 2 行（05 確定） |
 | `src/lib/{words-delete,words-update,admin-user-delete,occurrence-purge,blob-purge}.ts` | 音源 URL 収集に Example を追加（02 確定） |
@@ -150,6 +152,8 @@ type AudioCountGroups = Record<AudioGroup, number>;   // countAudioUrlsForUser
 | `src/lib/pronunciation-audio.unit.test.ts` | example ターゲット（blob パスが `audio/example/<id>/`、owner 本人可・他人不可・SYSTEM 行を一般ユーザーが操作不可・不存在は `ExampleNotFoundError`、delete） |
 | `src/lib/quiz/generation/*.unit.test.ts`（TG ビルダー 4 本） | `pronunciationAudioUrl` / `ttsText` が TG例文の値になること。非 TG ビルダーは見出し語のままであること |
 | `src/lib/audio-cache.unit.test.ts` | グループ別 URL から prune 用の和集合を作る純関数（片方のグループだけダウンロードしても、もう一方の URL が stale と判定されないこと）。和集合を作るロジックはコンポーネントに置かず `audio-cache.ts` の関数に切り出す |
+| `src/lib/blob-purge.unit.test.ts` | 例文の音源も収集・削除対象になること（`purgeAllAudioBlobs`） |
+| `src/app/quiz/actions.unit.test.ts` | ケース追加ではなく**追随**。`QuestionBase` に必須の `ttsText` が増えるため、payload リテラルを組み立てている箇所に `ttsText` を足さないと typecheck が落ちる |
 
 **integration**
 
@@ -158,13 +162,13 @@ type AudioCountGroups = Record<AudioGroup, number>;   // countAudioUrlsForUser
 | `src/lib/pronunciation-audio.integration.test.ts` | example の 3 グループ（upload → 差し替え → 削除で DB と blob が追随 / Word 削除・編集の orphan 削除で blob が消える / 認可）。既存の meaning・related-word と同じ構成で反復 |
 | `src/lib/audio-manifest.integration.test.ts` | グループ別の URL・件数（他人の音源が混ざらないこと、system の音源が入ること） |
 | `src/lib/words-update.integration.test.ts` | フォームから消えた例文の音源が orphan として削除されること |
-| `src/lib/occurrence-purge` / `blob-purge` の既存テスト | 例文の音源も収集・削除対象になること |
+| `src/lib/occurrence-purge.integration.test.ts` | 例文の音源も収集・削除対象になること |
 
 **E2E**
 
 - `pnpm e2e:audio-prefetch` — グループ別 2 行の UI に追随させる（例文音源を持つ単語を作り、`example` グループの件数・ダウンロード・prune・削除を検証）。
 - `pnpm e2e:audio-cache` — 再生時キャッシュ（Service Worker）の検証で、音源の種類に依存しない。**変更しない**。
-- Server Action 層（`actions.ts`）のテストは既存でも音源 4 action に無く、本機能でも追加しない。認可・検証はサービス層のテストで担保されている。
+- 音源の Server Action（`words/[id]/edit/actions.ts` の音源 4 action）のテストは既存でも無く、本機能でも新設しない。認可・検証はサービス層のテストで担保されている（既存の `src/app/quiz/actions.unit.test.ts` への追随は型の追随であって、この方針の例外ではない）。
 
 採用理由: 既存の音源機能が unit（認可・検証・呼び出し順）と integration（DB と blob の追随・クリーンアップ）で役割を分けており、例文はその 3 種目なので同じ場所に同じ形で足すのが最も読みやすく、抜けも検出しやすい。E2E は「グループ分け」という UI 構造の変更が入る prefetch だけが追随対象になる。
 
@@ -195,7 +199,7 @@ type AudioCountGroups = Record<AudioGroup, number>;   // countAudioUrlsForUser
 - **全例文に音源を付ける**: seed は単純になるが、未登録時の見た目（自動音声アイコン／ボタン非表示）が機能紹介に残らない。
 - **`--only` を使わず全セクション撮り直す**: 差分の目視レビュー範囲が広がり、無関係な画像のピクセル差分が混ざる（README の運用注意に反する）。
 
-### 決定 7: naming-book は既存 4 エントリを修正し、新規 2 エントリを追加する
+### 決定 7: naming-book は既存 5 エントリを修正し、新規 2 エントリを追加する
 
 **修正**
 

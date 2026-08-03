@@ -80,6 +80,8 @@ TG 4 形式で、いま見出し語を鳴らしているボタンの `src` と `
 
 TG 以外の形式（`headword` / `ja-plain` の promptView）は一切変更しない。
 
+`revealed-headword-card.tsx` だけは差し替えが prop 追加を伴う。`RevealedHeadwordCard` は `question` を受け取らず `ttsText={headword}` を内部で組み立てているため、`ttsText` を prop として受け取る形にし、呼び出し元 3 本（`question-self-judge-tg-ja-en` / `question-self-judge-ja-en` / `question-spelling`）が追随する（非 TG の 2 本も同じ prop を明示的に渡すことになる）。
+
 **TG例文の音源が未登録のときは見出し語の音源へフォールバックしない**。音源が無ければ TTS（例文の英文を読み上げ）に落ち、TTS も無効なら決定 2 と同じくボタンが消える。
 
 採用理由: 画面に見えている英文と、耳から入る音を一致させる。差し替え対象の 4 箇所はいずれも「TG例文の英文が表示されている（または解答として現れた）状態」で、そこで見出し語が鳴るのは食い違いになる。見出し語だけ聞きたい場合は解答後の「単語詳細」から辿れる。

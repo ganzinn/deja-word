@@ -18,7 +18,7 @@
 - [x] 音源 URL を横断で扱う既存経路への波及: `words-delete.ts` / `words-update.ts`（orphan 収集）/ `admin-user-delete.ts` / `occurrence-purge.ts` / `blob-purge.ts` / `audio-manifest.ts` → 決定 3
 - [x] 例文の更新・削除で音源が孤児化しないための扱い（例文行の入れ替え時の挙動） → 決定 4
 - [x] 既存データへの backfill の要否 → 決定 5
-- [x] 既存 ops スクリプトへの影響確認（`db:import-audio` は見出し語・関連語のままで例文カラムを触らない。一括取り込みを作らないことは 01 決定 7） → 決定 6
+- [x] 既存 ops スクリプトへの影響確認（`db:import-audio` は `Meaning` 専用のままで例文カラムを触らない。一括取り込みを作らないことは 01 決定 7） → 決定 6
 - [x] 一括プリフェッチ（ADR-0075）で例文音源をどう扱うか → 決定 7・決定 8
 
 ## 議論・決定

@@ -94,6 +94,7 @@ graph LR
 - ブランチ名: `feat/example-audio-NN-<チケット名>`（worktree を切る場合は `scripts/wt-new.sh example-audio-NN-<チケット名>`）
 - PR タイトル: `example-audio: NN <チケット名>`
 - マージは依存順（依存先チケットの PR がマージされてから着手・マージする）
+- 運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feature/example-audio`、機能全体で 1 PR。ブランチ名は `feature/example-audio-NN-<チケット名>`）
 
 ## ステータス運用ルール
 

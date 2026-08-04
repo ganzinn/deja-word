@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Serif, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "@/components/sw-register";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +22,16 @@ const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
 });
 
+// 発音記号（IPA）表示用のセリフ体。Source Serif 4 は IPA グリフ（ɪ ʃ ʊ ː 等）を
+// 収録しないため、完全収録する Noto Serif を発音記号専用に使う（θ は greek に入る）。
+// preload はせず、発音記号を含むページだけ unicode-range 単位でオンデマンド取得させる。
+const notoSerif = Noto_Serif({
+  variable: "--font-noto-serif",
+  subsets: ["latin", "latin-ext", "greek"],
+  weight: "400",
+  preload: false,
+});
+
 export const viewport: Viewport = {
   themeColor: "#18181b",
 };
@@ -39,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} ${notoSerif.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <SiteHeader />

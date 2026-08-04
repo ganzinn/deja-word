@@ -138,7 +138,9 @@ function MeaningCard({
           </Badge>
         ) : null}
         {pronunciation ? (
-          <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+          <span className="text-muted-foreground font-pronunciation text-xs">
+            [{pronunciation}]
+          </span>
         ) : null}
         {/*
           2 個目以降の意味では自動音声フォールバックを使わない（`ttsText` を渡さない）ため、
@@ -228,7 +230,9 @@ function RelatedWordCard({
           <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
         ) : null}
         {pronunciation ? (
-          <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
+          <span className="text-muted-foreground font-pronunciation text-xs">
+            [{pronunciation}]
+          </span>
         ) : null}
         <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={related.term} />
       </div>

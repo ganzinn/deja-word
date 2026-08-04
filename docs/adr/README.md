@@ -116,6 +116,7 @@
 | [0079](0079-example-pronunciation-audio.md) | 例文にも発音音源を持たせ、TG 形式の発音ボタンは TG例文を鳴らす | 高 | — |
 | [0080](0080-audio-prefetch-grouping.md) | 一括プリフェッチは見出し語・関連語／例文のグループ別（Cache Storage は 1 つ・掃除は和集合） | 高 | — |
 | [0081](0081-speech-bracket-normalization.md) | 読み上げの括弧は意味で出し分け（`(…)` は中身を読む／`[…]` は中身ごと落とす） | 高 | — |
+| [0082](0082-second-meaning-audio-only.md) | 2 個目以降の意味の発音は登録済み音源のみ（自動音声を与えない） | 高 | — |
 
 ### G. 認証・デプロイ・運用
 

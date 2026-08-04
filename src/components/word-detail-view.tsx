@@ -138,7 +138,18 @@ function MeaningCard({
         {pronunciation ? (
           <span className="text-muted-foreground font-mono text-xs">{pronunciation}</span>
         ) : null}
-        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={headword} />
+        {/*
+          2 個目以降の意味では自動音声フォールバックを使わない（`ttsText` を渡さない）ため、
+          音源が登録されているときだけ発音ボタンが出る。意味（品詞）が違えばアクセント・発音も
+          異なりうる（`record` 名/動 など）が、自動音声は見出し語を一律に読むだけで
+          「その意味の発音」にはならず、誤った発音を覚えさせうる。意味固有の発音は登録済み音源
+          でしか表せない、という位置づけ。先頭の意味は単語自体の代表発音として従来どおり扱う。
+        */}
+        <AudioPlayButton
+          src={pronunciationAudioUrl}
+          label="発音"
+          ttsText={isFirst ? headword : null}
+        />
       </div>
       {meaning.texts.length === 1 ? (
         <p className={`text-sm whitespace-pre-wrap ${isFirst ? "font-bold text-red-400" : ""}`}>

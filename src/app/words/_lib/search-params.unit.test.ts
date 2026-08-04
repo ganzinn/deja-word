@@ -2,8 +2,10 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildWordDetailHref,
+  buildWordEditHref,
   buildWordsHref,
   parseMatch,
+  parseOccurrenceContext,
   parseOrder,
   parseRangeNumber,
 } from "./search-params";
@@ -67,6 +69,58 @@ describe("buildWordsHref", () => {
   test("omits bookmarked when false, includes bookmarked=1 when true", () => {
     expect(buildWordsHref("word", { bookmarked: false, page: 1 })).toBe("/words");
     expect(buildWordsHref("word", { bookmarked: true, page: 1 })).toBe("/words?bookmarked=1");
+  });
+});
+
+describe("parseOccurrenceContext", () => {
+  test("returns null without occ", () => {
+    expect(parseOccurrenceContext({})).toBeNull();
+    expect(parseOccurrenceContext({ q: "ap", order: "desc" })).toBeNull();
+  });
+
+  test("normalizes invalid values and trims q", () => {
+    expect(
+      parseOccurrenceContext({ occ: "occ1", q: "  ap  ", match: "bogus", order: "bogus" }),
+    ).toEqual({
+      occ: "occ1",
+      q: "ap",
+      match: "prefix",
+      from: undefined,
+      to: undefined,
+      order: "asc",
+    });
+  });
+
+  test("keeps range values raw", () => {
+    expect(parseOccurrenceContext({ occ: "occ1", from: "2", to: "8", order: "desc" })).toEqual({
+      occ: "occ1",
+      q: "",
+      match: "prefix",
+      from: "2",
+      to: "8",
+      order: "desc",
+    });
+  });
+});
+
+describe("buildWordEditHref", () => {
+  test("carries the filter context into the edit URL", () => {
+    expect(
+      buildWordEditHref("w1", {
+        occ: "occ1",
+        q: "ap",
+        match: "suffix",
+        from: "2",
+        to: "8",
+        order: "desc",
+      }),
+    ).toBe("/words/w1/edit?occ=occ1&q=ap&match=suffix&from=2&to=8&order=desc");
+  });
+
+  test("omits defaults", () => {
+    expect(buildWordEditHref("w1", { occ: "occ1", q: "", match: "prefix", order: "asc" })).toBe(
+      "/words/w1/edit?occ=occ1",
+    );
   });
 });
 

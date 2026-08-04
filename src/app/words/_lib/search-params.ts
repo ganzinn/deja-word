@@ -63,11 +63,39 @@ export type WordDetailOccurrenceContext = {
   order: OccurrenceNumberOrder;
 };
 
+/** 単語詳細・単語編集の searchParams（掲載箇所コンテキストとして解釈しうるもの）。 */
+export type RawOccurrenceContextParams = {
+  occ?: string;
+  q?: string;
+  match?: string;
+  from?: string;
+  to?: string;
+  order?: string;
+};
+
 /**
- * 掲載箇所コンテキスト付きの単語詳細 URL を構築する。
- * buildWordsHref と同じ方針でデフォルト値（match=prefix / order=asc / 空値）は URL に含めない。
+ * searchParams から掲載箇所コンテキストを取り出す。occ が無ければ null（コンテキスト無し）。
+ * 不正値は各パーサがデフォルトへ正規化するため、URL 改ざん時も安全な値になる。
  */
-export function buildWordDetailHref(wordId: string, ctx: WordDetailOccurrenceContext): string {
+export function parseOccurrenceContext(
+  sp: RawOccurrenceContextParams,
+): WordDetailOccurrenceContext | null {
+  if (!sp.occ) return null;
+  return {
+    occ: sp.occ,
+    q: (sp.q ?? "").trim(),
+    match: parseMatch(sp.match),
+    from: sp.from,
+    to: sp.to,
+    order: parseOrder(sp.order),
+  };
+}
+
+/**
+ * 掲載箇所コンテキストをクエリ文字列へ直す。
+ * buildWordsHref と同じ方針でデフォルト値（match=prefix / order=asc / 空値）は含めない。
+ */
+function buildOccurrenceContextQuery(ctx: WordDetailOccurrenceContext): string {
   const params = new URLSearchParams();
   params.set("occ", ctx.occ);
   if (ctx.q && ctx.q.length > 0) params.set("q", ctx.q);
@@ -75,5 +103,18 @@ export function buildWordDetailHref(wordId: string, ctx: WordDetailOccurrenceCon
   if (ctx.from) params.set("from", ctx.from);
   if (ctx.to) params.set("to", ctx.to);
   if (ctx.order !== "asc") params.set("order", ctx.order);
-  return `/words/${wordId}?${params.toString()}`;
+  return params.toString();
+}
+
+/** 掲載箇所コンテキスト付きの単語詳細 URL を構築する。 */
+export function buildWordDetailHref(wordId: string, ctx: WordDetailOccurrenceContext): string {
+  return `/words/${wordId}?${buildOccurrenceContextQuery(ctx)}`;
+}
+
+/**
+ * 掲載箇所コンテキスト付きの単語編集 URL を構築する。
+ * 編集後に詳細へ戻ったとき前後ナビを維持するため、編集画面まで絞り込みを持ち回る。
+ */
+export function buildWordEditHref(wordId: string, ctx: WordDetailOccurrenceContext): string {
+  return `/words/${wordId}/edit?${buildOccurrenceContextQuery(ctx)}`;
 }

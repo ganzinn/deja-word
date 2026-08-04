@@ -9,12 +9,18 @@ import { isWordAiEnabled } from "@/lib/word-ai-draft";
 import { getWordDetailForUser } from "@/lib/words-detail";
 
 import { WordForm } from "../../new/word-form";
+import {
+  buildWordDetailHref,
+  parseOccurrenceContext,
+  type RawOccurrenceContextParams,
+} from "../../_lib/search-params";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<RawOccurrenceContextParams>;
 };
 
-export default async function EditWordPage({ params }: PageProps) {
+export default async function EditWordPage({ params, searchParams }: PageProps) {
   const { id } = await params;
 
   const session = await getCurrentSession();
@@ -23,6 +29,10 @@ export default async function EditWordPage({ params }: PageProps) {
   const word = await getWordDetailForUser(session.user.id, id);
   if (!word) notFound();
   if (word.ownerId !== session.user.id && word.ownerId !== SYSTEM_USER_ID) notFound();
+
+  // 掲載箇所ビュー由来の絞り込みを詳細画面へ返す（前後ナビを編集後も維持するため）。
+  const ctx = parseOccurrenceContext(await searchParams);
+  const returnHref = ctx !== null ? buildWordDetailHref(id, ctx) : `/words/${id}`;
 
   const [occurrencePresets, autoNumberByOccurrenceId] = await Promise.all([
     getOccurrencePresetsForUser(session.user.id),
@@ -40,6 +50,7 @@ export default async function EditWordPage({ params }: PageProps) {
     <WordForm
       mode="edit"
       wordId={id}
+      returnHref={returnHref}
       wordOwnerId={word.ownerId}
       isCurrentUserSystem={session.user.id === SYSTEM_USER_ID}
       defaultValues={defaultValues}

@@ -33,6 +33,8 @@ type WordFormProps = {
   occurrencePresets: OccurrencePreset[];
   autoNumberByOccurrenceId?: Record<string, number>;
   wordId?: string;
+  /** 編集モードの戻り先・更新後の遷移先。掲載箇所の絞り込みを保った詳細 URL を渡す。 */
+  returnHref?: string;
   wordOwnerId?: string;
   isCurrentUserSystem?: boolean;
   linkedHeadwords?: Record<string, string>;
@@ -45,6 +47,7 @@ export function WordForm({
   occurrencePresets,
   autoNumberByOccurrenceId,
   wordId,
+  returnHref,
   wordOwnerId,
   isCurrentUserSystem = false,
   linkedHeadwords,
@@ -68,13 +71,14 @@ export function WordForm({
   const title = isEdit ? "単語を編集" : "単語を登録";
   const submitLabel = isEdit ? "更新する" : "登録する";
   const submittingLabel = "送信中…";
-  const backHref = isEdit && wordId ? `/words/${wordId}` : "/words";
+  const backHref = isEdit && wordId ? (returnHref ?? `/words/${wordId}`) : "/words";
 
   async function onSubmit(values: WordFormValues) {
     const result = isEdit && wordId ? await updateWord(wordId, values) : await createWord(values);
     if (result.ok) {
       toast.success(isEdit ? "更新しました" : "登録しました");
-      router.push(`/words/${result.wordId}`);
+      // 編集は元の詳細（＝絞り込み付き URL）へ戻す。新規は素の詳細へ。
+      router.push(isEdit && returnHref ? returnHref : `/words/${result.wordId}`);
       return;
     }
     if (result.error === "duplicate") {

@@ -20,25 +20,17 @@ import { DeleteWordButton } from "./_components/delete-word-button";
 import { AdjacentWordNav } from "./_components/adjacent-word-nav";
 import {
   buildWordDetailHref,
+  buildWordEditHref,
   buildWordsHref,
-  parseMatch,
-  parseOrder,
+  parseOccurrenceContext,
   parseRangeNumber,
+  type RawOccurrenceContextParams,
   type WordDetailOccurrenceContext,
 } from "../_lib/search-params";
 
-type RawSearchParams = {
-  occ?: string;
-  q?: string;
-  match?: string;
-  from?: string;
-  to?: string;
-  order?: string;
-};
-
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<RawSearchParams>;
+  searchParams: Promise<RawOccurrenceContextParams>;
 };
 
 export default async function WordDetailPage({ params, searchParams }: PageProps) {
@@ -52,33 +44,20 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
 
   // 掲載箇所ビューから遷移した場合（occ 付き URL）は、同じ絞り込み内の前後ナビと
   // 絞り込み状態を保った「戻る」を出す。パーサが不正値をデフォルトへ正規化する。
-  const sp = await searchParams;
+  const ctx: WordDetailOccurrenceContext | null = parseOccurrenceContext(await searchParams);
   let backHref = "/words";
   let nav: AdjacentWordsResult = null;
-  let ctx: WordDetailOccurrenceContext | null = null;
-  if (sp.occ) {
-    const q = (sp.q ?? "").trim();
-    const match = parseMatch(sp.match);
-    const order = parseOrder(sp.order);
-    ctx = { occ: sp.occ, q, match, from: sp.from, to: sp.to, order };
+  if (ctx !== null) {
     nav = await findAdjacentWordsByOccurrence(session.user.id, {
-      occurrenceId: sp.occ,
+      occurrenceId: ctx.occ,
       wordId: id,
-      q: q.length > 0 ? q : undefined,
-      match,
-      from: parseRangeNumber(sp.from),
-      to: parseRangeNumber(sp.to),
-      order,
+      q: ctx.q && ctx.q.length > 0 ? ctx.q : undefined,
+      match: ctx.match,
+      from: parseRangeNumber(ctx.from),
+      to: parseRangeNumber(ctx.to),
+      order: ctx.order,
     });
-    backHref = buildWordsHref("occurrence", {
-      occ: sp.occ,
-      q,
-      match,
-      from: sp.from,
-      to: sp.to,
-      order,
-      page: 1,
-    });
+    backHref = buildWordsHref("occurrence", { ...ctx, page: 1 });
   }
 
   const canEdit = word.ownerId === session.user.id || word.ownerId === SYSTEM_USER_ID;
@@ -99,7 +78,7 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
             <BookmarkButton wordId={id} bookmarked={bookmarked} />
             {canEdit ? (
               <Link
-                href={`/words/${id}/edit`}
+                href={ctx !== null ? buildWordEditHref(id, ctx) : `/words/${id}/edit`}
                 aria-label="編集"
                 className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
               >

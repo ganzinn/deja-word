@@ -15,7 +15,7 @@ export function MeaningBlocks({ meanings }: { meanings: MeaningDisplay[] }) {
       {meanings.map((meaning, index) => (
         <div
           key={index}
-          className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3"
+          className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3"
         >
           {meaning.partOfSpeech ? (
             <div>

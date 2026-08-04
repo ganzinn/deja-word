@@ -55,7 +55,9 @@ export function DeleteWordButton({ wordId, headword, incomingLinkCount }: Delete
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>「{headword}」を削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle>
+            「<span className="font-content">{headword}</span>」を削除しますか？
+          </AlertDialogTitle>
           <AlertDialogDescription>
             この操作は取り消せません。意味・例文・関連語・メモ・掲載箇所もまとめて削除されます。
             {incomingLinkCount > 0

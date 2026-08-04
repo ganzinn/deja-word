@@ -299,7 +299,7 @@ function WordRow({
             {occurrenceNumber === null ? "—" : `No.${occurrenceNumber}`}
           </Badge>
         ) : null}
-        <span className="text-sm font-semibold break-words">{item.headword}</span>
+        <span className="font-content text-sm font-semibold break-words">{item.headword}</span>
         <div className="ml-auto flex items-center gap-2">
           {item.isSystem ? null : <Badge variant="secondary">MY</Badge>}
           <RowAudioButton
@@ -319,7 +319,7 @@ function WordRow({
             </Badge>
           ) : null}
           {item.meaningTexts.length > 0 ? (
-            <p className="text-foreground line-clamp-2 text-sm whitespace-pre-wrap">
+            <p className="text-foreground font-content line-clamp-2 text-sm whitespace-pre-wrap">
               <span className="text-red-500">
                 <RichText text={item.meaningTexts[0]} />
               </span>

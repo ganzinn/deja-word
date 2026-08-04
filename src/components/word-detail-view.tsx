@@ -25,7 +25,9 @@ export function WordDetailView({
   return (
     <div className="flex flex-col gap-6 px-4 pt-6">
       <div className="flex items-start gap-2">
-        <h2 className="text-2xl font-bold tracking-tight break-words">{word.headword}</h2>
+        <h2 className="font-content text-2xl font-bold tracking-tight break-words">
+          {word.headword}
+        </h2>
         {word.ownerId === SYSTEM_USER_ID ? null : (
           <Badge variant="secondary" className="mt-1 ml-auto shrink-0">
             MY
@@ -73,7 +75,7 @@ export function WordDetailView({
             {word.memos.map((m) => (
               <li
                 key={m.id}
-                className="border-border bg-card/50 rounded-lg border p-3 text-sm whitespace-pre-wrap"
+                className="border-border bg-card/50 font-content rounded-lg border p-3 text-sm whitespace-pre-wrap"
               >
                 <RichText text={m.text} />
               </li>
@@ -128,7 +130,7 @@ function MeaningCard({
   const pronunciation = nonEmpty(meaning.pronunciation);
   const pronunciationAudioUrl = nonEmpty(meaning.pronunciationAudioUrl);
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
+    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
       <div className={metaRowClassName}>
         {partOfSpeech ? (
           <Badge variant="outline" className="text-muted-foreground">
@@ -178,7 +180,7 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   const meaning = nonEmpty(example.meaning);
   const isTarget = example.kind === "TARGET";
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
+    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
       <div className={metaRowClassName}>
         <AudioPlayButton src={example.pronunciationAudioUrl} label="発音" ttsText={example.text} />
       </div>
@@ -220,7 +222,7 @@ function RelatedWordCard({
     nonEmpty(related.linkedWord?.meanings[0]?.pronunciationAudioUrl);
   const meaning = nonEmpty(related.meaning);
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
+    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
       <div className={metaRowClassName}>
         {related.kind ? (
           <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
@@ -274,7 +276,7 @@ function OccurrenceCard({
   wordOccurrence: WordDetail["wordOccurrences"][number];
 }) {
   return (
-    <div className="border-border bg-card/50 flex flex-col gap-2 rounded-lg border p-3">
+    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
       <p className="text-sm font-medium">
         {wordOccurrence.occurrence.location}
         {wordOccurrence.occurrenceNumber !== null ? (

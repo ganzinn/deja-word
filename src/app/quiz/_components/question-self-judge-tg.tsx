@@ -34,7 +34,7 @@ export function QuestionSelfJudgeTg({
       onAnswerShown={onAnswerShown}
     >
       {/* MeaningBlocks（自己判定 英→日）とカードの体裁を揃えつつ、TG ハイライトで表示する。 */}
-      <div className="border-border bg-card/50 w-full rounded-lg border p-3">
+      <div className="border-border bg-card/50 font-content w-full rounded-lg border p-3">
         <p className="text-sm">
           <TgExampleMeaning text={question.answer} />
         </p>

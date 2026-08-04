@@ -72,7 +72,7 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
       <ScreenHeader
         backHref={backHref}
         title={word.headword}
-        titleClassName="truncate"
+        titleClassName="font-content truncate"
         actions={
           <>
             <BookmarkButton wordId={id} bookmarked={bookmarked} />

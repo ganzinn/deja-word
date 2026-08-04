@@ -289,7 +289,7 @@ export function ResultList({
                 >
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <ResultIcon result={row.result} />
-                    <span className="text-sm font-semibold break-words whitespace-pre-wrap">
+                    <span className="font-content text-sm font-semibold break-words whitespace-pre-wrap">
                       {promptDisplayOf(row)}
                     </span>
                     <div className="ml-auto flex items-center gap-2">
@@ -318,7 +318,7 @@ export function ResultList({
                   <div className="flex w-full items-start gap-2">
                     <p className="text-sm whitespace-pre-wrap">
                       <span className="text-muted-foreground">正解: </span>
-                      <span className="font-semibold">
+                      <span className="font-content font-semibold">
                         {answerSideDisplayOf(row.promptKind, row.correctDisplay)}
                       </span>
                     </p>
@@ -344,7 +344,9 @@ export function ResultList({
                       ) : row.answerDisplay !== null ? (
                         <p className="text-sm whitespace-pre-wrap">
                           <span className="text-muted-foreground">自分の回答: </span>
-                          {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
+                          <span className="font-content">
+                            {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
+                          </span>
                         </p>
                       ) : row.result === "GAVE_UP" ? (
                         <p className="text-muted-foreground text-sm">自分の回答: わからなかった</p>

@@ -31,7 +31,7 @@ export function RevealedHeadwordCard({
 }: Props) {
   return (
     <div className="border-border bg-card/50 flex flex-col items-center gap-2 rounded-lg border p-4">
-      <span className="text-center text-2xl font-bold tracking-tight break-words">
+      <span className="font-content text-center text-2xl font-bold tracking-tight break-words">
         {display ?? headword}
       </span>
       {/* 英単語と分けて、発音・詳細は1段下にまとめて横並びにする。 */}

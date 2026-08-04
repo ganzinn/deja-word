@@ -997,7 +997,7 @@ export function QuizFlow({
         {promptView.kind === "ja-plain" ? (
           // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
           <div className="flex flex-wrap items-center justify-center py-4">
-            <h1 className="text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
+            <h1 className="font-content text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
               <RichText text={promptView.text} />
             </h1>
           </div>
@@ -1005,7 +1005,7 @@ export function QuizFlow({
           // TG四択（日→英）: TG 例文の意味をハイライト表示。headword・発音は解答のため伏せる。
           // 例文は長いため見出しは一段小さくする（tg-text と同じ text-2xl）
           <div className="flex flex-wrap items-center justify-center py-4">
-            <h1 className="text-2xl font-bold tracking-tight break-words">
+            <h1 className="font-content text-2xl font-bold tracking-tight break-words">
               <TgExampleMeaning text={promptView.text} />
             </h1>
           </div>
@@ -1013,7 +1013,7 @@ export function QuizFlow({
           // TG四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。
           // 発音・詳細ボタンの配線は headword 見出しと同じ（詳細は解答後のみ）
           <div className="flex flex-col items-center gap-2 py-4">
-            <h1 className="text-center text-2xl font-bold tracking-tight break-words">
+            <h1 className="font-content text-center text-2xl font-bold tracking-tight break-words">
               <TgExampleText text={promptView.text} />
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -1030,7 +1030,7 @@ export function QuizFlow({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-4">
-            <h1 className="text-center text-3xl font-bold tracking-tight break-words">
+            <h1 className="font-content text-center text-3xl font-bold tracking-tight break-words">
               {question.headword}
             </h1>
             {/* 見出し語と分けて、発音・詳細は1段下にまとめて横並びにする（横一列の圧迫感を避ける）。 */}

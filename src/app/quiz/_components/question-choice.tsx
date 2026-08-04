@@ -116,7 +116,8 @@ export function QuestionChoice({
                 onClick={() => handleSelect(index)}
                 className={cn(
                   // 意味テキストの改行（\n）を保持しつつ文字数でも折り返す（MeaningBlocks と同じ扱い）
-                  "h-auto min-h-16 w-full justify-start py-4 text-left whitespace-pre-wrap",
+                  // 選択肢は単語コンテンツ（意味／英文）なので font-content
+                  "font-content h-auto min-h-16 w-full justify-start py-4 text-left whitespace-pre-wrap",
                   isCorrect &&
                     "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",
                   isWrongSelected &&

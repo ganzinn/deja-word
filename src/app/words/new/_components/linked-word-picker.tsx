@@ -104,7 +104,7 @@ export function LinkedWordPicker({
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary" className="gap-1">
           <LinkIcon className="size-3" />
-          リンク中: {linkedHeadword ?? linkedWordId}
+          リンク中: <span className="font-content">{linkedHeadword ?? linkedWordId}</span>
         </Badge>
         {disabledProp ? null : (
           <Button
@@ -160,7 +160,7 @@ export function LinkedWordPicker({
                     setOpen(false);
                   }}
                 >
-                  <span>{w.headword}</span>
+                  <span className="font-content">{w.headword}</span>
                   {w.isSystem ? (
                     <Badge variant="outline" className="ml-auto">
                       共通

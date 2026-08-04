@@ -123,7 +123,8 @@ export function QuestionMultiMeaning({
               disabled={answered !== null}
               onClick={() => handleToggle(index)}
               className={cn(
-                "h-auto min-h-9 justify-start py-2 text-left whitespace-normal",
+                // 選択肢は単語コンテンツ（意味テキスト）なので font-content
+                "font-content h-auto min-h-9 justify-start py-2 text-left whitespace-normal",
                 answered === null && isSelected && "border-primary bg-primary/10",
                 showCorrect &&
                   "border-green-600 bg-green-50 text-green-700 disabled:opacity-100 dark:bg-green-950 dark:text-green-400",

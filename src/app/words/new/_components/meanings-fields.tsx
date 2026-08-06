@@ -110,7 +110,7 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
                     autoCorrect="off"
                     // 入力中も表示側 (word-detail-view) と同じ IPA フォントで見えるようにする
                     className="font-pronunciation"
-                    placeholder="例: /ɪˈfemərəl/"
+                    placeholder="例: ɪˈfemərəl"
                     disabled={isSystemOwned}
                     {...f}
                   />

@@ -21,6 +21,12 @@
 - **到着時はコンテンツ領域のみを操作方向へ一方向スライド**で差し替える（ヘッダ・前後ナビは固定。ボタン押下でも同じ演出）。→ [01](01-ux-spec.md)
 - **ボタン・フリックの両方が対象。遷移中の多重操作は最後勝ち**（ブロックしない、現行挙動維持）。→ [01](01-ux-spec.md)
 - **`prefers-reduced-motion` ではスライド無効・淡色化のみ**。→ [01](01-ux-spec.md)
+- **スライドは自前 CSS（tw-animate-css + key 差し替え）で実装**。`experimental.viewTransition` は有効化しない。旧コンテンツの退場アニメはなし。→ [02](02-architecture.md)
+- **ページの遷移経路は `startTransition` + `router.push` に単一化**（淡色化トリガは `useTransition` の `isPending`）。ボタンの `<Link>` は prefetch と anchor semantics のために維持し `onNavigate` で intercept。ナビとコンテンツラッパは新設の client コンポーネント（仮称 `WordNavArea`）で包む。→ [02](02-architecture.md)
+- **方向の受け渡しは、ページ＝client モジュールスコープのストア（到着時に URL 照合で消費）、ダイアログ＝ローカル state**。直接アクセス・ブラウザ back/forward はスライドなし。→ [02](02-architecture.md)
+- **ダイアログは最後の ready 応答を保持して淡色化表示**（初回ロードのみ現行の「読み込み中…」）。鮮度判定（最後勝ち）の現行構造は維持。→ [02](02-architecture.md)
+- **共通化は表示コンポーネント（仮称 `WordContentTransition`）1 つに限定**。pending 検知はページ／ダイアログ各自。→ [02](02-architecture.md)
+- **テストは純関数 unit（方向→クラス・ダイアログ表示 state 導出）＋ E2E は `data-*` 属性の DOM 確認**。アニメの質感は目視。→ [02](02-architecture.md)
 
 ## トピック状態表
 
@@ -29,12 +35,10 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-ux-spec.md](01-ux-spec.md) | **確定**（2026-08-06） | 体験仕様（手段の採否・ページ／ダイアログ統一方針・ローディング表示の形・対象操作・reduced-motion） |
-| [02-architecture.md](02-architecture.md) | 未着手 | 実装方式（pending 検知・アニメーション実装・共通化の構造・テスト戦略） |
+| [02-architecture.md](02-architecture.md) | **確定**（2026-08-06） | 実装方式（pending 検知・アニメーション実装・共通化の構造・テスト戦略） |
 | [03-prefetch.md](03-prefetch.md) | 未着手 | プリフェッチによる待ち時間短縮・ADR-0085 追補の起票 |
 
-想定順序（残り）: 02 → 03。要求次第で入れ替え可。
-
-**次セッションの推奨トピック: 02（実装方式）**。引き継ぎ論点: (1) ページ側の pending 検知と方向の伝達 — `<Link>` とフリック（`router.push`）の 2 経路をどう単一機構に寄せるか（`useTransition` / `useLinkStatus` / `router.push` の `transitionTypes`）。(2) スライドの実装 — React `<ViewTransition>`（`experimental.viewTransition` の有効化が必要）か自前 CSS か。ルート間遷移（ページ側）で方向情報をどう新画面へ渡すかが自前 CSS 案の難所。(3) 淡色化・スライドをページ／ダイアログでどこまで共通モジュール化するか。(4) ダイアログの「前の単語を残す」への state 変更（現行は `wordId` 不一致で即 loading 扱い）。
+**次セッションの推奨トピック: 03（プリフェッチ）**。引き継ぎ論点: (1) ページ側 — `/words/[id]` は dynamic ルートで `loading.tsx` が無いため、`<Link>` のデフォルト prefetch がどこまで効くか（Next 16.2.9 同梱ドキュメントでは dynamic ルートは「最も近い loading 境界まで」の部分プリフェッチ、かつ production のみ）。フリック経路（`router.push`）は `<Link>` prefetch に乗らないため `router.prefetch` の併用を検討。(2) ダイアログ側 — Server Action（`getWordDetailForDialog`）の前後 1 件先行呼び出しと、ブックマーク状態の鮮度。(3) 連続送りで先読みを追い越すケース。(4) 全トピック確定後に ADR-0085 追補 ADR を起票（01 のスライド採用で「視覚アニメを付けない」判断を覆し、02 でその実装方式を確定したため）。
 
 ## セッション運用ルール
 

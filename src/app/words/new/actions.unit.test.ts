@@ -14,13 +14,19 @@ vi.mock("@/lib/words-create", async (importOriginal) => {
   };
 });
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
 const { getCurrentSession } = await import("@/lib/session");
 const { createWordForUser, DuplicateHeadwordError, DuplicateOccurrenceNumberError } =
   await import("@/lib/words-create");
+const { revalidatePath } = await import("next/cache");
 const { createWord } = await import("@/app/words/new/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedCreate = vi.mocked(createWordForUser);
+const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 function validInput(): WordFormValues {
   return {
@@ -42,6 +48,7 @@ const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof 
 beforeEach(() => {
   mockedGetSession.mockReset();
   mockedCreate.mockReset();
+  mockedRevalidatePath.mockReset();
 });
 
 afterEach(() => {
@@ -58,6 +65,7 @@ describe("createWord (Server Action)", () => {
       message: expect.any(String),
     });
     expect(mockedCreate).not.toHaveBeenCalled();
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
   test("invalid: schema rejects", async () => {
@@ -65,6 +73,7 @@ describe("createWord (Server Action)", () => {
     const res = await createWord({ ...validInput(), headword: "   " });
     expect(res).toEqual({ ok: false, error: "invalid", message: expect.any(String) });
     expect(mockedCreate).not.toHaveBeenCalled();
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
   test("duplicate: createWordForUser throws DuplicateHeadwordError", async () => {
@@ -72,6 +81,7 @@ describe("createWord (Server Action)", () => {
     mockedCreate.mockRejectedValue(new DuplicateHeadwordError());
     const res = await createWord(validInput());
     expect(res).toEqual({ ok: false, error: "duplicate", message: expect.any(String) });
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
   test("duplicate_occurrence_number: throws DuplicateOccurrenceNumberError", async () => {
@@ -103,5 +113,6 @@ describe("createWord (Server Action)", () => {
       "u_1",
       expect.objectContaining({ headword: "ubiquitous" }),
     );
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/words/w_new");
   });
 });

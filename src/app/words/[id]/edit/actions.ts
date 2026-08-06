@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import {
   ExampleNotFoundError,
   InvalidAudioError,
@@ -40,6 +42,8 @@ export async function updateWord(wordId: string, input: WordFormValues): Promise
 
   try {
     const word = await updateWordForUser(session.user.id, wordId, parsed.data);
+    // プリフェッチ済みの詳細（ルーターキャッシュ）が編集前のまま残らないように無効化する。
+    revalidatePath(`/words/${word.id}`);
     return { ok: true, wordId: word.id };
   } catch (e) {
     return mapWordWriteErrorToResult(e);
@@ -78,6 +82,7 @@ function mapAudioError(e: unknown): { error: AudioActionError; message: string }
 }
 
 async function runUpload(
+  wordId: string,
   meaningId: string,
   fd: FormData,
   fn: (userId: string, meaningId: string, file: File) => Promise<{ url: string }>,
@@ -96,6 +101,7 @@ async function runUpload(
   }
   try {
     const { url } = await fn(session.user.id, meaningId, file);
+    revalidatePath(`/words/${wordId}`);
     return { ok: true, url };
   } catch (e) {
     return { ok: false, ...mapAudioError(e) };
@@ -103,6 +109,7 @@ async function runUpload(
 }
 
 async function runDelete(
+  wordId: string,
   meaningId: string,
   fn: (userId: string, meaningId: string) => Promise<void>,
 ): Promise<DeleteAudioResult> {
@@ -116,41 +123,59 @@ async function runDelete(
   }
   try {
     await fn(session.user.id, meaningId);
+    revalidatePath(`/words/${wordId}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, ...mapAudioError(e) };
   }
 }
 
+/*
+ * 音源系 action は行 id（meaningId / relatedWordId / exampleId）しか受け取らないため、
+ * revalidate 対象の詳細パスを決められるよう、呼び出し元の UI から wordId を渡してもらう。
+ */
+
 export async function uploadPronunciationAudio(
+  wordId: string,
   meaningId: string,
   fd: FormData,
 ): Promise<UploadAudioResult> {
-  return runUpload(meaningId, fd, uploadPronunciationAudioForUser);
+  return runUpload(wordId, meaningId, fd, uploadPronunciationAudioForUser);
 }
 
-export async function deletePronunciationAudio(meaningId: string): Promise<DeleteAudioResult> {
-  return runDelete(meaningId, deletePronunciationAudioForUser);
+export async function deletePronunciationAudio(
+  wordId: string,
+  meaningId: string,
+): Promise<DeleteAudioResult> {
+  return runDelete(wordId, meaningId, deletePronunciationAudioForUser);
 }
 
 export async function uploadRelatedWordAudio(
+  wordId: string,
   relatedWordId: string,
   fd: FormData,
 ): Promise<UploadAudioResult> {
-  return runUpload(relatedWordId, fd, uploadRelatedWordAudioForUser);
+  return runUpload(wordId, relatedWordId, fd, uploadRelatedWordAudioForUser);
 }
 
-export async function deleteRelatedWordAudio(relatedWordId: string): Promise<DeleteAudioResult> {
-  return runDelete(relatedWordId, deleteRelatedWordAudioForUser);
+export async function deleteRelatedWordAudio(
+  wordId: string,
+  relatedWordId: string,
+): Promise<DeleteAudioResult> {
+  return runDelete(wordId, relatedWordId, deleteRelatedWordAudioForUser);
 }
 
 export async function uploadExampleAudio(
+  wordId: string,
   exampleId: string,
   fd: FormData,
 ): Promise<UploadAudioResult> {
-  return runUpload(exampleId, fd, uploadExampleAudioForUser);
+  return runUpload(wordId, exampleId, fd, uploadExampleAudioForUser);
 }
 
-export async function deleteExampleAudio(exampleId: string): Promise<DeleteAudioResult> {
-  return runDelete(exampleId, deleteExampleAudioForUser);
+export async function deleteExampleAudio(
+  wordId: string,
+  exampleId: string,
+): Promise<DeleteAudioResult> {
+  return runDelete(wordId, exampleId, deleteExampleAudioForUser);
 }

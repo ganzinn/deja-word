@@ -24,10 +24,11 @@ import { useRowOwnership } from "./shared/use-row-ownership";
 
 type RelatedWordCardProps = {
   index: number;
+  wordId?: string;
   onRemove: () => void;
 };
 
-function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
+function RelatedWordCard({ index, wordId, onRemove }: RelatedWordCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`relatedWords.${index}.ownerId`);
   const relatedWordId = useWatch({ control: form.control, name: `relatedWords.${index}.id` });
@@ -105,11 +106,11 @@ function RelatedWordCard({ index, onRemove }: RelatedWordCardProps) {
           {!isSystemOwned ? (
             <FormItem>
               <FormLabel>音源</FormLabel>
-              {relatedWordId ? (
+              {relatedWordId && wordId ? (
                 <PronunciationAudioManager
                   value={pronunciationAudioUrl}
-                  onUpload={(fd) => uploadRelatedWordAudio(relatedWordId, fd)}
-                  onDelete={() => deleteRelatedWordAudio(relatedWordId)}
+                  onUpload={(fd) => uploadRelatedWordAudio(wordId, relatedWordId, fd)}
+                  onDelete={() => deleteRelatedWordAudio(wordId, relatedWordId)}
                 />
               ) : (
                 <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
@@ -211,7 +212,12 @@ function LinkedWordPickerForRow(props: {
   return <LinkedWordPicker {...props} initialLinkedHeadword={initialLinkedHeadword} />;
 }
 
-export function RelatedWordsFields() {
+type RelatedWordsFieldsProps = {
+  /** 音源 action の revalidate 対象となる単語 id。新規時は undefined（音源は保存後のみ扱える）。 */
+  wordId?: string;
+};
+
+export function RelatedWordsFields({ wordId }: RelatedWordsFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -225,7 +231,12 @@ export function RelatedWordsFields() {
       ) : null}
 
       {fields.map((field, index) => (
-        <RelatedWordCard key={field.id} index={index} onRemove={() => remove(index)} />
+        <RelatedWordCard
+          key={field.id}
+          index={index}
+          wordId={wordId}
+          onRemove={() => remove(index)}
+        />
       ))}
 
       <ArrayAddButton label="関連語を追加" onClick={() => append(emptyRelatedWord)} />

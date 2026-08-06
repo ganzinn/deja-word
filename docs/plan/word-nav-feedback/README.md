@@ -15,10 +15,10 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-revalidate-path.md](01-revalidate-path.md) | 単語データ変更 Server Action に `revalidatePath` 追加（プリフェッチ導入の前提整備） | なし | 未着手 | - |
-| [02-word-content-transition.md](02-word-content-transition.md) | 共通表示コンポーネント `WordContentTransition`（淡色化＋方向スライド）＋方向→クラス純関数 | なし | 未着手 | - |
-| [03-page-nav.md](03-page-nav.md) | ページ側配線: `WordNavArea`・方向ストア・`adjacent-word-nav` 改修・`prefetch={true}` | 01, 02 | 未着手 | - |
-| [04-dialog-nav.md](04-dialog-nav.md) | ダイアログ側: 淡色化表示への変更＋ Map キャッシュ・前後 1 件先読み | 02 | 未着手 | - |
+| [01-revalidate-path.md](01-revalidate-path.md) | 単語データ変更 Server Action に `revalidatePath` 追加（プリフェッチ導入の前提整備） | なし | 完了（2026-08-06） | [#204](https://github.com/ganzinn/deja-word/pull/204) |
+| [02-word-content-transition.md](02-word-content-transition.md) | 共通表示コンポーネント `WordContentTransition`（淡色化＋方向スライド）＋方向→クラス純関数 | なし | 完了（2026-08-06） | [#204](https://github.com/ganzinn/deja-word/pull/204) |
+| [03-page-nav.md](03-page-nav.md) | ページ側配線: `WordNavArea`・方向ストア・`adjacent-word-nav` 改修・`prefetch={true}` | 01, 02 | 完了（2026-08-06） | [#204](https://github.com/ganzinn/deja-word/pull/204) |
+| [04-dialog-nav.md](04-dialog-nav.md) | ダイアログ側: 淡色化表示への変更＋ Map キャッシュ・前後 1 件先読み | 02 | 完了（2026-08-06） | [#204](https://github.com/ganzinn/deja-word/pull/204) |
 
 ## 依存関係図
 
@@ -54,6 +54,7 @@ graph LR
 - ブランチ名: `feat/word-nav-feedback-NN-<チケット名>`（リポジトリ慣行・`scripts/wt-new.sh` の `feat/` プレフィックスに合わせる）
 - PR タイトル: `word-nav-feedback: NN <チケット名>`
 - マージは依存順（依存先チケットの PR がマージされてから着手・マージする）
+- 運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feat/word-nav-feedback`。各チケットは統合ブランチへ squash マージし、最後に main への統合 PR を 1 本作成する）
 
 ## ステータス運用ルール
 

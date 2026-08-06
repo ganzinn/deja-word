@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { getCurrentSession } from "@/lib/session";
 import {
   ForbiddenDeleteError,
@@ -24,6 +26,8 @@ export async function deleteWord(wordId: string): Promise<DeleteWordResult> {
 
   try {
     await deleteWordForUser(session.user.id, wordId);
+    // プリフェッチ済みの詳細（ルーターキャッシュ）が削除後も残らないように無効化する。
+    revalidatePath(`/words/${wordId}`);
     return { ok: true };
   } catch (e) {
     if (e instanceof WordNotFoundError) {

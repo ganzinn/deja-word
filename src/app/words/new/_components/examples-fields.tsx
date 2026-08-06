@@ -19,10 +19,11 @@ import { useRowOwnership } from "./shared/use-row-ownership";
 
 type ExampleCardProps = {
   index: number;
+  wordId?: string;
   onRemove: () => void;
 };
 
-function ExampleCard({ index, onRemove }: ExampleCardProps) {
+function ExampleCard({ index, wordId, onRemove }: ExampleCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`examples.${index}.ownerId`);
   const exampleId = useWatch({ control: form.control, name: `examples.${index}.id` });
@@ -91,11 +92,11 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
       {!isSystemOwned ? (
         <FormItem>
           <FormLabel>音源</FormLabel>
-          {exampleId ? (
+          {exampleId && wordId ? (
             <PronunciationAudioManager
               value={pronunciationAudioUrl}
-              onUpload={(fd) => uploadExampleAudio(exampleId, fd)}
-              onDelete={() => deleteExampleAudio(exampleId)}
+              onUpload={(fd) => uploadExampleAudio(wordId, exampleId, fd)}
+              onDelete={() => deleteExampleAudio(wordId, exampleId)}
             />
           ) : (
             <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>
@@ -122,7 +123,12 @@ function ExampleCard({ index, onRemove }: ExampleCardProps) {
   );
 }
 
-export function ExamplesFields() {
+type ExamplesFieldsProps = {
+  /** 音源 action の revalidate 対象となる単語 id。新規時は undefined（音源は保存後のみ扱える）。 */
+  wordId?: string;
+};
+
+export function ExamplesFields({ wordId }: ExamplesFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -136,7 +142,7 @@ export function ExamplesFields() {
       ) : null}
 
       {fields.map((field, index) => (
-        <ExampleCard key={field.id} index={index} onRemove={() => remove(index)} />
+        <ExampleCard key={field.id} index={index} wordId={wordId} onRemove={() => remove(index)} />
       ))}
 
       <ArrayAddButton label="例文を追加" onClick={() => append(emptyExample)} />

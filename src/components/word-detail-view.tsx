@@ -14,9 +14,15 @@ import type { WordDetail } from "@/lib/words-detail";
 
 export function WordDetailView({
   word,
+  occurrenceNumber = null,
   onSelectRelated,
 }: {
   word: WordDetail;
+  /**
+   * 掲載箇所コンテキストで開いたときの、その掲載箇所での掲載番号。見出し語の右に `#N` として出す
+   * （「掲載箇所」セクションのカードと同じ表記）。コンテキスト無し・番号なしのときは null。
+   */
+  occurrenceNumber?: number | null;
   /**
    * 関連語（linkedWord あり）タップ時のコールバック。渡されたとき（ダイアログ内表示）は
    * ページ遷移せずこのコールバックで表示を切り替える。未指定（ページ表示）では従来の `<Link>` 遷移。
@@ -26,9 +32,16 @@ export function WordDetailView({
   return (
     <div className="flex flex-col gap-6 px-4 pt-6">
       <div className="flex items-start gap-2">
-        <h2 className="font-content text-2xl font-bold tracking-tight break-words">
-          {word.headword}
-        </h2>
+        {/* 見出し語と掲載番号はベースラインで揃える（外側は MY バッジを上端に置くため items-start）。
+            番号は text-xl（見出し語 text-2xl の約 0.85 倍 = 「掲載箇所」カードの本文:番号と同じ比率） */}
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h2 className="font-content text-2xl font-bold tracking-tight break-words">
+            {word.headword}
+          </h2>
+          {occurrenceNumber !== null ? (
+            <span className="text-muted-foreground font-mono text-xl">#{occurrenceNumber}</span>
+          ) : null}
+        </div>
         {word.ownerId === SYSTEM_USER_ID ? null : (
           <Badge variant="secondary" className="mt-1 ml-auto shrink-0">
             MY

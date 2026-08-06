@@ -68,9 +68,10 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
   const bookmarked = (await getBookmarkedWordIdsForUser(session.user.id, [id])).length > 0;
 
   // 本文はサーバ描画のまま。前後ナビを出す場合だけ WordNavArea（クライアント）の children として渡す。
+  // 掲載箇所コンテキストのときは、その掲載箇所での掲載番号を見出し語の右に出す。
   const detail = (
     <TtsFallbackProvider enabled={ttsFallbackEnabled}>
-      <WordDetailView word={word} />
+      <WordDetailView word={word} occurrenceNumber={nav?.current.occurrenceNumber ?? null} />
     </TtsFallbackProvider>
   );
 
@@ -108,9 +109,6 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
           currentHref={buildWordDetailHref(id, ctx)}
           prevHref={nav.prev !== null ? buildWordDetailHref(nav.prev.id, ctx) : null}
           nextHref={nav.next !== null ? buildWordDetailHref(nav.next.id, ctx) : null}
-          centerLabel={
-            nav.current.occurrenceNumber !== null ? `No.${nav.current.occurrenceNumber}` : "—"
-          }
           wordId={id}
         >
           {detail}

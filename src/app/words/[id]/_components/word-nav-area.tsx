@@ -23,7 +23,6 @@ export function WordNavArea({
   currentHref,
   prevHref,
   nextHref,
-  centerLabel,
   wordId,
   children,
 }: {
@@ -35,7 +34,6 @@ export function WordNavArea({
   currentHref: string;
   prevHref: string | null;
   nextHref: string | null;
-  centerLabel: string;
   /** 表示中の単語 ID。到着（＝この値の変化）でスライドを再生する。 */
   wordId: string;
   /** サーバ描画の単語詳細本文。 */
@@ -66,12 +64,8 @@ export function WordNavArea({
 
   return (
     <>
-      <AdjacentWordNav
-        prevHref={prevHref}
-        nextHref={nextHref}
-        centerLabel={centerLabel}
-        navigate={navigate}
-      />
+      {/* ナビ行は本文の上に固定（淡色化・スライドの対象外なので遷移中も動かない）。 */}
+      <AdjacentWordNav prevHref={prevHref} nextHref={nextHref} navigate={navigate} />
       <WordContentTransition pending={isPending} direction={direction} contentKey={wordId}>
         {children}
       </WordContentTransition>

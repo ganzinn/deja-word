@@ -141,6 +141,19 @@ describe("resolveCurrentNav", () => {
       }),
     ).toBeNull();
   });
+
+  // 見出し語の右に出す掲載番号（#N）は、要求中の単語ではなく「今表示している単語」を鍵に引く。
+  // 応答待ちで前の単語を残している間に番号だけ次へ進まないことをここで固定する。
+  test("表示中の単語を鍵に引けば、その単語の掲載番号が取れる", () => {
+    expect(
+      resolveCurrentNav({
+        wordId: "a",
+        occurrenceId: OCC,
+        navResponse: navResponse("a", nav({ occurrenceNumber: 12 })),
+        navCache: new Map([[navCacheKey(OCC, "b"), nav({ occurrenceNumber: 13 })]]),
+      })?.current.occurrenceNumber,
+    ).toBe(12);
+  });
 });
 
 describe("resolveNavView", () => {
@@ -199,7 +212,6 @@ describe("resolveNavView", () => {
       nextWordId: "b",
       prevDisabled: false,
       nextDisabled: false,
-      centerLabel: "No.12",
     });
   });
 
@@ -229,7 +241,7 @@ describe("resolveNavView", () => {
     ).toEqual({ visible: false });
   });
 
-  test("前後移動中は最後の隣接応答（中央ラベル）を残してボタンを disabled にする", () => {
+  test("前後移動中はナビ行を残したままボタンを disabled にする", () => {
     expect(
       resolveNavView({
         wordId: "b",
@@ -245,7 +257,6 @@ describe("resolveNavView", () => {
       nextWordId: null,
       prevDisabled: true,
       nextDisabled: true,
-      centerLabel: "No.12",
     });
   });
 
@@ -267,21 +278,7 @@ describe("resolveNavView", () => {
       nextWordId: "c",
       prevDisabled: false,
       nextDisabled: false,
-      centerLabel: "No.13",
     });
-  });
-
-  test("掲載番号なしの中央ラベルは「—」", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: navResponse("a", nav({ occurrenceNumber: null, next: "b" })),
-        lastNav: null,
-        navCache: new Map(),
-      }),
-    ).toMatchObject({ centerLabel: "—" });
   });
 });
 

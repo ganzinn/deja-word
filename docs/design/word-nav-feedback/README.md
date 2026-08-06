@@ -27,6 +27,11 @@
 - **ダイアログは最後の ready 応答を保持して淡色化表示**（初回ロードのみ現行の「読み込み中…」）。鮮度判定（最後勝ち）の現行構造は維持。→ [02](02-architecture.md)
 - **共通化は表示コンポーネント（仮称 `WordContentTransition`）1 つに限定**。pending 検知はページ／ダイアログ各自。→ [02](02-architecture.md)
 - **テストは純関数 unit（方向→クラス・ダイアログ表示 state 導出）＋ E2E は `data-*` 属性の DOM 確認**。アニメの質感は目視。→ [02](02-architecture.md)
+- **ページ側は前後ボタンの `<Link>` に `prefetch={true}`**（dynamic ルートのフルプリフェッチ・前後 1 件・常時発火）。フリックも同一 href 文字列のためキャッシュを共有。production のみ有効。→ [03](03-prefetch.md)
+- **単語データを変更する Server Action（`updateWord`・音源系・`deleteWord`・`createWord`）に `revalidatePath` を追加**。`toggleBookmark` は現行の楽観的更新のまま（ブックマーク初期表示の最大 5 分 stale は許容）。→ [03](03-prefetch.md)
+- **ダイアログは詳細＋隣接ナビを前後 1 件先読みし、開いている間の Map キャッシュに保持**（閉時破棄・トグル時はキャッシュも更新・先読み応答はキャッシュにのみ書く）。→ [03](03-prefetch.md)
+- **E2E はプリフェッチに依存させない**（先読み対象決定の純関数 unit を追加。効果確認は production ビルドで目視）。→ [03](03-prefetch.md)
+- **ADR-0086 を起票**（ADR-0085 追補: 遷移中フィードバック採用と prefetch 記述の訂正）。→ [03](03-prefetch.md)
 
 ## トピック状態表
 
@@ -36,9 +41,44 @@
 | --- | --- | --- |
 | [01-ux-spec.md](01-ux-spec.md) | **確定**（2026-08-06） | 体験仕様（手段の採否・ページ／ダイアログ統一方針・ローディング表示の形・対象操作・reduced-motion） |
 | [02-architecture.md](02-architecture.md) | **確定**（2026-08-06） | 実装方式（pending 検知・アニメーション実装・共通化の構造・テスト戦略） |
-| [03-prefetch.md](03-prefetch.md) | 未着手 | プリフェッチによる待ち時間短縮・ADR-0085 追補の起票 |
+| [03-prefetch.md](03-prefetch.md) | **確定**（2026-08-06） | プリフェッチによる待ち時間短縮・ADR-0085 追補（ADR-0086）の起票 |
 
-**次セッションの推奨トピック: 03（プリフェッチ）**。引き継ぎ論点: (1) ページ側 — `/words/[id]` は dynamic ルートで `loading.tsx` が無いため、`<Link>` のデフォルト prefetch がどこまで効くか（Next 16.2.9 同梱ドキュメントでは dynamic ルートは「最も近い loading 境界まで」の部分プリフェッチ、かつ production のみ）。フリック経路（`router.push`）は `<Link>` prefetch に乗らないため `router.prefetch` の併用を検討。(2) ダイアログ側 — Server Action（`getWordDetailForDialog`）の前後 1 件先行呼び出しと、ブックマーク状態の鮮度。(3) 連続送りで先読みを追い越すケース。(4) 全トピック確定後に ADR-0085 追補 ADR を起票（01 のスライド採用で「視覚アニメを付けない」判断を覆し、02 でその実装方式を確定したため）。
+**全トピック確定（2026-08-06）。設計完了**。後続はチケット分割（ticket-split スキル）へ。
+
+## 実装への引き継ぎ
+
+### 変更対象の一覧
+
+- スキーマ変更・マイグレーション: なし
+- 新規モジュール:
+  - `WordContentTransition`（仮称・`src/components/` 配置。淡色化＋方向スライドの共通表示コンポーネント。02 決定 5）
+  - `WordNavArea`（仮称・ページ側の client ラッパ。`navigate` / `isPending` の置き場。02 決定 2）と方向ストア（client モジュールスコープ、到着時に URL 照合で消費。02 決定 3）
+  - ダイアログの先読み対象決定・表示 state 導出の純関数モジュール（03 決定 4・5）
+- 既存ファイルの変更:
+  - `src/app/words/[id]/page.tsx` — コンテンツとナビを `WordNavArea` / `WordContentTransition` で包む
+  - `src/app/words/[id]/_components/adjacent-word-nav.tsx` — `prefetch={true}`（03 決定 1）、`<Link>` の `onNavigate` intercept ＋ `startTransition` + `router.push` 単一化（02 決定 2）
+  - `src/app/quiz/_components/word-detail-dialog.tsx` — 「読み込み中…」差し替え廃止・淡色化表示（01/02）、Map キャッシュ＋前後 1 件先読み（03 決定 4）
+  - `src/app/words/[id]/edit/actions.ts`・`src/app/words/[id]/actions.ts`・`src/app/words/new/actions.ts` — `revalidatePath` 追加（03 決定 3）
+  - スライド用 CSS（tw-animate-css ベースのクラス定義。globals.css への追記があり得る。02 決定 1）
+- `docs/features/` の該当ページ（単語詳細・単語テスト）本文の確認・追記。静止画スクリーンショットは過渡表示のため原則影響なし
+
+### 着手順序のヒント
+
+1. `WordContentTransition` ＋スライド CSS — ページ／ダイアログ双方が依存する共有物。並行実装時に競合しやすいのはここ
+2. ページ側（`WordNavArea`・`adjacent-word-nav` 改修・方向ストア）
+3. ダイアログ側（淡色化表示 → キャッシュ・先読み）
+4. `revalidatePath` 追加と `prefetch={true}` — 独立した小粒変更。2・3 と並行可（ただし `prefetch={true}` は `revalidatePath` 追加とセットで入れる。03 決定 3 が前提整備のため）
+
+### テスト戦略の要点
+
+- unit（DB なし）: 方向→クラス導出／ダイアログ表示 state 導出（キャッシュ参照込み）／先読み対象決定 — すべて純関数
+- E2E: `data-*` 属性で pending / direction を DOM 確認。プリフェッチには依存させない（production 限定）
+- 目視: アニメーションの質感、プリフェッチ効果（`pnpm build && pnpm start` で network タブ）
+- `revalidatePath` 追加対象 action の既存 unit テストは `next/cache` モックの要否を実装時に確認
+
+### チケット分割
+
+ticket-split スキルで `docs/plan/word-nav-feedback/` に生成する（形式は ticket-split 側で定義）。詳細が必要な場合のみ各トピックの「決定 N」を参照。
 
 ## セッション運用ルール
 

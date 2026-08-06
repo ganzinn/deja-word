@@ -66,6 +66,7 @@
 | [0083](0083-placeholder-italic-shared.md) | プレースホルダ do/doing の斜体は訳語・TG 例文で共通、色と A/B の斜体は TG 例文限定 | 高 | — |
 | [0084](0084-search-keyword-accent-normalization.md) | 単語検索はキーワード側のアクセント記号を落として照合（保存データは正規化しない） | 高 | — |
 | [0085](0085-swipe-nav-window-touch.md) | 前後ナビの横フリックは window の touch イベントで判定（左＝次 / 右＝前、画面端除外） | 高 | — |
+| [0086](0086-word-nav-transition-feedback-prefetch.md) | 前後ナビに遷移中フィードバック（淡色化＋方向スライド）とプリフェッチを追加（0085 追補） | 高 | — |
 
 ### D. quiz 機能
 

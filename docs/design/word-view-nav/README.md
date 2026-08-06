@@ -21,6 +21,11 @@
 - **「間違えた問題だけ表示」で絞り込み中のダイアログナビは、表示中の行だけを辿る**。→ [01](01-requirements.md)
 - **全件ブックマークモードのテストでも前後ナビを出す**。→ [01](01-requirements.md)
 - **スコープ外**: 一覧ソート機能自体の追加・変更、関連語スタック先のナビ非表示の解除、ナビ順序と無関係な既存挙動の変更。→ [01](01-requirements.md)
+- **単語ビューコンテキストは `view=word` を判別子に `sort` / `q` / `match` / `bookmarked` を詳細 URL に載せる**。`occ` があれば掲載箇所コンテキストが優先、デフォルト値は省略。→ [02](02-list-nav-context.md)
+- **コンテキスト型は kind 付き union `WordDetailNavContext` に一般化し、掲載箇所コンテキストに `bookmarked` を追加**（隣接クエリ・詳細リンク・戻りリンクに反映）。→ [02](02-list-nav-context.md)
+- **単語ビュー用隣接クエリ `findAdjacentWordsInWordView` を新設**。一覧と where を共有し、タプル比較（recent = createdAt desc, id desc / headword = headword asc, id asc）で prev / next を引く。戻り値に掲載番号は含めない。→ [02](02-list-nav-context.md)
+- **current が絞り込み集合から外れたら前後ナビ非表示**（既存踏襲）。→ [02](02-list-nav-context.md)
+- **戻り・編集リンクはコンテキストから再構築し、`page` は持ち回らない**。→ [02](02-list-nav-context.md)
 
 ## トピック状態表
 
@@ -29,13 +34,13 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | **確定**（2026-08-07） | 要求・対象 3 経路の期待挙動・スコープ外 |
-| [02-list-nav-context.md](02-list-nav-context.md) | 未着手 | 単語一覧 → 詳細ページの URL コンテキスト設計と隣接クエリ |
+| [02-list-nav-context.md](02-list-nav-context.md) | **確定**（2026-08-07） | 単語一覧 → 詳細ページの URL コンテキスト設計と隣接クエリ |
 | [03-quiz-result-dialog-nav.md](03-quiz-result-dialog-nav.md) | 未着手 | テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式 |
 | [04-ui-architecture.md](04-ui-architecture.md) | 未着手 | UI・遷移フィードバック・テスト戦略・ドキュメント更新 |
 
-想定順序（残り）: 02 → 03 → 04。要求次第で入れ替え可。
+想定順序（残り）: 03 → 04。要求次第で入れ替え可。
 
-**次セッションの推奨トピック: 02（単語一覧 → 詳細ページの URL コンテキスト設計と隣接クエリ）**。引き継ぎ論点: コンテキスト型の一般化（単語ビュー用と掲載箇所用の 2 種をどう表すか）、単語ビュー用隣接クエリのタプル比較設計（recent は createdAt 同値がありうるため id tiebreak 必須）、bookmarked 追加時に閲覧中の単語が集合から外れた場合の挙動。
+**次セッションの推奨トピック: 03（テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式）**。引き継ぎ論点: 順序ソース（クライアント `rows` 配列を正とするか。サーバはランダム出題順を再現できない）、ダイアログへの順序受け渡し（`dialogStack` は wordId のみ・「間違えた問題だけ表示」フィルタ state が `ResultList` 内部にある点）、見出し語右の掲載番号表示の供給元、削除済み単語行のスキップ、先読み（ADR-0086）の再設計、`findAdjacentWordsByOccurrenceNumber` の廃止可否。
 
 ## セッション運用ルール
 

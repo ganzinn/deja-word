@@ -196,6 +196,11 @@ export function WordDetailDialog({
 
   // 表示中の単語が変わったときだけ先頭へ戻す（応答待ちで前の単語を見ている間は動かさない）。
   const shownWordId = view.kind === "ready" ? view.word.id : null;
+  // 見出し語の右に出す掲載番号。ナビの遷移先（`currentNav`）ではなく「今表示している単語」の
+  // 隣接応答から引く。応答待ちで前の単語を残している間に番号だけ先に進むのを防ぐため。
+  const shownOccurrenceNumber =
+    resolveCurrentNav({ wordId: shownWordId, occurrenceId, navResponse, navCache })?.current
+      .occurrenceNumber ?? null;
   useEffect(() => {
     if (shownWordId === null) return;
     scrollRef.current?.scrollTo({ top: 0 });
@@ -241,9 +246,11 @@ export function WordDetailDialog({
         <DialogTitle className="sr-only">単語の詳細</DialogTitle>
         <div className="mx-auto w-full max-w-sm pb-16 md:max-w-2xl">
           {/* ヘッダのブックマークトグル。出題中・結果一覧のどちらから開いても同じ位置（右上、✕ の左）に出す。
-              初期値はサーバ供給（getWordDetailForDialog の bookmarked）のため取得完了後のみ描画する */}
-          {view.kind === "ready" ? (
-            <div className="flex justify-end px-4 pt-4 pr-14 md:pr-4">
+              初期値はサーバ供給（getWordDetailForDialog の bookmarked）のため取得完了後のみ描画するが、
+              行の高さ（min-h-7 = icon-sm ボタン）は常に確保する。詳細より隣接応答が先に届いた瞬間に
+              下のナビ行がここまでせり上がると ✕（absolute top-2 right-2）と重なるため。 */}
+          <div className="flex min-h-7 justify-end px-4 pt-4 pr-14 md:pr-4">
+            {view.kind === "ready" ? (
               <BookmarkButton
                 key={view.word.id}
                 wordId={view.word.id}
@@ -259,15 +266,13 @@ export function WordDetailDialog({
                   onBookmarkChange?.(id, next);
                 }}
               />
-            </div>
-          ) : null}
-          {/* 詳細ページ（AdjacentWordNav）と同じ位置・見た目。右は ✕（absolute top-2 right-2）を避ける。
-              応答待ちの間も行は消さず（消滅→再出現はレイアウトシフトになる）、ボタンだけ disabled にする */}
+            ) : null}
+          </div>
+          {/* 詳細ページ（AdjacentWordNav）と同じ位置・見た目（本文の上・右詰め）。右端は本文と同じ
+              px-4（✕ は上のブックマーク行が高さを確保しているので避ける必要がない）。応答待ちの間も
+              行は消さず（消滅→再出現はレイアウトシフトになる）、ボタンだけ disabled にする */}
           {navView.visible ? (
-            <nav
-              aria-label="前後の単語"
-              className="flex items-center justify-between gap-2 px-4 pt-4 pr-14 md:pr-4"
-            >
+            <nav aria-label="前後の単語" className="flex items-center justify-end gap-2 px-4 pt-4">
               <Button
                 variant="outline"
                 size="sm"
@@ -277,9 +282,6 @@ export function WordDetailDialog({
                 <ChevronLeftIcon />
                 前へ
               </Button>
-              <span className="text-muted-foreground text-sm tabular-nums">
-                {navView.centerLabel}
-              </span>
               <Button
                 variant="outline"
                 size="sm"
@@ -308,6 +310,7 @@ export function WordDetailDialog({
               {/* 関連語タップは前後ナビではないのでスライドさせない（方向 null） */}
               <WordDetailView
                 word={view.word}
+                occurrenceNumber={shownOccurrenceNumber}
                 onSelectRelated={(relatedId) => switchTo(null, () => onSelectRelated(relatedId))}
               />
             </WordContentTransition>

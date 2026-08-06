@@ -67,6 +67,7 @@
 | [0084](0084-search-keyword-accent-normalization.md) | 単語検索はキーワード側のアクセント記号を落として照合（保存データは正規化しない） | 高 | — |
 | [0085](0085-swipe-nav-window-touch.md) | 前後ナビの横フリックは window の touch イベントで判定（左＝次 / 右＝前、画面端除外） | 高 | — |
 | [0086](0086-word-nav-transition-feedback-prefetch.md) | 前後ナビに遷移中フィードバック（淡色化＋方向スライド）とプリフェッチを追加（0085 追補） | 高 | — |
+| [0087](0087-occurrence-number-beside-headword.md) | 掲載番号は見出し語の右に `#N`（中央ラベル `No.N` 廃止）、前後ナビは 2 ボタン右詰め | 高 | — |
 
 ### D. quiz 機能
 

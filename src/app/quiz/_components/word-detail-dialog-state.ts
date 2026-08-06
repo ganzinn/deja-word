@@ -86,12 +86,7 @@ export type NavView =
       nextWordId: string | null;
       prevDisabled: boolean;
       nextDisabled: boolean;
-      centerLabel: string;
     };
-
-function occurrenceNumberLabel(occurrenceNumber: number | null): string {
-  return occurrenceNumber !== null ? `No.${occurrenceNumber}` : "—";
-}
 
 /**
  * 現在の単語に対する隣接応答を取り出す。`undefined` は未取得（応答待ち）、
@@ -114,8 +109,8 @@ export function resolveCurrentNav(input: {
 /**
  * 前後ナビ行の表示を導出する。
  *
- * 応答待ちの間もナビ行は出したまま（消滅→再出現はレイアウトシフトになる）、
- * 直前の隣接応答をラベルごと残してボタンだけ disabled にする。
+ * 応答待ちの間もナビ行は出したまま（消滅→再出現はレイアウトシフトになる）、ボタンだけ disabled にする
+ * （直前の隣接応答 `lastNav` は「行を出し続けてよいか」の判断にだけ使う）。
  * 初回オープン時は保持内容が無いので、現行どおり隣接応答の到着まで描画しない。
  */
 export function resolveNavView(input: {
@@ -141,7 +136,6 @@ export function resolveNavView(input: {
       nextWordId: fresh.next?.id ?? null,
       prevDisabled: fresh.prev === null,
       nextDisabled: fresh.next === null,
-      centerLabel: occurrenceNumberLabel(fresh.current.occurrenceNumber),
     };
   }
 
@@ -152,7 +146,6 @@ export function resolveNavView(input: {
     nextWordId: null,
     prevDisabled: true,
     nextDisabled: true,
-    centerLabel: occurrenceNumberLabel(lastNav.current.occurrenceNumber),
   };
 }
 

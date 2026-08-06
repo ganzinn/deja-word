@@ -54,6 +54,7 @@ graph LR
 - ブランチ名: `feat/word-nav-feedback-NN-<チケット名>`（リポジトリ慣行・`scripts/wt-new.sh` の `feat/` プレフィックスに合わせる）
 - PR タイトル: `word-nav-feedback: NN <チケット名>`
 - マージは依存順（依存先チケットの PR がマージされてから着手・マージする）
+- 運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feat/word-nav-feedback`。各チケットは統合ブランチへ squash マージし、最後に main への統合 PR を 1 本作成する）
 
 ## ステータス運用ルール
 

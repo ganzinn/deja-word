@@ -77,6 +77,21 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 **漏洩・認可系は空振り防止（negative control）まで**やる: fix を一時 revert（`git stash push -- <file>`）→ 対象ページを 1 回叩いて再コンパイル → E2E が **FAIL** することを確認 → `git stash pop`。アサートの空振りと dev の stale を同時に排除できる（`next dev` は Server Component をリクエスト毎に再コンパイルするので、revert 後は対象ページへ 1 回アクセスしてから走らせる）。
 
+## フリック（スワイプ）操作の再現
+
+`useSwipeNav`（`src/components/use-swipe-nav.ts`）は window の `touchstart` / `touchend` を見るだけなので、**合成 `TouchEvent` を `page.evaluate` で dispatch すれば再現できる**（`new Touch(...)` を `changedTouches` に載せる）。CDP の `Input.dispatchTouchEvent` は不要。
+
+**落とし穴: `page.evaluate` に渡す関数の中で名前付き関数を作らない。** tsx / esbuild の keepNames が**名前付き関数**（`function f() {}` だけでなく `const f = () => {}` も対象）に `__name(...)` を差し込むため、ブラウザ側で `ReferenceError: __name is not defined` になる。evaluate の中は無名の式で書く。
+
+## 過渡的な状態（遷移中フィードバック等）の観測
+
+ローディング表示や遷移アニメーションのように**一瞬で消える DOM 状態**は、ポーリングでは隙間に落ちて取りこぼす。
+
+- 観測は **`MutationObserver`** で行う（`page.evaluate` 内に仕込んで属性変化を記録し、あとで回収する）。
+- ローカルは遅延が小さく過渡状態が現れないことがあるため、**CDP の network throttling** で本番相当の遅延を作る（前後ナビの検証では 600ms を使った）。
+- **プリフェッチ・先読みが効くと過渡状態そのものが出ない**。dev サーバは `<Link>` の自動プリフェッチが動かない（production ビルドのみの仕様）ので、プリフェッチ非依存の検証は dev で走らせるのが素直。ダイアログ内の先読みのようにアプリ実装側のキャッシュが効く場合は、throttling か「先読みが終わる前に素早く操作する」で待ちを作る。
+- 実装側は E2E から観測できるよう `data-*` 属性を出す規約（例: `WordContentTransition` の `data-pending` / `data-direction`）。クラス名ではなく属性を見る。
+
 ## 関連
 
 - quiz 系の自動化ノウハウ（開始/進行中/結果のセレクタ、出題形式一覧、自己判定形式が最易、出題データの事情）は [references/quiz.md](references/quiz.md) にまとめてある（リポジトリ内・共有可能な一次情報）。

@@ -1,6 +1,6 @@
 # 02. word-content-transition
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-06）　PR: （統合 PR にて）
 
 ## 目的
 
@@ -73,4 +73,11 @@ tw-animate-css の既存ユーティリティで足りない場合のみ追記�
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+1. **`data-pending` の値は `"true"` に固定**（付与時のみ。非 pending 時は属性ごと消える）。リポジトリ既存の慣行（`src/app/settings/occurrences/_components/auto-number-toggle.tsx` の `data-disabled={disabled ? "true" : undefined}`）に合わせた。03・04 の E2E は `[data-pending="true"]` / `[data-pending]` のどちらでも観測できる。
+2. **`data-pending` / `data-direction` は外側ラッパ（淡色化する要素）に出力**。内側の keyed 要素ではない。E2E のセレクタはこの要素（`children` の親の親）を指す。
+3. **外側ラッパに `overflow-x-clip` を付けた**（計画に明記のない実装判断）。スライドで一時的に横へはみ出す 2rem 分で横スクロールバーが出るのを防ぐため。`hidden` ではなく `clip` を選び、スクロール容器を作らず縦スクロール・`sticky` の挙動を変えないようにしている。
+4. **チューニング値**: 淡色化 `opacity-50` ＋ `transition-opacity duration-150`、スライド距離 `-8`（2rem）＋ `duration-200`。設計が固定しているのは時間感覚と方向のみ。03・04 の目視で不都合（`sticky` ヘッダやポップオーバーの見切れ等）や調整の必要が出た場合は、**03・04 内で直接直さず本チケットの追加改修として切り出す**（plan ハブ「共有物・競合点」）。
+5. **`src/app/globals.css` は変更なし**。`slide-in-from-{right,left}-8` は tw-animate-css 1.4.0 の `@utility slide-in-from-{right,left}-*`（spacing スケール、`-8` = 2rem）で提供済みのため追記不要（`node_modules/tw-animate-css/dist/tw-animate.css` で確認）。
+6. **`duration-200` が animation に効く根拠**: tw-animate-css の `--animate-in` は `var(--tw-animation-duration, var(--tw-duration, .15s))` を使い、Tailwind の `duration-200` が `--tw-duration` を設定するため（既存前例 `answer-feedback-overlay.tsx` と同じ書き方）。外側の `duration-150` は `--tw-duration` が `inherits: false` で登録されているため内側へ漏れない。
+7. **`WordNavDirection` は本チケットで新規定義**。既存の `src/components/use-swipe-nav.ts` に同値の `SwipeNavDirection`（`"prev" | "next"`）があるが関心が別（フリック判定 vs 表示アニメ）なので統合していない。03 で両者を繋ぐ際は代入互換のためそのまま渡せる。
+8. `slideInClass` の戻り値は Tailwind に検出させるため断片を組み立てず完全な文字列リテラルで返している。

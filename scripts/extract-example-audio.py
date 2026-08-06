@@ -29,6 +29,7 @@ from faster_whisper import WhisperModel
 
 REPO = Path(__file__).resolve().parent.parent
 SR = 16000
+JA_CHAR = re.compile(r"[぀-ヿ一-鿿]")
 PAD_START = 0.20
 PAD_END = 0.30
 
@@ -78,11 +79,12 @@ def decode_audio(src: Path) -> np.ndarray:
     return np.frombuffer(raw, dtype=np.float32)
 
 
-def transcribe_clip(model: WhisperModel, audio: np.ndarray, s: float, e: float, dur: float):
+def transcribe_clip(model: WhisperModel, audio: np.ndarray, s: float, e: float, dur: float,
+                    language: str | None = None):
     clip = audio[int(max(0.0, s - 0.15) * SR):int(min(dur, e + 0.15) * SR)]
-    segs, info = model.transcribe(clip, beam_size=5)
+    segs, info = model.transcribe(clip, beam_size=5, language=language)
     text = "".join(sg.text for sg in segs).strip()
-    return text, info.language
+    return text, info.language, info.language_probability
 
 
 def norm_words(text: str) -> list[str]:
@@ -109,10 +111,25 @@ def load_headwords(words_csv: Path) -> list[str]:
 
 
 def is_word_group(segs: list[dict]) -> bool:
-    """単語エントリの構造（非英語区間の後ろに英語区間で終わる）か。区切りアナウンスを弾く。"""
-    if len(segs) < 2 or segs[-1]["lang"] != "en":
+    """単語エントリの構造（日本語区間の後ろに英語区間で終わる）か。区切りアナウンスを弾く。"""
+    if len(segs) < 2 or segs[-1]["ja"]:
         return False
-    return any(r["lang"] != "en" for r in segs)
+    return any(r["ja"] for r in segs)
+
+
+def merge_orphan_examples(groups: list[list[dict]]) -> list[list[dict]]:
+    """例文が長い無音で前のエントリから切り離された場合に戻す。
+    「全区間が英語 かつ 先頭区間が長い（＝短い見出し語読み上げで始まっていない）」グループは例文の続き。"""
+    out: list[list[dict]] = []
+    for g in groups:
+        orphan = (all(not r["ja"] for r in g)
+                  and (g[0]["end"] - g[0]["start"]) >= 1.8
+                  and out and any(r["ja"] for r in out[-1]))
+        if orphan:
+            out[-1] = out[-1] + g
+        else:
+            out.append(g)
+    return out
 
 
 def main() -> None:
@@ -174,9 +191,15 @@ def main() -> None:
         for g in groups:
             recs = []
             for s, e in g:
-                text, lang = transcribe_clip(multi, audio, s, e, dur)
-                recs.append({"start": s, "end": e, "lang": lang, "text": text})
+                text, lang, prob = transcribe_clip(multi, audio, s, e, dur)
+                ja = lang != "en" or JA_CHAR.search(text) is not None
+                if not ja and prob < 0.90:
+                    # 短い日本語訳は英語と誤判定されやすい（「規範」→"Kihan!"）。ja 強制で読み直して確かめる
+                    text_ja, _, _ = transcribe_clip(multi, audio, s, e, dur, language="ja")
+                    ja = JA_CHAR.search(text_ja) is not None
+                recs.append({"start": s, "end": e, "lang": lang, "ja": ja, "text": text})
             tr_groups.append(recs)
+        tr_groups = merge_orphan_examples(tr_groups)
 
         word_groups = [g for g in tr_groups if is_word_group(g)]
         announcements = [g for g in tr_groups if not is_word_group(g)]
@@ -191,7 +214,7 @@ def main() -> None:
         with open(args.report, "a") as rep:
             for num, segs in zip(range(lo, hi + 1), word_groups):
                 hw = headwords[num - 1]
-                last_ja = max(i for i, r in enumerate(segs) if r["lang"] != "en")
+                last_ja = max(i for i, r in enumerate(segs) if r["ja"])
                 ex = segs[last_ja + 1:]
                 start = ex[0]["start"] - PAD_START
                 end = min(dur, ex[-1]["end"] + PAD_END)

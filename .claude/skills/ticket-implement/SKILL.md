@@ -113,7 +113,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 - 前提: agent teams が有効であること（settings.json の `env` に `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"`）。無効なら委譲手段の自動選択（「引数」節）にフォールバックし、その旨を計画ドラフト提示で伝える
 - ready チケットごとに teammate を 1 人スポーンする。指示は同じ [templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) を埋めて渡し、担当 worktree の絶対パス配下だけで作業させる（テンプレの禁止事項 — `docs/plan/` 編集・push・PR 作成の禁止 — はそのまま適用）
-- 並行度上限は共通ルールどおり（上限 3・推奨 2）。トークンコストは teammate 数に比例して嵩むため、計画ドラフト提示に含める
+- 並行度上限は共通ルールどおり。トークンコストは teammate 数に比例して嵩むため、計画ドラフト提示に含める
 - 完了・手詰まりは teammate からの通知・メッセージで受け、報告（変更ファイル一覧・DoD 結果・実装メモ）をメインが回収する。マージして worktree を削除したら当該 teammate は解放する
 - 「失敗・中断時の扱い」はサブエージェント委譲と同一規則を適用する（「再委譲」= 同一 worktree を担当する teammate への再指示メッセージ）
 - teams 特有の制約: セッションは `/resume` で teammate を復元しない。中断・再開は本スキルの既存フロー（ready 判定・突き合わせ）がそのまま吸収するため追加の再開処理は不要。teammate の権限確認はリードへバブルアップされるため、承認待ちで停滞しない permission mode で開始する
@@ -163,32 +163,52 @@ herdr pane close <root_paneのpane_id>  # agent start はタブの root ペイ�
 **`--status done` は使わない**。done は UI の attention state であり、CLI の完了待ちには herdr がエラーで拒否する。完了シグナルは idle（既に idle なら wait は即時返却するため、完了を取り逃すレースは無い）:
 
 ```sh
-herdr agent wait <名前> --status idle --timeout 300000
+herdr agent wait <名前> --status idle --timeout 570000
 ```
 
-- 実行側（Bash ツール）の timeout は wait の `--timeout` より長く設定する（Bash ツールのデフォルト 120 秒で先に切られるため）
-- タイムアウトしたら `herdr agent get <名前>` で現状を確認して分岐する: working → そのまま待ち直し / blocked → `herdr agent read <名前> --source visible` で内容を確認し、`herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知して承認を待ってから待ち直す（代理承認はしない。判断できない内容ならエスカレーション）
+- wait の `--timeout` は 570000 を上限にし、実行側（Bash ツール）の timeout は 600000 を指定する（デフォルト 120 秒では wait より先に切られ、600 秒を超える待ちは背景化されて exit 1 の「失敗」通知になる）
+- **wait の返却は 3 形あり、どれも「エラー」ではない**:
+  - 既に目的の状態 → 即時返却で `{"event":"pane.agent_status_changed","data":{...}}`
+  - 遷移を検知 → `{"id":"cli:agent:wait:resolve","result":{"agent":{...}}}`
+  - タイムアウト → JSON ではない素のテキスト `timed out waiting for agent status change`。「まだ達していない」だけの正常な結果（エラー扱いして手を止めない）
+- タイムアウトしたら `herdr agent get <名前>` で現状を確認して分岐する: working → idle 待ちを再実行 / blocked → 下の「承認待ちループ」へ
 - 複数ペイン並行時はチケット番号順に順次待てばよい（マージ順と一致する）
+
+#### 承認待ちループ（blocked を検知したら）
+
+blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、発生を 1 回ずつ捕捉して即座に完了待ちへ復帰できる（idle 待ちのままでは、その間の blocked → 承認 → working が見えず数えられない）:
+
+1. `herdr agent read <名前> --source visible` でプロンプト内容を確認する（判断できない内容ならエスカレーション）。visible は描画前の古い画面を返すことがあるため、blocked かどうかは `herdr agent get` のステータスを正とする
+2. `herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知する（代理承認の禁止は「trust と permission」節のとおり）
+3. `herdr agent wait <名前> --status working --timeout 570000` で承認を待つ。**通知だけしてターンを終えない** — 待ちが走っていないと、承認されても再開の契機が無い
+4. working が返ったら承認 1 回と数えて idle 待ちに戻る。タイムアウトしたら `herdr agent get` で再確認し、blocked のままなら 3 に戻る（再通知は不要）
+
+承認の発生回数は working 復帰の回数としてオーケストレーターが数え、最終報告に含める（実装エージェントの自己申告は使わない）。
 
 #### 承認プロンプトの切り分け
 
-判定の決定打は、プロンプトに「don't ask again」「allow all ... during this session」といった**恒久化の選択肢が出るかどうか**。出るものは許可リストで恒久化できる。出ないもの（Yes / No の 2 択のみ）は原理的に毎回聞かれるため、上記の blocked 運用（通知してユーザーの操作を待つ）が正規の対処になる。
+判定の決定打は、プロンプトに「don't ask again」「allow all ... during this session」といった**恒久化の選択肢が出るかどうか**。出るものは許可リストで恒久化できる。出ないもの（Yes / No の 2 択のみ）は原理的に毎回聞かれるため、上記の承認待ちループが正規の対処になる。
 
 | プロンプトの種類 | 消せるか | 対策 |
 | --- | --- | --- |
 | `This command requires approval`（許可リストに無い定型コマンド） | ○ | wt-env.sh の `.claude/settings.local.json` 配布＋`--allowedTools` |
+| 同上だが**環境変数の前置き**が原因（`PORT=3100 ... pnpm dev` は `Bash(pnpm dev *)` に不一致） | ○ | 本体の settings.local.json に env 名から始まるルール（`Bash(PORT=* pnpm *)` 等。`*` はスペースをまたいで一致）を追加。wt-env.sh が全 worktree に配る |
+| `Compound command contains cd with write operation`（`cd`＋書き込みの複合コマンド。許可リストでは消せない） | ○（発生源で） | テンプレで `cd` 前置きを禁止（cwd は最初から worktree） |
 | worktree 外への書き込み（報告ファイル） | ○ | `--add-dir <worktree置き場>` |
+| worktree 外への書き込み（scratchpad 等の一時ファイル） | ○（発生源で） | テンプレで一時ファイルを worktree 内の `tmp/` に限定 |
 | プロジェクト外の読み取り（`/tmp` 等） | ○ | テンプレで `/tmp` を使わせない＋`Read(//tmp/**)` |
-| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）/ バックグラウンド演算子 `&` を含む Bash | ✗ | 通知してユーザーの操作を待つ |
+| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）/ バックグラウンド演算子 `&` を含む Bash | ✗ | 承認待ちループで対処 |
 
 `&` は `pnpm e2e:capture-docs` のように dev サーバを要する作業で必ず踏む。撮影を伴うチケットを委譲する場合は、**承認待ちが最低 1 回発生する前提**で運用する。
+
+なお、プロンプトで「don't ask again」を選んでも**次回以降には残らない**（保存先が worktree 側の `.claude/settings.local.json` で、worktree 削除と共に消える）。恒久化したい許可は本体の `.claude/settings.local.json` に足す。
 
 ### 報告回収・再委譲・後片付け
 
 - **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。idle になっても report ファイルが無い・不完全な場合は `herdr agent read <名前> --source recent-unwrapped --lines 200` で最終メッセージを確認する（recent バッファは直近の描画分しか残らないことがあるため、report ファイルが一次情報）
 - **再委譲**（「失敗・中断時の扱い」の共通規則を適用）: `herdr agent get <名前>` で pane_id を解決し、`herdr pane run <pane_id> "<指示>"` で同一ペインの claude に追加指示を送る（1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる）。ペインが消えていた場合のみ同一 worktree で claude を起動し直す
 - **後片付け**: マージ・検証成功後、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり。タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
-- 並行度上限は共通ルールどおり（上限 3・推奨 2）。ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む。計画ドラフト提示に含める
+- 並行度上限は共通ルールどおり。ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む（計画ドラフト提示に含める）
 - 中断・再開は既存フロー（ready 判定・突き合わせ）がそのまま吸収する。再開時に前回の実装ペインが残っていれば `herdr agent list` で状態を確認し、idle なら報告回収から続行、消えていれば worktree の残骸ルール（計画ドラフト提示の「実装中」スタック行の扱い）に従う
 
 ## 失敗・中断時の扱い

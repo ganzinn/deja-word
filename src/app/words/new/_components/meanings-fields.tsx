@@ -36,7 +36,17 @@ export function MeaningsFields() {
         <MeaningCard key={field.id} index={index} onRemove={() => remove(index)} />
       ))}
 
-      <ArrayAddButton label="意味を追加" onClick={() => append(emptyMeaning)} />
+      {/*
+        RHF の既定フォーカス（`meanings.N.` 前方一致）だと、意味カード内で最後に登録される
+        補足説明 (notes) にフォーカスが移ってしまう（ネストした配列 texts で走査が止まらず、
+        後続の一致が上書きするため）。最初に入力すべき意味テキストを focusName で名指しする。
+      */}
+      <ArrayAddButton
+        label="意味を追加"
+        onClick={() =>
+          append(emptyMeaning, { focusName: `meanings.${fields.length}.texts.0.text` })
+        }
+      />
     </div>
   );
 }

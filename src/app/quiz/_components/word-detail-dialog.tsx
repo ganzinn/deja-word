@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useSwipeNav } from "@/components/use-swipe-nav";
 import { WordDetailView } from "@/components/word-detail-view";
 import type { WordDetail } from "@/lib/words-detail";
 import type { AdjacentWordsResult } from "@/lib/words-list";
@@ -108,6 +109,14 @@ export function WordDetailDialog({
     occurrenceId !== null && navResponse !== null && navResponse.key === `${occurrenceId}:${wordId}`
       ? navResponse.nav
       : null;
+
+  // ナビを出しているときは横フリックでも前後移動できる（詳細ページと同じ操作、ADR-0085）
+  const swipePrevId = onNavigate !== undefined ? (nav?.prev?.id ?? null) : null;
+  const swipeNextId = onNavigate !== undefined ? (nav?.next?.id ?? null) : null;
+  useSwipeNav({
+    onPrev: swipePrevId !== null ? () => onNavigate?.(swipePrevId) : null,
+    onNext: swipeNextId !== null ? () => onNavigate?.(swipeNextId) : null,
+  });
 
   return (
     <Dialog

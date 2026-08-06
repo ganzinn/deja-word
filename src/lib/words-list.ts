@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizeSearchKeyword } from "@/lib/search-keyword";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 
 export type WordListSort = "recent" | "headword";
@@ -121,6 +122,15 @@ function toWordListItem(row: WordListRow): WordListItem {
   };
 }
 
+/**
+ * 検索キーワードを DB へ渡せる形へ正規化する（アクセント記号を落とし、前後空白を除く）。
+ * 正規化の結果が空になる入力（結合文字だけ等）は「キーワード指定なし」に倒れ、
+ * `contains: ""` で全件一致するのを防ぐ。
+ */
+function searchKeyword(raw: string | undefined): string {
+  return normalizeSearchKeyword(raw ?? "");
+}
+
 /** キーワード一致方法を Prisma の headword 条件に変換する。 */
 function headwordCondition(q: string, match: WordMatchMode) {
   const key = match === "prefix" ? "startsWith" : match === "suffix" ? "endsWith" : "contains";
@@ -131,7 +141,7 @@ export async function listWordsForUser(
   userId: string,
   params: WordListParams,
 ): Promise<WordListResult> {
-  const q = params.q?.trim() ?? "";
+  const q = searchKeyword(params.q);
   const allowed = scopedOwnerIds(userId);
   const where = {
     ownerId: { in: allowed },
@@ -169,7 +179,7 @@ function buildWordsByOccurrenceWhere(
     bookmarkedOnly?: boolean;
   },
 ): Prisma.WordOccurrenceWhereInput {
-  const q = params.q?.trim() ?? "";
+  const q = searchKeyword(params.q);
   const hasRange = params.from !== undefined || params.to !== undefined;
   const numberFilter: { gte?: number; lte?: number } = {};
   if (params.from !== undefined) numberFilter.gte = params.from;

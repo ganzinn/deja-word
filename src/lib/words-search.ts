@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeSearchKeyword } from "@/lib/search-keyword";
 import { SYSTEM_USER_ID, scopedOwnerIds } from "@/lib/system-user";
 
 export type WordSuggestion = {
@@ -15,7 +16,7 @@ export async function searchWordsForLink(
   query: string,
   limit = 10,
 ): Promise<WordSuggestion[]> {
-  const q = query.trim();
+  const q = normalizeSearchKeyword(query);
   if (q.length === 0) return [];
 
   const take = Math.min(Math.max(limit, 1), 20);

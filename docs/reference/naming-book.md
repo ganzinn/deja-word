@@ -29,6 +29,14 @@
 - 混同注意: 関連語の語は `term`（`RelatedWord.term`）であり headword と呼ばない。一般編集者は system 行の headword を変更できない（`assertHeadwordChangeAllowed`）。
 - 出典: prisma/schema.prisma:119, src/lib/words/policy/row-policy.ts:29
 
+#### 検索キーワード正規化（`normalizeSearchKeyword`）
+
+- 英語名: `normalizeSearchKeyword`（`src/lib/search-keyword.ts`）
+- 日本語名: 検索キーワード正規化
+- 定義: 単語検索のキーワードを見出し語と突き合わせられる形へ揃える純関数。NFD 分解 → 結合文字（アクセント記号）除去 → trim。単語一覧（単語ビュー・掲載箇所ビュー・前後ナビ）と「既存単語からリンク」の入口で使う。見出し語はアクセント記号を持たないのに対し関連語の見出し（`term`）は `péssimist` のように持つため、キーワード側を落として揃える。
+- 混同注意: 正規化するのは**DB へ渡す照合値だけ**で、検索窓・URL の `q`・件数ラベルは入力されたままを保持する。保存データ（`headword` / `term`）は正規化しない（→ 非対称: アクセント記号付きの見出し語を記号なしで引くことはできない）。大文字小文字は変換しない（Prisma の `mode: "insensitive"` が吸収する）。読み上げ正規化（`toSpokenText`）とは目的が違うので共有しない。
+- 出典: src/lib/search-keyword.ts, src/lib/words-list.ts, src/lib/words-search.ts, docs/adr/0084-search-keyword-accent-normalization.md
+
 #### Meaning（意味）
 
 - 英語名: `Meaning`（モデル）

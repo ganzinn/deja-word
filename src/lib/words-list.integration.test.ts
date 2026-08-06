@@ -184,6 +184,36 @@ describe("listWordsForUser", () => {
     expect(result.items[0].headword).toBe("UBIQUITOUS");
   });
 
+  test("q filter ignores accent marks (アクセント記号付きのキーワードでも一致する)", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("thought"));
+
+    const result = await listWordsForUser(user.id, {
+      q: "thóught",
+      sort: "headword",
+      match: "prefix",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["thought"]);
+    expect(result.total).toBe(1);
+  });
+
+  test("q がアクセント記号だけなら絞り込み無し（全件一致にならない）", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("apple"));
+    await createWordForUser(user.id, form("banana"));
+
+    const result = await listWordsForUser(user.id, {
+      q: "́",
+      sort: "headword",
+      match: "prefix",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["apple", "banana"]);
+  });
+
   test("sort=headword orders ascending; sort=recent orders by createdAt desc", async () => {
     const user = await createTestUser();
     const aId = (await createWordForUser(user.id, form("apple"))).id;
@@ -444,6 +474,23 @@ describe("listWordsByOccurrence", () => {
       take: 50,
     });
     expect(result.items.map((i) => i.headword)).toEqual(["apple", "apricot"]);
+  });
+
+  test("keyword ignores accent marks (掲載箇所ビューでも同じ正規化が効く)", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, formWithOccurrence("thought", LOC, 1));
+    await createWordForUser(user.id, formWithOccurrence("banana", LOC, 2));
+    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+
+    const result = await listWordsByOccurrence(user.id, {
+      occurrenceId,
+      q: "thóught",
+      match: "prefix",
+      order: "asc",
+      skip: 0,
+      take: 50,
+    });
+    expect(result.items.map((i) => i.headword)).toEqual(["thought"]);
   });
 
   test("scoped to the given occurrence only (other occurrence / other user excluded)", async () => {

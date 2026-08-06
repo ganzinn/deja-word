@@ -53,6 +53,13 @@ describe("searchWordsForLink", () => {
     expect(results[0].headword).toBe("UBIQUITOUS");
   });
 
+  test("アクセント記号付きのキーワードでも一致する（関連語の見出しをそのまま検索窓に入れた場合）", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("pessimist"));
+    const results = await searchWordsForLink(user.id, "péssimist");
+    expect(results.map((r) => r.headword)).toEqual(["pessimist"]);
+  });
+
   test("limit is clamped to [1, 20]", async () => {
     const user = await createTestUser();
     for (let i = 0; i < 25; i++) {

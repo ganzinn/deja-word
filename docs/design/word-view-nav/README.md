@@ -31,6 +31,10 @@
 - **ダイアログの `#N` は詳細応答の掲載箇所一覧から導出する**（全件ブックマークモードは `#N` なし）。→ [03](03-quiz-result-dialog-nav.md)
 - **削除済み単語の行はナビからスキップしない**（エラービューでもナビ継続可能）。→ [03](03-quiz-result-dialog-nav.md)
 - **ダイアログの先読みは `navOrder` 前後 1 件の詳細のみ**（隣接先読みは廃止、全件ブックマークモードでも有効）。→ [03](03-quiz-result-dialog-nav.md)
+- **ページ側ナビは既存コンポーネント（`WordNavArea` / `AdjacentWordNav` / `WordContentTransition`）を流用し、新規 UI は作らない**。ダイアログのナビ行は `AdjacentWordNav` と共通化せず直書きを維持する。→ [04](04-ui-architecture.md)
+- **テスト戦略**: パーサは unit（判別順・デフォルト省略）、単語ビュー隣接クエリは integration（`createdAt` 同値の id tiebreak 必須）、ダイアログ state は navOrder ベースへ unit 書き換え。`.tsx` はテスト対象外の方針を維持。→ [04](04-ui-architecture.md)
+- **`docs/features/` は word-management.md と word-quiz.md を改訂し、スクリーンショットは再撮影・追加しない**。→ [04](04-ui-architecture.md)
+- **ADR を 2 本起票する**（02 の URL コンテキスト追随、03 のクライアント配列ナビ化。後者に ADR-0086 の隣接先読み置き換えを明記し 0086 本文へ注記追加）。naming-book に「前後ナビ」「単語ビュー / 掲載箇所ビュー」を追加。→ [04](04-ui-architecture.md)
 
 ## トピック状態表
 
@@ -41,11 +45,54 @@
 | [01-requirements.md](01-requirements.md) | **確定**（2026-08-07） | 要求・対象 3 経路の期待挙動・スコープ外 |
 | [02-list-nav-context.md](02-list-nav-context.md) | **確定**（2026-08-07） | 単語一覧 → 詳細ページの URL コンテキスト設計と隣接クエリ |
 | [03-quiz-result-dialog-nav.md](03-quiz-result-dialog-nav.md) | **確定**（2026-08-07） | テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式 |
-| [04-ui-architecture.md](04-ui-architecture.md) | 未着手 | UI・遷移フィードバック・テスト戦略・ドキュメント更新 |
+| [04-ui-architecture.md](04-ui-architecture.md) | **確定**（2026-08-07） | UI・遷移フィードバック・テスト戦略・ドキュメント更新 |
 
-想定順序（残り）: 04 のみ。
+**全トピック確定（2026-08-07）。設計完了。** 後続はチケット分割（ticket-split スキル、`docs/plan/word-view-nav/`）へ。
 
-**次セッションの推奨トピック: 04（UI・遷移・アーキテクチャ・テスト戦略）**。引き継ぎ論点: ナビ UI の共通化（`WordNavArea` / `AdjacentWordNav` の再利用範囲。ダイアログ側は応答待ちナビ状態が廃止された前提で整理）、遷移フィードバック（ADR-0085 / 0086 / 0087）との整合と ADR-0086 の隣接先読み記述の改訂、テスト戦略（search-params の単語ビューコンテキスト・単語ビュー隣接クエリの integration・ダイアログ順序 state の unit）、`docs/features/` 更新（word-management の制約記述・word-quiz の「掲載番号順に隣の単語」記述・スクリーンショット再撮影要否）、ADR 起票の要否と naming-book への用語追加。04 確定時は設計完了セッションとして「実装への引き継ぎ」セクションをハブに追記する。
+## 実装への引き継ぎ
+
+チケット分割はこのセクションと確定事項サマリだけで開始できる（詳細が必要な場合のみ各トピックの「決定 N」を参照）。
+
+### 変更対象の一覧
+
+スキーマ変更・マイグレーション: **なし**（DB 変更なし）。
+
+**ページ経路（単語ビューコンテキスト＋掲載箇所 bookmarked）**
+
+- `src/app/words/_lib/search-params.ts` — kind 付き union `WordDetailNavContext` 化、`parseWordDetailNavContext`、`buildWordDetailHref` / `buildWordEditHref` の union 対応（02 決定 1・2・3）
+- `src/lib/words-list.ts` — 一覧 where のビルダ抽出、`findAdjacentWordsInWordView` 新設、`AdjacentWordsParams` に `bookmarkedOnly` 追加（02 決定 3・4）
+- `src/app/words/page.tsx` — 単語ビューの行リンクにコンテキスト付与、掲載箇所ビューの行リンクに `bookmarked` 反映
+- `src/app/words/[id]/page.tsx` — `ctx.kind` で隣接クエリ出し分け・戻りリンク・`#N` 出し分け（04 決定 1）
+- `src/app/words/[id]/edit/page.tsx` — union ctx の持ち回り
+
+**ダイアログ経路（結果一覧順ナビ）**
+
+- `src/app/quiz/actions.ts` — `getAdjacentWordsForDialog` 削除。`src/lib/schema/quiz.ts` — `adjacentWordsInputSchema` 削除（03 決定 3）
+- `src/lib/words-list.ts` — `findAdjacentWordsByOccurrenceNumber` 削除（03 決定 3。ページ経路と同一ファイルの唯一の交点）
+- `src/app/quiz/_components/result-list.tsx` — `onOpenDialog(wordId, navOrder)` 拡張（03 決定 2）
+- `src/app/quiz/_components/quiz-flow.tsx` — `dialogNavOrder` state（03 決定 2）
+- `src/app/quiz/_components/word-detail-dialog.tsx` / `word-detail-dialog-state.ts` — navOrder ベース同期導出・`#N` の詳細応答導出・先読み再設計（03 決定 2・4・6）
+
+**UI コンポーネント**: 新規なし（`WordNavArea` / `AdjacentWordNav` / `WordContentTransition` 流用、ダイアログのナビ行は直書き維持。04 決定 1・2）。
+
+**ドキュメント**: `docs/features/word-management.md`・`word-quiz.md` 改訂（スクリーンショットなし。04 決定 5）、ADR 2 本起票＋ADR-0086 へ注記 1 行（04 決定 3・6）、naming-book に「前後ナビ」「単語ビュー / 掲載箇所ビュー」追加（04 決定 6）。各実装 PR と同時に更新する。
+
+### 着手順序のヒント
+
+- ページ経路とダイアログ経路は独立しており並行実装できる。交点は `src/lib/words-list.ts` のみ（ページ経路が追加、ダイアログ経路が削除）で、同一ファイル競合に注意
+- ページ経路内の依存方向: `search-params.ts`（union 型 = 共有基盤）→ `words-list.ts`（隣接クエリ）→ ページ配線（`page.tsx` / `edit/page.tsx`）
+- ダイアログ経路内: `word-detail-dialog-state.ts` の純関数再設計 → `word-detail-dialog.tsx` / `quiz-flow.tsx` / `result-list.tsx` の配線 → action・スキーマ・`findAdjacentWordsByOccurrenceNumber` の削除
+
+### テスト戦略の要点（チケット完了条件に転記可）
+
+- `search-params.unit.test.ts`: 判別順（`occ` 優先 → `view=word` → null）、単語ビューコンテキストのパースと正規化、href のデフォルト省略（`view=word` は常時付与）、掲載箇所 `bookmarked`
+- `words-list.integration.test.ts`: `findAdjacentWordsInWordView` の新 describe（recent / headword 両順・端・**`createdAt` 同値の id tiebreak**・`q` / `match`・`bookmarkedOnly`・集合外 null・scope）、`findAdjacentWordsByOccurrence` へ `bookmarkedOnly` ケース追加、`findAdjacentWordsByOccurrenceNumber` の describe 削除
+- `word-detail-dialog-state.unit.test.ts`: navOrder ベース導出（index 解決・端 disabled・navOrder null で非表示・`#N` 導出の各分岐）、`resolvePrefetchTargets` を「詳細のみ・前後 1 件・表示中詳細 settle 後」で書き直し
+- E2E: e2e-verify スキルで 3 経路（単語ビュー由来ページナビ / 掲載箇所 bookmarked 込みナビ / 結果ダイアログの表示行順ナビ）を動作確認
+
+### 次工程
+
+チケット分割は ticket-split スキルで行う（チケットの置き場は `docs/plan/word-view-nav/`、形式は ticket-split 側で定義）。
 
 ## セッション運用ルール
 

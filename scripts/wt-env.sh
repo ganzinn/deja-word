@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 #
-# git worktree に .env / .env.test を供給する。
+# git worktree に .env / .env.test / .claude/settings.local.json を供給する。
 #
 #   Usage: scripts/wt-env.sh [worktree-dir]   # 省略時はカレントディレクトリ
 #
 # 行うこと:
-#   1. .env / .env.test が無ければ本体（メイン worktree）からコピー
-#      （既存ファイルは上書きしない — worktree 側のローカル調整を壊さないため）
+#   1. .env / .env.test / .claude/settings.local.json（Claude Code の
+#      permission 許可リスト）が無ければ本体（メイン worktree）からコピー
+#      （既存ファイルは上書きしない — worktree 側のローカル調整を壊さないため。
+#       一方向コピーなので、worktree 側で増えた承認は本体には戻らない）
 #   2. .env の DEV_BLOB_ROOT を本体の .dev-blob へ向ける（既存行は置換）
 #      発音音源は DB に相対 key だけが入るため、本体と共有しないと 404 になる
 #      （src/lib/blob-client.ts 参照）
@@ -28,10 +30,11 @@ if [ "$TARGET_DIR" = "$MAIN_ROOT" ]; then
   exit 0
 fi
 
-for f in .env .env.test; do
+for f in .env .env.test .claude/settings.local.json; do
   if [ -f "${TARGET_DIR}/${f}" ]; then
     echo "wt-env: keep existing ${f}"
   elif [ -f "${MAIN_ROOT}/${f}" ]; then
+    mkdir -p "$(dirname "${TARGET_DIR}/${f}")"
     cp "${MAIN_ROOT}/${f}" "${TARGET_DIR}/${f}"
     echo "wt-env: copied ${f} from ${MAIN_ROOT}"
   else

@@ -43,7 +43,7 @@ scripts/wt-new.sh <feature-name> [base-branch]   # 作成（branch feat/<name>, 
 scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 ```
 
-`wt-new.sh` は worktree 作成・`.env` / `.env.test` のコピー・`pnpm install`（`prisma generate` 含む）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
+`wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リスト。一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`pnpm install`（`prisma generate` 含む）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
 
 **DB は単一 `dejaword` を共有**する。dev サーバは1つずつ起動する運用なので同時アクセスの競合は無いが、ブランチ間で migration が食い違うと drift が出る。アクティブな worktree を切り替えた直後は:
 

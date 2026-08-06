@@ -8,7 +8,8 @@
 #
 # 行うこと:
 #   1. worktree 作成（branch feat/<name>, dir <repo>/../deja-word-<name>）
-#   2. .env / .env.test の供給（scripts/wt-env.sh — コピー＋DEV_BLOB_ROOT 共有）
+#   2. .env / .env.test / .claude/settings.local.json の供給
+#      （scripts/wt-env.sh — コピー＋DEV_BLOB_ROOT 共有）
 #   3. mise trust + pnpm install（postinstall で prisma generate も走る）
 #
 # 前提: docker の deja-word-db が起動済み（DB は本体と共有する）。

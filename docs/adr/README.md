@@ -63,6 +63,7 @@
 | [0019](0019-two-layer-write-authorization.md) | words の二層書き込み認可、quiz は意図的に不適用 | 高 | — |
 | [0068](0068-content-input-max-limits.md) | コンテンツ系入力テキスト・配列の zod 上限（短文 100 / 長文 2000 / 配列 50、quiz 解答系 5000） | 高 | — |
 | [0077](0077-rich-text-markup.md) | 文章系フィールドの装飾は Markdown 風記法・生テキスト保存（見出し語等は対象外） | 高 | — |
+| [0083](0083-placeholder-italic-shared.md) | プレースホルダ do/doing の斜体は訳語・TG 例文で共通、色と A/B の斜体は TG 例文限定 | 高 | — |
 
 ### D. quiz 機能
 

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { RowBookmarkButton } from "@/components/bookmark-button";
-import { RichText } from "@/components/rich-text";
+import { MeaningText } from "@/components/meaning-text";
 import { RowAudioButton } from "@/components/row-audio-button";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
@@ -60,14 +60,14 @@ export type ResultRow = {
 
 /**
  * 主見出しの内容。TG四択は出題画面・単語詳細と同じ TG ハイライトを再現する。
- * ja-plain（意味）は装飾記法の対象欄、headword（英単語）は対象外のため素で出す。
+ * ja-plain（訳語）は装飾記法の対象欄、headword（英単語）は対象外のため素で出す。
  */
 function promptDisplayOf(row: ResultRow): React.ReactNode {
   switch (row.promptKind) {
     case "headword":
       return row.headword;
     case "ja-plain":
-      return <RichText text={row.prompt ?? ""} />;
+      return <MeaningText text={row.prompt ?? ""} />;
     case "tg-text":
       return <TgExampleText text={row.prompt ?? ""} />;
     case "tg-meaning":
@@ -78,13 +78,13 @@ function promptDisplayOf(row: ResultRow): React.ReactNode {
 /**
  * 解答側（正解・自分の回答）テキストの表示。TG四択は解答側も TG ハイライトを再現する
  * （英→日 tg-text の解答側は TG 例文の意味、日→英 tg-meaning の解答側は TG 例文の英文）。
- * 見出しが headword の形式は解答側が意味テキスト（装飾記法の対象欄）、
+ * 見出しが headword の形式は解答側が訳語（装飾記法の対象欄）、
  * ja-plain の形式は解答側が英単語（対象外）という対応になる。
  */
 function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
   if (kind === "tg-text") return <TgExampleMeaning text={text} />;
   if (kind === "tg-meaning") return <TgExampleText text={text} />;
-  if (kind === "headword") return <RichText text={text} />;
+  if (kind === "headword") return <MeaningText text={text} />;
   return text;
 }
 

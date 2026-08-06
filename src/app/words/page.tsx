@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { RowBookmarkButton } from "@/components/bookmark-button";
-import { RichText } from "@/components/rich-text";
+import { MeaningText } from "@/components/meaning-text";
 import { RowAudioButton } from "@/components/row-audio-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TtsFallbackProvider } from "@/components/tts-fallback-context";
@@ -321,12 +321,12 @@ function WordRow({
           {item.meaningTexts.length > 0 ? (
             <p className="text-foreground font-content line-clamp-2 text-sm whitespace-pre-wrap">
               <span className="text-red-500">
-                <RichText text={item.meaningTexts[0]} />
+                <MeaningText text={item.meaningTexts[0]} />
               </span>
               {item.meaningTexts.slice(1).map((text, i) => (
                 <span key={i}>
                   {"; "}
-                  <RichText text={text} />
+                  <MeaningText text={text} />
                 </span>
               ))}
             </p>

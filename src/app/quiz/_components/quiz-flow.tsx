@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { getBookmarkStates } from "@/app/words/actions";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
-import { RichText } from "@/components/rich-text";
+import { MeaningText } from "@/components/meaning-text";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { isJaToEnFormat, isSelfJudgeFormat } from "@/lib/quiz/format-options";
@@ -228,7 +228,7 @@ function QuestionView({
   // key=wordId で問題ごとに解答 UI の内部状態（タイマー含む）をリセットする
   switch (quiz.format) {
     case "CHOICE": {
-      // 選択肢は意味テキスト（装飾記法の対象欄）のため RichText で描画する
+      // 選択肢は訳語（装飾記法の対象欄）のため MeaningText で描画する
       const question = quiz.questions[index];
       return (
         <QuestionChoice
@@ -238,7 +238,7 @@ function QuestionView({
           onComplete={onComplete}
           onReveal={onReveal}
           onAnswerShown={onAnswerShown}
-          renderChoiceText={(text) => <RichText text={text} />}
+          renderChoiceText={(text) => <MeaningText text={text} />}
         />
       );
     }
@@ -998,7 +998,7 @@ export function QuizFlow({
           // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
           <div className="flex flex-wrap items-center justify-center py-4">
             <h1 className="font-content text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
-              <RichText text={promptView.text} />
+              <MeaningText text={promptView.text} />
             </h1>
           </div>
         ) : promptView.kind === "tg-meaning" ? (

@@ -3,7 +3,7 @@
 import { CheckIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { RichText } from "@/components/rich-text";
+import { MeaningText } from "@/components/meaning-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { MultiMeaningQuestion } from "@/lib/quiz/payload";
@@ -123,7 +123,7 @@ export function QuestionMultiMeaning({
               disabled={answered !== null}
               onClick={() => handleToggle(index)}
               className={cn(
-                // 選択肢は単語コンテンツ（意味テキスト）なので font-content
+                // 選択肢は単語コンテンツ（訳語）なので font-content
                 "font-content h-auto min-h-9 justify-start py-2 text-left whitespace-normal",
                 answered === null && isSelected && "border-primary bg-primary/10",
                 showCorrect &&
@@ -133,7 +133,7 @@ export function QuestionMultiMeaning({
               )}
             >
               <CheckIcon className={cn("size-4", !isSelected && "invisible")} />
-              <RichText text={option.text} />
+              <MeaningText text={option.text} />
             </Button>
           );
         })}

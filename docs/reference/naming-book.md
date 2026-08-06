@@ -41,9 +41,9 @@
 
 - 英語名: `MeaningText`（モデル）
 - 日本語名: 訳語
-- 定義: 意味（Meaning）に属する訳語テキスト 1 件。1 意味に複数、`sortOrder` 順。四択の選択肢・多義語選択の単位になる。
-- 混同注意: 「意味未登録の単語」とは可視 MeaningText が 0 件の単語を指す（非 TG 形式の出題対象外条件）。
-- 出典: prisma/schema.prisma:157, src/lib/quiz/queries/quiz-source.ts:275
+- 定義: 意味（Meaning）に属する訳語テキスト 1 件。1 意味に複数、`sortOrder` 順。四択の選択肢・多義語選択の単位になる。描画は `MeaningText`（`src/components/meaning-text.tsx`）に集約し、プレースホルダ `do` / `doing` を斜体にする（→ プレースホルダの斜体）。
+- 混同注意: 「意味未登録の単語」とは可視 MeaningText が 0 件の単語を指す（非 TG 形式の出題対象外条件）。訳語には色を付けない（色分けは TG例文だけ）。
+- 出典: prisma/schema.prisma:157, src/lib/quiz/queries/quiz-source.ts:275, src/components/meaning-text.tsx
 
 #### partOfSpeech（品詞）
 
@@ -89,7 +89,7 @@
 
 - 英語名: `Example.kind = TARGET`。関連定数 `TG_EXAMPLE_FORMATS`、述語 `isTgExampleFormat` / `usableTgExampleWhere`
 - 日本語名: TG例文（ターゲット例文）
-- 定義: quiz の TG 形式の素材となる例文。「使える TG 例文」= `kind=TARGET` かつ `meaning` が非 null・非空。出題は使える TG 例文のうち `sortOrder` 最小の 1 件・1 単語 1 問。A / B / do / doing / 〜 / 括弧（半角 `(` `)` `[` `]` と全角 `（` `）` `［` `］`）のプレースホルダをハイライト描画する（英文=`tg-text` 青太字、和訳=`tg-meaning` 赤）。
+- 定義: quiz の TG 形式の素材となる例文。「使える TG 例文」= `kind=TARGET` かつ `meaning` が非 null・非空。出題は使える TG 例文のうち `sortOrder` 最小の 1 件・1 単語 1 問。A / B / do / doing / 〜 / 括弧（半角 `(` `)` `[` `]` と全角 `（` `）` `［` `］`）のプレースホルダをハイライト描画する（英文=`tg-text` 青太字、和訳=`tg-meaning` 赤。プレースホルダの色分けと `A` / `B` の斜体は TG例文だけの体裁で、`do` / `doing` の斜体は訳語と共通 → プレースホルダの斜体）。
 - 混同注意: TG 形式では単語自身の意味（MeaningText）の有無を問わない（meaning 非依存）。TG は enum 値 `TARGET` の UI 略記。TG 4 形式（形式 7〜10）では発音ボタン・自動再生・プリロードの対象が**見出し語ではなく TG例文**になり、それに伴い `QuestionBase.pronunciationAudioUrl` の意味は「この問題の発音ボタンが鳴らす音源」（見出し語の音源とは限らない）、`QuestionBase.ttsText` は「その音源が無いとき読み上げる文字列」。対象の選択は `questionBaseOf(word, format)` の 1 箇所で決まり、UI 側は形式で分岐しない。
 - 出典: src/lib/quiz/queries/quiz-source.ts:41, src/components/tg-example-text.tsx
 
@@ -146,8 +146,16 @@
 - 英語名: `rich text markup`（実装は `src/lib/rich-text.ts` / `src/components/rich-text.tsx`）
 - 日本語名: 装飾記法
 - 定義: 文章系フィールドの本文中に書ける Markdown 風の囲み記号（`**太字**` / `*斜体*` / `***太字の斜体***` / `==赤==` / `__青下線__`）。DB には打った文字列がそのまま入り、描画時に解釈される（設計: docs/adr/0077-rich-text-markup.md）。
-- 混同注意: 「マークダウン」とは呼ばない（見出し・リンク・リスト等は解釈しない別物のため）。TG 例文の自動着色（TgExampleText）はユーザー入力ではなくベースの体裁で、装飾記法とは別の仕組み。見出し語・関連語の見出し・発音記号・掲載箇所名は対象外。
+- 混同注意: 「マークダウン」とは呼ばない（見出し・リンク・リスト等は解釈しない別物のため）。TG 例文の自動着色（TgExampleText）・プレースホルダの斜体はユーザー入力ではなくベースの体裁で、装飾記法とは別の仕組み。見出し語・関連語の見出し・発音記号・掲載箇所名は対象外。
 - 出典: src/lib/rich-text.ts, docs/adr/0077-rich-text-markup.md
+
+#### プレースホルダの斜体（italic placeholder）
+
+- 英語名: `ITALIC_PLACEHOLDER_SOURCE` / `isItalicPlaceholder`（`src/components/placeholder-text.tsx`）
+- 日本語名: プレースホルダの斜体
+- 定義: 語法の骨組みを表すプレースホルダ `do` / `doing` を斜体で描画するベースの体裁。対象集合は 1 箇所で定義し、**訳語・TG例文の英文・TG例文の和訳で共通**（設計: docs/adr/0083-placeholder-italic-shared.md）。
+- 混同注意: **色分け（青）・非太字・`A` / `B` の斜体は共通ではなく TG例文だけの体裁**。`A` / `B` が斜体になるのは TG例文の英文だけで、TG和訳では青くなるだけ・訳語では無装飾。訳語に色は付かず、TG和訳の `do` / `doing` は斜体になるが色は変わらない。体裁対象のトークン集合自体も欄ごとに違う（TG英文は括弧・`〜` も、TG和訳は `...`・`〜` も対象、訳語は `do` / `doing` のみ）。非 TG 例文の和訳・関連語の意味・補足説明・メモは対象外。ユーザーが `*to do*` と書く装飾記法とは別の仕組み（重ねても見た目は同じ）。
+- 出典: src/components/placeholder-text.tsx, docs/adr/0083-placeholder-italic-shared.md
 
 ### 1-2. 掲載箇所系
 

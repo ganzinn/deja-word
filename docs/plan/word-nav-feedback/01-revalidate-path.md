@@ -1,6 +1,6 @@
 # 01. revalidate-path
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-06）　PR: （統合 PR にて）
 
 ## 目的
 
@@ -48,4 +48,12 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+1. **音源系 action の `wordId` 入手方法はチケット記載の (a)（呼び出し元 UI から props）を採用**。signature を `(wordId, rowId, ...)` に変更した（例: `uploadPronunciationAudio(wordId, meaningId, fd)`）。呼び出し元は `meanings-fields.tsx` / `examples-fields.tsx` / `related-words-fields.tsx` の 3 つのみで、他に呼び出し箇所が無いことを grep で確認済み。
+2. **音源マネージャの描画条件を `rowId ?` から `rowId && wordId ?` に変更した**。`wordId` prop が optional（新規作成時 undefined）のため、action へ `string` を渡すのに型安全なガードが要る。新規作成モードでは行 id 自体が undefined なので**実挙動は不変**（従来どおり「音源は保存してから追加できます。」が出る）。
+3. **音源系 6 action には従来 unit テストが無かった**ため本チケットで新規追加した（`describe.each` で 6 本まとめて検証。共通ヘルパ `runUpload` / `runDelete` に revalidate を置いたため重複は最小）。`src/app/words/[id]/edit/actions.unit.test.ts` は 8 → 29 テストに増えた。
+4. `revalidatePath` は成功パスのみ。`updateWord` / `createWord` はサービス層戻り値の `word.id` を、`deleteWord` は引数の `wordId` を使う。
+5. `toggleBookmark`（`src/app/words/actions.ts`）は設計どおり**未変更**。同ファイル冒頭の「楽観的更新の方針のため revalidatePath は呼ばない」コメントもそのまま。
+6. `next/cache` のモック（`vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))`）は**必要だった**。モック無しでは Next.js の非リクエストコンテキストで実行され失敗する。
+7. ミューテーション確認を実施済み: `runUpload` の `revalidatePath` を一時的に潰すと新規テスト 3 本が落ちることを確認（アサートが実際に効いている）。
+8. **チケット 03 への申し送り**: `prefetch={true}` 導入の前提はこれで整った。ただし本チケットの対象は「単語詳細を変更する Server Action」のみで、掲載箇所設定（`settings/occurrences`）等の並び順に影響し得る action は元から `/settings/*` を revalidate するだけ。前後ナビの並びに関わる懸念があれば 03 側で確認すること。
+9. 競合点への影響なし: `adjacent-word-nav.tsx` / `word-content-transition*.ts(x)` / `globals.css` は一切触っていない。

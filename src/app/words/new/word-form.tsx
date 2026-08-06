@@ -117,13 +117,13 @@ export function WordForm({
                   />
                 </FormSection>
                 <FormSection value="meanings" title="意味" count={meanings?.length ?? 0}>
-                  <MeaningsFields />
+                  <MeaningsFields wordId={isEdit ? wordId : undefined} />
                 </FormSection>
                 <FormSection value="examples" title="例文" count={examples?.length ?? 0}>
-                  <ExamplesFields />
+                  <ExamplesFields wordId={isEdit ? wordId : undefined} />
                 </FormSection>
                 <FormSection value="related" title="関連語" count={relatedWords?.length ?? 0}>
-                  <RelatedWordsFields />
+                  <RelatedWordsFields wordId={isEdit ? wordId : undefined} />
                 </FormSection>
                 <FormSection value="memos" title="メモ" count={memos?.length ?? 0}>
                   <MemosFields />

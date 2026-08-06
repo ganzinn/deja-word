@@ -19,7 +19,12 @@ import { FieldCard } from "./shared/field-card";
 import { NoteList } from "./shared/note-list";
 import { useRowOwnership } from "./shared/use-row-ownership";
 
-export function MeaningsFields() {
+type MeaningsFieldsProps = {
+  /** 音源 action の revalidate 対象となる単語 id。新規時は undefined（音源は保存後のみ扱える）。 */
+  wordId?: string;
+};
+
+export function MeaningsFields({ wordId }: MeaningsFieldsProps) {
   const form = useFormContext<WordFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -33,7 +38,7 @@ export function MeaningsFields() {
       ) : null}
 
       {fields.map((field, index) => (
-        <MeaningCard key={field.id} index={index} onRemove={() => remove(index)} />
+        <MeaningCard key={field.id} index={index} wordId={wordId} onRemove={() => remove(index)} />
       ))}
 
       {/*
@@ -53,10 +58,11 @@ export function MeaningsFields() {
 
 type MeaningCardProps = {
   index: number;
+  wordId?: string;
   onRemove: () => void;
 };
 
-function MeaningCard({ index, onRemove }: MeaningCardProps) {
+function MeaningCard({ index, wordId, onRemove }: MeaningCardProps) {
   const form = useFormContext<WordFormValues>();
   const { isSystemOwned } = useRowOwnership(`meanings.${index}.ownerId`);
   const meaningId = useWatch({ control: form.control, name: `meanings.${index}.id` });
@@ -123,11 +129,11 @@ function MeaningCard({ index, onRemove }: MeaningCardProps) {
           {!isSystemOwned ? (
             <FormItem>
               <FormLabel>音源</FormLabel>
-              {meaningId ? (
+              {meaningId && wordId ? (
                 <PronunciationAudioManager
                   value={pronunciationAudioUrl}
-                  onUpload={(fd) => uploadPronunciationAudio(meaningId, fd)}
-                  onDelete={() => deletePronunciationAudio(meaningId)}
+                  onUpload={(fd) => uploadPronunciationAudio(wordId, meaningId, fd)}
+                  onDelete={() => deletePronunciationAudio(wordId, meaningId)}
                 />
               ) : (
                 <p className="text-muted-foreground text-xs">音源は保存してから追加できます。</p>

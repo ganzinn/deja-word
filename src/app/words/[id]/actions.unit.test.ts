@@ -12,18 +12,25 @@ vi.mock("@/lib/words-delete", async (importOriginal) => {
   };
 });
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
 const { getCurrentSession } = await import("@/lib/session");
 const { deleteWordForUser, WordNotFoundError } = await import("@/lib/words-delete");
+const { revalidatePath } = await import("next/cache");
 const { deleteWord } = await import("@/app/words/[id]/actions");
 
 const mockedGetSession = vi.mocked(getCurrentSession);
 const mockedDelete = vi.mocked(deleteWordForUser);
+const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const SESSION = { user: { id: "u_1" } } as unknown as Awaited<ReturnType<typeof getCurrentSession>>;
 
 beforeEach(() => {
   mockedGetSession.mockReset();
   mockedDelete.mockReset();
+  mockedRevalidatePath.mockReset();
 });
 
 afterEach(() => {
@@ -36,6 +43,7 @@ describe("deleteWord (Server Action)", () => {
     const res = await deleteWord("w_1");
     expect(res).toEqual({ ok: false, error: "unauthorized", message: expect.any(String) });
     expect(mockedDelete).not.toHaveBeenCalled();
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
   test("not_found: deleteWordForUser throws WordNotFoundError", async () => {
@@ -43,6 +51,7 @@ describe("deleteWord (Server Action)", () => {
     mockedDelete.mockRejectedValue(new WordNotFoundError());
     const res = await deleteWord("w_missing");
     expect(res).toEqual({ ok: false, error: "not_found", message: expect.any(String) });
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
   test("unknown: generic error is mapped to 'unknown'", async () => {
@@ -59,5 +68,6 @@ describe("deleteWord (Server Action)", () => {
     const res = await deleteWord("w_1");
     expect(res).toEqual({ ok: true });
     expect(mockedDelete).toHaveBeenCalledWith("u_1", "w_1");
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/words/w_1");
   });
 });

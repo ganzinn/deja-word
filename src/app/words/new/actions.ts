@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { wordFormSchema, type WordFormValues } from "@/lib/schema/word-form";
 import { getCurrentSession } from "@/lib/session";
 import { createWordForUser } from "@/lib/words-create";
@@ -28,6 +30,8 @@ export async function createWord(input: WordFormValues): Promise<CreateWordResul
 
   try {
     const word = await createWordForUser(session.user.id, parsed.data);
+    // 作成で前後ナビの並びが変わるため、プリフェッチ済みのルーターキャッシュを無効化する。
+    revalidatePath(`/words/${word.id}`);
     return { ok: true, wordId: word.id };
   } catch (e) {
     return mapWordWriteErrorToResult(e);

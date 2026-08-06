@@ -1,6 +1,6 @@
 # 04. dialog-nav
 
-状態: **完了**（2026-08-06）　PR: （統合 PR にて）
+状態: **完了**（2026-08-06）　PR: https://github.com/ganzinn/deja-word/pull/204
 
 ## 目的
 

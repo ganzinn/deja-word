@@ -1,6 +1,6 @@
 # 03. page-nav
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-06）　PR: （統合 PR にて）
 
 ## 目的
 
@@ -90,4 +90,13 @@ export function consumeNavDirection(currentHref: string): WordNavDirection | nul
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+1. **`WordNavArea` の props に `currentHref` を追加した**（計画の props 案に無い）。方向ストアの鍵は `buildWordDetailHref` の出力文字列なので、比較対象もサーバ側で同じ関数から作って渡すのが最も確実。計画が挙げていた `usePathname` + `useSearchParams` からの復元は、クエリの順序・エスケープ（`URLSearchParams` の `+` 変換など）で食い違うリスクがあるうえ `useSearchParams` は Suspense 境界の制約も持ち込むため採らなかった。
+2. **方向の消費は「`useState` の遅延初期化 ＋ 描画中の調整（adjusting state during render）」で行う**。遷移でコンポーネントが再マウントされる場合は初期化子が、props だけ差し替わる場合は描画中の調整が拾うので、どちらでも 1 回だけ消費される。`useEffect` での消費は `react-hooks/set-state-in-effect` に触れるうえ 1 フレーム遅れる。React StrictMode（App Router 既定で有効）の二重レンダーは再レンダー用 dispatcher を使うため `useState` 初期化子が二度目に評価されることはなく、消費は取りこぼされない（`react-dom` の `renderWithHooksAgain` を確認済み）。04 と同じ「描画中の state 調整」パターン。
+3. **`contentKey` はページ側では `wordId`（＝表示中＝到着した単語 ID）で正しい**。`startTransition` により到着まで前ページの props が保たれるため、04 の実装メモ 1 が指摘した「要求中 ID を key にすると意味が反転する」問題はページ側では起きない。E2E でも到着後にスライドクラスが付くことを確認済み。
+4. **`page.tsx` は前後ナビが無いケース（掲載箇所コンテキストなし・隣接情報なし）では従来どおり本文を直接描画する**。`TtsFallbackProvider` ごと `detail` 変数に括り出して両分岐で共有した（`WordNavArea` の `children` にはサーバ描画のまま渡る）。
+5. **`ScreenHeader`（上部の見出し語・ブックマーク・編集/削除）は淡色化・スライドの対象外**。チケットの「`children` = サーバ描画の `WordDetailView`」という指定と、04 の「前後ナビは固定・淡色化対象はコンテンツ領域」に合わせた。`WordDetailView` 自身が見出し語 `<h2>` を持つので 01-ux-spec 決定 3 の「見出し語含む領域の半透明化」は満たしている。**ただし遷移中はヘッダのタイトルだけ先に新しい単語へ切り替わる**（本文は前の単語のまま淡色）。気になる場合は別チケットで扱う余地がある。
+6. **02 の成果物（`word-content-transition.tsx` / `-classes.ts`）は import のみ・無変更**。淡色化の濃さ・スライド距離の調整が必要になった場合は 02 の追加改修として切り出すこと。
+7. **01 の申し送り（並び順に影響する action）について**: 前後ナビの並びは `findAdjacentWordsByOccurrence` がリクエスト毎に算出する。掲載箇所設定の変更で並びが変わったとき、プリフェッチ済みの隣接ページ（最大 5 分）が古い並びを持つ可能性はあるが、表示される単語の中身自体は `revalidatePath` 済みで正しく、並びのズレも次の遷移で解消する。本チケットでは追加対応しない（必要なら別 issue）。
+8. **E2E のフリック自動化ノウハウ**: `useSwipeNav` は window の `touchstart` / `touchend` を見るだけなので、合成 `TouchEvent`（`new Touch(...)` を `changedTouches` に載せる）を `page.evaluate` で dispatch すれば再現できる（CDP の `Input.dispatchTouchEvent` は不要）。注意点として、tsx/esbuild の keepNames が `page.evaluate` に渡す関数内の**名前付き関数**へ `__name(...)` を差し込むためブラウザ側で `ReferenceError: __name is not defined` になる。evaluate の中では名前付き関数（`const f = () => {}` 含む）を作らない。
+9. 空振り防止（negative control）実施済み: `pending={isPending}` → `false`、`navigate()` から `setNavDirection()` 削除、方向ストアの消費時クリア削除 — いずれも該当アサートが FAIL することを確認して復旧。
+10. `docs/features/word-management.md` に前後移動中の挙動を追記。**スクリーンショットは過渡表示のため再撮影不要**と判断した。

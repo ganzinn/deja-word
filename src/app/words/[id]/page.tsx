@@ -17,7 +17,7 @@ import { getWordDetailForUser } from "@/lib/words-detail";
 import { findAdjacentWordsByOccurrence, type AdjacentWordsResult } from "@/lib/words-list";
 
 import { DeleteWordButton } from "./_components/delete-word-button";
-import { AdjacentWordNav } from "./_components/adjacent-word-nav";
+import { WordNavArea } from "./_components/word-nav-area";
 import {
   buildWordDetailHref,
   buildWordEditHref,
@@ -67,6 +67,13 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
   // read 専用関数は増やさず、1 件配列で本人のブックマーク状態を取得する。
   const bookmarked = (await getBookmarkedWordIdsForUser(session.user.id, [id])).length > 0;
 
+  // 本文はサーバ描画のまま。前後ナビを出す場合だけ WordNavArea（クライアント）の children として渡す。
+  const detail = (
+    <TtsFallbackProvider enabled={ttsFallbackEnabled}>
+      <WordDetailView word={word} />
+    </TtsFallbackProvider>
+  );
+
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col px-0 pb-16 md:max-w-2xl">
       <ScreenHeader
@@ -97,18 +104,20 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
       />
 
       {nav !== null && ctx !== null ? (
-        <AdjacentWordNav
+        <WordNavArea
+          currentHref={buildWordDetailHref(id, ctx)}
           prevHref={nav.prev !== null ? buildWordDetailHref(nav.prev.id, ctx) : null}
           nextHref={nav.next !== null ? buildWordDetailHref(nav.next.id, ctx) : null}
           centerLabel={
             nav.current.occurrenceNumber !== null ? `No.${nav.current.occurrenceNumber}` : "—"
           }
-        />
-      ) : null}
-
-      <TtsFallbackProvider enabled={ttsFallbackEnabled}>
-        <WordDetailView word={word} />
-      </TtsFallbackProvider>
+          wordId={id}
+        >
+          {detail}
+        </WordNavArea>
+      ) : (
+        detail
+      )}
     </main>
   );
 }

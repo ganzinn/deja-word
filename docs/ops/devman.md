@@ -14,7 +14,8 @@ repos:
   github.com/ganzinn/deja-word:
     log_dir: log
     exec_wrapper: ["mise", "exec", "--"]
-    # worktree に .env / .env.test を供給（既存は保持、DEV_BLOB_ROOT を保証）
+    # worktree に .env / .env.test / .claude/settings.local.json を供給
+    # （既存は保持、DEV_BLOB_ROOT を保証）
     setup:
       - "./scripts/wt-env.sh ."
     processes:
@@ -62,7 +63,7 @@ devman server -b              # 本体（メイン worktree）に戻す
 devman server stop            # 停止
 ```
 
-起動前に `setup:` が走り、`scripts/wt-env.sh` が worktree へ `.env` / `.env.test` を供給する（既存ファイルは保持、`DEV_BLOB_ROOT` は本体 `.dev-blob` 共有に保証される）。
+起動前に `setup:` が走り、`scripts/wt-env.sh` が worktree へ `.env` / `.env.test` / `.claude/settings.local.json` を供給する（既存ファイルは保持、`DEV_BLOB_ROOT` は本体 `.dev-blob` 共有に保証される）。
 
 **ポートは 3000 固定**（`--port-base` 既定値）。サーバが同時 1 つなので衝突せず、`BETTER_AUTH_URL` の上書きも不要。2 つの dev を同時に見比べたい例外時のみ、devman を使わず手動で `PORT=3001 pnpm dev` ＋ `BETTER_AUTH_URL` 上書き（AGENTS.md の Worktree 節を参照）。
 

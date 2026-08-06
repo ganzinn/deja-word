@@ -55,14 +55,14 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 - **手動 `git worktree add` を使う**（ブランチ名を規約どおりに制御し、失敗時に worktree を残して検査するため）
 - 置き場: `../deja-word-worktrees/<機能名>-NN-<チケット名>`（リポジトリ外。.gitignore 変更不要）
-- 準備手順: worktree 作成 → `pnpm install`（postinstall で prisma generate が走る）→ サブエージェント委譲
+- 準備手順: worktree 作成 → `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉を本体からコピー）→ `pnpm install`（postinstall で prisma generate が走る）→ サブエージェント委譲
 - 並行度の上限は 3（推奨 2）。worktree ごとの install コストと、マージ待ち行列が長いほどコンフリクト窓が広がることを踏まえる
 
 ### 検証の分担
 
 - **worktree 内（サブエージェント）**: `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全。整形差分は実装コミットに含める）
   - 任意: devman が導入済みの環境では `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される。`docs/ops/devman.md` 参照）。未導入なら pnpm 直実行のまま
-- **`pnpm test:integration` は worktree で実行禁止**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できず、`.env.test` は gitignore 済みで worktree に存在しない。メインがマージ後の統合ブランチ（PR モードではメインの checkout）で**直列**実行する
+- **`pnpm test:integration` は worktree で実行禁止**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できない。メインがマージ後の統合ブランチ（PR モードではメインの checkout）で**直列**実行する
 - integration テストの有無は**サブエージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
 
 ## 計画ドラフト提示と合意（唯一のユーザー確認）
@@ -127,9 +127,16 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ### trust と permission（起動前の環境条件）
 
-- **worktree 置き場（`../deja-word-worktrees/`）が Claude Code の trust 済みであること**。trust 済みディレクトリの配下では子ディレクトリに trust ダイアログは出ないが、未 trust だと**各ペインが起動直後に trust ダイアログで停止する**。判定: `~/.claude.json` の `projects` に worktree 置き場（またはその祖先）のエントリがあり `hasTrustDialogAccepted: true`。未 trust なら計画ドラフト提示で「worktree 置き場で一度 `claude` を起動して trust を承認 → 終了」をユーザーに依頼する
+- **worktree 置き場（`../deja-word-worktrees/`）が Claude Code の trust 済みであること**。trust 済みディレクトリの配下では子ディレクトリに trust ダイアログは出ないが、未 trust だと**各ペインが起動直後に trust ダイアログで停止する**。判定: `~/.claude.json` の `projects` に worktree 置き場（またはその祖先）のエントリがあり `hasTrustDialogAccepted: true`。判定ワンライナー:
+
+  ```sh
+  jq -r '.projects | to_entries[] | select(.value.hasTrustDialogAccepted == true) | .key' ~/.claude.json | grep -F "<worktree置き場の絶対パス>"
+  # 何も出力されなければ未 trust
+  ```
+
+  未 trust なら計画ドラフト提示で「worktree 置き場で一度 `claude` を起動して trust を承認 → 終了」をユーザーに依頼する
 - **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない（Claude Code 側の分類器もこの操作を拒否する）。検知したら通知してユーザーの操作を待つ
-- worktree には `.claude/settings.local.json`（untracked の許可リスト）が存在しないため、acceptEdits だけでは `pnpm` / `git` の Bash 実行のたびに blocked になる。**起動時に `--allowedTools` で定型検証コマンドを許可しておく**（下記起動コマンド）
+- 定型コマンドの許可は、準備手順の `scripts/wt-env.sh` が配る `.claude/settings.local.json` で大半が賄われる。起動フラグ（下記起動コマンドの `--add-dir` / `--allowedTools`）はそれで消えない分だけを最小限補う — 内訳は「承認プロンプトの切り分け」の表を参照
 
 ### 起動
 
@@ -140,7 +147,9 @@ herdr tab create --label <機能名>-NN --no-focus
 # 返却 JSON の result.tab.tab_id と result.root_pane.pane_id を読む
 herdr agent start <機能名>-NN --cwd <worktree絶対パス> --tab <tab_id> --no-focus \
   -- claude "$(cat <プロンプトファイル>)" \
-     --permission-mode acceptEdits --allowedTools "Bash(pnpm *)" "Bash(git *)"
+     --permission-mode acceptEdits \
+     --add-dir <worktree置き場の絶対パス> \
+     --allowedTools "Bash(pnpm *)" "Bash(git *)" "Read(//tmp/**)"
 herdr pane close <root_paneのpane_id>  # agent start はタブの root ペインを分割するため、元のシェルを閉じてエージェント単独のフルサイズ表示にする
 ```
 
@@ -160,6 +169,19 @@ herdr agent wait <名前> --status idle --timeout 300000
 - 実行側（Bash ツール）の timeout は wait の `--timeout` より長く設定する（Bash ツールのデフォルト 120 秒で先に切られるため）
 - タイムアウトしたら `herdr agent get <名前>` で現状を確認して分岐する: working → そのまま待ち直し / blocked → `herdr agent read <名前> --source visible` で内容を確認し、`herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知して承認を待ってから待ち直す（代理承認はしない。判断できない内容ならエスカレーション）
 - 複数ペイン並行時はチケット番号順に順次待てばよい（マージ順と一致する）
+
+#### 承認プロンプトの切り分け
+
+判定の決定打は、プロンプトに「don't ask again」「allow all ... during this session」といった**恒久化の選択肢が出るかどうか**。出るものは許可リストで恒久化できる。出ないもの（Yes / No の 2 択のみ）は原理的に毎回聞かれるため、上記の blocked 運用（通知してユーザーの操作を待つ）が正規の対処になる。
+
+| プロンプトの種類 | 消せるか | 対策 |
+| --- | --- | --- |
+| `This command requires approval`（許可リストに無い定型コマンド） | ○ | wt-env.sh の `.claude/settings.local.json` 配布＋`--allowedTools` |
+| worktree 外への書き込み（報告ファイル） | ○ | `--add-dir <worktree置き場>` |
+| プロジェクト外の読み取り（`/tmp` 等） | ○ | テンプレで `/tmp` を使わせない＋`Read(//tmp/**)` |
+| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）/ バックグラウンド演算子 `&` を含む Bash | ✗ | 通知してユーザーの操作を待つ |
+
+`&` は `pnpm e2e:capture-docs` のように dev サーバを要する作業で必ず踏む。撮影を伴うチケットを委譲する場合は、**承認待ちが最低 1 回発生する前提**で運用する。
 
 ### 報告回収・再委譲・後片付け
 

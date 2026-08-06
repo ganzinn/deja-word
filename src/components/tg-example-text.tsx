@@ -2,9 +2,8 @@
 // 単語詳細（word-detail-view）とクイズのTG四択（問題文・選択肢）で共用し、
 // プレースホルダ記号の体裁のドリフトを防ぐ。フックなしの純描画のためサーバー/クライアント両用。
 //
-// `do` / `doing` の斜体は訳語（meaning-text）と共通ルール。TG 固有なのは色（英文=青太字 /
-// 和訳=赤、プレースホルダを青）と、太字ベースを打ち消す非太字、そして英文だけの `A` / `B` の斜体
-// （docs/adr/0083-placeholder-italic-shared.md）。
+// ここに書くのは TG 固有の体裁だけ（色・非太字・英文だけの A/B の斜体）。`do` / `doing` の斜体は
+// 訳語と共通で placeholder-text が持つ。
 
 import {
   ITALIC_PLACEHOLDER_SOURCE,
@@ -15,28 +14,28 @@ import { cn } from "@/lib/utils";
 
 // A / B。英文では斜体にするが、和訳では色を変えるだけで斜体にしない（英文＝語法の骨組み、
 // 和訳＝日本語の中の記号、という読ませ方の違い）。
-const AB_PLACEHOLDER_SOURCE = String.raw`\bA\b|\bB\b`;
+const AB_SOURCE = String.raw`\bA\b|\bB\b`;
+const isAb = (token: string) => token === "A" || token === "B";
 
 // TG 例文の英文（ベース = 青太字）で体裁を変えるプレースホルダ記号。
 // A/B/do/doing は非太字＋斜体、括弧・チルダは非太字。
 // 括弧は読み上げ側（speech.ts の toSpokenText）と対象字形を揃えるため半角・全角の両方を見る。
 const TG_TEXT_PATTERN = new RegExp(
-  `${ITALIC_PLACEHOLDER_SOURCE}|${AB_PLACEHOLDER_SOURCE}|[[\\]()（）［］〜]`,
+  `${ITALIC_PLACEHOLDER_SOURCE}|${AB_SOURCE}|[[\\]()（）［］〜]`,
   "g",
 );
-const AB_TOKEN = new RegExp(`^(?:${AB_PLACEHOLDER_SOURCE})$`);
 const tgTextClass = (token: string) =>
-  cn("font-normal", (isItalicPlaceholder(token) || AB_TOKEN.test(token)) && "italic");
+  cn("font-normal", (isItalicPlaceholder(token) || isAb(token)) && "italic");
 
 // TG 例文の意味（ベース = 赤）で体裁を変えるプレースホルダ記号。
 // 青にするのは ... / A / B / 〜、斜体にするのは do/doing（色は変えない）。
 const TG_MEANING_PATTERN = new RegExp(
-  `\\.\\.\\.|${ITALIC_PLACEHOLDER_SOURCE}|${AB_PLACEHOLDER_SOURCE}|〜`,
+  `\\.\\.\\.|${ITALIC_PLACEHOLDER_SOURCE}|${AB_SOURCE}|〜`,
   "g",
 );
-const TG_MEANING_BLUE_TOKEN = /^(?:\.\.\.|A|B|〜)$/;
+const isTgMeaningBlue = (token: string) => isAb(token) || token === "..." || token === "〜";
 const tgMeaningClass = (token: string) =>
-  cn(isItalicPlaceholder(token) && "italic", TG_MEANING_BLUE_TOKEN.test(token) && "text-blue-500");
+  cn(isItalicPlaceholder(token) && "italic", isTgMeaningBlue(token) && "text-blue-500");
 
 /** TG 例文の英文。ベース = 青太字、A/B/do/doing = 非太字斜体、括弧・〜 = 非太字。 */
 export function TgExampleText({ text, className }: { text: string; className?: string }) {

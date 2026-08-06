@@ -2,6 +2,7 @@ import { LinkIcon } from "lucide-react";
 import Link from "next/link";
 
 import { AudioPlayButton } from "@/components/audio-play-button";
+import { MeaningText } from "@/components/meaning-text";
 import { RichText } from "@/components/rich-text";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
@@ -157,7 +158,7 @@ function MeaningCard({
       </div>
       {meaning.texts.length === 1 ? (
         <p className={`text-sm whitespace-pre-wrap ${isFirst ? "font-bold text-red-400" : ""}`}>
-          <RichText text={meaning.texts[0].text} />
+          <MeaningText text={meaning.texts[0].text} />
         </p>
       ) : meaning.texts.length > 1 ? (
         <ul className="list-none text-sm leading-normal">
@@ -166,7 +167,7 @@ function MeaningCard({
               key={t.id}
               className={`whitespace-pre-wrap ${isFirst && i === 0 ? "font-bold text-red-400" : ""}`}
             >
-              <RichText text={t.text} />
+              <MeaningText text={t.text} />
             </li>
           ))}
         </ul>

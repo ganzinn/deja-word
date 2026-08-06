@@ -1,6 +1,6 @@
 "use client";
 
-import { RichText } from "@/components/rich-text";
+import { MeaningText } from "@/components/meaning-text";
 import { Badge } from "@/components/ui/badge";
 import { commonPartOfSpeechFullLabel } from "@/lib/mock/parts-of-speech";
 import type { MeaningDisplay } from "@/lib/quiz/payload";
@@ -24,13 +24,13 @@ export function MeaningBlocks({ meanings }: { meanings: MeaningDisplay[] }) {
           ) : null}
           {meaning.texts.length === 1 ? (
             <p className="text-sm whitespace-pre-wrap">
-              <RichText text={meaning.texts[0]} />
+              <MeaningText text={meaning.texts[0]} />
             </p>
           ) : (
             <ul className="ml-4 list-disc text-sm">
               {meaning.texts.map((text, i) => (
                 <li key={i} className="whitespace-pre-wrap">
-                  <RichText text={text} />
+                  <MeaningText text={text} />
                 </li>
               ))}
             </ul>

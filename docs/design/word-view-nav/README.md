@@ -26,6 +26,11 @@
 - **単語ビュー用隣接クエリ `findAdjacentWordsInWordView` を新設**。一覧と where を共有し、タプル比較（recent = createdAt desc, id desc / headword = headword asc, id asc）で prev / next を引く。戻り値に掲載番号は含めない。→ [02](02-list-nav-context.md)
 - **current が絞り込み集合から外れたら前後ナビ非表示**（既存踏襲）。→ [02](02-list-nav-context.md)
 - **戻り・編集リンクはコンテキストから再構築し、`page` は持ち回らない**。→ [02](02-list-nav-context.md)
+- **テスト結果ダイアログの前後ナビは「開いた時点の表示行」のクライアントスナップショット（wordId 配列）を順序ソースとする**。`onOpenDialog` の引数で渡し、quiz-flow が `dialogNavOrder` として保持。ナビ表示条件は `navOrder` 非 null かつスタック深さ 1 で、`occurrenceId` に依存しない（全件ブックマークモードでもナビが出る）。→ [03](03-quiz-result-dialog-nav.md)
+- **`getAdjacentWordsForDialog` action と `findAdjacentWordsByOccurrenceNumber` は廃止する**（隣接応答系 state は同期導出に置き換え）。→ [03](03-quiz-result-dialog-nav.md)
+- **ダイアログの `#N` は詳細応答の掲載箇所一覧から導出する**（全件ブックマークモードは `#N` なし）。→ [03](03-quiz-result-dialog-nav.md)
+- **削除済み単語の行はナビからスキップしない**（エラービューでもナビ継続可能）。→ [03](03-quiz-result-dialog-nav.md)
+- **ダイアログの先読みは `navOrder` 前後 1 件の詳細のみ**（隣接先読みは廃止、全件ブックマークモードでも有効）。→ [03](03-quiz-result-dialog-nav.md)
 
 ## トピック状態表
 
@@ -35,12 +40,12 @@
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | **確定**（2026-08-07） | 要求・対象 3 経路の期待挙動・スコープ外 |
 | [02-list-nav-context.md](02-list-nav-context.md) | **確定**（2026-08-07） | 単語一覧 → 詳細ページの URL コンテキスト設計と隣接クエリ |
-| [03-quiz-result-dialog-nav.md](03-quiz-result-dialog-nav.md) | 未着手 | テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式 |
+| [03-quiz-result-dialog-nav.md](03-quiz-result-dialog-nav.md) | **確定**（2026-08-07） | テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式 |
 | [04-ui-architecture.md](04-ui-architecture.md) | 未着手 | UI・遷移フィードバック・テスト戦略・ドキュメント更新 |
 
-想定順序（残り）: 03 → 04。要求次第で入れ替え可。
+想定順序（残り）: 04 のみ。
 
-**次セッションの推奨トピック: 03（テスト結果一覧 → 詳細ダイアログの順序ソースとナビ実装方式）**。引き継ぎ論点: 順序ソース（クライアント `rows` 配列を正とするか。サーバはランダム出題順を再現できない）、ダイアログへの順序受け渡し（`dialogStack` は wordId のみ・「間違えた問題だけ表示」フィルタ state が `ResultList` 内部にある点）、見出し語右の掲載番号表示の供給元、削除済み単語行のスキップ、先読み（ADR-0086）の再設計、`findAdjacentWordsByOccurrenceNumber` の廃止可否。
+**次セッションの推奨トピック: 04（UI・遷移・アーキテクチャ・テスト戦略）**。引き継ぎ論点: ナビ UI の共通化（`WordNavArea` / `AdjacentWordNav` の再利用範囲。ダイアログ側は応答待ちナビ状態が廃止された前提で整理）、遷移フィードバック（ADR-0085 / 0086 / 0087）との整合と ADR-0086 の隣接先読み記述の改訂、テスト戦略（search-params の単語ビューコンテキスト・単語ビュー隣接クエリの integration・ダイアログ順序 state の unit）、`docs/features/` 更新（word-management の制約記述・word-quiz の「掲載番号順に隣の単語」記述・スクリーンショット再撮影要否）、ADR 起票の要否と naming-book への用語追加。04 確定時は設計完了セッションとして「実装への引き継ぎ」セクションをハブに追記する。
 
 ## セッション運用ルール
 

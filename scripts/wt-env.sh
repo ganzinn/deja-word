@@ -14,9 +14,7 @@
 #      （src/lib/blob-client.ts 参照）
 #
 # 呼び出し元: scripts/wt-new.sh（worktree 新規作成時）、
-# devman の setup（dev サーバを worktree に切替えるとき。docs/ops/devman.md 参照）、
-# スキル管理 worktree の準備（AGENTS.md「スキル管理 worktree」節:
-# design-session / ticket-split / ticket-implement）。
+# devman の setup（dev サーバを worktree に切替えるとき。docs/ops/devman.md 参照）。
 # メイン worktree 自身に対して実行された場合は何もしない。
 set -euo pipefail
 

@@ -13,7 +13,7 @@
 
 ## 決定内容
 
-- worktree の作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` に定型化する（branch `feat/<name>`、dir `../deja-word-<name>`、`.env` コピー、`pnpm install` まで自動）
+- worktree の作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` に定型化する（branch `feat/<name>`、dir `../deja-word-<name>`、`.env` コピー、`pnpm install` まで自動）（改訂: dir は [ADR-0091](0091-worktree-unified-creation.md) で `../deja-word-worktrees/<name>` に統一。ブランチ名・install 有無もパラメータ化）
 - **DB は単一の `dejaword` を本体と共有**する。dev サーバは 1 つずつ起動する運用のため同時アクセス競合は無い。ブランチ間で migration が食い違うと drift が出るため、worktree 切替後の `pnpm db:migrate` / drift 時の `migrate reset` 手順を規約化
 - **発音音源（`.dev-blob/`）も本体と共有**する。DB には相対 key だけが入る（[ADR-0043](0043-blob-di-driver-switching.md)）ため、共有しないと「DB に URL はあるが実体が別 worktree にしか無い → 404」が起きる。`wt-new.sh` が各 worktree の `.env` に `DEV_BLOB_ROOT="<本体>/.dev-blob"` を追記して共有させる
 - `node_modules` / `src/generated` / `.next` は worktree ごとに独立

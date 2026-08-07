@@ -36,14 +36,14 @@ cp .env.test.example .env.test
 
 ## Worktree（複数機能の並行開発）
 
-git worktree でブランチごとに作業ディレクトリを分けて並行開発する。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
+git worktree でブランチごとに作業ディレクトリを分けて並行開発する。worktree は用途を問わず `../deja-word-worktrees/<name>`（リポジトリ外。.gitignore 変更不要）に置き、作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` で行う（手動 `git worktree add` はしない。引数の組み合わせ・使い分けは共通スキル `.claude/skills/worktree/` を参照）。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
 
 ```sh
-scripts/wt-new.sh <feature-name> [base-branch]   # 作成（branch feat/<name>, dir ../deja-word-<name>）
-scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
+scripts/wt-new.sh <name> [base-branch] [--branch <branch>] [--no-install]  # 作成（既定: branch feat/<name>）
+scripts/wt-rm.sh  <name> [--delete-branch]                                 # 撤去
 ```
 
-`wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リスト。一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`pnpm install`（`prisma generate` 含む）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
+`wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リスト。一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`mise trust`＋`pnpm install`（`prisma generate` 含む。この 2 つは `--no-install` で省略）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
 
 **DB は単一 `dejaword` を共有**する。dev サーバは1つずつ起動する運用なので同時アクセスの競合は無いが、ブランチ間で migration が食い違うと drift が出る。アクティブな worktree を切り替えた直後は:
 
@@ -53,15 +53,6 @@ scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 **発音音源（`.dev-blob/`）も本体と共有**する。DB には相対 key だけが入る（`src/lib/blob-client.ts`）ため、共有しないと「DB に URL はあるが実体が別 worktree にしか無い → 404」が起きる。`wt-new.sh` が各 worktree の `.env` に `DEV_BLOB_ROOT="<本体>/.dev-blob"` を追記して共有させる。
 
 同時に 2 つの dev を見比べたい場合のみ、片方を `PORT=3001 pnpm dev` で起動する。
-
-### スキル管理 worktree（設計・チケット実装）
-
-design-session / ticket-split / ticket-implement が使う worktree は `wt-new.sh` / `wt-rm.sh` の管轄外で、各スキルが `../deja-word-worktrees/` 配下（リポジトリ外。.gitignore 変更不要）に手動で管理する。ブランチ名・ディレクトリ名・起点・撤去のタイミングは各 SKILL.md が定義し、準備手順は共通:
-
-1. `git worktree add`（ブランチ名を規約どおりに制御し、失敗時に worktree を残して検査するため手動で行う）
-2. `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉の供給と、発音音源 `DEV_BLOB_ROOT` の本体共有）
-3. worktree 内で `mise trust`（`trusted_config_paths` で worktree 置き場を信頼済みの環境では何もしない）
-4. `pnpm install`（postinstall で prisma generate が走る）。ドキュメント作業のみの worktree では不要（コードの実行・検証が必要になったときだけ実行する）
 
 ## Ops スクリプト（運用ツール）
 

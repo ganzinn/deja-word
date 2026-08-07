@@ -15,7 +15,7 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-prefetch-removal.md](01-prefetch-removal.md) | 前後ナビ `prefetch={false}` 化＋コメント書き換え＋新 ADR 起票・既存 ADR 注記＋機能紹介更新 | なし | 未着手 | - |
+| [01-prefetch-removal.md](01-prefetch-removal.md) | 前後ナビ `prefetch={false}` 化＋コメント書き換え＋新 ADR 起票・既存 ADR 注記＋機能紹介更新 | なし | 実装中 | - |
 
 ## 依存関係図
 

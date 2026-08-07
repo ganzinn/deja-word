@@ -515,6 +515,14 @@
 - 定義: 運用向けの一括削除ツール。purgeOccurrence は掲載箇所とその配下・関連 Blob をまとめて消す。
 - 出典: src/lib/occurrence-purge.ts, src/lib/blob-purge.ts, docs/ops/purge-occurrence.md
 
+#### 掲載箇所同期（occurrence sync）
+
+- 英語名: `exportOccurrence` / `syncOccurrence`（`OccurrenceExport` / `SyncReport`）、コマンド `pnpm db:export-occurrence` / `pnpm db:sync-occurrence`
+- 日本語名: 掲載箇所の単語コンテンツ同期（エクスポート / 反映）
+- 定義: 別環境（本番など）の掲載箇所配下の単語コンテンツ（意味・訳語・注記・例文・関連語・メモ・掲載番号詳細）を、掲載番号を指定してローカル DB に取り込む ops ツール。**中間 JSON を挟む 2 段構成**で、エクスポートは `SOURCE_DATABASE_URL` 限定の読み取り専用、反映はローカル DB 限定の書き込み専用（ADR-0093）。突合キーは掲載番号、関連語の内部リンクは見出し語（`linkedHeadword`）で解決する。
+- 混同注意: **発音音源は同期しない**（置き換え前に反映先の URL を退避して付け直す）。音源の投入は `import-audio` の責務。対象単語のコンテンツは**丸ごと置き換え**で、部分マージではない。単語本体・ブックマーク・解答履歴・drill には触らない。「同期」と言っても双方向ではなく、本番へ書き戻す用途では使えない。
+- 出典: src/lib/occurrence-sync.ts, scripts/export-occurrence.ts, scripts/sync-occurrence.ts, docs/ops/sync-occurrence.md, docs/adr/0093-occurrence-content-export-import-sync.md
+
 #### dry-run と --execute
 
 - 英語名: `--execute`（フラグ）
@@ -525,9 +533,9 @@
 
 #### resolveImportOwner（インポート先所有者の解決）
 
-- 英語名: `resolveImportOwner`（`SystemUserMissingError` / `UserNotFoundByEmailError`）
-- 日本語名: インポート先所有者の解決
-- 定義: インポートの宛先を email で指定する。**email 省略時は system（共有マスタ）宛て**。
+- 英語名: `resolveImportOwner` / `listImportOwners`（`SystemUserMissingError` / `UserNotFoundByEmailError`）
+- 日本語名: インポート先所有者の解決 / 候補一覧
+- 定義: インポートの宛先を email で指定する。**email 省略時は system（共有マスタ）宛て**。`listImportOwners` は対話モードの選択 UI 用に候補ユーザーを列挙する（system が先頭）。
 - 出典: src/lib/import-owner.ts
 
 ### 1-8. AI 下書き系

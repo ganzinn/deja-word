@@ -20,7 +20,12 @@ export class SystemUserMissingError extends Error {
   }
 }
 
-export type ResolvedOwner = { ownerId: string; ownerEmail: string; isSystem: boolean };
+export type ResolvedOwner = {
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  isSystem: boolean;
+};
 
 export async function resolveImportOwner(
   prisma: PrismaClient,
@@ -29,16 +34,40 @@ export async function resolveImportOwner(
   if (!email) {
     const sys = await prisma.user.findUnique({
       where: { id: SYSTEM_USER_ID },
-      select: { email: true },
+      select: { name: true, email: true },
     });
     if (!sys) throw new SystemUserMissingError();
-    return { ownerId: SYSTEM_USER_ID, ownerEmail: sys.email, isSystem: true };
+    return {
+      ownerId: SYSTEM_USER_ID,
+      ownerName: sys.name,
+      ownerEmail: sys.email,
+      isSystem: true,
+    };
   }
   const normalized = email.toLowerCase();
   const user = await prisma.user.findUnique({
     where: { email: normalized },
-    select: { id: true, email: true },
+    select: { id: true, name: true, email: true },
   });
   if (!user) throw new UserNotFoundByEmailError(normalized);
-  return { ownerId: user.id, ownerEmail: user.email, isSystem: false };
+  return { ownerId: user.id, ownerName: user.name, ownerEmail: user.email, isSystem: false };
+}
+
+/**
+ * 取り込み先の候補ユーザーを列挙する（対話モードの選択 UI 用）。system を先頭に、
+ * 以降は email 昇順。掲載箇所を 1 つも持たないユーザーも候補に含める。
+ */
+export async function listImportOwners(prisma: PrismaClient): Promise<ResolvedOwner[]> {
+  const users = await prisma.user.findMany({
+    orderBy: { email: "asc" },
+    select: { id: true, name: true, email: true },
+  });
+  return users
+    .map((u) => ({
+      ownerId: u.id,
+      ownerName: u.name,
+      ownerEmail: u.email,
+      isSystem: u.id === SYSTEM_USER_ID,
+    }))
+    .sort((a, b) => Number(b.isSystem) - Number(a.isSystem));
 }

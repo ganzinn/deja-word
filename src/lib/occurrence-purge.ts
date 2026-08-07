@@ -17,11 +17,15 @@ export type OccurrenceListItem = {
   id: string;
   location: string;
   ownerId: string;
+  ownerName: string;
   ownerEmail: string;
   words: number; // この掲載箇所に紐づく単語数（WordOccurrence リンク数）
 };
 
-/** 全掲載箇所を owner / location 順で列挙する（対話選択 UI 用）。 */
+/**
+ * 全掲載箇所を owner / location 順で列挙する（対話選択 UI 用）。掲載箇所名は所有者が
+ * 違えば重複しうるため名前だけでは選べない。owner のユーザー名と email を添えて返す。
+ */
 export async function listOccurrences(prisma: PrismaClient): Promise<OccurrenceListItem[]> {
   const rows = await prisma.occurrence.findMany({
     orderBy: [{ ownerId: "asc" }, { location: "asc" }],
@@ -29,7 +33,7 @@ export async function listOccurrences(prisma: PrismaClient): Promise<OccurrenceL
       id: true,
       location: true,
       ownerId: true,
-      owner: { select: { email: true } },
+      owner: { select: { name: true, email: true } },
       _count: { select: { wordLinks: true } },
     },
   });
@@ -37,6 +41,7 @@ export async function listOccurrences(prisma: PrismaClient): Promise<OccurrenceL
     id: r.id,
     location: r.location,
     ownerId: r.ownerId,
+    ownerName: r.owner.name,
     ownerEmail: r.owner.email,
     words: r._count.wordLinks,
   }));

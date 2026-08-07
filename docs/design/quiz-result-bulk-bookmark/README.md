@@ -19,6 +19,9 @@
 - **一括操作は履歴送信の成功後のみ**。「成功」は `success`（TEST / DRILL_RETRY）と `drill-success`（DRILL）の両方。→ [01](01-requirements.md)
 - **既ブックマーク済みも対象に含め、冪等に扱う**。→ [01](01-requirements.md)
 - **一括操作は登録のみ**。一括解除・Undo はスコープ外（誤操作時は既存の行トグルで個別解除）。→ [01](01-requirements.md)
+- **UseCase は `addBookmarksForUser(userId, wordIds)`**。scoped 検証を通った分だけ `createMany({ skipDuplicates: true })` で一括登録し、弾かれた分はスキップして返す。UseCase が `$transaction` を所有し、失敗は常に全体失敗（部分適用なし）。→ [02](02-server-action.md)
+- **Server Action は `addBookmarks({ wordIds })`**。成功時 `bookmarkedWordIds` / `skippedWordIds` を返し、エラーは `unauthorized | invalid | unknown`。`revalidatePath` は呼ばない。→ [02](02-server-action.md)
+- **入力スキーマは `min(1).max(BOOKMARK_WORD_IDS_MAX_COUNT)`**。上限定数は既存 3000 を流用し doc コメントを汎用化。追加先は `src/lib/schema/bookmark.ts`（スキーマの配置のみ 02 で確定）。→ [02](02-server-action.md)
 
 ## トピック状態表
 
@@ -27,15 +30,15 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定（2026-08-08） | 要求・対象の定義・スコープ外 |
-| [02-server-action.md](02-server-action.md) | 未着手 | 一括登録の Server Action / UseCase / 入力スキーマ |
+| [02-server-action.md](02-server-action.md) | 確定（2026-08-08） | 一括登録の Server Action / UseCase / 入力スキーマ |
 | [03-ui.md](03-ui.md) | 未着手 | ボタン配置・表示条件・フィードバック・失敗時挙動 |
 | [04-architecture.md](04-architecture.md) | 未着手 | ファイル配置・テスト戦略 |
 
-想定順序（残り）: 02 → 03 → 04。要求次第で入れ替え可。
+想定順序（残り）: 03 → 04。要求次第で入れ替え可。
 
-データモデルは既存 `Bookmark` テーブル（userId × wordId 複合 PK、冪等 upsert/deleteMany）をそのまま使う前提のため独立トピックを立てない。要求次第で必要になれば追加する。
+データモデルは既存 `Bookmark` テーブル（userId × wordId 複合 PK）をそのまま使う前提のため独立トピックを立てない。要求次第で必要になれば追加する。
 
-**次セッションの推奨トピック: 02（サーバー処理）**。02 の論点は 02 の検討事項リストに集約済み（01 から 03 へ委譲した見せ方の論点は 03 の検討事項リスト参照）。
+**次セッションの推奨トピック: 03（UI）**。論点は 03 の検討事項リストに集約済み。ボタン配置・押下後のフィードバック・対象 0 件/送信中/失敗時の見せ方はユーザーの好みが入る論点のため、AskUserQuestion での確認を想定。
 
 ## セッション運用ルール
 

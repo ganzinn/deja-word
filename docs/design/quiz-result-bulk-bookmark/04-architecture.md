@@ -9,10 +9,12 @@
 - 一括操作は登録のみ（解除なし）・冪等な登録（既ブックマーク済みも対象に含める）で全モード共通。シグネチャの形は 02 の管轄（01 確定）。
 - 削除済み単語の除外はクライアント側の判定（送信応答由来）で行い、対象 wordId 群はクライアントから渡す（01 確定）。
 - 既存ブックマーク機能の仕様変更（データモデル・絞り込み・既存トグルの挙動）はスコープ外（01 確定）。
+- UseCase は `addBookmarksForUser(userId, wordIds)`（`$transaction` 内で scoped 検証 → `createMany({ skipDuplicates: true })`）、action は `addBookmarks({ wordIds })`、入力スキーマは `addBookmarksInputSchema`（`BOOKMARK_WORD_IDS_MAX_COUNT` 流用・doc コメント汎用化）。エラーは action 内分岐で error-map 不使用（ADR-0016 逸脱の既存踏襲。適合の再確認は本トピックの検討事項）（02 確定）。
+- UseCase 内の層の切り方（handler を分けるか UseCase 直書きか）は本トピックの 3 層適合確認の管轄（02 確定）。
 
 ## 検討事項リスト
 
-- [ ] ファイル配置（候補: UseCase は `src/lib/bookmark-settings.ts`、action は `src/app/words/actions.ts`、スキーマは `src/lib/schema/bookmark.ts` への追加。シグネチャ・スキーマ内容は 02 の管轄）。ADR-0014 の UseCase 動詞プレフィクス命名規約と、名詞形の既存 `bookmark-settings.ts`（純 per-user 設定）へ相乗りするかの整理を含む
+- [ ] ファイル配置（候補: UseCase は `src/lib/bookmark-settings.ts`、action は `src/app/words/actions.ts` への追加。スキーマの配置は `src/lib/schema/bookmark.ts` で 02 確定済み。シグネチャ・スキーマ内容は 02 の管轄）。ADR-0014 の UseCase 動詞プレフィクス命名規約と、名詞形の既存 `bookmark-settings.ts`（純 per-user 設定）へ相乗りするかの整理を含む
 - [ ] 3 層構成（Server Action → UseCase → handler / 純関数）・Result 型規約（ADR-0014/0016）への適合確認
 - [ ] unit テスト（スキーマ・純関数）と integration テスト（UseCase の scoped 検証・冪等性）の分担
 - [ ] `docs/features/` の機能紹介ドキュメント更新の要点（bookmark.md / word-quiz.md のどこに載せるか）

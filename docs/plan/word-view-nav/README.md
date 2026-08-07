@@ -49,6 +49,7 @@ graph LR
 
 ## ブランチ・PR 運用
 
+- 運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feature/word-view-nav`）
 - ブランチ名: `feature/word-view-nav-NN-<チケット名>`
 - PR タイトル: `word-view-nav: NN <チケット名>`
 - マージは依存順（依存先チケットの PR がマージされてから着手・マージする）

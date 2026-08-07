@@ -119,12 +119,13 @@
 | [0046](0046-tts-fallback.md) | TTS フォールバック（mp3 優先） | 高 | — |
 | [0047](0047-quiz-audio-autoplay-preload.md) | quiz 中の自動再生 + プリロード、失敗非ブロック | 高 | — |
 | [0075](0075-audio-local-cache-and-prefetch.md) | SW cache-first で端末に保持 + 設定画面から一括プリフェッチ（掃除は manifest 差分） | 高 | — |
-| [0076](0076-audio-source-visual-distinction.md) | 発音ボタンは音源／自動音声をアイコン＋濃淡で区別（ラベル文字は変えない） | 高 | — |
+| [0076](0076-audio-source-visual-distinction.md) | 発音ボタンは音源／自動音声をアイコン＋濃淡で区別（ラベル文字は変えない。詳細カードは 0092 でアイコンのみに） | 高 | — |
 | [0078](0078-speech-text-normalization.md) | 自動音声は表示用の記号（装飾記法・チルダ・【…】）を落として読む | 高 | — |
 | [0079](0079-example-pronunciation-audio.md) | 例文にも発音音源を持たせ、TG 形式の発音ボタンは TG例文を鳴らす | 高 | — |
 | [0080](0080-audio-prefetch-grouping.md) | 一括プリフェッチは見出し語・関連語／例文のグループ別（Cache Storage は 1 つ・掃除は和集合） | 高 | — |
 | [0081](0081-speech-bracket-normalization.md) | 読み上げの括弧は意味で出し分け（`(…)` は中身を読む／`[…]` は中身ごと落とす） | 高 | — |
 | [0082](0082-second-meaning-audio-only.md) | 2 個目以降の意味の発音は登録済み音源のみ（自動音声を与えない） | 高 | — |
+| [0092](0092-detail-card-pronunciation-tap.md) | 単語詳細のカードは全体がタップで発音を鳴らす（右上のアイコンのみバッジが音源の有無を示す。0076 追補） | 高 | — |
 
 ### G. 認証・デプロイ・運用
 

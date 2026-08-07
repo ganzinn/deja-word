@@ -187,26 +187,7 @@ blocked（承認プロンプトで停止）を検知したら、**idle ではな
 
 #### 承認プロンプトのログ収集（PermissionRequest hook）
 
-本体の `.claude/settings.local.json` に以下の hook を設定しておく（`scripts/wt-env.sh` が全 worktree へ配布する。settings.local.json は git 管理外のため、消えていたらここから復元する）:
-
-```json
-"hooks": {
-  "PermissionRequest": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "mkdir -p tmp && jq -c '{ts: (now | todate), tool_name, tool_input, permission_mode}' >> tmp/permission-requests.log"
-        }
-      ]
-    }
-  ]
-}
-```
-
-- 承認プロンプトが必要になるたびに 1 行（`tool_input` 込み）が cwd = worktree の `tmp/permission-requests.log` に追記される。**許可リスト一致で自動許可された場合は発火しない**ため、記録されるのは実際に停止したものだけ（2026-08-07 実測: プロンプト表示 1 回 = 1 発火、表示中の再発火なし）
-- headless（`claude -p`）では発火しない（自動 deny はプロンプト表示を経ない）。対話ペインで動く実装エージェントでは問題にならない
-- オーケストレーターは worktree 削除前にログを直接読んでよい（自己申告に依存しない一次情報）。記録された `tool_input` は許可リスト・テンプレ禁止事項の継続改善の材料にする
+repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済み（worktree にも git 経由で入る）。承認プロンプトが必要になるたびに 1 行（`tool_input` 込み）が worktree 内 `tmp/permission-requests.log` に追記される。**許可リスト一致で自動許可された場合は発火しない**ため、記録されるのは実際に停止したものだけ（対話セッション専用 — headless `claude -p` では発火しない）。オーケストレーターは worktree 削除前にログを直接読んでよく、記録された `tool_input` は許可リスト・テンプレ禁止事項の継続改善の材料にする。
 
 #### 承認プロンプトの切り分け
 

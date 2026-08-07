@@ -26,7 +26,8 @@ export async function deleteWord(wordId: string): Promise<DeleteWordResult> {
 
   try {
     await deleteWordForUser(session.user.id, wordId);
-    // プリフェッチ済みの詳細（ルーターキャッシュ）が削除後も残らないように無効化する。
+    // 削除を実行した同一タブ（同一ルーターインスタンス）で、back/forward 履歴復元により
+    // 削除前の内容が出るのを防ぐ。
     revalidatePath(`/words/${wordId}`);
     return { ok: true };
   } catch (e) {

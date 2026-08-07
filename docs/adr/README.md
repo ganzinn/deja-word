@@ -66,10 +66,11 @@
 | [0083](0083-placeholder-italic-shared.md) | プレースホルダ do/doing の斜体は訳語・TG 例文で共通、色と A/B の斜体は TG 例文限定 | 高 | — |
 | [0084](0084-search-keyword-accent-normalization.md) | 単語検索はキーワード側のアクセント記号を落として照合（保存データは正規化しない） | 高 | — |
 | [0085](0085-swipe-nav-window-touch.md) | 前後ナビの横フリックは window の touch イベントで判定（左＝次 / 右＝前、画面端除外） | 高 | — |
-| [0086](0086-word-nav-transition-feedback-prefetch.md) | 前後ナビに遷移中フィードバック（淡色化＋方向スライド）とプリフェッチを追加（0085 追補） | 高 | — |
+| [0086](0086-word-nav-transition-feedback-prefetch.md) | 前後ナビに遷移中フィードバック（淡色化＋方向スライド）とプリフェッチを追加（0085 追補。ページ側プリフェッチは 0090 で廃止） | 高 | — |
 | [0087](0087-occurrence-number-beside-headword.md) | 掲載番号は見出し語の右に `#N`（中央ラベル `No.N` 廃止）、前後ナビは 2 ボタン右詰め | 高 | — |
 | [0088](0088-quiz-dialog-list-order-nav.md) | テスト結果ダイアログの前後ナビは結果一覧順のクライアント配列（サーバ隣接取得廃止、0086 決定 3 の隣接先読みを置き換え） | 高 | — |
 | [0089](0089-word-detail-nav-list-context.md) | 単語詳細の前後ナビは一覧コンテキストに追随（`view=word` URL コンテキスト、kind 付き union、一覧と where 共有の隣接クエリ） | 高 | — |
+| [0090](0090-word-nav-no-prefetch.md) | 前後ナビのフルプリフェッチ廃止・毎回サーバー取得で一覧の表示順と同期（0086 決定 3 のページ側プリフェッチを置き換え） | 高 | — |
 
 ### D. quiz 機能
 

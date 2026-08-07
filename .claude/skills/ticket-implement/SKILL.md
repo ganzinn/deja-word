@@ -176,14 +176,14 @@ herdr agent wait <名前> --status idle --timeout 570000
 
 #### 承認待ちループ（blocked を検知したら）
 
-blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、発生を 1 回ずつ捕捉して即座に完了待ちへ復帰できる（idle 待ちのままでは、その間の blocked → 承認 → working が見えず数えられない）:
+blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、即座に完了待ちへ復帰できる:
 
 1. `herdr agent read <名前> --source visible` でプロンプト内容を確認する（判断できない内容ならエスカレーション）。visible は描画前の古い画面を返すことがあるため、blocked かどうかは `herdr agent get` のステータスを正とする
 2. `herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知する（代理承認の禁止は「trust と permission」節のとおり）
 3. `herdr agent wait <名前> --status working --timeout 570000` で承認を待つ。**通知だけしてターンを終えない** — 待ちが走っていないと、承認されても再開の契機が無い
 4. working が返ったら idle 待ちに戻る。タイムアウトしたら `herdr agent get` で再確認し、blocked のままなら 3 に戻る（再通知は不要）
 
-承認の発生回数と対象コマンドは、worktree 内 `tmp/permission-requests.log`（下記「承認プロンプトのログ収集」）を一次情報として最終報告に含める。working 復帰回数のカウントは使わない（blocked → 承認 → working が wait の窓内で完結すると観測できず数え漏れる）。実装エージェントの自己申告も使わない（エージェントは「即実行」と「承認後実行」を区別する情報を受け取らないため不正確）。
+承認の発生回数と対象コマンドは、worktree 内 `tmp/permission-requests.log`（下記「承認プロンプトのログ収集」）を一次情報として最終報告に含める。
 
 #### 承認プロンプトのログ収集（PermissionRequest hook）
 

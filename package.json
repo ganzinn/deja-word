@@ -22,6 +22,8 @@
     "db:import-words": "tsx scripts/import-words.ts",
     "db:import-related-words": "tsx scripts/import-related-words.ts",
     "db:import-audio": "tsx scripts/import-audio.ts",
+    "db:export-occurrence": "tsx scripts/export-occurrence.ts",
+    "db:sync-occurrence": "tsx scripts/sync-occurrence.ts",
     "e2e:audio-cache": "tsx scripts/e2e/verify-audio-cache.ts",
     "e2e:audio-prefetch": "tsx scripts/e2e/verify-audio-prefetch.ts",
     "e2e:guard": "tsx scripts/e2e/verify-deletion-guard.ts",

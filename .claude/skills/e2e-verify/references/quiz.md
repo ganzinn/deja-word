@@ -11,17 +11,21 @@ skill `e2e-verify` の補助資料。**quiz 機能をブラウザ自動化で検
 | 掲載箇所 | `#quiz-occurrence`（Select） | Label「掲載箇所」。まず選ぶ。 |
 | 範囲 from | `#quiz-range-from`（`getByLabel("掲載番号（から）")`） | セクション Label は「掲載番号範囲」。 |
 | 範囲 to | **id 無し** → `getByLabel("掲載番号（まで）")` | to には id が無いので aria-label で取る。 |
+| ブックマークのみ | Checkbox「ブックマークのみ」 | 全件ブックマークモードの入口。 |
+| 出題数 | `#quiz-question-count`（Input） | 空欄 = 全問出題。対象からランダムに選ぶ。 |
 | 出題形式 | `#quiz-format`（Select） | カテゴリ別グループ（`英語→日本語` / `日本語→英語`）。 |
-| 制限時間トグル | `#quiz-timeout-enabled`（Checkbox） | 下記の自動入力に注意。 |
+| 掲載番号順トグル | Checkbox「掲載番号順に出題する」 | 掲載箇所未選択時は disabled。 |
+| 制限時間トグル | Checkbox「1 問ごとに制限時間を設定する」 | 下記の自動入力に注意。 |
 | 制限時間（秒） | `getByLabel("制限時間（秒）")` | トグル ON のときだけ出現する numeric 入力。 |
 | 開始 | ボタン「開始」 | `disabled` 条件は下記。 |
 | 対象語数 | テキスト `対象 N語`（id 無し） | プレビュー結果。0 語だと開始不可。 |
 
-その他 id: `#quiz-choice-first-meaning-text-only`（形式が `CHOICE` のときだけ表示）、`#quiz-save-as-default`（この設定を既定に保存）。**data-testid は無い**ので上記の id / aria-label / ラベル文言・ボタン文言で取る。
+その他のチェックボックス: 「選択肢に最初の訳語だけを表示する」（形式が `CHOICE` のときだけ表示）、「この設定をデフォルト設定とする」。**data-testid は無い**ので上記の id / role+ラベル文言 / aria-label / ボタン文言で取る。
 
 ### 落とし穴
+- **Checkbox は id セレクタで操作しない**（id は不可視の hidden input に付き click がタイムアウトする）。`getByRole("checkbox", { name: "<ラベル文言>" })` で取り、`aria-checked` が目的状態と違うときだけ click する。Input / Select の id は従来どおり使える。
 - **`input[inputmode="numeric"]` の nth(0)/nth(1) で範囲を取らない**。制限時間トグルが ON になると 3 つ目の numeric 入力（制限時間（秒））が増え、nth のインデックスがずれる。範囲は `#quiz-range-from` と `getByLabel("掲載番号（まで）")` で取る。
-- **形式を選ぶと制限時間が自動入力される**。`#quiz-format` を選ぶと、その形式の**保存済み推奨秒**が入り制限時間トグルが ON になることがある（未保存ユーザーでもトグル操作で `DEFAULT_TIMEOUT_SECONDS` が入る）。自動化を単純化したいなら**選択後に `#quiz-timeout-enabled` を明示的に OFF** にする。
+- **形式を選ぶと制限時間が自動入力される**。`#quiz-format` を選ぶと、その形式の**保存済み推奨秒**が入り制限時間トグルが ON になることがある（未保存ユーザーでもトグル操作で `DEFAULT_TIMEOUT_SECONDS` が入る）。自動化を単純化したいなら**選択後に制限時間トグルを明示的に OFF** にする。
 - **「開始」ボタンの disabled は 0 語だけが理由ではない**。`掲載箇所 未選択` / `形式 未選択` / `プレビュー ロード中` / `制限時間 ON なのに秒が空` でも disabled。開始できないときはこれらを疑う。
 
 ## 出題形式（`src/lib/quiz/format-options.ts`、全 10 形式）
@@ -51,6 +55,7 @@ skill `e2e-verify` の補助資料。**quiz 機能をブラウザ自動化で検
 
 - 値を**小さくするとドリルのラウンド数が減る**（1..9）。
 - **`getByLabel("定着までの回数")` は曖昧**（セクション見出しと `#result-remaining-correct` の両方に一致）。id で取ること。`#result-remaining-reset` の可視ラベルは「間違えた問題」であって「定着までの回数」ではない点に注意。
+- 「間違えた問題だけ表示」「正解した問題も定着モードで出題する」は Checkbox（上記落とし穴のとおりラベル文言で取る）。
 
 ## データ事情（⚠ seed から再現不可・各自の dev DB 依存 → 毎回ライブ確認）
 

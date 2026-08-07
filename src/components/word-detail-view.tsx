@@ -1,8 +1,8 @@
 import { LinkIcon } from "lucide-react";
 import Link from "next/link";
 
-import { AudioPlayButton } from "@/components/audio-play-button";
 import { MeaningText } from "@/components/meaning-text";
+import { detailCardClassName, PronunciationCard } from "@/components/pronunciation-card";
 import { RichText } from "@/components/rich-text";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
@@ -120,17 +120,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/**
- * カード上部の「品詞 / 関連語区分・発音記号・発音ボタン」を横並びにする行。
- *
- * 行を出すかどうかを props（品詞・発音記号・音源 URL）だけで判定してはいけない。
- * `AudioPlayButton` は音源が無くても自動音声フォールバックで描画されうるため、
- * props 判定だと「3 つとも空だが自動音声は使える」語で発音ボタンごと消える。
- * 描画可否は各要素（とくに `AudioPlayButton`）に委ね、結果的に全部空になった
- * ときだけ `empty:hidden` で行を畳む（親 flex-col の gap が余るのを防ぐ）。
- */
-const metaRowClassName = "flex flex-wrap items-center gap-2 empty:hidden";
-
 function MeaningCard({
   meaning,
   headword,
@@ -144,31 +133,30 @@ function MeaningCard({
   const pronunciation = nonEmpty(meaning.pronunciation);
   const pronunciationAudioUrl = nonEmpty(meaning.pronunciationAudioUrl);
   return (
-    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
-      <div className={metaRowClassName}>
-        {partOfSpeech ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            {commonPartOfSpeechFullLabel(partOfSpeech)}
-          </Badge>
-        ) : null}
-        {pronunciation ? (
-          <span className="text-muted-foreground font-pronunciation text-xs">
-            [{pronunciation}]
-          </span>
-        ) : null}
-        {/*
-          2 個目以降の意味では自動音声フォールバックを使わない（`ttsText` を渡さない）ため、
-          音源が登録されているときだけ発音ボタンが出る。意味（品詞）が違えばアクセント・発音も
-          異なりうる（`record` 名/動 など）が、自動音声は見出し語を一律に読むだけで
-          「その意味の発音」にはならず、誤った発音を覚えさせうる。意味固有の発音は登録済み音源
-          でしか表せない、という位置づけ。先頭の意味は単語自体の代表発音として従来どおり扱う。
-        */}
-        <AudioPlayButton
-          src={pronunciationAudioUrl}
-          label="発音"
-          ttsText={isFirst ? headword : null}
-        />
-      </div>
+    // 2 個目以降の意味では自動音声フォールバックを使わない（`ttsText` を渡さない）ため、
+    // 音源が登録されているときだけ鳴る（バッジも出る）。意味（品詞）が違えばアクセント・発音も
+    // 異なりうる（`record` 名/動 など）が、自動音声は見出し語を一律に読むだけで
+    // 「その意味の発音」にはならず、誤った発音を覚えさせうる。意味固有の発音は登録済み音源
+    // でしか表せない、という位置づけ。先頭の意味は単語自体の代表発音として従来どおり扱う。
+    <PronunciationCard
+      src={pronunciationAudioUrl}
+      label="発音"
+      ttsText={isFirst ? headword : null}
+      meta={
+        <>
+          {partOfSpeech ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              {commonPartOfSpeechFullLabel(partOfSpeech)}
+            </Badge>
+          ) : null}
+          {pronunciation ? (
+            <span className="text-muted-foreground font-pronunciation text-xs">
+              [{pronunciation}]
+            </span>
+          ) : null}
+        </>
+      }
+    >
       {meaning.texts.length === 1 ? (
         <p className={`text-sm whitespace-pre-wrap ${isFirst ? "font-bold text-red-400" : ""}`}>
           <MeaningText text={meaning.texts[0].text} />
@@ -186,7 +174,7 @@ function MeaningCard({
         </ul>
       ) : null}
       <NotesView notes={meaning.notes} />
-    </div>
+    </PronunciationCard>
   );
 }
 
@@ -196,10 +184,7 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   const meaning = nonEmpty(example.meaning);
   const isTarget = example.kind === "TARGET";
   return (
-    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
-      <div className={metaRowClassName}>
-        <AudioPlayButton src={example.pronunciationAudioUrl} label="発音" ttsText={example.text} />
-      </div>
+    <PronunciationCard src={example.pronunciationAudioUrl} label="発音" ttsText={example.text}>
       <p className="text-sm whitespace-pre-wrap">
         {isTarget ? <TgExampleText text={example.text} /> : <RichText text={example.text} />}
       </p>
@@ -215,7 +200,7 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
         </p>
       ) : null}
       <NotesView notes={example.notes} />
-    </div>
+    </PronunciationCard>
   );
 }
 
@@ -238,18 +223,23 @@ function RelatedWordCard({
     nonEmpty(related.linkedWord?.meanings[0]?.pronunciationAudioUrl);
   const meaning = nonEmpty(related.meaning);
   return (
-    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
-      <div className={metaRowClassName}>
-        {related.kind ? (
-          <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
-        ) : null}
-        {pronunciation ? (
-          <span className="text-muted-foreground font-pronunciation text-xs">
-            [{pronunciation}]
-          </span>
-        ) : null}
-        <AudioPlayButton src={pronunciationAudioUrl} label="発音" ttsText={related.term} />
-      </div>
+    <PronunciationCard
+      src={pronunciationAudioUrl}
+      label="発音"
+      ttsText={related.term}
+      meta={
+        <>
+          {related.kind ? (
+            <Badge variant="secondary">{relatedWordKindLabels[related.kind]}</Badge>
+          ) : null}
+          {pronunciation ? (
+            <span className="text-muted-foreground font-pronunciation text-xs">
+              [{pronunciation}]
+            </span>
+          ) : null}
+        </>
+      }
+    >
       {related.linkedWord ? (
         onSelectRelated ? (
           <button
@@ -284,7 +274,7 @@ function RelatedWordCard({
         </div>
       ) : null}
       <NotesView notes={related.notes} />
-    </div>
+    </PronunciationCard>
   );
 }
 
@@ -294,7 +284,8 @@ function OccurrenceCard({
   wordOccurrence: WordDetail["wordOccurrences"][number];
 }) {
   return (
-    <div className="border-border bg-card/50 font-content flex flex-col gap-2 rounded-lg border p-3">
+    // 発音は無いので `PronunciationCard` は使わないが、枠は他のカードと同じ見た目に揃える。
+    <div className={detailCardClassName}>
       <p className="text-sm font-medium">
         {wordOccurrence.occurrence.location}
         {wordOccurrence.occurrenceNumber !== null ? (

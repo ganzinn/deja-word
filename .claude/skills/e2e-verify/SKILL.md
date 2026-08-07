@@ -86,6 +86,26 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 - **プリフェッチ・先読みが効くと過渡状態そのものが出ない**。dev サーバは `<Link>` の自動プリフェッチが動かない（production ビルドのみの仕様）ので、プリフェッチ非依存の検証は dev で走らせるのが素直。ダイアログ内の先読みのようにアプリ実装側のキャッシュが効く場合は、throttling か「先読みが終わる前に素早く操作する」で待ちを作る。
 - 実装側は E2E から観測できるよう `data-*` 属性を出す規約（例: `WordContentTransition` の `data-pending` / `data-direction`）。クラス名ではなく属性を見る。
 
+## 発音再生（`<audio>`）の検証
+
+再生の起動・停止をアサートするときの型。fixture の `scripts/e2e/fixtures/silent.mp3` は短いので、素直に
+`paused` を見ると**クリップが鳴り終わっただけ**なのか停止操作が効いたのか区別できない。
+
+- 操作前に `<audio>` へ **`loop = true` を仕込む**（アプリは loop を設定しない。計測用の細工）。以後 `paused`
+  は操作でしか変わらなくなり、再生 → 停止 → 再生のトグルを素直にアサートできる。
+- **`paused` の反転と React state の反映は同時ではない**。`audio.play()` で `paused` は同期的に false になるが、
+  `play` イベント → `setPlaying(true)` → 再描画は後から届く。`paused` を待った直後に `aria-pressed` や
+  アイコンを読むと取りこぼす（実装時に踏んだフレーク）。DOM 側は**属性が付くまで待つ**
+  （`locator.and(page.locator('[aria-pressed="true"]')).waitFor()`）。`play` イベントの発火回数を数える
+  場合も同様に待つか、落ち着かせてから読む。
+- 音源は `prisma` で `pronunciationAudioUrl` に直接入れ、実体は `DEV_BLOB_ROOT` へ書けばよい
+  （`ensureDemoAudio` と同じ手。UI からのアップロード手順が検証対象でないなら遠回り）。
+- クリック位置で挙動が変わる UI（カード全体タップ vs 内部のリンク・ボタン）は、**本文の `<p>` を
+  `getByText(...).click()` で狙う**とバッジ・リンクを避けられる。
+- テキスト選択ガード（選択中は発火しない）は、実ジェスチャの mousedown が選択を消してしまうため
+  **合成 `click` の dispatch** で判定ロジックだけを見る。必ず「選択なしの同じ合成 click は発火する」
+  対照を並べ、合成 click が届いていない空振りを排除する。
+
 ## 関連
 
 - quiz 系の自動化ノウハウ（開始/進行中/結果のセレクタ、出題形式一覧、自己判定形式が最易、出題データの事情）は [references/quiz.md](references/quiz.md) にまとめてある。

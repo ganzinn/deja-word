@@ -1,6 +1,6 @@
 # 01. prefetch-removal
 
-状態: **完了（2026-08-07）**　PR: （未作成）
+状態: **完了（2026-08-07）**　PR: [#234](https://github.com/ganzinn/deja-word/pull/234)
 
 ## 目的
 

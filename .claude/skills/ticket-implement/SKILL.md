@@ -1,15 +1,17 @@
 ---
 name: ticket-implement
-description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。実装の委譲先は herdr 環境（HERDR_ENV=1）なら herdr の独立ペインで動く claude CLI がデフォルト、それ以外はサブエージェント。--teams で agent teams の teammate、--subagent でサブエージェント固定に切り替える。
+description: docs/plan/<機能名>/ のチケット群を依存順に並行実装する。デフォルトは単一統合ブランチ＋機能全体で 1 PR、--pr 指定でチケット単位 PR（マージ待ち中断・再開型）。実装の委譲先は herdr 環境（HERDR_ENV=1 かつ claude integration が current）なら herdr の独立ペインで動く claude CLI がデフォルト、それ以外はサブエージェント。--teams で agent teams の teammate、--subagent でサブエージェント固定に切り替える。
 argument-hint: "[機能名] [--pr] [--herdr|--teams|--subagent]"
 disable-model-invocation: true
 ---
 
 # ticket-implement
 
-`design-session（docs/design）→ ticket-split（docs/plan）→ ticket-implement（実装）` パイプラインの最終工程。plan ハブ（`docs/plan/<機能名>/README.md`）を唯一の入口とし、チケット一覧表の依存・状態列から「今並行着手できるチケット集合」を判定して、worktree 上の実装エージェント（委譲手段は「引数」節で選択。以下、総称としてサブエージェントと書く）に実装を委譲する。
+`design-session（docs/design）→ ticket-split（docs/plan）→ ticket-implement（実装）` パイプラインの最終工程。plan ハブ（`docs/plan/<機能名>/README.md`）を唯一の入口とし、チケット一覧表の依存・状態列から「今並行着手できるチケット集合」を判定して、worktree 上の実装エージェントに実装を委譲する。
 
-plan ハブ・チケットの「ステータス運用ルール」が言う**「実装セッション（または並行実装スキル）」は本スキルのメインセッションのこと**。着手時・PR 作成時・マージ時のステータス更新責務は本スキルが引き受ける（計画の変更 — チケットの追加・削除・依存の組み替え — は ticket-split の管轄のまま）。
+用語: **「実装エージェント」は委譲先の総称**（委譲手段は「引数」節で選択）。**「サブエージェント」は Agent ツールによる委譲手段だけ**を指す。
+
+plan ハブ・チケットの「ステータス運用ルール」が言う**「実装セッション」は本スキルのメインセッションのこと**。着手時・PR 作成時・マージ時のステータス更新責務は本スキルが引き受ける（計画の変更 — チケットの追加・削除・依存の組み替え — は ticket-split の管轄のまま）。
 
 ## 引数
 
@@ -39,10 +41,10 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 メインセッションは**オーケストレーター専任**。コンテキストを温存するため、以下を厳守する:
 
-- **メインが読むのは plan ハブ＋サブエージェントの報告のみ**。チケット本文・実装コード・diff は読まない（チケット本文はサブエージェントが読む。自己完結は ticket-split が保証済み）
+- **メインが読むのは plan ハブ＋実装エージェントの報告のみ**。チケット本文・実装コード・diff は読まない（チケット本文は実装エージェントが読む。自己完結は ticket-split が保証済み）。例外は、ステータス更新・実装メモ転記のために開く**チケット冒頭の状態行と「実装メモ」節だけ**（それ以外の本文には目を通さない）
 - メインの担当: ready 判定／worktree 準備／委譲／マージ／統合ブランチでの検証／ステータス更新／push・PR 作成（gh）
-- **サブエージェントの担当: worktree 内での実装＋検証＋コミット**。push・PR 作成・`docs/plan/` の編集はしない
-- **ステータス更新（ハブの一覧表＋チケット冒頭の状態行）はメイン専任**。サブエージェントは `docs/plan/` を編集禁止のため、同時書き込み競合は構造的に起きない。実装メモはサブエージェントの報告をメインが転記する
+- **実装エージェントの担当: worktree 内での実装＋検証＋コミット**。push・PR 作成・`docs/plan/` の編集はしない
+- **ステータス更新（ハブの一覧表＋チケット冒頭の状態行）はメイン専任**。実装エージェントは `docs/plan/` を編集禁止のため、同時書き込み競合は構造的に起きない。実装メモは実装エージェントの報告をメインが転記する
 
 ### ready 集合の判定
 
@@ -55,15 +57,15 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 - **手動 `git worktree add` を使う**（ブランチ名を規約どおりに制御し、失敗時に worktree を残して検査するため）
 - 置き場: `../deja-word-worktrees/<機能名>-NN-<チケット名>`（リポジトリ外。.gitignore 変更不要）
-- 準備手順: worktree 作成 → `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉を本体からコピー）→ `pnpm install`（postinstall で prisma generate が走る）→ サブエージェント委譲
+- 準備手順: worktree 作成 → `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉を本体からコピー）→ `pnpm install`（postinstall で prisma generate が走る）→ 実装エージェントへ委譲
 - 並行度の上限は 3（推奨 2）。worktree ごとの install コストと、マージ待ち行列が長いほどコンフリクト窓が広がることを踏まえる
 
 ### 検証の分担
 
-- **worktree 内（サブエージェント）**: `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全。整形差分は実装コミットに含める）
+- **worktree 内（実装エージェント）**: `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`（env 非依存で並行安全。整形差分は実装コミットに含める）
   - 任意: devman が導入済みの環境では `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される。`docs/ops/devman.md` 参照）。未導入なら pnpm 直実行のまま
-- **`pnpm test:integration` は worktree で実行禁止**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できない。メインがマージ後の統合ブランチ（PR モードではメインの checkout）で**直列**実行する
-- integration テストの有無は**サブエージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
+- **`pnpm test:integration` は実装エージェントに実行させない**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できない。メインが**直列**（同時に 1 箇所のみ）で実行する — 単一ブランチ統合モードではマージ後の統合ブランチで、PR モードでは push・PR 作成の前に当該 worktree で（実行タイミングは各モードのフロー参照）
+- integration テストの有無は**実装エージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
 
 ## 計画ドラフト提示と合意（唯一のユーザー確認）
 
@@ -77,7 +79,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 ## 単一ブランチ統合モード（デフォルト）
 
 1. 統合ブランチ `feature/<機能名>` を main から作成（存在すれば checkout = 再開）。ハブの「ブランチ・PR 運用」セクションに運用メモを 1 行追記してコミットする（例: `運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ feature/word-quiz）`）。これは運用記録でありステータス運用ルールの「計画の変更」には当たらない
-2. **wave ループ**: ready 集合から並行度上限まで選び、チケットごとに統合ブランチ起点で worktree を作成（ブランチ名 `feature/<機能名>-NN-<チケット名>`）→ `pnpm install` → **メインが統合ブランチ上で**、選んだチケットをまとめて「実装中」に更新し **1 コミット**（チケットに紐づかない運用コミット）→ サブエージェントを並行起動（worktree は状態更新コミットの前に分岐するが、worktree 側は `docs/plan/` を編集しないため squash マージで衝突しない）
+2. **wave ループ**: ready 集合から並行度上限まで選び、チケットごとに worktree を準備する（共通ルール「worktree の扱い」の準備手順どおり。起点は統合ブランチ、ブランチ名 `feature/<機能名>-NN-<チケット名>`）→ **メインが統合ブランチ上で**、選んだチケットをまとめて「実装中」に更新し **1 コミット**（チケットに紐づかない運用コミット）→ 実装エージェントを並行起動（worktree は状態更新コミットの前に分岐するが、worktree 側は `docs/plan/` を編集しないため squash マージで衝突しない）
 3. 報告を受けたら**チケット番号順に**統合ブランチへ取り込む:
    - `git merge --squash <worktreeブランチ>`（ステージのみでコミットは作られない）→ ハブとチケット冒頭の状態行を「完了＋日付」に編集・実装メモを転記 → まとめて 1 コミット。メッセージ `<機能名>: NN <チケット名>`（PR タイトル規約と同形。**実装差分は 1 チケット = 1 コミット**を保つ。手順 2 のステータス運用コミットはこれとは別勘定）
    - マージ後検証: `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit`。報告に integration テストが含まれていれば `pnpm test:integration` を直列実行
@@ -95,8 +97,9 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 1. **突き合わせ（毎回最初に実行）**: main を最新化し、ハブの「実装中＋PR リンク」行を `gh pr view <url> --json state,mergedAt` で照合する。マージ済みなら「完了＋日付」に更新し、main へコミット・push する（メッセージ `<機能名> 計画: ステータス更新（NN 完了）`。main 直 push 不可なら docs-only PR にフォールバック）
 2. ready 集合を判定し、計画ドラフトを提示・合意
-3. 各 ready チケット（並行可、worktree の扱いは共通ルールどおり）:
-   - main 起点で worktree 作成（ブランチ名 `feature/<機能名>-NN-<チケット名>`）→ サブエージェントが実装・コミット
+3. 各 ready チケット（並行可、worktree の準備は共通ルールどおり）:
+   - main 起点で worktree 作成（ブランチ名 `feature/<機能名>-NN-<チケット名>`）→ 実装エージェントが実装・コミット
+   - 報告に integration テストが含まれていれば、push・PR 作成の前に**メインが当該 worktree で `pnpm test:integration` を直列実行する**（複数チケットが対象でも同時に走らせない。失敗は「失敗・中断時の扱い」の再委譲で処理する）
    - メインが push → `gh pr create`（タイトル `<機能名>: NN <チケット名>`）→ **同ブランチに「実装中＋PR URL」をチケット冒頭の状態行とハブ PR 列に記載するコミットを 1 つ追加して push**（ステータス更新を PR に内包する。PR 作成前の中間状態を main に残さない）→ worktree を削除する（PR のブランチはリモートに残る）
    - 並行 PR はハブ表のそれぞれ自分の行だけを編集するため通常は自動マージされる。マージ時に隣接行で衝突した場合は、両者の行を残す形で機械的に解消してよい（状態の正は次回再実行時の手順 1 の突き合わせが保証する）
 4. ready を消化し終えたら: 作成した PR 一覧／未マージ依存でブロック中のチケットと待ち先 PR を報告し、レビュー・マージ後の再開コマンドをそのまま入力できる形（`/ticket-implement <機能名> --pr`）で提示してセッションを終了する
@@ -105,7 +108,7 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 
 ## サブエージェント委譲
 
-[templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) のプレースホルダ（`{機能名}` `{NN}` `{チケット名}` `{worktree絶対パス}`。`{報告ファイル絶対パス}` は herdr ペイン委譲のみ — テンプレ冒頭の注記に従う）を埋めて委譲する。チケット本文の転記はしない（サブエージェントが worktree 内のハブ＋チケットを読む）。
+[templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) のプレースホルダ（`{機能名}` `{NN}` `{チケット名}` `{worktree絶対パス}`。`{報告ファイル絶対パス}` は herdr ペイン委譲のみ — テンプレ冒頭の注記に従う）を埋めて委譲する。チケット本文の転記はしない（実装エージェントが worktree 内のハブ＋チケットを読む）。
 
 ## teams 委譲（--teams）
 
@@ -115,116 +118,29 @@ plan ハブ・チケットの「ステータス運用ルール」が言う**「�
 - ready チケットごとに teammate を 1 人スポーンする。指示は同じ [templates/implement-agent-prompt.md](templates/implement-agent-prompt.md) を埋めて渡し、担当 worktree の絶対パス配下だけで作業させる（テンプレの禁止事項 — `docs/plan/` 編集・push・PR 作成の禁止 — はそのまま適用）
 - 並行度上限は共通ルールどおり。トークンコストは teammate 数に比例して嵩むため、計画ドラフト提示に含める
 - 完了・手詰まりは teammate からの通知・メッセージで受け、報告（変更ファイル一覧・DoD 結果・実装メモ）をメインが回収する。マージして worktree を削除したら当該 teammate は解放する
-- 「失敗・中断時の扱い」はサブエージェント委譲と同一規則を適用する（「再委譲」= 同一 worktree を担当する teammate への再指示メッセージ）
+- 「失敗・中断時の扱い」の共通規則を適用する（「再委譲」= 同一 worktree を担当する teammate への再指示メッセージ）
 - teams 特有の制約: セッションは `/resume` で teammate を復元しない。中断・再開は本スキルの既存フロー（ready 判定・突き合わせ）がそのまま吸収するため追加の再開処理は不要。teammate の権限確認はリードへバブルアップされるため、承認待ちで停滞しない permission mode で開始する
 
 ## herdr ペイン委譲（herdr 環境でのデフォルト。--herdr で明示指定）
 
-委譲先を herdr の独立ペインで動く claude CLI に切り替える。**役割分担・ブランチ運用・状態の意味・ウェーブの回し方は一切変わらない**（teams 委譲と同じ「委譲手段のみの切替」）。teammate と違い実装エージェントごとに実ターミナルペインを持つため、**herdr サイドバーで各エージェントの idle / working / blocked / done が個別に可視化される**のが利点。herdr の操作コマンドは herdr スキル（`HERDR_ENV=1` で利用可）を参照する。
+委譲先を herdr の独立ペインで動く claude CLI に切り替える。**役割分担・ブランチ運用・状態の意味・ウェーブの回し方は一切変わらない**（委譲手段のみの切替）。実装エージェントごとに実ターミナルペインを持つため、**herdr サイドバーで各エージェントの idle / working / blocked が個別に可視化される**。herdr の操作コマンドは herdr スキル（`HERDR_ENV=1` で利用可）を参照する。
 
 - 前提: `HERDR_ENV=1`（herdr 管理下のペインで実行中）かつ herdr の claude integration 導入済み（`herdr integration status` で `claude: current`）。満たさなければサブエージェント委譲にフォールバックし、その旨を計画ドラフト提示で伝える
-- **エージェントのハンドルは名前**（`<機能名>-NN`）。`herdr agent get / read / send / wait` は名前をターゲットにできるため、pane_id は保存しない（ペイン ID は不変でないため控えても腐る）。pane_id が必要な操作（`pane run` / `pane close` / `send-keys`）は直前に `herdr agent get <名前>` で解決する
-
-### trust と permission（起動前の環境条件）
-
-- **worktree 置き場（`../deja-word-worktrees/`）が Claude Code の trust 済みであること**。trust 済みディレクトリの配下では子ディレクトリに trust ダイアログは出ないが、未 trust だと**各ペインが起動直後に trust ダイアログで停止する**。判定: `~/.claude.json` の `projects` に worktree 置き場（またはその祖先）のエントリがあり `hasTrustDialogAccepted: true`。判定ワンライナー:
-
-  ```sh
-  jq -r '.projects | to_entries[] | select(.value.hasTrustDialogAccepted == true) | .key' ~/.claude.json | grep -F "<worktree置き場の絶対パス>"
-  # 何も出力されなければ未 trust
-  ```
-
-  未 trust なら計画ドラフト提示で「worktree 置き場で一度 `claude` を起動して trust を承認 → 終了」をユーザーに依頼する
-- **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない（Claude Code 側の分類器もこの操作を拒否する）。検知したら通知してユーザーの操作を待つ
-- 定型コマンドの許可は、準備手順の `scripts/wt-env.sh` が配る `.claude/settings.local.json` で大半が賄われる。起動フラグ（下記起動コマンドの `--add-dir` / `--allowedTools`）はそれで消えない分だけを最小限補う — 内訳は「承認プロンプトの切り分け」の表を参照
-
-### 起動
-
-ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、**エージェント専用のタブ**で claude を起動する（ペイン分割は使わない — 並行数が増えると 1 ペインが小さくなり見づらい）:
-
-```sh
-herdr tab create --label <機能名>-NN --no-focus
-# 返却 JSON の result.tab.tab_id と result.root_pane.pane_id を読む
-herdr agent start <機能名>-NN --cwd <worktree絶対パス> --tab <tab_id> --no-focus \
-  -- claude "$(cat <プロンプトファイル>)" \
-     --permission-mode acceptEdits \
-     --add-dir <worktree置き場の絶対パス> \
-     --allowedTools "Bash(pnpm *)" "Bash(git *)" "Read(//tmp/**)"
-herdr pane close <root_paneのpane_id>  # agent start はタブの root ペインを分割するため、元のシェルを閉じてエージェント単独のフルサイズ表示にする
-```
-
-- **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` は可変長のため、後置した位置引数を許可リストとして飲み込み、プロンプト未実行の空セッションが起動する
-- devman 経由で検証させる場合は `"Bash(devman run *)"` を許可リストに追加する（`devman *` にはしない — `devman server` はリポジトリにつき 1 つのサーバ仕様のため、実装エージェントが起動するとユーザーの dev サーバを停止させてしまう）
-- 同名エージェントが残っていると `agent_name_taken` で起動に失敗する。起動前（特に再開時）に `herdr agent list` で確認し、残骸ペインは回収・close してから起動する
-- 起動確認: `herdr agent wait <名前> --status working --timeout 90000` で着手を確認する（以後の idle 待ちが「完了」を意味するようになる）。タイムアウトしたら `herdr agent read <名前> --source visible` で停止原因（trust ダイアログ等）を確認する
-
-### 完了待ち
-
-**`--status done` は使わない**。done は UI の attention state であり、CLI の完了待ちには herdr がエラーで拒否する。完了シグナルは idle（既に idle なら wait は即時返却するため、完了を取り逃すレースは無い）:
-
-```sh
-herdr agent wait <名前> --status idle --timeout 570000
-```
-
-- wait の `--timeout` は 570000 を上限にし、実行側（Bash ツール）の timeout は 600000 を指定する（デフォルト 120 秒では wait より先に切られ、600 秒を超える待ちは背景化されて exit 1 の「失敗」通知になる）
-- **wait の返却は 3 形あり、どれも「エラー」ではない**:
-  - 既に目的の状態 → 即時返却で `{"event":"pane.agent_status_changed","data":{...}}`
-  - 遷移を検知 → `{"id":"cli:agent:wait:resolve","result":{"agent":{...}}}`
-  - タイムアウト → JSON ではない素のテキスト `timed out waiting for agent status change`。「まだ達していない」だけの正常な結果（エラー扱いして手を止めない）
-- タイムアウトしたら `herdr agent get <名前>` で現状を確認して分岐する: working → idle 待ちを再実行 / blocked → 下の「承認待ちループ」へ
-- 複数ペイン並行時はチケット番号順に順次待てばよい（マージ順と一致する）
-
-#### 承認待ちループ（blocked を検知したら）
-
-blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、即座に完了待ちへ復帰できる:
-
-1. `herdr agent read <名前> --source visible` でプロンプト内容を確認する（判断できない内容ならエスカレーション）。visible は描画前の古い画面を返すことがあるため、blocked かどうかは `herdr agent get` のステータスを正とする
-2. `herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知する（代理承認の禁止は「trust と permission」節のとおり）
-3. `herdr agent wait <名前> --status working --timeout 570000` で承認を待つ。**通知だけしてターンを終えない** — 待ちが走っていないと、承認されても再開の契機が無い
-4. working が返ったら idle 待ちに戻る。タイムアウトしたら `herdr agent get` で再確認し、blocked のままなら 3 に戻る（再通知は不要）
-
-承認の発生回数と対象コマンドは、worktree 内 `tmp/permission-requests.log`（下記「承認プロンプトのログ収集」）を一次情報として最終報告に含める。
-
-#### 承認プロンプトのログ収集（PermissionRequest hook）
-
-repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済み（worktree にも git 経由で入る）。承認プロンプトが必要になるたびに 1 行（`tool_input` 込み）が worktree 内 `tmp/permission-requests.log` に追記される。**許可リスト一致で自動許可された場合は発火しない**ため、記録されるのは実際に停止したものだけ（対話セッション専用 — headless `claude -p` では発火しない）。オーケストレーターは worktree 削除前にログを直接読んでよく、記録された `tool_input` は許可リスト・テンプレ禁止事項の継続改善の材料にする。
-
-#### 承認プロンプトの切り分け
-
-判定の決定打は、プロンプトに「don't ask again」「allow all ... during this session」といった**恒久化の選択肢が出るかどうか**。出るものは許可リストで恒久化できる。出ないもの（Yes / No の 2 択のみ）は原理的に毎回聞かれるため、上記の承認待ちループが正規の対処になる。
-
-| プロンプトの種類 | 消せるか | 対策 |
-| --- | --- | --- |
-| `This command requires approval`（許可リストに無い定型コマンド） | ○ | wt-env.sh の `.claude/settings.local.json` 配布＋`--allowedTools` |
-| 同上だが**環境変数の前置き**が原因（`PORT=3100 ... pnpm dev` は `Bash(pnpm dev *)` に不一致） | ○ | 本体の settings.local.json に env 名から始まるルール（`Bash(PORT=* pnpm *)` 等。`*` はスペースをまたいで一致）を追加。wt-env.sh が全 worktree に配る |
-| `Compound command contains cd with write operation`（`cd`＋書き込みの複合コマンド。許可リストでは消せない） | ○（発生源で） | テンプレで `cd` 前置きを禁止（cwd は最初から worktree） |
-| worktree 外への書き込み（報告ファイル） | ○ | `--add-dir <worktree置き場>` |
-| worktree 外への書き込み（scratchpad 等の一時ファイル） | ○（発生源で） | テンプレで一時ファイルを worktree 内の `tmp/` に限定 |
-| プロジェクト外の読み取り（`/tmp` 等） | ○ | テンプレで `/tmp` を使わせない＋`Read(//tmp/**)` |
-| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）/ バックグラウンド演算子 `&` を含む Bash | ✗ | 承認待ちループで対処 |
-
-`&` は `pnpm e2e:capture-docs` のように dev サーバを要する作業で必ず踏む。撮影を伴うチケットを委譲する場合は、**承認待ちが最低 1 回発生する前提**で運用する。
-
-なお、worktree 内のプロンプトで「don't ask again」を選ぶと、ルールは worktree を main checkout に解決した上で**本体リポジトリの `.claude/settings.local.json` に保存され、次回以降の全セッション（worktree 含む）に有効**になる（公式ドキュメント permissions.md に明記。2026-08-07 実測でも確認）。ただし停止したコマンドそのままの断片的なルール（`Bash(break)` 等）が残ることがあるため、実装セッション後に本体の許可リストを見直し、無意味なルールは削除する。
-
-### 報告回収・再委譲・後片付け
-
-- **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。idle になっても report ファイルが無い・不完全な場合は `herdr agent read <名前> --source recent-unwrapped --lines 200` で最終メッセージを確認する（recent バッファは直近の描画分しか残らないことがあるため、report ファイルが一次情報）
-- **再委譲**（「失敗・中断時の扱い」の共通規則を適用）: `herdr agent get <名前>` で pane_id を解決し、`herdr pane run <pane_id> "<指示>"` で同一ペインの claude に追加指示を送る（1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる）。ペインが消えていた場合のみ同一 worktree で claude を起動し直す
-- **後片付け**: マージ・検証成功後、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり。タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
-- 並行度上限は共通ルールどおり。ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む（計画ドラフト提示に含める）
+- **エージェントのハンドルは名前**（`<機能名>-NN`）。pane_id は保存しない（ペイン ID は不変でないため控えても腐る）。pane_id が必要な操作は直前に `herdr agent get <名前>` で解決する
+- 起動前の環境条件（trust / permission）・起動・完了待ち・承認待ちループ・承認プロンプトの切り分け・報告回収・再委譲・後片付けの運用手順は [references/herdr-delegation.md](references/herdr-delegation.md) に従う
+- ペイン＝独立した claude セッションのためトークンコストは並行数に比例して嵩む（並行度上限は共通ルールどおり。計画ドラフト提示に含める）
 - 中断・再開は既存フロー（ready 判定・突き合わせ）がそのまま吸収する。再開時に前回の実装ペインが残っていれば `herdr agent list` で状態を確認し、idle なら報告回収から続行、消えていれば worktree の残骸ルール（計画ドラフト提示の「実装中」スタック行の扱い）に従う
 
 ## 失敗・中断時の扱い
 
 - **DoD 未達・テスト失敗**: 失敗内容（テスト出力の要約）を添えて**同一 worktree で 1 回だけ再委譲**する。再失敗したらそのチケットをスキップ（「実装中」のまま、実装メモに状況を記入）し、それに依存する後続もスキップ、独立チケットは続行する。worktree は検査用に残し、最終報告でパスとともにエスカレーションする
-- **設計・計画の矛盾を発見**: サブエージェントは補完実装せず報告で返す。メインは当該チケットを停止し、ticket-split（設計問題なら design-session）への差し戻しを最終報告に含める
+- **設計・計画の矛盾を発見**: 実装エージェントは補完実装せず報告で返す。メインは当該チケットを停止し、ticket-split（設計問題なら design-session）への差し戻しを最終報告に含める
 - **マージコンフリクト**: 単一ブランチ統合モードの手順 3 を参照。解決根拠はハブの「共有物・競合点」
 - **コンテキスト肥大**（次 wave の消費量を見積もり、対応後の使用量が 200K トークン前後を超えそうなら中断。見積もりに迷うなら現在使用量 150K を一律閾値とする）: wave 境界が自然なチェックポイント。ハブのステータス更新をコミットして現状を報告し、/clear を促す。再実行が続きを拾う（ready 判定と突き合わせが再開処理を兼ねる）。再開コマンドはそのまま入力できる形（`/ticket-implement <機能名>`。PR モードなら `--pr` 付き）で提示し、それ以外のオプションの解説は聞かれるまで並べない
 
 ## 注意事項
 
-- 計画との差分・後続チケットへの申し送りは、サブエージェントの報告からメインがチケットの「実装メモ」に転記する
+- 計画との差分・後続チケットへの申し送りは、実装エージェントの報告からメインがチケットの「実装メモ」に転記する
 - DoD の手動確認項目（画面の目視確認など）は自動化せず、最終報告に「未実施」として列挙する
 - 実装中に計画の変更（チケットの追加・削除・依存の組み替え・設計改訂）が必要になったら、勝手に書き換えず ticket-split / design-session への差し戻しを提案する
 - worktree の掃除の規則は各モードのフロー内に定義済み（成功時に削除）。失敗で残したものは最終報告にパスを明記する

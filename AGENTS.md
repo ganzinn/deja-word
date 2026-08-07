@@ -54,6 +54,15 @@ scripts/wt-rm.sh  <feature-name> [--delete-branch] # 撤去
 
 同時に 2 つの dev を見比べたい場合のみ、片方を `PORT=3001 pnpm dev` で起動する。
 
+### スキル管理 worktree（設計・チケット実装）
+
+design-session / ticket-split / ticket-implement が使う worktree は `wt-new.sh` / `wt-rm.sh` の管轄外で、各スキルが `../deja-word-worktrees/` 配下（リポジトリ外。.gitignore 変更不要）に手動で管理する。ブランチ名・ディレクトリ名・起点・撤去のタイミングは各 SKILL.md が定義し、準備手順は共通:
+
+1. `git worktree add`（ブランチ名を規約どおりに制御し、失敗時に worktree を残して検査するため手動で行う）
+2. `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉の供給と、発音音源 `DEV_BLOB_ROOT` の本体共有）
+3. worktree 内で `mise trust`（`trusted_config_paths` で worktree 置き場を信頼済みの環境では何もしない）
+4. `pnpm install`（postinstall で prisma generate が走る）。ドキュメント作業のみの worktree では不要（コードの実行・検証が必要になったときだけ実行する）
+
 ## Ops スクリプト（運用ツール）
 
 DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する。実装規約は `scripts/CLAUDE.md` と `src/lib/CLAUDE.md`（ops コアモジュール節）にある。ドキュメントは `docs/ops/`。

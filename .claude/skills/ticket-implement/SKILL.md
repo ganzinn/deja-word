@@ -66,6 +66,7 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
   - 任意: devman が導入済みの環境では `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される。`docs/ops/devman.md` 参照）。未導入なら pnpm 直実行のまま
 - **`pnpm test:integration` は実装エージェントに実行させない**。共有 DB `dejaword_test` を各テスト前に TRUNCATE するため並行実行できない。メインが**直列**（同時に 1 箇所のみ）で実行する — 単一ブランチ統合モードではマージ後の統合ブランチで、PR モードでは push・PR 作成の前に当該 worktree で（実行タイミングは各モードのフロー参照）
 - integration テストの有無は**実装エージェントの報告（変更ファイル一覧）で判定する**（メインがチケット本文を読まない原則を守るため）
+- **共有 dev DB `dejaword` への migration 適用は、実装エージェントもメインも worktree からは行わない**（worktree 間の drift を防ぐ。検証は共有 dev DB 非依存で完結する — unit は DB を使わず、integration は `dejaword_test` へ起動時に migration が自動適用される）。migration を含むチケットがあった場合は、最終報告の手動確認案内に「手動確認の前に本体で `pnpm db:migrate` を実行する（drift 時は AGENTS.md の手順に従う）」を含める
 
 ## 計画ドラフト提示と合意（唯一のユーザー確認）
 

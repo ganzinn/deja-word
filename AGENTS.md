@@ -45,8 +45,6 @@ scripts/wt-rm.sh  <name> [--delete-branch]                                 # 撤
 
 `wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リスト。一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`mise trust`＋`pnpm install`（`prisma generate` 含む。この 2 つは `--no-install` で省略）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
 
-design-session / ticket-split / ticket-implement が使う worktree も同じ `wt-new.sh` で作る。ブランチ名・ディレクトリ名・起点・撤去のタイミングは各 SKILL.md が宣言し、ドキュメント作業のみの worktree（design / plan-update）は `--no-install` で作る。
-
 **DB は単一 `dejaword` を共有**する。dev サーバは1つずつ起動する運用なので同時アクセスの競合は無いが、ブランチ間で migration が食い違うと drift が出る。アクティブな worktree を切り替えた直後は:
 
 - 通常（追加 migration のみ）: `pnpm db:migrate`

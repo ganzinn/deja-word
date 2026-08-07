@@ -11,13 +11,13 @@ import { getWordDetailForUser } from "@/lib/words-detail";
 import { WordForm } from "../../new/word-form";
 import {
   buildWordDetailHref,
-  parseOccurrenceContext,
-  type RawOccurrenceContextParams,
+  parseWordDetailNavContext,
+  type RawWordDetailNavParams,
 } from "../../_lib/search-params";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<RawOccurrenceContextParams>;
+  searchParams: Promise<RawWordDetailNavParams>;
 };
 
 export default async function EditWordPage({ params, searchParams }: PageProps) {
@@ -30,8 +30,8 @@ export default async function EditWordPage({ params, searchParams }: PageProps) 
   if (!word) notFound();
   if (word.ownerId !== session.user.id && word.ownerId !== SYSTEM_USER_ID) notFound();
 
-  // 掲載箇所ビュー由来の絞り込みを詳細画面へ返す（前後ナビを編集後も維持するため）。
-  const ctx = parseOccurrenceContext(await searchParams);
+  // 一覧由来の絞り込みコンテキストを詳細画面へ返す（前後ナビを編集後も維持するため）。
+  const ctx = parseWordDetailNavContext(await searchParams);
   const returnHref = ctx !== null ? buildWordDetailHref(id, ctx) : `/words/${id}`;
 
   const [occurrencePresets, autoNumberByOccurrenceId] = await Promise.all([

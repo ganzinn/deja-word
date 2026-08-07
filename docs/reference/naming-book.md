@@ -602,6 +602,20 @@
 - 混同注意: テスト用モックをここに置かない。逆に、ここのファイルを「テスト用だから」と削除・改変しない。
 - 出典: src/lib/CLAUDE.md
 
+#### 前後ナビ
+
+- 英語名: `AdjacentWordNav` / adjacent word nav
+- 日本語名: 前後ナビ
+- 定義: 単語詳細で「前へ」「次へ」により隣の単語へ移動する UI。詳細ページ（`AdjacentWordNav` / `WordNavArea`）とテスト結果ダイアログ（直書きナビ行）の 2 箇所にあり、順序はコンテキスト由来（詳細ページは URL のナビコンテキスト＝隣接クエリ、結果ダイアログは結果一覧順のクライアント配列。ADR-0089 / ADR-0088）。
+- 出典: src/app/words/[id]/_components/adjacent-word-nav.tsx, docs/adr/0089-word-detail-nav-list-context.md, docs/adr/0088-quiz-dialog-list-order-nav.md
+
+#### 単語ビュー / 掲載箇所ビュー
+
+- 英語名: `view=word` / `view=occurrence`（`WordsViewMode`）
+- 日本語名: 単語ビュー / 掲載箇所ビュー
+- 定義: 単語一覧の 2 つの表示モード。単語ビューは単語単位（新着順 / 見出し語順）、掲載箇所ビューは掲載箇所を 1 つ選び掲載番号順に一覧する。単語詳細 URL のコンテキスト判別子にも使う（`occ` があれば掲載箇所コンテキスト、無くて `view=word` があれば単語ビューコンテキスト。ADR-0089）。
+- 出典: src/app/words/_components/view-mode-toggle.tsx, src/app/words/_lib/search-params.ts, docs/adr/0089-word-detail-nav-list-context.md
+
 ---
 
 ## 2. ブレ一覧（正規化提案つき — 未確定）

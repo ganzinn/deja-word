@@ -69,6 +69,7 @@
 | [0086](0086-word-nav-transition-feedback-prefetch.md) | 前後ナビに遷移中フィードバック（淡色化＋方向スライド）とプリフェッチを追加（0085 追補） | 高 | — |
 | [0087](0087-occurrence-number-beside-headword.md) | 掲載番号は見出し語の右に `#N`（中央ラベル `No.N` 廃止）、前後ナビは 2 ボタン右詰め | 高 | — |
 | [0088](0088-quiz-dialog-list-order-nav.md) | テスト結果ダイアログの前後ナビは結果一覧順のクライアント配列（サーバ隣接取得廃止、0086 決定 3 の隣接先読みを置き換え） | 高 | — |
+| [0089](0089-word-detail-nav-list-context.md) | 単語詳細の前後ナビは一覧コンテキストに追随（`view=word` URL コンテキスト、kind 付き union、一覧と where 共有の隣接クエリ） | 高 | — |
 
 ### D. quiz 機能
 

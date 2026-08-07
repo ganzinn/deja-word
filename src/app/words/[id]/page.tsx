@@ -14,7 +14,7 @@ import { getTtsFallbackEnabled } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import { countIncomingLinksForUser } from "@/lib/words-delete";
 import { getWordDetailForUser } from "@/lib/words-detail";
-import { findAdjacentWordsByOccurrence, type AdjacentWordsResult } from "@/lib/words-list";
+import { findAdjacentWordsByOccurrence, findAdjacentWordsInWordView } from "@/lib/words-list";
 
 import { DeleteWordButton } from "./_components/delete-word-button";
 import { WordNavArea } from "./_components/word-nav-area";
@@ -22,15 +22,14 @@ import {
   buildWordDetailHref,
   buildWordEditHref,
   buildWordsHref,
-  parseOccurrenceContext,
   parseRangeNumber,
-  type RawOccurrenceContextParams,
-  type WordDetailOccurrenceContext,
+  parseWordDetailNavContext,
+  type RawWordDetailNavParams,
 } from "../_lib/search-params";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<RawOccurrenceContextParams>;
+  searchParams: Promise<RawWordDetailNavParams>;
 };
 
 export default async function WordDetailPage({ params, searchParams }: PageProps) {
@@ -42,23 +41,40 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
   const word = await getWordDetailForUser(session.user.id, id);
   if (!word) notFound();
 
-  // 掲載箇所ビューから遷移した場合（occ 付き URL）は、同じ絞り込み内の前後ナビと
+  // 一覧から遷移した場合（occ または view=word 付き URL）は、同じ絞り込み内の前後ナビと
   // 絞り込み状態を保った「戻る」を出す。パーサが不正値をデフォルトへ正規化する。
-  const ctx: WordDetailOccurrenceContext | null = parseOccurrenceContext(await searchParams);
+  // 掲載番号 #N を出すのは掲載箇所コンテキストのときだけ。
+  const ctx = parseWordDetailNavContext(await searchParams);
   let backHref = "/words";
-  let nav: AdjacentWordsResult = null;
+  let occurrenceNumber: number | null = null;
+  let adjacent: { prev: { id: string } | null; next: { id: string } | null } | null = null;
   if (ctx !== null) {
-    nav = await findAdjacentWordsByOccurrence(session.user.id, {
-      occurrenceId: ctx.occ,
-      wordId: id,
-      q: ctx.q && ctx.q.length > 0 ? ctx.q : undefined,
-      match: ctx.match,
-      from: parseRangeNumber(ctx.from),
-      to: parseRangeNumber(ctx.to),
-      order: ctx.order,
-      bookmarkedOnly: ctx.bookmarked,
-    });
-    backHref = buildWordsHref("occurrence", { ...ctx, page: 1 });
+    if (ctx.kind === "occurrence") {
+      const nav = await findAdjacentWordsByOccurrence(session.user.id, {
+        occurrenceId: ctx.occ,
+        wordId: id,
+        q: ctx.q && ctx.q.length > 0 ? ctx.q : undefined,
+        match: ctx.match,
+        from: parseRangeNumber(ctx.from),
+        to: parseRangeNumber(ctx.to),
+        order: ctx.order,
+        bookmarkedOnly: ctx.bookmarked,
+      });
+      if (nav !== null) {
+        occurrenceNumber = nav.current.occurrenceNumber;
+        adjacent = { prev: nav.prev, next: nav.next };
+      }
+      backHref = buildWordsHref("occurrence", { ...ctx, page: 1 });
+    } else {
+      adjacent = await findAdjacentWordsInWordView(session.user.id, {
+        wordId: id,
+        sort: ctx.sort,
+        q: ctx.q && ctx.q.length > 0 ? ctx.q : undefined,
+        match: ctx.match,
+        bookmarkedOnly: ctx.bookmarked,
+      });
+      backHref = buildWordsHref("word", { ...ctx, page: 1 });
+    }
   }
 
   const canEdit = word.ownerId === session.user.id || word.ownerId === SYSTEM_USER_ID;
@@ -72,7 +88,7 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
   // 掲載箇所コンテキストのときは、その掲載箇所での掲載番号を見出し語の右に出す。
   const detail = (
     <TtsFallbackProvider enabled={ttsFallbackEnabled}>
-      <WordDetailView word={word} occurrenceNumber={nav?.current.occurrenceNumber ?? null} />
+      <WordDetailView word={word} occurrenceNumber={occurrenceNumber} />
     </TtsFallbackProvider>
   );
 
@@ -105,11 +121,11 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      {nav !== null && ctx !== null ? (
+      {adjacent !== null && ctx !== null ? (
         <WordNavArea
           currentHref={buildWordDetailHref(id, ctx)}
-          prevHref={nav.prev !== null ? buildWordDetailHref(nav.prev.id, ctx) : null}
-          nextHref={nav.next !== null ? buildWordDetailHref(nav.next.id, ctx) : null}
+          prevHref={adjacent.prev !== null ? buildWordDetailHref(adjacent.prev.id, ctx) : null}
+          nextHref={adjacent.next !== null ? buildWordDetailHref(adjacent.next.id, ctx) : null}
           wordId={id}
         >
           {detail}

@@ -137,17 +137,28 @@ function headwordCondition(q: string, match: WordMatchMode) {
   return { [key]: q, mode: "insensitive" as const };
 }
 
+/**
+ * 単語単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
+ * 掲載箇所側の buildWordsByOccurrenceWhere と同じパターン。
+ */
+function buildWordListWhere(
+  userId: string,
+  params: Pick<WordListParams, "q" | "match" | "bookmarkedOnly">,
+): Prisma.WordWhereInput {
+  const q = searchKeyword(params.q);
+  return {
+    ownerId: { in: scopedOwnerIds(userId) },
+    ...(q.length > 0 ? { headword: headwordCondition(q, params.match) } : {}),
+    ...(params.bookmarkedOnly ? { bookmarks: { some: { userId } } } : {}),
+  };
+}
+
 export async function listWordsForUser(
   userId: string,
   params: WordListParams,
 ): Promise<WordListResult> {
-  const q = searchKeyword(params.q);
   const allowed = scopedOwnerIds(userId);
-  const where = {
-    ownerId: { in: allowed },
-    ...(q.length > 0 ? { headword: headwordCondition(q, params.match) } : {}),
-    ...(params.bookmarkedOnly ? { bookmarks: { some: { userId } } } : {}),
-  };
+  const where = buildWordListWhere(userId, params);
 
   const orderBy =
     params.sort === "recent"
@@ -359,4 +370,92 @@ export async function findAdjacentWordsByOccurrence(
     prev: toAdjacentWordRef(prevRow),
     next: toAdjacentWordRef(nextRow),
   };
+}
+
+export type AdjacentWordsInWordViewParams = {
+  wordId: string;
+  sort: WordListSort;
+  q?: string;
+  match: WordMatchMode;
+  /** true なら閲覧ユーザーがブックマークした単語だけに絞り込む。 */
+  bookmarkedOnly?: boolean;
+};
+
+/**
+ * 単語ビュー隣接取得の結果。null は「現在の単語がその絞り込み集合に含まれない」ことを表し、
+ * 呼び出し側はナビ自体を表示しない。掲載箇所版と異なり掲載番号は持たない。
+ */
+export type AdjacentWordsInWordViewResult = {
+  prev: { id: string } | null;
+  next: { id: string } | null;
+} | null;
+
+/**
+ * 単語一覧（listWordsForUser）と同じ絞り込み・並び順における前後の単語を取得する。
+ * ソートキーのタプル比較で隣接を引くため、一覧のページ位置に依存しない。
+ * createdAt / headword / id は non-null のため、掲載箇所版のような null グループの分岐は無い。
+ * - 現在の単語が絞り込み集合に含まれない場合（URL 改ざん・編集後など）は null を返す。
+ */
+export async function findAdjacentWordsInWordView(
+  userId: string,
+  params: AdjacentWordsInWordViewParams,
+): Promise<AdjacentWordsInWordViewResult> {
+  const baseWhere = buildWordListWhere(userId, params);
+
+  const current = await prisma.word.findFirst({
+    where: { AND: [baseWhere, { id: params.wordId }] },
+    select: { id: true, createdAt: true, headword: true },
+  });
+  if (current === null) return null;
+
+  // 一覧の並び（recent: createdAt desc, id desc ／ headword: headword asc, id asc）の
+  // タプル比較を OR 展開する（掲載箇所版と同じ方式）。prev は orderBy を反転して findFirst。
+  const isRecent = params.sort === "recent";
+  const nextCondition: Prisma.WordWhereInput = isRecent
+    ? {
+        OR: [
+          { createdAt: current.createdAt, id: { lt: current.id } },
+          { createdAt: { lt: current.createdAt } },
+        ],
+      }
+    : {
+        OR: [
+          { headword: current.headword, id: { gt: current.id } },
+          { headword: { gt: current.headword } },
+        ],
+      };
+  const prevCondition: Prisma.WordWhereInput = isRecent
+    ? {
+        OR: [
+          { createdAt: current.createdAt, id: { gt: current.id } },
+          { createdAt: { gt: current.createdAt } },
+        ],
+      }
+    : {
+        OR: [
+          { headword: current.headword, id: { lt: current.id } },
+          { headword: { lt: current.headword } },
+        ],
+      };
+  const nextOrderBy = isRecent
+    ? [{ createdAt: "desc" as const }, { id: "desc" as const }]
+    : [{ headword: "asc" as const }, { id: "asc" as const }];
+  const prevOrderBy = isRecent
+    ? [{ createdAt: "asc" as const }, { id: "asc" as const }]
+    : [{ headword: "desc" as const }, { id: "desc" as const }];
+
+  const [prevRow, nextRow] = await Promise.all([
+    prisma.word.findFirst({
+      where: { AND: [baseWhere, prevCondition] },
+      select: { id: true },
+      orderBy: prevOrderBy,
+    }),
+    prisma.word.findFirst({
+      where: { AND: [baseWhere, nextCondition] },
+      select: { id: true },
+      orderBy: nextOrderBy,
+    }),
+  ]);
+
+  return { prev: prevRow, next: nextRow };
 }

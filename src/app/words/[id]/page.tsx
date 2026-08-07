@@ -56,6 +56,7 @@ export default async function WordDetailPage({ params, searchParams }: PageProps
       from: parseRangeNumber(ctx.from),
       to: parseRangeNumber(ctx.to),
       order: ctx.order,
+      bookmarkedOnly: ctx.bookmarked,
     });
     backHref = buildWordsHref("occurrence", { ...ctx, page: 1 });
   }

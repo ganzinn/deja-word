@@ -61,6 +61,7 @@ export type WordDetailOccurrenceContext = {
   from?: string;
   to?: string;
   order: OccurrenceNumberOrder;
+  bookmarked: boolean;
 };
 
 /** 単語詳細・単語編集の searchParams（掲載箇所コンテキストとして解釈しうるもの）。 */
@@ -71,6 +72,7 @@ export type RawOccurrenceContextParams = {
   from?: string;
   to?: string;
   order?: string;
+  bookmarked?: string;
 };
 
 /**
@@ -88,6 +90,7 @@ export function parseOccurrenceContext(
     from: sp.from,
     to: sp.to,
     order: parseOrder(sp.order),
+    bookmarked: sp.bookmarked === "1",
   };
 }
 
@@ -103,6 +106,7 @@ function buildOccurrenceContextQuery(ctx: WordDetailOccurrenceContext): string {
   if (ctx.from) params.set("from", ctx.from);
   if (ctx.to) params.set("to", ctx.to);
   if (ctx.order !== "asc") params.set("order", ctx.order);
+  if (ctx.bookmarked) params.set("bookmarked", "1");
   return params.toString();
 }
 

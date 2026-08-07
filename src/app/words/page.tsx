@@ -187,6 +187,7 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
       from: params.from,
       to: params.to,
       order,
+      bookmarked: bookmarkedOnly,
     });
 
   if (page > totalPages && total > 0) {

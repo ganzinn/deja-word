@@ -799,6 +799,38 @@ describe("findAdjacentWordsByOccurrence", () => {
     expect(atSysThree?.next?.headword).toBe("minetwo");
   });
 
+  test("bookmarkedOnly: prev/next follow only bookmarked words", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, delta, occurrenceId } = await seedWords(user.id);
+    await bookmarkWord(user.id, alpha.id);
+    await bookmarkWord(user.id, bravo.id);
+    // charlie(#10) はブックマーク外 → 飛ばして delta(null)
+    await bookmarkWord(user.id, delta.id);
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(nav?.prev?.headword).toBe("alpha");
+    expect(nav?.next?.headword).toBe("delta");
+  });
+
+  test("bookmarkedOnly: current not bookmarked -> null", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, occurrenceId } = await seedWords(user.id);
+    await bookmarkWord(user.id, alpha.id);
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(nav).toBeNull();
+  });
+
   test("word not in the occurrence -> null", async () => {
     const user = await createTestUser();
     const { occurrenceId } = await seedWords(user.id);

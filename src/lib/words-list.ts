@@ -170,8 +170,8 @@ export async function listWordsForUser(
 
 /**
  * 掲載箇所単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
- * bookmarkedOnly は WordsByOccurrenceParams のみが渡す（隣接取得の AdjacentWordsParams は持たないため
- * undefined＝無効）。q と同じ word リレーション条件に畳んで単一の word キーへまとめる。
+ * bookmarkedOnly は WordsByOccurrenceParams / AdjacentWordsParams の双方が渡す（未指定＝無効）。
+ * q と同じ word リレーション条件に畳んで単一の word キーへまとめる。
  */
 function buildWordsByOccurrenceWhere(
   userId: string,
@@ -261,6 +261,8 @@ export type AdjacentWordsParams = {
   from?: number;
   to?: number;
   order: OccurrenceNumberOrder;
+  /** true なら閲覧ユーザーがブックマークした単語だけに絞り込む。 */
+  bookmarkedOnly?: boolean;
 };
 
 const adjacentWordSelect = {

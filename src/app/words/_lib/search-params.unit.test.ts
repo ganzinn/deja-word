@@ -88,6 +88,7 @@ describe("parseOccurrenceContext", () => {
       from: undefined,
       to: undefined,
       order: "asc",
+      bookmarked: false,
     });
   });
 
@@ -99,7 +100,15 @@ describe("parseOccurrenceContext", () => {
       from: "2",
       to: "8",
       order: "desc",
+      bookmarked: false,
     });
+  });
+
+  test("bookmarked: '1' のみ true、その他・未指定は false", () => {
+    expect(parseOccurrenceContext({ occ: "occ1", bookmarked: "1" })?.bookmarked).toBe(true);
+    expect(parseOccurrenceContext({ occ: "occ1", bookmarked: "0" })?.bookmarked).toBe(false);
+    expect(parseOccurrenceContext({ occ: "occ1", bookmarked: "true" })?.bookmarked).toBe(false);
+    expect(parseOccurrenceContext({ occ: "occ1" })?.bookmarked).toBe(false);
   });
 });
 
@@ -113,22 +122,35 @@ describe("buildWordEditHref", () => {
         from: "2",
         to: "8",
         order: "desc",
+        bookmarked: false,
       }),
     ).toBe("/words/w1/edit?occ=occ1&q=ap&match=suffix&from=2&to=8&order=desc");
   });
 
   test("omits defaults", () => {
-    expect(buildWordEditHref("w1", { occ: "occ1", q: "", match: "prefix", order: "asc" })).toBe(
-      "/words/w1/edit?occ=occ1",
-    );
+    expect(
+      buildWordEditHref("w1", {
+        occ: "occ1",
+        q: "",
+        match: "prefix",
+        order: "asc",
+        bookmarked: false,
+      }),
+    ).toBe("/words/w1/edit?occ=occ1");
+  });
+
+  test("includes bookmarked=1 when true", () => {
+    expect(
+      buildWordEditHref("w1", { occ: "occ1", match: "prefix", order: "asc", bookmarked: true }),
+    ).toBe("/words/w1/edit?occ=occ1&bookmarked=1");
   });
 });
 
 describe("buildWordDetailHref", () => {
   test("always carries occ, omits defaults", () => {
-    expect(buildWordDetailHref("w1", { occ: "occ1", match: "prefix", order: "asc" })).toBe(
-      "/words/w1?occ=occ1",
-    );
+    expect(
+      buildWordDetailHref("w1", { occ: "occ1", match: "prefix", order: "asc", bookmarked: false }),
+    ).toBe("/words/w1?occ=occ1");
   });
 
   test("includes non-default filter values", () => {
@@ -140,7 +162,14 @@ describe("buildWordDetailHref", () => {
         from: "2",
         to: "8",
         order: "desc",
+        bookmarked: false,
       }),
     ).toBe("/words/w1?occ=occ1&q=ap&match=suffix&from=2&to=8&order=desc");
+  });
+
+  test("includes bookmarked=1 when true", () => {
+    expect(
+      buildWordDetailHref("w1", { occ: "occ1", match: "prefix", order: "asc", bookmarked: true }),
+    ).toBe("/words/w1?occ=occ1&bookmarked=1");
   });
 });

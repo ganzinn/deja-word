@@ -163,8 +163,12 @@ type Props = {
   /** TEST: 「定着までの回数」の編集テキスト（drill 直前の 1 回だけ設定。各テスト開始でデフォルトへ戻る）。 */
   drillRemaining: DrillRemainingText;
   onDrillRemainingChange: (value: DrillRemainingText) => void;
-  /** 行タップで単語詳細を開く。ダイアログの状態・描画は親（QuizFlow）が持つ（back ガードの最上段の層）。 */
-  onOpenDialog: (wordId: string) => void;
+  /**
+   * 行タップで単語詳細を開く。ダイアログの状態・描画は親（QuizFlow）が持つ（back ガードの最上段の層）。
+   * navOrder は開いた時点の表示行（`wrongOnly` 適用後）の wordId 配列スナップショットで、
+   * ダイアログの前後ナビの順序になる（docs/adr/0088-quiz-dialog-list-order-nav.md）。
+   */
+  onOpenDialog: (wordId: string, navOrder: string[]) => void;
   /**
    * 行のブックマークトグルの状態マップ（wordId → boolean。quiz-flow が結果フェーズ入りで一括取得）。
    * null = 未取得（取得前・取得失敗）でトグルを描画しない。
@@ -278,11 +282,19 @@ export function ResultList({
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => onOpenDialog(row.wordId)}
+                  onClick={() =>
+                    onOpenDialog(
+                      row.wordId,
+                      visibleRows.map((r) => r.wordId),
+                    )
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onOpenDialog(row.wordId);
+                      onOpenDialog(
+                        row.wordId,
+                        visibleRows.map((r) => r.wordId),
+                      );
                     }
                   }}
                   className="border-border bg-card/50 hover:bg-muted/60 flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors"

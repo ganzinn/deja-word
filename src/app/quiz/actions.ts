@@ -17,7 +17,6 @@ import { getQuizPreviewForUser, type QuizPreview, type QuizRangeInput } from "@/
 import { mapQuizErrorToResult, type QuizErrorCode } from "@/lib/quiz/error-map";
 import type { QuizPayload } from "@/lib/quiz/payload";
 import {
-  adjacentWordsInputSchema,
   deleteDrillInputSchema,
   getQuizPreviewInputSchema,
   startDrillInputSchema,
@@ -28,7 +27,6 @@ import {
   submitDrillRoundInputSchema,
   submitQuizAnswersInputSchema,
   wordIdSchema,
-  type AdjacentWordsInput,
   type DeleteDrillInput,
   type StartDrillInput,
   type StartDrillRetryInput,
@@ -40,7 +38,6 @@ import {
 } from "@/lib/schema/quiz";
 import { getCurrentSession } from "@/lib/session";
 import { getWordDetailForUser, type WordDetail } from "@/lib/words-detail";
-import { findAdjacentWordsByOccurrenceNumber, type AdjacentWordsResult } from "@/lib/words-list";
 import type { QuizFormat } from "@/generated/prisma/enums";
 
 export type QuizActionError = "unauthorized" | "invalid" | QuizErrorCode;
@@ -331,35 +328,6 @@ export async function getWordDetailForDialog(
     const bookmarked =
       (await getBookmarkedWordIdsForUser(session.user.id, [parsed.data])).length > 0;
     return { ok: true, word, bookmarked };
-  } catch (e) {
-    return mapQuizErrorToResult(e);
-  }
-}
-
-export type GetAdjacentWordsForDialogResult =
-  | { ok: true; nav: AdjacentWordsResult }
-  | QuizActionFailure;
-
-/**
- * 結果画面の単語詳細ダイアログ用。掲載箇所全体を掲載番号順に前後移動するための隣接単語を返す。
- * `nav: null` は「掲載番号なし等でナビ対象外」の正常応答（ダイアログはナビを表示しない）。
- */
-export async function getAdjacentWordsForDialog(
-  input: AdjacentWordsInput,
-): Promise<GetAdjacentWordsForDialogResult> {
-  const session = await getCurrentSession();
-  if (!session) return UNAUTHORIZED;
-
-  const parsed = adjacentWordsInputSchema.safeParse(input);
-  if (!parsed.success) return INVALID;
-
-  try {
-    const nav = await findAdjacentWordsByOccurrenceNumber(
-      session.user.id,
-      parsed.data.occurrenceId,
-      parsed.data.wordId,
-    );
-    return { ok: true, nav };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

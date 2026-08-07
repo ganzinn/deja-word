@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import {
   INPUT_ID_MAX_LENGTH,
   QUIZ_ANSWERS_MAX_COUNT,
-  adjacentWordsInputSchema,
   answerInputSchema,
   getQuizPreviewInputSchema,
   quizFormatSchema,
@@ -1052,22 +1051,5 @@ describe("answers/results array max limits (issue #107)", () => {
       wordIds: Array.from({ length: QUIZ_ANSWERS_MAX_COUNT + 1 }, (_, i) => `w_${i}`),
     });
     expect(r.success).toBe(false);
-  });
-});
-
-describe("adjacentWordsInputSchema", () => {
-  test("accepts non-empty occurrenceId + wordId", () => {
-    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "o_1", wordId: "w_1" }).success).toBe(
-      true,
-    );
-  });
-
-  test("rejects empty ids", () => {
-    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "", wordId: "w_1" }).success).toBe(
-      false,
-    );
-    expect(adjacentWordsInputSchema.safeParse({ occurrenceId: "o_1", wordId: "" }).success).toBe(
-      false,
-    );
   });
 });

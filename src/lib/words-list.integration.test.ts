@@ -7,7 +7,6 @@ import { createWordForUser } from "@/lib/words-create";
 import { getWordDetailForUser } from "@/lib/words-detail";
 import {
   findAdjacentWordsByOccurrence,
-  findAdjacentWordsByOccurrenceNumber,
   listWordsByOccurrence,
   listWordsForUser,
 } from "@/lib/words-list";
@@ -842,72 +841,5 @@ describe("findAdjacentWordsByOccurrence", () => {
       ...base,
     });
     expect(nav).toBeNull();
-  });
-});
-
-describe("findAdjacentWordsByOccurrenceNumber", () => {
-  const LOC = "Book";
-
-  test("ascending by number with edges", async () => {
-    const user = await createTestUser();
-    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
-    const five = await createWordForUser(user.id, formWithOccurrence("five", LOC, 5));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
-
-    const mid = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
-    expect(mid?.current.occurrenceNumber).toBe(3);
-    expect(mid?.prev?.headword).toBe("one");
-    expect(mid?.next?.headword).toBe("five");
-
-    const first = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
-    expect(first?.prev).toBeNull();
-
-    const last = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, five.id);
-    expect(last?.next).toBeNull();
-  });
-
-  test("current word without number -> null (not navigable)", async () => {
-    const user = await createTestUser();
-    await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    const noNumber = await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
-
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, noNumber.id);
-    expect(nav).toBeNull();
-  });
-
-  test("null-numbered words never appear as prev/next", async () => {
-    const user = await createTestUser();
-    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
-    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
-
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
-    expect(nav?.next?.headword).toBe("three");
-    const back = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
-    expect(back?.prev?.headword).toBe("one");
-  });
-
-  test("excludes other users' words within the same system occurrence", async () => {
-    const user = await createTestUser();
-    const stranger = await createTestUser();
-    const sysOne = await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("sysone", LOC, 1));
-    await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("systhree", LOC, 3));
-    const strangerWord = await createWordForUser(
-      stranger.id,
-      formWithOccurrence("strangertwo", LOC, null),
-    );
-    // 番号付きの他ユーザー行は通常パスでは作れないため、スコープ除外の検証用に直接セットする
-    await prisma.wordOccurrence.updateMany({
-      where: { wordId: strangerWord.id },
-      data: { occurrenceNumber: 2 },
-    });
-    const occurrenceId = await occurrenceIdOf(SYSTEM_USER_ID, LOC);
-
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, sysOne.id);
-    // 他ユーザーの #2 はスコープ外なので #1 の次は #3
-    expect(nav?.next?.headword).toBe("systhree");
   });
 });

@@ -154,14 +154,6 @@ export const submitQuizAnswersInputSchema = z.object({
 /** `getWordDetailForDialog` の入力（wordId 単体）。 */
 export const wordIdSchema = idInputSchema;
 
-/** `getAdjacentWordsForDialog` の入力（掲載箇所内の前後単語取得）。 */
-export const adjacentWordsInputSchema = z.object({
-  occurrenceId: idInputSchema,
-  wordId: idInputSchema,
-});
-
-export type AdjacentWordsInput = z.infer<typeof adjacentWordsInputSchema>;
-
 /**
  * `saveQuizDefaults` の入力（開始画面デフォルト設定）。
  * 全項目 nullable: Occurrence 削除（DB の SetNull）で「format だけ残る」状態が必ず

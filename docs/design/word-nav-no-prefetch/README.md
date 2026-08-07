@@ -19,7 +19,11 @@
 - **前後ナビの `prefetch={true}` は `prefetch={false}` に変更し、前後ナビの先読みを全廃する**。プロパティ削除（デフォルト `auto`）ではなく明示無効。`<Link>` の intercept 構造と、詳細ページの他リンク（戻る・編集・関連語。デフォルト `auto`）は現状維持。→ [01](01-prefetch-removal.md)
 - **クライアント遷移（前後ナビの `router.push`・戻る等のリンククリック。back/forward 履歴復元を除く）による前後移動・一覧との往復は毎回サーバー取得になる**（`staleTimes` 既定 dynamic 0 秒 ＋ 一覧と where を共有する隣接クエリ = ADR-0089 決定 3・4 が、dynamic ルートのため毎リクエスト評価される）。追加実装なしで「一覧の表示順と常に同期した隣接移動」が成立。描画〜タップ間の削除競合と、back/forward キャッシュ復元経由の stale 表示・404 到達は残る（許容）。共有レイアウトは partial rendering で再取得されないが、単語データを含まず無関係。→ [01](01-prefetch-removal.md)
 - **遷移中フィードバック（ADR-0086 決定 1・2）とフリック判定（ADR-0085）は変更しない**。遷移待ちの体感はフィードバックが単独で担う。→ [01](01-prefetch-removal.md)
-- **新 ADR を 1 本起票し、ADR-0086 決定 3 のページ側プリフェッチを置き換える**。ダイアログ側先読み（現行仕様は ADR-0088 決定 6）は対象外・維持。改訂注記は ADR-0086（決定 3・決定 2 の prefetch 句・影響節 3 項目）に入れ、`docs/adr/README.md` 索引には新 ADR の行を追加＋ADR-0086 行のタイトルにも注記、ADR-0085 影響節の失効は新 ADR 側に 1 行記す。`revalidatePath` 群（決定 4）の扱いは 02 の結論を含める。→ [01](01-prefetch-removal.md)
+- **新 ADR を 1 本起票し、ADR-0086 決定 3 のページ側プリフェッチを置き換える**。ダイアログ側先読み（現行仕様は ADR-0088 決定 6）は対象外・維持。改訂注記は ADR-0086（決定 3・決定 2 の prefetch 句・決定 4・影響節 3 項目）に入れ、`docs/adr/README.md` 索引には新 ADR の行を追加＋ADR-0086 行のタイトルにも注記、ADR-0085 影響節の失効は新 ADR 側に 1 行記す。`revalidatePath` 群（決定 4）の扱いは 02 の結論を含める。→ [01](01-prefetch-removal.md)
+- **`revalidatePath` 5 箇所（createWord / deleteWord / updateWord・音源系）は呼び出し・unit テストとも変更せず維持し、説明コメント 3 件だけ書き換える**。「変更した同一タブの back/forward 復元を stale にしない」機能が残るため、新 ADR で維持理由を再定義（ADR-0086 決定 4 の置き換え。全パージが暫定挙動である注意も記載）。→ [02](02-cleanup-and-verify.md)
+- **`toggleBookmark` は現行方針（楽観的更新・revalidatePath なし）のまま**。stale 窓はむしろ縮むため、新 ADR で「最大 5 分」の記述だけ更新する。→ [02](02-cleanup-and-verify.md)
+- **検証は e2e-verify で実施し、恒久の自動テストは追加しない**。CDP throttling ＋ `data-*` 属性の観測で遷移中フィードバック 3 項目（issue #200 再発なし含む）、独立コンテキストでの削除→戻る→隣接移動が削除を反映して次の単語へ移動できること（スモーク）を確認する。→ [02](02-cleanup-and-verify.md)
+- **`docs/features/word-management.md` の「あらかじめ読み込む」説明を実装と同一 PR で書き換える**。画面変化は無くスクリーンショット再撮影は不要。→ [02](02-cleanup-and-verify.md)
 
 ## トピック状態表
 
@@ -28,11 +32,38 @@
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
 | [01-prefetch-removal.md](01-prefetch-removal.md) | 確定（2026-08-07） | プリフェッチ廃止方式（prefetch 値の選択・遷移フィードバック維持・404 到達窓の解消整理・ADR 置き換え方針） |
-| [02-cleanup-and-verify.md](02-cleanup-and-verify.md) | 未着手 | revalidatePath（ADR-0086 決定 4）の要否精査・検証計画（CDP throttling 体感確認・削除→隣接移動 E2E） |
+| [02-cleanup-and-verify.md](02-cleanup-and-verify.md) | 確定（2026-08-07） | revalidatePath（ADR-0086 決定 4）の要否精査・検証計画（CDP throttling 体感確認・削除→隣接移動 E2E） |
 
-想定順序（残り）: 02。
+**全トピック確定（2026-08-07）。設計完了。後続はチケット分割（ticket-split スキル、`docs/plan/word-nav-no-prefetch/`）へ。**
 
-**次セッションの推奨トピック: 02（周辺整理と検証計画）**。引き継ぎ論点: `revalidatePath` 5 箇所の要否は「フルプリフェッチ廃止後にクライアントルーターキャッシュへ何が残るか」（01 決定 2: dynamic は再利用されない・back/forward キャッシュは残る）を前提に精査する。
+## 実装への引き継ぎ
+
+### 変更対象の一覧
+
+- スキーマ変更・マイグレーション: **なし**。新規モジュール: **なし**
+- `src/app/words/[id]/_components/adjacent-word-nav.tsx`: `prefetch={true}` → `prefetch={false}`（前後 2 箇所）＋ prefetch コメントの書き換え（[01 決定 1・4]）
+- `src/app/words/new/actions.ts`・`src/app/words/[id]/actions.ts`・`src/app/words/[id]/edit/actions.ts`: `revalidatePath` の説明コメント 3 件（「プリフェッチ済み…」）を再定義した維持理由に書き換え（コメントのみ。createWord には暫定挙動依存の併記あり。[02 決定 1]）
+- 新 ADR 1 本の起票: 構成は [01 決定 4]（ADR-0086 決定 3 のページ側置き換え・`<Link>` 維持根拠の変更・ADR-0085 影響節の失効 1 行）＋ [02 決定 1・2]（`revalidatePath` 維持理由の再定義 = ADR-0086 決定 4 の置き換え、`toggleBookmark` の stale 記述更新）
+- `docs/adr/0086-word-nav-transition-feedback-prefetch.md`: 改訂注記の追記（決定 3・決定 2 の prefetch 句・決定 4・影響節 3 項目。[01 決定 4]・[02 決定 1]）
+- `docs/adr/README.md`: 新 ADR の行を追加＋ADR-0086 行のタイトルに注記（[01 決定 4]）
+- `docs/features/word-management.md`: 前後ナビ説明の「あらかじめ読み込む」括弧書きを書き換え（[02 決定 5]。スクリーンショット再撮影不要）
+- `revalidatePath` 5 箇所の呼び出しと対応 unit テスト 3 ファイル: **変更なし**（コメントの書き換えは上記のとおり。[02 決定 1]）
+
+### 着手順序のヒント
+
+コード 4 ファイル（うち actions 3 ファイルはコメントのみ）＋ドキュメント 4 ファイルで完結する規模。並行実装で競合しうる共有物は無く、**単一 PR / 単一チケット**を想定。
+
+### テスト戦略の要点（チケットの完了条件に転記できる粒度）
+
+- `pnpm test:unit` グリーン維持（テスト変更なし。`revalidatePath` アサーションは維持される）
+- skill e2e-verify で以下を実施:
+  - CDP throttling（目安 600ms）＋ MutationObserver で、ボタン・フリックそれぞれの `data-pending` 継続 / 到着時 `data-direction` 一致 / 連打時の最終 URL 一致（issue #200 再発なし）を確認（[02 決定 3]）
+  - `e2e-nav-a`〜`e2e-nav-d` の 4 件を見出し順一覧（`sort=headword`・検索 `e2e-nav` で絞り込み）で用意し、同一ユーザーの別 context で c を削除 → 戻るリンクで一覧（a/b/d 表示・c 非表示。戻り href のクエリは個別に検査）→ b 再表示で「次へ」が d を指し遷移できることを確認（スモーク。実施後 `cleanupWordsByPrefix` で後始末。[02 決定 4]）
+- 恒久の自動テストは追加しない（[02 決定 4]）
+
+### 後続工程
+
+チケット分割は ticket-split スキルで行う（チケットの置き場は `docs/plan/word-nav-no-prefetch/`、形式は ticket-split 側で定義）。
 
 ## セッション運用ルール
 

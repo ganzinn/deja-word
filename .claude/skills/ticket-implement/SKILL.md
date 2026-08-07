@@ -25,8 +25,10 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
 
 ## 前提条件チェック
 
+- 本スキルは本体の checkout（メイン worktree）で実行する。design worktree（`../deja-word-worktrees/<機能名>-design`）内では起動しない
 - `docs/plan/<機能名>/README.md` が main（単一ブランチ統合モードの再開時は統合ブランチ `feature/<機能名>`）に存在すること。なければ中断し、状態で誘導先を分岐する: 設計＋計画の PR（作業ブランチ `docs/<機能名>-design-plan`）が未マージならそのマージを促し、チケット分割自体が未実施なら ticket-split スキルへ誘導する
 - working tree が clean であること。main を最新化（`git pull`）してから始める。単一ブランチ統合モードの再開時も main の最新化までは同じで、その後に統合ブランチを checkout して続行する。**main は統合ブランチへ取り込まない**（main との差分は統合 PR のマージ時に解消する）
+- 設計〜計画シリーズの残骸を撤去する: worktree `../deja-word-worktrees/<機能名>-design` / `<機能名>-plan-update` と対応する作業ブランチ（`docs/<機能名>-design-plan` / `docs/<機能名>-plan-update`）が残っていれば、ブランチ先端がマージ済み PR の head（`gh pr list --state merged --head <ブランチ名> --json headRefOid`）と一致することを確認した上で `git worktree remove`＋`git branch -D` で撤去する（squash マージのため `-d` は失敗する）。一致しない場合は作業中とみなし撤去しない（`docs/<機能名>-plan-update` が該当した場合は未マージの計画変更が残っているため、そのマージを促して中断する）
 - ハブの一覧表に「ファイル未作成」のチケットが残っていれば中断し、ticket-split の見直し・追加モードへ誘導する
 
 ## モード判別
@@ -55,9 +57,8 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
 
 ### worktree の扱い
 
-- **手動 `git worktree add` を使う**（ブランチ名を規約どおりに制御し、失敗時に worktree を残して検査するため）。機能単位開発用の `scripts/wt-new.sh` は使わない（ブランチ名・置き場の規約が異なる）
-- 置き場: `../deja-word-worktrees/<機能名>-NN-<チケット名>`（リポジトリ外。.gitignore 変更不要）
-- 準備手順: worktree 作成 → `scripts/wt-env.sh <worktree絶対パス>`（`.env` / `.env.test` / `.claude/settings.local.json`〈permission 許可リスト〉の供給と、発音音源 `DEV_BLOB_ROOT` の本体共有）→ worktree 内で `mise trust`（`trusted_config_paths` で worktree 置き場を信頼済みの環境では何もしない）→ `pnpm install`（postinstall で prisma generate が走る）→ 実装エージェントへ委譲
+- 置き場: `../deja-word-worktrees/<機能名>-NN-<チケット名>`
+- 準備手順: AGENTS.md「スキル管理 worktree」節の共通手順（`git worktree add` → `wt-env.sh` → `mise trust` → `pnpm install`）で準備し、実装エージェントへ委譲する
 - 並行度の上限は 3（推奨 2）。worktree ごとの install コストと、マージ待ち行列が長いほどコンフリクト窓が広がることを踏まえる
 
 ### 検証の分担

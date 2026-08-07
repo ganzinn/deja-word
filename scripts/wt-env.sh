@@ -13,8 +13,9 @@
 #      発音音源は DB に相対 key だけが入るため、本体と共有しないと 404 になる
 #      （src/lib/blob-client.ts 参照）
 #
-# 呼び出し元: scripts/wt-new.sh（worktree 新規作成時）と
-# devman の setup（dev サーバを worktree に切替えるとき。docs/ops/devman.md 参照）。
+# 呼び出し元: scripts/wt-new.sh（worktree 新規作成時）、
+# devman の setup（dev サーバを worktree に切替えるとき。docs/ops/devman.md 参照）、
+# ticket-implement スキルの worktree 準備（.claude/skills/ticket-implement/SKILL.md）。
 # メイン worktree 自身に対して実行された場合は何もしない。
 set -euo pipefail
 

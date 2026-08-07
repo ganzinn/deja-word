@@ -15,9 +15,9 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-occurrence-context-bookmarked.md](01-occurrence-context-bookmarked.md) | 掲載箇所コンテキストに `bookmarked` を追加（詳細リンク・隣接クエリ・戻りリンクへ反映） | なし | 完了（2026-08-07） | - |
-| [02-word-view-nav-context.md](02-word-view-nav-context.md) | コンテキスト union 化＋`view=word` 判別＋単語ビュー隣接クエリ＋ページ配線＋docs（features / ADR / naming-book） | 01 | 完了（2026-08-07） | - |
-| [03-quiz-dialog-order-nav.md](03-quiz-dialog-order-nav.md) | テスト結果ダイアログを結果一覧順のクライアント配列ナビへ変更（隣接 action 廃止）＋docs（features / ADR / 0086 注記） | なし | 完了（2026-08-07） | - |
+| [01-occurrence-context-bookmarked.md](01-occurrence-context-bookmarked.md) | 掲載箇所コンテキストに `bookmarked` を追加（詳細リンク・隣接クエリ・戻りリンクへ反映） | なし | 完了（2026-08-07） | [#213](https://github.com/ganzinn/deja-word/pull/213) |
+| [02-word-view-nav-context.md](02-word-view-nav-context.md) | コンテキスト union 化＋`view=word` 判別＋単語ビュー隣接クエリ＋ページ配線＋docs（features / ADR / naming-book） | 01 | 完了（2026-08-07） | [#213](https://github.com/ganzinn/deja-word/pull/213) |
+| [03-quiz-dialog-order-nav.md](03-quiz-dialog-order-nav.md) | テスト結果ダイアログを結果一覧順のクライアント配列ナビへ変更（隣接 action 廃止）＋docs（features / ADR / 0086 注記） | なし | 完了（2026-08-07） | [#213](https://github.com/ganzinn/deja-word/pull/213) |
 
 ## 依存関係図
 

@@ -1,6 +1,6 @@
 # 02. word-view-nav-context
 
-状態: **完了（2026-08-07）**　PR: （未作成）
+状態: **完了（2026-08-07）**　PR: [#213](https://github.com/ganzinn/deja-word/pull/213)
 
 ## 目的
 

@@ -30,7 +30,9 @@ export async function createWord(input: WordFormValues): Promise<CreateWordResul
 
   try {
     const word = await createWordForUser(session.user.id, parsed.data);
-    // 作成で前後ナビの並びが変わるため、プリフェッチ済みのルーターキャッシュを無効化する。
+    // 作成を実行した同一タブ（同一ルーターインスタンス）で、back/forward 履歴復元により
+    // 変更前の内容が出るのを防ぐ。渡すのは作成直後の新規 ID の詳細パスのため、この効果は
+    // 現行の全パージ挙動（暫定）に依存する（指定パスのみに狭められた時点で効果が残らない）。
     revalidatePath(`/words/${word.id}`);
     return { ok: true, wordId: word.id };
   } catch (e) {

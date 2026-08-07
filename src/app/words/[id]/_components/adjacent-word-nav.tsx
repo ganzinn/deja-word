@@ -37,8 +37,9 @@ export function AdjacentWordNav({
       {prevHref !== null ? (
         <Link
           href={prevHref}
-          // 前後 1 件はフルルートを先読みする（dynamic ルートは既定では先読みされない）。
-          prefetch={true}
+          // 先読みはしない（毎回サーバー取得にして、一覧の表示順と常に同期した隣接移動にする。ADR-0090）。
+          // `<Link>` は anchor semantics と `onNavigate` intercept のために維持する。
+          prefetch={false}
           // クライアント遷移のときだけ呼ばれる。修飾キー付きクリック・新規タブは通常のリンクのまま。
           onNavigate={(e) => {
             e.preventDefault();
@@ -64,7 +65,7 @@ export function AdjacentWordNav({
       {nextHref !== null ? (
         <Link
           href={nextHref}
-          prefetch={true}
+          prefetch={false}
           onNavigate={(e) => {
             e.preventDefault();
             navigate(nextHref, "next");

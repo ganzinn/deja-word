@@ -42,7 +42,8 @@ export async function updateWord(wordId: string, input: WordFormValues): Promise
 
   try {
     const word = await updateWordForUser(session.user.id, wordId, parsed.data);
-    // プリフェッチ済みの詳細（ルーターキャッシュ）が編集前のまま残らないように無効化する。
+    // 変更を実行した同一タブ（同一ルーターインスタンス）で、back/forward 履歴復元により
+    // 変更前の内容が出るのを防ぐ。
     revalidatePath(`/words/${word.id}`);
     return { ok: true, wordId: word.id };
   } catch (e) {

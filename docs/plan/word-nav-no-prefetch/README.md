@@ -15,7 +15,7 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-prefetch-removal.md](01-prefetch-removal.md) | 前後ナビ `prefetch={false}` 化＋コメント書き換え＋新 ADR 起票・既存 ADR 注記＋機能紹介更新 | なし | 未着手 | - |
+| [01-prefetch-removal.md](01-prefetch-removal.md) | 前後ナビ `prefetch={false}` 化＋コメント書き換え＋新 ADR 起票・既存 ADR 注記＋機能紹介更新 | なし | 完了（2026-08-07） | [#234](https://github.com/ganzinn/deja-word/pull/234) |
 
 ## 依存関係図
 
@@ -44,6 +44,8 @@ graph LR
 
 - **単一ブランチ統合モード（デフォルト）**: 統合ブランチ `feature/word-nav-no-prefetch` に 1 チケット = 1 squash コミットで取り込み、機能全体で 1 PR。「実装中」= worktree 作成時、「完了」= 統合ブランチへのマージ。PR 列は統合 PR 作成時に全行へ同一 URL を一括記載する
 - **チケット単位 PR モード（--pr）**: 1 チケット = 1 PR。「完了」= PR マージ。PR 作成済み・未マージは「実装中」＋PR リンクで表現する
+
+運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ feature/word-nav-no-prefetch）
 
 ## ステータス運用ルール
 

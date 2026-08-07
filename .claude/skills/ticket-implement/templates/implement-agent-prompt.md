@@ -24,6 +24,7 @@
 - 別ポート dev や E2E の環境変数前置き（`PORT=3100 BETTER_AUTH_URL=... pnpm dev` 等）はそのまま書いてよい（`PORT=` / `BETTER_AUTH_URL=` / `E2E_BASE_URL=` / `SHOT_DIR=` 始まりの pnpm コマンドは許可リスト対応済み）
 - **コミット前に必ず整形する**: `pnpm format` で整形 → `pnpm format:check` がクリーン → `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` を通すこと（この順）。整形差分は実装コミットに含める（別コミットにしない）。**`pnpm test:integration` は実行しない**（共有 DB を使うためオーケストレーター側で直列実行される。integration テストファイルの新規作成・変更自体はチケットに従い行う）
   - 任意: devman が導入済みの環境では、これらのコマンドを `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される）
+- **migration はファイル作成まで**: schema 変更時は `pnpm exec prisma migrate dev --create-only -n <名前>` で migration ファイルだけを作り、共有 dev DB へ適用する `pnpm db:migrate` は実行しない（適用はオーケストレーター側の工程で行われる）
 - worktree 内でコミットすること。メッセージは `{機能名}: {NN} {チケット名}`（複数コミット可。後で squash される）
 - 設計・計画と実装が矛盾する、またはチケットに書かれていない判断が必要になったら、**勝手に補完せず**矛盾・不明点を報告して終了すること
 

@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 `design-session（docs/design）→ ticket-split（docs/plan）→ ticket-implement（実装）` パイプラインの中間工程。設計完了済み機能のハブ（`docs/design/<機能名>/README.md`）の「確定事項サマリ」＋「実装への引き継ぎ」から、PR 単位のチケット群を `docs/plan/<機能名>/` に生成する。
 
-`docs/plan/` 直下の旧形式フラットファイル（foundation-milestones.md 等）は本スキルの管轄外。
-
 ## 引数
 
 対象の機能名: `$ARGUMENTS`

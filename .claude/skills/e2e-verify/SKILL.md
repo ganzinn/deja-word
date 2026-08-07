@@ -46,15 +46,9 @@ DB レベルの検証は integration テスト（`pnpm test:integration`）で�
 
 ## 実行例: 削除ガード検証（`pnpm e2e:guard`）
 
-ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つでもあれば削除を拒否する」（`assertWordDeletable` → `deleteWordForUser` → Server Action が赤トースト「他のユーザーが追記した項目があるため、この単語は削除できません。」に変換）。削除ボタンは `word.ownerId === session.user.id` のときだけ描画されるため、**ガードが発火するのは admin(system) が system 単語を削除しようとしたときだけ**。別 owner の子孫は、一般ユーザーが pass-through 編集（ADR-0019）で system 単語に自分の子行を足すと生まれる。
+ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つでもあれば削除を拒否する」（`assertWordDeletable` → `deleteWordForUser` → Server Action が赤トーストのエラー文言に変換）。削除ボタンは `word.ownerId === session.user.id` のときだけ描画されるため、**ガードが発火するのは admin(system) が system 単語を削除しようとしたときだけ**。別 owner の子孫は、一般ユーザーが pass-through 編集（ADR-0019）で system 単語に自分の子行を足すと生まれる。
 
-`scripts/e2e/verify-deletion-guard.ts` が自動化する流れ:
-
-1. **preflight**: system 整備を確認（未整備は remediation 付きで中断）→ `test1@example.com` を冪等用意。
-2. **本命**: admin(system) で `/words/new` に単語 `e2e-guard-<ts>` を作成 → 別 context で `test1@example.com` が `/words/{id}/edit` を開き「メモを追加」→ 保存（test ユーザー owner の子孫が付く）→ admin が `/words/{id}` で削除（`aria-label=削除` → `削除する`）→ **赤トースト「他のユーザーが追記した項目があるため…」が出て詳細ページに留まる**ことをアサート、DB に単語が残ることも確認。
-3. **対照+**: admin が自分の子行だけの system 単語を削除 → 「削除しました」+ `/words` 遷移。
-4. **対照0**: `test1@example.com`（本命でログイン済みの使い回しユーザー）が自分の私有単語を作成→削除 → 成功（ガード無反応。全子孫が自分所有なのでガードは働かない）。新規ユーザーの観点は不要なので使い捨てユーザーは使わない。
-5. **後始末**: `cleanupWordsByPrefix("e2e-guard-")`（追記メモも cascade で消える。`test1@example.com` は残す）。
+`scripts/e2e/verify-deletion-guard.ts`（具体的なセレクタ・アサート文言はこのスクリプトが一次情報）の構成: preflight（system 整備の確認＋ `test1@example.com` の冪等用意）→ 本命（一般ユーザーの pass-through 追記で別 owner の子孫を作り、admin の削除が赤トーストで拒否され単語が残ることをアサート）→ 対照 2 件（別 owner 子孫なしの削除成功・一般ユーザーの私有単語削除成功）→ 後始末（`cleanupWordsByPrefix("e2e-guard-")`。使い回しユーザーは残す）。
 
 セレクタ参照（新しい検証を書くとき用）: 単語 headword = placeholder `例: ephemeral`、意味テキスト = placeholder `例: 短命の、つかの間の`、登録/更新 = ボタン `登録する`/`更新する`、単語削除 = ボタン `削除`（`aria-label`）→ 確認 `削除する`、sign-in = `#email`/`#password`/ボタン `ログイン`。
 
@@ -79,7 +73,7 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 ## フリック（スワイプ）操作の再現
 
-`useSwipeNav`（`src/components/use-swipe-nav.ts`）は window の `touchstart` / `touchend` を見るだけなので、**合成 `TouchEvent` を `page.evaluate` で dispatch すれば再現できる**（`new Touch(...)` を `changedTouches` に載せる）。CDP の `Input.dispatchTouchEvent` は不要。
+`useSwipeNav`（`src/components/use-swipe-nav.ts`）は window の `touchstart` / `touchend` を見るだけなので、**合成 `TouchEvent` を `page.evaluate` で dispatch すれば再現できる**（`new Touch(...)` を `changedTouches` に載せる）。
 
 **落とし穴: `page.evaluate` に渡す関数の中で名前付き関数を作らない。** tsx / esbuild の keepNames が**名前付き関数**（`function f() {}` だけでなく `const f = () => {}` も対象）に `__name(...)` を差し込むため、ブラウザ側で `ReferenceError: __name is not defined` になる。evaluate の中は無名の式で書く。
 
@@ -94,5 +88,5 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 ## 関連
 
-- quiz 系の自動化ノウハウ（開始/進行中/結果のセレクタ、出題形式一覧、自己判定形式が最易、出題データの事情）は [references/quiz.md](references/quiz.md) にまとめてある（リポジトリ内・共有可能な一次情報）。
+- quiz 系の自動化ノウハウ（開始/進行中/結果のセレクタ、出題形式一覧、自己判定形式が最易、出題データの事情）は [references/quiz.md](references/quiz.md) にまとめてある。
 - 認可・テナント分離の規約は skill `sec-review` と `src/app/CLAUDE.md`。削除ガードの設計は `docs/adr/0066-system-word-deletion-guard.md`、共存は `0065`、pass-through 編集は `0019`。

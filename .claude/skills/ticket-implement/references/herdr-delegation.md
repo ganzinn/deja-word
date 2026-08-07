@@ -17,7 +17,7 @@
 
 ## 起動
 
-ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、**エージェント専用のタブ**で claude を起動する（ペイン分割は使わない — 並行数が増えると 1 ペインが小さくなり見づらい）:
+ready チケットごとに、テンプレを埋めたプロンプトをファイルに書き出し（scratchpad 等 **worktree の外**。クォート事故防止のため必ずファイル経由）、**エージェント専用のタブ**で claude を起動する（1 エージェント = 1 タブ。ペイン分割はしない）:
 
 ```sh
 herdr tab create --label <機能名>-NN --no-focus
@@ -44,10 +44,7 @@ herdr agent wait <名前> --status idle --timeout 570000
 ```
 
 - wait の `--timeout` は 570000 を上限にし、実行側（Bash ツール）の timeout は 600000 を指定する（デフォルト 120 秒では wait より先に切られ、600 秒を超える待ちは背景化されて exit 1 の「失敗」通知になる）
-- **wait の返却は 3 形あり、どれも「エラー」ではない**:
-  - 既に目的の状態 → 即時返却で `{"event":"pane.agent_status_changed","data":{...}}`
-  - 遷移を検知 → `{"id":"cli:agent:wait:resolve","result":{"agent":{...}}}`
-  - タイムアウト → JSON ではない素のテキスト `timed out waiting for agent status change`。「まだ達していない」だけの正常な結果（エラー扱いして手を止めない）
+- **wait の返却は 3 形（既に目的の状態 → JSON で即時返却／遷移を検知 → JSON／タイムアウト → 素のテキスト `timed out waiting for agent status change`）あり、どれも「エラー」ではない**。タイムアウトは「まだ達していない」だけの正常な結果（エラー扱いして手を止めない）
 - タイムアウトしたら `herdr agent get <名前>` で現状を確認して分岐する: working → idle 待ちを再実行 / blocked → 下の「承認待ちループ」へ
 - 複数ペイン並行時はチケット番号順に順次待てばよい（マージ順と一致する）
 
@@ -87,4 +84,4 @@ worktree 内のプロンプトで「don't ask again」を選ぶと、ルール�
 
 - **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。idle になっても report ファイルが無い・不完全な場合は `herdr agent read <名前> --source recent-unwrapped --lines 200` で最終メッセージを確認する（recent バッファは直近の描画分しか残らないことがあるため、report ファイルが一次情報）
 - **再委譲**（「失敗・中断時の扱い」の共通規則を適用）: `herdr agent get <名前>` で pane_id を解決し、`herdr pane run <pane_id> "<指示>"` で同一ペインの claude に追加指示を送る（1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる）。ペインが消えていた場合のみ同一 worktree で claude を起動し直す
-- **後片付け**: マージ・検証成功後、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・ブランチ・report ファイルを削除する（共通ルールどおり。タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
+- **後片付け**: 各モードのフローで worktree を削除する段になったら（単一ブランチ統合モード: マージ・検証成功後／PR モード: PR 作成・ステータスコミット push 後）、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・report ファイル・不要になったローカルブランチを削除する（タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）

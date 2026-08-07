@@ -31,7 +31,8 @@
 ## 完了条件（Definition of Done）
 
 - [ ] {テストの種類（unit / integration）と検証観点を具体的に。設計ハブの「テスト戦略の要点」から転記}
-- [ ] `pnpm lint` / `pnpm typecheck` / 該当テストが通る
+- [ ] `pnpm format`（整形）の上で `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` が通る
+- [ ] integration テストがある場合: オーケストレーターの直列実行で `pnpm test:integration` が通る（実装エージェントは実行しない）
 - [ ] {必要なら手動確認手順}
 
 ## 競合注意

@@ -38,7 +38,7 @@ graph LR
 ### 共通規約
 
 - テストは AGENTS.md の規約に従う（`*.unit.test.ts` は `pnpm test:unit`、`*.integration.test.ts` は `pnpm test:integration`。SUT の隣にコロケート）
-- マージ前に `pnpm lint` / `pnpm typecheck` / 該当テストを通す
+- マージ前に `pnpm format`（整形）→ `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` を通す。`pnpm test:integration` は共有 DB を使うため実装エージェントは実行せず、オーケストレーターが直列で実行する
 - {マイグレーション運用・用語など、機能固有の横断事項があれば追記}
 
 ## ブランチ・PR 運用

@@ -2,9 +2,11 @@
 #
 # scripts/wt-new.sh で作った git worktree を撤去する。
 #
-#   Usage: scripts/wt-rm.sh <feature-name> [--delete-branch]
+#   Usage: scripts/wt-rm.sh <name> [--delete-branch]
 #     例: scripts/wt-rm.sh quiz-timer                  -> worktree のみ削除
 #         scripts/wt-rm.sh quiz-timer --delete-branch  -> worktree に紐づくブランチも削除
+#
+# <name> は ../deja-word-worktrees/<name> のディレクトリ名。
 #
 # ブランチ名は worktree にチェックアウト中の実ブランチを git から取得するため、
 # feat/ に限らず docs/ ・ fix/ ・ chore/ 等どのプレフィックスでも削除できる。
@@ -14,7 +16,7 @@
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
-  echo "Usage: scripts/wt-rm.sh <feature-name> [--delete-branch]" >&2
+  echo "Usage: scripts/wt-rm.sh <name> [--delete-branch]" >&2
   exit 1
 fi
 
@@ -25,7 +27,7 @@ if [ "${2:-}" = "--delete-branch" ]; then
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-WORKTREE_DIR="${REPO_ROOT}/../deja-word-${NAME}"
+WORKTREE_DIR="${REPO_ROOT}/../deja-word-worktrees/${NAME}"
 
 if [ ! -d "$WORKTREE_DIR" ]; then
   echo "error: worktree directory not found: $WORKTREE_DIR" >&2

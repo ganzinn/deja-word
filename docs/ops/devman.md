@@ -38,20 +38,20 @@ repos:
 claude mcp add --scope user devman -- devman mcp
 ```
 
-4. mise の trust プロンプト対策: worktree を新規作成するたびに `.mise.toml` が未信頼になるため、グローバル設定（`~/.config/mise/config.toml`）で置き場ごと信頼しておく:
+4. mise の trust プロンプト対策: worktree を新規作成するたびに `.mise.toml` が未信頼になるため、グローバル設定（`~/.config/mise/config.toml`）で置き場（`../deja-word-worktrees/` に統一。AGENTS.md の Worktree 節）を信頼しておく:
 
 ```toml
 [settings]
-trusted_config_paths = ["~/rep/github.com/ganzinn/"]
+trusted_config_paths = ["~/rep/github.com/ganzinn/deja-word-worktrees/"]
 ```
 
-これを設定しない場合は worktree ごとに `mise trust` が必要（`scripts/wt-new.sh` は実行してくれるが、手動 `git worktree add` では忘れやすい）。
+これを設定しない場合は worktree ごとに `mise trust` が必要（`scripts/wt-new.sh` が作成時に実行する。`--no-install` の worktree でコード実行を始めるときは手動で）。
 
 ## 運用
 
 ### worktree の認識
 
-devman は `<worktree>` 引数を **git worktree のディレクトリ basename** で解決する。置き場はどこでもよい（`../deja-word-<name>` でも `../deja-word-worktrees/<機能名>-NN-<チケット名>` でも可）。basename が重複すると ambiguous エラーになる。
+devman は `<worktree>` 引数を **git worktree のディレクトリ basename** で解決する。置き場は `../deja-word-worktrees/<name>` に統一されており、`<name>`（例: `<機能名>-NN-<チケット名>`）をそのまま渡す。basename が重複すると ambiguous エラーになる。
 
 ### dev サーバ（1 つを worktree 間で切替）
 

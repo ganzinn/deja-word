@@ -139,6 +139,7 @@
 | [0054](0054-worktree-shared-db-blob.md) | worktree 並行開発（DB・.dev-blob 共有） | 高 | — |
 | [0055](0055-occurrence-presets-opt-in.md) | 共有掲載箇所プリセット既定 OFF（オプトイン） | 高 | — |
 | [0073](0073-webview-android-app.md) | Android 提供は WebView シェル + ネイティブ TTS ブリッジ | 高 | — |
+| [0091](0091-worktree-unified-creation.md) | worktree 作成の wt-new.sh 一本化＋置き場統一（0054 部分置き換え） | 高 | — |
 
 ### H. テスト・開発プロセス
 

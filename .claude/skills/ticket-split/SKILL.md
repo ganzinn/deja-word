@@ -51,7 +51,7 @@ disable-model-invocation: true
 
 - 作業ブランチ `docs/<機能名>-design-plan` が存在し、その先端がマージ済み設計＋計画 PR の head（`gh pr list --state merged --head <ブランチ名> --json headRefOid`）と一致しない（設計〜計画シリーズ進行中・設計改訂中。PR が無い場合を含む）: design worktree（`../deja-word-worktrees/<機能名>-design`）で作業する（worktree が無ければ design-session の「作業場所（専用 worktree）」節の手順で用意する）。先端がマージ済み PR の head と一致するだけの残骸は撤去対象（ticket-implement の前提条件チェック）なので、この条件には数えず次で判定する
 - 実装フェーズの統合ブランチ上で計画を見直す場合: そのブランチのまま（本体の checkout）でよい。未マージの plan-update PR が存在する場合は、先にそのマージを促してから行う
-- どちらでもない（設計＋計画 PR マージ後の見直し）: 専用 worktree `../deja-word-worktrees/<機能名>-plan-update`（ブランチ `docs/<機能名>-plan-update`、`git fetch origin main` して `origin/main` 起点。準備は AGENTS.md「スキル管理 worktree」節）を用意する。worktree・ブランチが既にあり、ブランチ先端がマージ済み PR の head と一致しない（未マージの見直しが残っている）場合はそのまま使う。一致する残骸は撤去して作り直す
+- どちらでもない（設計＋計画 PR マージ後の見直し）: 専用 worktree `../deja-word-worktrees/<機能名>-plan-update` を `scripts/wt-new.sh <機能名>-plan-update origin/main --branch docs/<機能名>-plan-update --no-install`（worktree スキル）で用意する。worktree・ブランチが既にあり、ブランチ先端がマージ済み PR の head と一致しない（未マージの見直しが残っている）場合はそのまま使う。一致する残骸は撤去して作り直す
 
 1. plan ハブ（`docs/plan/<機能名>/README.md`）を読む
 2. 影響チケットを特定する（チケット一覧表の依存列から逆引き。設計改訂の反映なら、覆った決定を「前提」に再掲しているチケットを探す）

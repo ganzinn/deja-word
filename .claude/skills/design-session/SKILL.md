@@ -18,11 +18,9 @@ argument-hint: "[機能名]"
 
 ## 作業場所（専用 worktree）
 
-設計シリーズの作業は本体の checkout では行わず、機能ごとの専用 worktree で行う（本体側で別の作業が進んでいても衝突しないため）。**機能名が決まったらまず worktree を準備し**、以降のファイルの読み書き・調査委譲・コミットはすべて worktree の絶対パス配下で行う。準備手順の共通部分は AGENTS.md「スキル管理 worktree」節に従う。
+設計シリーズの作業は本体の checkout では行わず、機能ごとの専用 worktree で行う（本体側で別の作業が進んでいても衝突しないため）。**機能名が決まったらまず worktree を準備し**、以降のファイルの読み書き・調査委譲・コミットはすべて worktree の絶対パス配下で行う。
 
-- 置き場: `../deja-word-worktrees/<機能名>-design`。既にあればそのまま使う
-- ブランチ: `docs/<機能名>-design-plan`。既存ならそれを checkout し、無ければ `git fetch origin main` して `origin/main` 起点で作成する（`-b`）
-- ドキュメント作業のみのため `pnpm install` と DB は不要
+- 準備（worktree スキル）: `scripts/wt-new.sh <機能名>-design origin/main --branch docs/<機能名>-design-plan --no-install`。worktree `../deja-word-worktrees/<機能名>-design` が既にあればそのまま使う（ブランチ `docs/<機能名>-design-plan` が既存ならスクリプトが checkout、無ければ origin/main 起点で作成する。ドキュメント作業のみのため install と DB は不要）
 - 撤去: worktree は設計〜計画のシリーズが閉じるまで残す（ticket-split も同じ worktree・作業ブランチで続ける）。設計＋計画 PR のマージ後の撤去は ticket-implement の前提条件チェックが行う
 
 ## モード判別

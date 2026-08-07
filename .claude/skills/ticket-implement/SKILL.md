@@ -58,7 +58,7 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
 ### worktree の扱い
 
 - 置き場: `../deja-word-worktrees/<機能名>-NN-<チケット名>`
-- 準備手順: AGENTS.md「スキル管理 worktree」節の共通手順（`git worktree add` → `wt-env.sh` → `mise trust` → `pnpm install`）で準備し、実装エージェントへ委譲する
+- 準備手順: `scripts/wt-new.sh <機能名>-NN-<チケット名> <起点> --branch feature/<機能名>-NN-<チケット名>`（worktree スキル。起点は各モードのフローどおり統合ブランチまたは main）で準備し、実装エージェントへ委譲する
 - 並行度の上限は 3（推奨 2）。worktree ごとの install コストと、マージ待ち行列が長いほどコンフリクト窓が広がることを踏まえる
 
 ### 検証の分担

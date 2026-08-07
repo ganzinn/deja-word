@@ -12,7 +12,7 @@ ADR-0086 決定 3 で、単語詳細ページの前後ナビの `<Link>` に `pr
 
 ## 決定内容
 
-word-nav-no-prefetch 設計シリーズ（`docs/design/word-nav-no-prefetch/`。実装完了に伴い削除される運用のため、決定の要点は本 ADR に残す）で以下を確定した。**ADR-0086 決定 3 のうちページ側 `prefetch={true}` を本 ADR で置き換える**。ADR-0086 決定 1（淡色化＋方向スライドの遷移中フィードバック）・決定 2（`startTransition` + `router.push` への遷移経路単一化、`<Link>` intercept）は維持する。
+word-nav-no-prefetch 設計シリーズ（`docs/design/word-nav-no-prefetch/`。実装完了に伴い削除済みのため、決定の要点は本 ADR に残す）で以下を確定した。**ADR-0086 決定 3 のうちページ側 `prefetch={true}` を本 ADR で置き換える**。ADR-0086 決定 1（淡色化＋方向スライドの遷移中フィードバック）・決定 2（`startTransition` + `router.push` への遷移経路単一化、`<Link>` intercept）は維持する。
 
 1. **`prefetch={false}` を明示して先読みを全廃する**: `adjacent-word-nav.tsx` の前後 2 つの `<Link>` を `prefetch={false}` にする（プロパティ削除でデフォルト `auto` に戻すのではない）。`prefetch={false}` は「viewport 進入・hover のいずれでも一切プリフェッチしない」ことが同梱 docs（16.2.9 `link.md`）で保証され、周辺条件に依存しない。デフォルト `auto` でも現状（dynamic ルート＋`loading.tsx` 無し）は同挙動だが、それは部分プリフェッチ対象が無いことによる暗黙のスキップで、将来 loading 境界を追加すると挙動が変わるため明示に倒す。`<Link>` 自体は維持する。詳細ページの他の `<Link>`（戻る・編集・関連語）は prefetch 未指定（デフォルト `auto`）のままとする。
 2. **毎回サーバー取得により一覧の表示順と常に同期する**: クライアント遷移（前後ナビの `router.push`・戻る等のリンククリック。ブラウザ back/forward の履歴復元を除く）は `staleTimes` 既定の dynamic 0 秒により毎回サーバー取得となり、隣接が一覧と同じ where で毎リクエスト計算される前提（ADR-0089 決定 3・4）と合わせて「一覧の表示順と常に同期した隣接移動」が追加実装なしで成立する。残るのは (a) 描画〜タップ間に別端末で削除された場合の 404 到達と (b) back/forward キャッシュ復元経由の stale 表示・404 到達（いずれも許容。リンク遷移で開き直せば解消）。共有レイアウトセグメント（`src/app/layout.tsx`）は partial rendering によりナビゲーション毎には再取得されないが、単語データ・隣接ナビを含まないため本件の鮮度問題には無関係。
@@ -43,7 +43,7 @@ word-nav-no-prefetch 設計シリーズ（`docs/design/word-nav-no-prefetch/`。
 ## 根拠（コード・文書参照）
 
 - issue #229（一覧の表示順と常に同期した隣接移動への対応意向。別端末のリアルタイム反映・描画〜タップ間の競合は対象外と明示）
-- `docs/design/word-nav-no-prefetch/` 01〜02（実装完了に伴い削除された場合は本 ADR が長期の引き継ぎ先）
+- `docs/design/word-nav-no-prefetch/` 01〜02（実装完了に伴い削除済み。本 ADR が長期の引き継ぎ先）
 - `node_modules/next/dist/docs/`（16.2.9）: `link.md`（`prefetch={false}` の保証）/ `staleTimes.md`（dynamic 0 秒既定・partial rendering）/ `revalidatePath.md`（クライアントキャッシュ全パージは暫定挙動）/ `04-glossary.md`（back/forward はルーターキャッシュ再利用）
 - ADR-0086（置き換え元。決定 1・2 は維持、決定 3 のページ側と決定 4 を本 ADR が置き換え）
 - ADR-0088 決定 6（ダイアログ側の詳細先読みの現行仕様。本 ADR では対象外・維持）

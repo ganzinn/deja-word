@@ -176,14 +176,18 @@ herdr agent wait <名前> --status idle --timeout 570000
 
 #### 承認待ちループ（blocked を検知したら）
 
-blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、発生を 1 回ずつ捕捉して即座に完了待ちへ復帰できる（idle 待ちのままでは、その間の blocked → 承認 → working が見えず数えられない）:
+blocked（承認プロンプトで停止）を検知したら、**idle ではなく `--status working` を待つ**。承認された瞬間に working へ遷移するため、即座に完了待ちへ復帰できる:
 
 1. `herdr agent read <名前> --source visible` でプロンプト内容を確認する（判断できない内容ならエスカレーション）。visible は描画前の古い画面を返すことがあるため、blocked かどうかは `herdr agent get` のステータスを正とする
 2. `herdr notification show "<機能名>-NN が承認待ち" --sound request` でユーザーに通知する（代理承認の禁止は「trust と permission」節のとおり）
 3. `herdr agent wait <名前> --status working --timeout 570000` で承認を待つ。**通知だけしてターンを終えない** — 待ちが走っていないと、承認されても再開の契機が無い
-4. working が返ったら承認 1 回と数えて idle 待ちに戻る。タイムアウトしたら `herdr agent get` で再確認し、blocked のままなら 3 に戻る（再通知は不要）
+4. working が返ったら idle 待ちに戻る。タイムアウトしたら `herdr agent get` で再確認し、blocked のままなら 3 に戻る（再通知は不要）
 
-承認の発生回数は working 復帰の回数としてオーケストレーターが数え、最終報告に含める（実装エージェントの自己申告は使わない）。
+承認の発生回数と対象コマンドは、worktree 内 `tmp/permission-requests.log`（下記「承認プロンプトのログ収集」）を一次情報として最終報告に含める。
+
+#### 承認プロンプトのログ収集（PermissionRequest hook）
+
+repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済み（worktree にも git 経由で入る）。承認プロンプトが必要になるたびに 1 行（`tool_input` 込み）が worktree 内 `tmp/permission-requests.log` に追記される。**許可リスト一致で自動許可された場合は発火しない**ため、記録されるのは実際に停止したものだけ（対話セッション専用 — headless `claude -p` では発火しない）。オーケストレーターは worktree 削除前にログを直接読んでよく、記録された `tool_input` は許可リスト・テンプレ禁止事項の継続改善の材料にする。
 
 #### 承認プロンプトの切り分け
 
@@ -201,7 +205,7 @@ blocked（承認プロンプトで停止）を検知したら、**idle ではな
 
 `&` は `pnpm e2e:capture-docs` のように dev サーバを要する作業で必ず踏む。撮影を伴うチケットを委譲する場合は、**承認待ちが最低 1 回発生する前提**で運用する。
 
-なお、プロンプトで「don't ask again」を選んでも**次回以降には残らない**（保存先が worktree 側の `.claude/settings.local.json` で、worktree 削除と共に消える）。恒久化したい許可は本体の `.claude/settings.local.json` に足す。
+なお、worktree 内のプロンプトで「don't ask again」を選ぶと、ルールは worktree を main checkout に解決した上で**本体リポジトリの `.claude/settings.local.json` に保存され、次回以降の全セッション（worktree 含む）に有効**になる（公式ドキュメント permissions.md に明記。2026-08-07 実測でも確認）。ただし停止したコマンドそのままの断片的なルール（`Bash(break)` 等）が残ることがあるため、実装セッション後に本体の許可リストを見直し、無意味なルールは削除する。
 
 ### 報告回収・再委譲・後片付け
 

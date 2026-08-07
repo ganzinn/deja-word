@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p tmp && jq -c '{ts: (now | todate), tool_name, tool_input, permission_mode}' >> tmp/permission-requests.log"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

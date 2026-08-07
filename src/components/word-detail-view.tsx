@@ -204,8 +204,11 @@ function ExampleCard({ example }: { example: WordDetail["examples"][number] }) {
   );
 }
 
+// `self-start` は必須。カードは flex-col なので、これが無いと inline-flex のリンクが
+// 横幅いっぱいに引き伸ばされ（align-items: stretch）、単語の右の余白まで遷移の当たり判定に
+// なる。カード全体タップで発音を鳴らす（ADR-0092）以上、リンクは語そのものに限る。
 const relatedLinkClassName =
-  "text-primary inline-flex items-center gap-1 text-base font-semibold underline-offset-4 hover:underline";
+  "text-primary inline-flex items-center gap-1 self-start text-base font-semibold underline-offset-4 hover:underline";
 
 function RelatedWordCard({
   related,
@@ -245,7 +248,7 @@ function RelatedWordCard({
           <button
             type="button"
             onClick={() => onSelectRelated(related.linkedWord!.id)}
-            className={`${relatedLinkClassName} text-left`}
+            className={relatedLinkClassName}
           >
             <LinkIcon className="size-3.5 shrink-0" />
             <span className="whitespace-pre-wrap">{related.term}</span>

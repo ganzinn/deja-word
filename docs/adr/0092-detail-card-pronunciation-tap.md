@@ -18,9 +18,10 @@
 4. **バッジの有無が、そのまま「鳴るかどうか」の目印になる**。再生手段がまったく無いカード（音源なし・自動音声も使えない）はバッジを出さず、タップにも反応しない。とくに 2 個目以降の意味は自動音声フォールバックの対象外（ADR-0082）のため、音源が無ければバッジ無し＝タップ不応となる。
 5. **カード自体は `role="button"` にしない**。関連語カードはリンク（`<Link>` / `onSelectRelated` の `<button>`）を内包しており button の入れ子は不正になること、カード本文まるごとがボタンの読み上げ名になってしまうことによる。カードの `onClick` は**ポインタ操作の近道**と位置づけ、キーボード・支援技術からの操作は右上バッジ（本物の `<button>`、`aria-label` / `aria-pressed` 付き）が担う。
 6. **カード内の操作要素はカードのタップより優先する**。`onClick` の中で `e.target.closest("a,button")` を見て、一致すれば何もしない。これで右上バッジの二重トグル（バッジ自身の再生とカードの再生が打ち消し合って即停止する）と、関連語リンクの誤発火をまとめて防ぐ。呼び出し側（`word-detail-view.tsx`）に伝播停止を書かせないため、判定は `PronunciationCard` の内側に閉じる。
-7. **本文を選択している最中のクリックでは鳴らさない**。`window.getSelection()` が非 collapsed なら `toggle` しない。例文・意味のコピーをカード全体タップ化で潰さないため。
-8. **一覧行・単語テスト・音源管理の「試聴」は従来どおり**行内の `AudioPlayButton` を使う。一覧行はタップが詳細への遷移・展開に割り当て済みで、カード全体タップと衝突するため。
-9. **再生制御を `usePronunciationPlayback`（`src/components/use-pronunciation-playback.ts`）へ切り出す**。「音源を常に優先し、無いときだけ（設定 ON・読み上げ語あり・ブラウザ対応）自動音声」という判定は、行内ボタンとカード全体タップで完全に同一のため。見た目の描き分けは `PronunciationToggle`（`src/components/pronunciation-toggle.tsx`）に集約し、ADR-0076 の規則が 2 箇所へ分裂しないようにする。`AudioPlayButton` の外部 API（`src` / `label` / `ttsText` / `reserveSpaceWhenEmpty`）は変えない。
+7. **関連語リンクの当たり判定は語そのものに限る**。リンクは `inline-flex` だが、カードが `flex-col` のため既定（`align-items: stretch`）では**横幅いっぱいに引き伸ばされ、語の右の余白まで遷移の当たり判定になっていた**。`self-start` を付けて内容幅に収める（実測で 640px → 37px）。カード全体タップが発音である以上、遷移する領域は語に限定しないと「発音のつもりが別の単語へ飛ぶ」誤操作が起きる。カードのタップ領域が広がったことで初めて表面化した問題であり、決定 6 の除外処理だけでは足りない。
+8. **本文を選択している最中のクリックでは鳴らさない**。`window.getSelection()` が非 collapsed なら `toggle` しない。例文・意味のコピーをカード全体タップ化で潰さないため。
+9. **一覧行・単語テスト・音源管理の「試聴」は従来どおり**行内の `AudioPlayButton` を使う。一覧行はタップが詳細への遷移・展開に割り当て済みで、カード全体タップと衝突するため。
+10. **再生制御を `usePronunciationPlayback`（`src/components/use-pronunciation-playback.ts`）へ切り出す**。「音源を常に優先し、無いときだけ（設定 ON・読み上げ語あり・ブラウザ対応）自動音声」という判定は、行内ボタンとカード全体タップで完全に同一のため。見た目の描き分けは `PronunciationToggle`（`src/components/pronunciation-toggle.tsx`）に集約し、ADR-0076 の規則が 2 箇所へ分裂しないようにする。`AudioPlayButton` の外部 API（`src` / `label` / `ttsText` / `reserveSpaceWhenEmpty`）は変えない。
 
 ## 採らなかった代替案
 
@@ -41,10 +42,10 @@
 
 ## 根拠（コード・文書参照）
 
-- `src/components/pronunciation-card.tsx` — カード全体タップ＋右上バッジの実装（決定 1・3〜7）
-- `src/components/use-pronunciation-playback.ts` — 音源優先／自動音声フォールバックの再生制御（決定 9）
-- `src/components/pronunciation-toggle.tsx` — ADR-0076 の描き分けと `iconOnly`（決定 2・3・9）
-- `src/components/word-detail-view.tsx` — 詳細ページ・詳細ダイアログが共有する表示（決定 1・8）
+- `src/components/pronunciation-card.tsx` — カード全体タップ＋右上バッジの実装（決定 1・3〜6・8）
+- `src/components/use-pronunciation-playback.ts` — 音源優先／自動音声フォールバックの再生制御（決定 10）
+- `src/components/pronunciation-toggle.tsx` — ADR-0076 の描き分けと `iconOnly`（決定 2・3・10）
+- `src/components/word-detail-view.tsx` — 詳細ページ・詳細ダイアログが共有する表示（決定 1・7・9）
 - `src/components/ui/button.tsx` — `size="xs"` が h-6（24px）である根拠
 - `src/components/use-swipe-nav.ts` — 横フリック判定の閾値（影響節）
 - [ADR-0076](0076-audio-source-visual-distinction.md) — 音源／自動音声の描き分け（本 ADR は追補であり、置き換えではない）

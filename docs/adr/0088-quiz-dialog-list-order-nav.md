@@ -12,7 +12,7 @@
 - 全件ブックマークモード（掲載箇所なし）のテストでは `occurrenceId` が無くナビ自体が出ない
 - 削除済み単語に到達すると隣接応答が null になり、ナビごと消えて先へ進めないデッドエンドがある
 
-word-view-nav 設計（`docs/design/word-view-nav/03-quiz-result-dialog-nav.md`。実装完了に伴い削除予定のため、決定を本 ADR に転記する）で置き換えを確定した。
+word-view-nav 設計（`docs/design/word-view-nav/03-quiz-result-dialog-nav.md`。実装完了に伴い削除済みのため、決定は本 ADR に転記してある）で置き換えを確定した。
 
 ## 決定内容
 
@@ -44,7 +44,7 @@ word-view-nav 設計（`docs/design/word-view-nav/03-quiz-result-dialog-nav.md`�
 
 ## 根拠（コード・文書参照）
 
-- `docs/design/word-view-nav/03-quiz-result-dialog-nav.md` 決定 1〜6（実装完了に伴い削除予定 → 本 ADR が長期の引き継ぎ先）
+- `docs/design/word-view-nav/03-quiz-result-dialog-nav.md` 決定 1〜6（実装完了に伴い削除済み → 本 ADR が長期の引き継ぎ先）
 - ADR-0024（テストセッションテーブル非採用 = サーバに出題順が無い）
 - ADR-0086（先読み方針の置き換え元。決定 3 の隣接先読み部分のみ本 ADR が置き換え）
 - ADR-0087（関連語スタック先で #N・ナビを出さない既存挙動。本 ADR でも維持）

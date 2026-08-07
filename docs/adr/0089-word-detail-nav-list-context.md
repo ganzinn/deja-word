@@ -8,7 +8,7 @@
 
 単語詳細ページの前後ナビは掲載箇所ビュー由来（`occ` 付き URL）でしか出ず、単語ビュー（新着順 / 見出し語順の単語一覧）から詳細を開くと、一覧の並び・絞り込みがあってもナビが無かった。また掲載箇所コンテキストにはブックマーク絞り込み（`bookmarked=1`）が含まれず、詳細へ遷移した時点で絞り込みが落ちていた。
 
-word-view-nav 設計（`docs/design/word-view-nav/02-list-nav-context.md`。実装完了に伴い削除予定のため、決定を本 ADR に転記する）で、単語ビュー由来の詳細にも「直前に見ていた一覧の並び・絞り込み」に追随する前後ナビを出すことを確定した。
+word-view-nav 設計（`docs/design/word-view-nav/02-list-nav-context.md`。実装完了に伴い削除済みのため、決定は本 ADR に転記してある）で、単語ビュー由来の詳細にも「直前に見ていた一覧の並び・絞り込み」に追随する前後ナビを出すことを確定した。
 
 ## 決定内容
 
@@ -39,7 +39,7 @@ word-view-nav 設計（`docs/design/word-view-nav/02-list-nav-context.md`。実�
 
 ## 根拠（コード・文書参照）
 
-- `docs/design/word-view-nav/02-list-nav-context.md` 決定 1〜6（実装完了に伴い削除予定 → 本 ADR が長期の引き継ぎ先）
+- `docs/design/word-view-nav/02-list-nav-context.md` 決定 1〜6（実装完了に伴い削除済み → 本 ADR が長期の引き継ぎ先）
 - `src/app/words/_lib/search-params.ts`（union 型・`parseWordDetailNavContext`・kind 分岐の href ビルダ）
 - `src/lib/words-list.ts`（`buildWordListWhere` の共有・`findAdjacentWordsInWordView`）
 - ADR-0087（`#N` は見出し語右に表示。単語ビュー由来では非表示とする本決定の表示先）

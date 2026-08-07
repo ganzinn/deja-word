@@ -89,6 +89,9 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
   const hrefForPage = (p: number) =>
     buildWordsHref("word", { q, sort, match, bookmarked: bookmarkedOnly, page: p });
+  // 詳細画面に絞り込みコンテキストを引き継ぎ、一覧の並び順の前後ナビと「戻る」を成立させる
+  const hrefForWord = (wordId: string) =>
+    buildWordDetailHref(wordId, { kind: "word", sort, q, match, bookmarked: bookmarkedOnly });
 
   if (page > totalPages && total > 0) {
     redirect(hrefForPage(totalPages));
@@ -102,7 +105,11 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
 
       <ResultCount label={q.length > 0 ? `「${q}」の検索結果` : "全"} total={total} />
 
-      {items.length === 0 ? <EmptyState hasQuery={q.length > 0} /> : <WordRows items={items} />}
+      {items.length === 0 ? (
+        <EmptyState hasQuery={q.length > 0} />
+      ) : (
+        <WordRows items={items} hrefForWord={hrefForWord} />
+      )}
 
       {totalPages > 1 ? (
         <Pagination currentPage={currentPage} totalPages={totalPages} hrefForPage={hrefForPage} />
@@ -181,12 +188,14 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
   // 詳細画面に絞り込みコンテキストを引き継ぎ、掲載番号順の前後ナビと「戻る」を成立させる
   const hrefForWord = (wordId: string) =>
     buildWordDetailHref(wordId, {
+      kind: "occurrence",
       occ: occurrenceId,
       q,
       match,
       from: params.from,
       to: params.to,
       order,
+      bookmarked: bookmarkedOnly,
     });
 
   if (page > totalPages && total > 0) {

@@ -1,6 +1,6 @@
 # 03. quiz-dialog-order-nav
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-07）**　PR: [#213](https://github.com/ganzinn/deja-word/pull/213)
 
 ## 目的
 
@@ -92,4 +92,7 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- ADR 番号は 0088 を採番（起票時点の最新 0087 + 1）。`docs/adr/README.md` は C 節（0085〜0087 と同じ表）の末尾に追記した。**チケット 02（ADR ①）は 0089 以降を採り、README の行順 rebase 時はこの配置を前提にすること**
+- `resolveNavView` にあった `canNavigate`（`onNavigate` 有無）ゲートは新 `resolveDialogNav` に持たせなかった（設計どおり表示条件は「navOrder 非 null」のみ。navOrder を渡す呼び出し元は必ず `onNavigate` も渡す構造のため実害なし）
+- 出題中ダイアログの `onClose` にも `setDialogNavOrder(null)` を入れた（出題中はセット経路が無く実質 no-op だが、「空になるすべての経路で null」の防御的一貫性）
+- 手動確認（e2e-verify）は未実施（結果一覧順ナビ／「間違えた問題だけ表示」中の表示行ナビ／全件ブックマークモード／関連語先でナビ非表示／掲載箇所出題の `#N`／削除済み単語エラービュー）

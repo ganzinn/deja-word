@@ -1,16 +1,13 @@
 import { describe, expect, test } from "vitest";
 
 import type { WordDetail } from "@/lib/words-detail";
-import type { AdjacentWordsResult } from "@/lib/words-list";
 
 import {
-  navCacheKey,
-  resolveCurrentNav,
   resolveDetailView,
-  resolveNavView,
+  resolveDialogNav,
+  resolveOccurrenceNumber,
   resolvePrefetchTargets,
   type CachedDetail,
-  type NavResponse,
 } from "./word-detail-dialog-state";
 
 /** 表示 state 導出はどの単語かの同一性しか見ないため、id・見出し語だけの最小 fixture で足りる。 */
@@ -18,25 +15,12 @@ function word(id: string): WordDetail {
   return { id, headword: `w-${id}` } as unknown as WordDetail;
 }
 
-const OCC = "occ_1";
-
-function nav(input: {
-  occurrenceNumber?: number | null;
-  prev?: string | null;
-  next?: string | null;
-}): NonNullable<AdjacentWordsResult> {
-  const ref = (id: string) => ({ id, headword: `w-${id}`, occurrenceNumber: null });
-  return {
-    current: {
-      occurrenceNumber: input.occurrenceNumber === undefined ? 10 : input.occurrenceNumber,
-    },
-    prev: input.prev != null ? ref(input.prev) : null,
-    next: input.next != null ? ref(input.next) : null,
-  };
-}
-
-function navResponse(wordId: string, value: AdjacentWordsResult): NavResponse {
-  return { key: navCacheKey(OCC, wordId), nav: value };
+/** #N 導出用: 掲載箇所一覧（occurrenceId × occurrenceNumber）だけを持つ最小 fixture。 */
+function wordWithOccurrences(
+  id: string,
+  occurrences: { occurrenceId: string; occurrenceNumber: number | null }[],
+): WordDetail {
+  return { id, headword: `w-${id}`, wordOccurrences: occurrences } as unknown as WordDetail;
 }
 
 function detailCache(entries: Record<string, CachedDetail>): Map<string, CachedDetail> {
@@ -119,251 +103,159 @@ describe("resolveDetailView", () => {
   });
 });
 
-describe("resolveCurrentNav", () => {
-  test("応答・キャッシュのいずれにも無ければ undefined（応答待ち）", () => {
-    expect(
-      resolveCurrentNav({
-        wordId: "b",
-        occurrenceId: OCC,
-        navResponse: navResponse("a", nav({})),
-        navCache: new Map(),
-      }),
-    ).toBeUndefined();
+// 導出は navOrder と wordId だけから決まる（引数に詳細応答を取らない）＝
+// 詳細取得の成否と独立で、削除済み単語のエラービュー表示中もナビが操作できる。
+describe("resolveDialogNav", () => {
+  test("navOrder が null（出題中・関連語スタック先）ならナビを描画しない", () => {
+    expect(resolveDialogNav(null, "a")).toEqual({ visible: false });
   });
 
-  test("キャッシュの null（ナビ対象外）は未取得と区別する", () => {
-    expect(
-      resolveCurrentNav({
-        wordId: "b",
-        occurrenceId: OCC,
-        navResponse: null,
-        navCache: new Map([[navCacheKey(OCC, "b"), null]]),
-      }),
-    ).toBeNull();
+  test("wordId が null（閉）ならナビを描画しない", () => {
+    expect(resolveDialogNav(["a", "b"], null)).toEqual({ visible: false });
   });
 
-  // 見出し語の右に出す掲載番号（#N）は、要求中の単語ではなく「今表示している単語」を鍵に引く。
-  // 応答待ちで前の単語を残している間に番号だけ次へ進まないことをここで固定する。
-  test("表示中の単語を鍵に引けば、その単語の掲載番号が取れる", () => {
-    expect(
-      resolveCurrentNav({
-        wordId: "a",
-        occurrenceId: OCC,
-        navResponse: navResponse("a", nav({ occurrenceNumber: 12 })),
-        navCache: new Map([[navCacheKey(OCC, "b"), nav({ occurrenceNumber: 13 })]]),
-      })?.current.occurrenceNumber,
-    ).toBe(12);
-  });
-});
-
-describe("resolveNavView", () => {
-  test("occurrenceId が null ならナビを描画しない", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: null,
-        canNavigate: true,
-        navResponse: null,
-        lastNav: null,
-        navCache: new Map(),
-      }),
-    ).toEqual({ visible: false });
+  test("wordId が navOrder に無ければナビを描画しない", () => {
+    expect(resolveDialogNav(["a", "b"], "x")).toEqual({ visible: false });
   });
 
-  test("onNavigate が無ければナビを描画しない", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: OCC,
-        canNavigate: false,
-        navResponse: navResponse("a", nav({ prev: "z", next: "b" })),
-        lastNav: null,
-        navCache: new Map(),
-      }),
-    ).toEqual({ visible: false });
-  });
-
-  test("初回オープンは隣接応答の到着まで描画しない", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: null,
-        lastNav: null,
-        navCache: new Map(),
-      }),
-    ).toEqual({ visible: false });
-  });
-
-  test("隣接応答が届いたら前後の遷移先つきで描画する", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: navResponse("a", nav({ occurrenceNumber: 12, prev: "z", next: "b" })),
-        lastNav: null,
-        navCache: new Map(),
-      }),
-    ).toEqual({
-      visible: true,
-      prevWordId: "z",
-      nextWordId: "b",
-      prevDisabled: false,
-      nextDisabled: false,
-    });
-  });
-
-  test("端（prev なし）はそのボタンだけ disabled", () => {
-    const view = resolveNavView({
-      wordId: "a",
-      occurrenceId: OCC,
-      canNavigate: true,
-      navResponse: navResponse("a", nav({ prev: null, next: "b" })),
-      lastNav: null,
-      navCache: new Map(),
-    });
-    expect(view).toMatchObject({ visible: true, prevWordId: null, prevDisabled: true });
-    expect(view).toMatchObject({ nextWordId: "b", nextDisabled: false });
-  });
-
-  test("ナビ対象外（応答が null）はナビを描画しない", () => {
-    expect(
-      resolveNavView({
-        wordId: "a",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: navResponse("a", null),
-        lastNav: nav({ prev: "z", next: "b" }),
-        navCache: new Map(),
-      }),
-    ).toEqual({ visible: false });
-  });
-
-  test("前後移動中はナビ行を残したままボタンを disabled にする", () => {
-    expect(
-      resolveNavView({
-        wordId: "b",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: navResponse("a", nav({ occurrenceNumber: 12, prev: "z", next: "b" })),
-        lastNav: nav({ occurrenceNumber: 12, prev: "z", next: "b" }),
-        navCache: new Map(),
-      }),
-    ).toEqual({
-      visible: true,
-      prevWordId: null,
-      nextWordId: null,
-      prevDisabled: true,
-      nextDisabled: true,
-    });
-  });
-
-  test("隣接がキャッシュヒットなら移動直後から操作できる", () => {
-    expect(
-      resolveNavView({
-        wordId: "b",
-        occurrenceId: OCC,
-        canNavigate: true,
-        navResponse: navResponse("a", nav({ occurrenceNumber: 12, prev: "z", next: "b" })),
-        lastNav: nav({ occurrenceNumber: 12, prev: "z", next: "b" }),
-        navCache: new Map([
-          [navCacheKey(OCC, "b"), nav({ occurrenceNumber: 13, prev: "a", next: "c" })],
-        ]),
-      }),
-    ).toEqual({
+  test("中間位置は前後の要素が遷移先になる", () => {
+    expect(resolveDialogNav(["a", "b", "c"], "b")).toEqual({
       visible: true,
       prevWordId: "a",
       nextWordId: "c",
-      prevDisabled: false,
-      nextDisabled: false,
     });
+  });
+
+  test("先頭は prev が null（disabled）", () => {
+    expect(resolveDialogNav(["a", "b", "c"], "a")).toEqual({
+      visible: true,
+      prevWordId: null,
+      nextWordId: "b",
+    });
+  });
+
+  test("末尾は next が null（disabled）", () => {
+    expect(resolveDialogNav(["a", "b", "c"], "c")).toEqual({
+      visible: true,
+      prevWordId: "b",
+      nextWordId: null,
+    });
+  });
+
+  test("1 件だけの一覧は両端とも null（ナビ行は出る）", () => {
+    expect(resolveDialogNav(["a"], "a")).toEqual({
+      visible: true,
+      prevWordId: null,
+      nextWordId: null,
+    });
+  });
+});
+
+describe("resolveOccurrenceNumber", () => {
+  const detail = wordWithOccurrences("a", [
+    { occurrenceId: "occ_1", occurrenceNumber: 12 },
+    { occurrenceId: "occ_2", occurrenceNumber: null },
+  ]);
+
+  test("occurrenceId に一致する掲載の番号を返す", () => {
+    expect(resolveOccurrenceNumber(detail, "occ_1")).toBe(12);
+  });
+
+  test("occurrenceId が null（ブックマーク全件モード）は null", () => {
+    expect(resolveOccurrenceNumber(detail, null)).toBeNull();
+  });
+
+  test("一致する掲載が無ければ null", () => {
+    expect(resolveOccurrenceNumber(detail, "occ_x")).toBeNull();
+  });
+
+  test("一致する掲載が番号なしなら null", () => {
+    expect(resolveOccurrenceNumber(detail, "occ_2")).toBeNull();
   });
 });
 
 describe("resolvePrefetchTargets", () => {
-  const settledResponse = { wordId: "a", ok: true as const, word: word("a"), bookmarked: false };
+  const settledResponse = { wordId: "b", ok: true as const, word: word("b"), bookmarked: false };
+
+  test("navOrder が null（出題中・関連語スタック先）なら先読みしない", () => {
+    expect(
+      resolvePrefetchTargets({
+        navOrder: null,
+        wordId: "b",
+        response: settledResponse,
+        detailCache: new Map(),
+      }),
+    ).toEqual([]);
+  });
 
   test("詳細が未 settle（応答が前の単語のもの）なら何も先読みしない", () => {
     expect(
       resolvePrefetchTargets({
+        navOrder: ["a", "b", "c"],
+        wordId: "a",
+        response: settledResponse,
+        detailCache: new Map(),
+      }),
+    ).toEqual([]);
+  });
+
+  test("詳細がエラー（削除済み等）なら先読みしない", () => {
+    expect(
+      resolvePrefetchTargets({
+        navOrder: ["a", "b", "c"],
         wordId: "b",
-        occurrenceId: OCC,
-        response: settledResponse,
-        navResponse: navResponse("b", nav({ prev: "a", next: "c" })),
+        response: { wordId: "b", ok: false, message: "対象の単語が見つかりません。" },
         detailCache: new Map(),
-        navCache: new Map(),
       }),
     ).toEqual([]);
   });
 
-  test("隣接が未 settle なら何も先読みしない", () => {
+  test("settled なら navOrder 上の前後 1 件の詳細を発行する（隣接 kind は無い）", () => {
     expect(
       resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
+        navOrder: ["a", "b", "c"],
+        wordId: "b",
         response: settledResponse,
-        navResponse: null,
         detailCache: new Map(),
-        navCache: new Map(),
-      }),
-    ).toEqual([]);
-  });
-
-  test("詳細がエラーなら先読みしない", () => {
-    expect(
-      resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
-        response: { wordId: "a", ok: false, message: "取得に失敗しました。" },
-        navResponse: navResponse("a", nav({ prev: "z", next: "b" })),
-        detailCache: new Map(),
-        navCache: new Map(),
-      }),
-    ).toEqual([]);
-  });
-
-  test("settled なら前後 1 件の詳細・隣接を発行する", () => {
-    expect(
-      resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
-        response: settledResponse,
-        navResponse: navResponse("a", nav({ prev: "z", next: "b" })),
-        detailCache: new Map(),
-        navCache: new Map(),
       }),
     ).toEqual([
-      { kind: "detail", wordId: "z" },
-      { kind: "adjacent", occurrenceId: OCC, wordId: "z" },
-      { kind: "detail", wordId: "b" },
-      { kind: "adjacent", occurrenceId: OCC, wordId: "b" },
+      { kind: "detail", wordId: "a" },
+      { kind: "detail", wordId: "c" },
     ]);
   });
 
-  test("キャッシュ済みの分は発行しない（隣接だけ未取得なら隣接のみ）", () => {
+  test("端（先頭）では存在する側だけ発行する", () => {
     expect(
       resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
+        navOrder: ["b", "c"],
+        wordId: "b",
         response: settledResponse,
-        navResponse: navResponse("a", nav({ prev: null, next: "b" })),
-        detailCache: detailCache({ b: { word: word("b"), bookmarked: false } }),
-        navCache: new Map(),
+        detailCache: new Map(),
       }),
-    ).toEqual([{ kind: "adjacent", occurrenceId: OCC, wordId: "b" }]);
+    ).toEqual([{ kind: "detail", wordId: "c" }]);
+  });
+
+  test("キャッシュ済みの分は発行しない", () => {
+    expect(
+      resolvePrefetchTargets({
+        navOrder: ["a", "b", "c"],
+        wordId: "b",
+        response: settledResponse,
+        detailCache: detailCache({ a: { word: word("a"), bookmarked: false } }),
+      }),
+    ).toEqual([{ kind: "detail", wordId: "c" }]);
   });
 
   test("前後とも取得済みなら空", () => {
     expect(
       resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
+        navOrder: ["a", "b", "c"],
+        wordId: "b",
         response: settledResponse,
-        navResponse: navResponse("a", nav({ prev: null, next: "b" })),
-        detailCache: detailCache({ b: { word: word("b"), bookmarked: false } }),
-        navCache: new Map([[navCacheKey(OCC, "b"), nav({ prev: "a", next: "c" })]]),
+        detailCache: detailCache({
+          a: { word: word("a"), bookmarked: false },
+          c: { word: word("c"), bookmarked: false },
+        }),
       }),
     ).toEqual([]);
   });
@@ -371,41 +263,21 @@ describe("resolvePrefetchTargets", () => {
   test("詳細がキャッシュ由来（応答は前の単語のまま）でも settled として先読みする", () => {
     expect(
       resolvePrefetchTargets({
+        navOrder: ["a", "b", "c"],
+        wordId: "c",
+        response: settledResponse,
+        detailCache: detailCache({ c: { word: word("c"), bookmarked: false } }),
+      }),
+    ).toEqual([{ kind: "detail", wordId: "b" }]);
+  });
+
+  test("wordId が navOrder に無ければ先読みしない", () => {
+    expect(
+      resolvePrefetchTargets({
+        navOrder: ["a", "c"],
         wordId: "b",
-        occurrenceId: OCC,
         response: settledResponse,
-        navResponse: null,
-        detailCache: detailCache({ b: { word: word("b"), bookmarked: false } }),
-        navCache: new Map([[navCacheKey(OCC, "b"), nav({ prev: null, next: "c" })]]),
-      }),
-    ).toEqual([
-      { kind: "detail", wordId: "c" },
-      { kind: "adjacent", occurrenceId: OCC, wordId: "c" },
-    ]);
-  });
-
-  test("occurrenceId が null（関連語をたどった先）なら先読みしない", () => {
-    expect(
-      resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: null,
-        response: settledResponse,
-        navResponse: navResponse("a", nav({ prev: "z", next: "b" })),
         detailCache: new Map(),
-        navCache: new Map(),
-      }),
-    ).toEqual([]);
-  });
-
-  test("ナビ対象外（隣接が null）なら先読みしない", () => {
-    expect(
-      resolvePrefetchTargets({
-        wordId: "a",
-        occurrenceId: OCC,
-        response: settledResponse,
-        navResponse: navResponse("a", null),
-        detailCache: new Map(),
-        navCache: new Map(),
       }),
     ).toEqual([]);
   });

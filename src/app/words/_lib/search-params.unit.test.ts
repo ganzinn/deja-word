@@ -5,9 +5,9 @@ import {
   buildWordEditHref,
   buildWordsHref,
   parseMatch,
-  parseOccurrenceContext,
   parseOrder,
   parseRangeNumber,
+  parseWordDetailNavContext,
 } from "./search-params";
 
 describe("parseMatch", () => {
@@ -72,34 +72,82 @@ describe("buildWordsHref", () => {
   });
 });
 
-describe("parseOccurrenceContext", () => {
-  test("returns null without occ", () => {
-    expect(parseOccurrenceContext({})).toBeNull();
-    expect(parseOccurrenceContext({ q: "ap", order: "desc" })).toBeNull();
+describe("parseWordDetailNavContext", () => {
+  test("returns null without occ / view=word", () => {
+    expect(parseWordDetailNavContext({})).toBeNull();
+    expect(parseWordDetailNavContext({ q: "ap", order: "desc" })).toBeNull();
+    // view=word 以外の view 値はコンテキストにならない
+    expect(parseWordDetailNavContext({ view: "occurrence" })).toBeNull();
+    expect(parseWordDetailNavContext({ view: "bogus", sort: "headword" })).toBeNull();
   });
 
-  test("normalizes invalid values and trims q", () => {
+  test("判別順: occ があれば view=word が同時に付いていても掲載箇所コンテキスト", () => {
+    expect(parseWordDetailNavContext({ occ: "occ1", view: "word" })?.kind).toBe("occurrence");
+    expect(parseWordDetailNavContext({ occ: "occ1" })?.kind).toBe("occurrence");
+    expect(parseWordDetailNavContext({ view: "word" })?.kind).toBe("word");
+  });
+
+  test("occurrence: normalizes invalid values and trims q", () => {
     expect(
-      parseOccurrenceContext({ occ: "occ1", q: "  ap  ", match: "bogus", order: "bogus" }),
+      parseWordDetailNavContext({ occ: "occ1", q: "  ap  ", match: "bogus", order: "bogus" }),
     ).toEqual({
+      kind: "occurrence",
       occ: "occ1",
       q: "ap",
       match: "prefix",
       from: undefined,
       to: undefined,
       order: "asc",
+      bookmarked: false,
     });
   });
 
-  test("keeps range values raw", () => {
-    expect(parseOccurrenceContext({ occ: "occ1", from: "2", to: "8", order: "desc" })).toEqual({
+  test("occurrence: keeps range values raw", () => {
+    expect(parseWordDetailNavContext({ occ: "occ1", from: "2", to: "8", order: "desc" })).toEqual({
+      kind: "occurrence",
       occ: "occ1",
       q: "",
       match: "prefix",
       from: "2",
       to: "8",
       order: "desc",
+      bookmarked: false,
     });
+  });
+
+  test("occurrence: bookmarked は '1' のみ true、その他・未指定は false", () => {
+    expect(parseWordDetailNavContext({ occ: "occ1", bookmarked: "1" })?.bookmarked).toBe(true);
+    expect(parseWordDetailNavContext({ occ: "occ1", bookmarked: "0" })?.bookmarked).toBe(false);
+    expect(parseWordDetailNavContext({ occ: "occ1", bookmarked: "true" })?.bookmarked).toBe(false);
+    expect(parseWordDetailNavContext({ occ: "occ1" })?.bookmarked).toBe(false);
+  });
+
+  test("word: normalizes invalid values and trims q", () => {
+    expect(
+      parseWordDetailNavContext({ view: "word", q: "  re  ", match: "bogus", sort: "bogus" }),
+    ).toEqual({
+      kind: "word",
+      sort: "recent",
+      q: "re",
+      match: "prefix",
+      bookmarked: false,
+    });
+  });
+
+  test("word: sort は headword のみ採用、それ以外は recent", () => {
+    expect(parseWordDetailNavContext({ view: "word", sort: "headword" })).toMatchObject({
+      sort: "headword",
+    });
+    expect(parseWordDetailNavContext({ view: "word", sort: "recent" })).toMatchObject({
+      sort: "recent",
+    });
+    expect(parseWordDetailNavContext({ view: "word" })).toMatchObject({ sort: "recent" });
+  });
+
+  test("word: bookmarked は '1' のみ true、その他・未指定は false", () => {
+    expect(parseWordDetailNavContext({ view: "word", bookmarked: "1" })?.bookmarked).toBe(true);
+    expect(parseWordDetailNavContext({ view: "word", bookmarked: "0" })?.bookmarked).toBe(false);
+    expect(parseWordDetailNavContext({ view: "word" })?.bookmarked).toBe(false);
   });
 });
 
@@ -107,40 +155,123 @@ describe("buildWordEditHref", () => {
   test("carries the filter context into the edit URL", () => {
     expect(
       buildWordEditHref("w1", {
+        kind: "occurrence",
         occ: "occ1",
         q: "ap",
         match: "suffix",
         from: "2",
         to: "8",
         order: "desc",
+        bookmarked: false,
       }),
     ).toBe("/words/w1/edit?occ=occ1&q=ap&match=suffix&from=2&to=8&order=desc");
   });
 
   test("omits defaults", () => {
-    expect(buildWordEditHref("w1", { occ: "occ1", q: "", match: "prefix", order: "asc" })).toBe(
-      "/words/w1/edit?occ=occ1",
-    );
+    expect(
+      buildWordEditHref("w1", {
+        kind: "occurrence",
+        occ: "occ1",
+        q: "",
+        match: "prefix",
+        order: "asc",
+        bookmarked: false,
+      }),
+    ).toBe("/words/w1/edit?occ=occ1");
+  });
+
+  test("includes bookmarked=1 when true", () => {
+    expect(
+      buildWordEditHref("w1", {
+        kind: "occurrence",
+        occ: "occ1",
+        match: "prefix",
+        order: "asc",
+        bookmarked: true,
+      }),
+    ).toBe("/words/w1/edit?occ=occ1&bookmarked=1");
+  });
+
+  test("word: carries view=word and the filter context", () => {
+    expect(
+      buildWordEditHref("w1", {
+        kind: "word",
+        sort: "headword",
+        q: "re",
+        match: "contains",
+        bookmarked: true,
+      }),
+    ).toBe("/words/w1/edit?view=word&q=re&match=contains&sort=headword&bookmarked=1");
+  });
+
+  test("word: omits defaults (view=word only)", () => {
+    expect(
+      buildWordEditHref("w1", { kind: "word", sort: "recent", match: "prefix", bookmarked: false }),
+    ).toBe("/words/w1/edit?view=word");
   });
 });
 
 describe("buildWordDetailHref", () => {
-  test("always carries occ, omits defaults", () => {
-    expect(buildWordDetailHref("w1", { occ: "occ1", match: "prefix", order: "asc" })).toBe(
-      "/words/w1?occ=occ1",
-    );
-  });
-
-  test("includes non-default filter values", () => {
+  test("occurrence: always carries occ, omits defaults", () => {
     expect(
       buildWordDetailHref("w1", {
+        kind: "occurrence",
+        occ: "occ1",
+        match: "prefix",
+        order: "asc",
+        bookmarked: false,
+      }),
+    ).toBe("/words/w1?occ=occ1");
+  });
+
+  test("occurrence: includes non-default filter values", () => {
+    expect(
+      buildWordDetailHref("w1", {
+        kind: "occurrence",
         occ: "occ1",
         q: "ap",
         match: "suffix",
         from: "2",
         to: "8",
         order: "desc",
+        bookmarked: false,
       }),
     ).toBe("/words/w1?occ=occ1&q=ap&match=suffix&from=2&to=8&order=desc");
+  });
+
+  test("occurrence: includes bookmarked=1 when true", () => {
+    expect(
+      buildWordDetailHref("w1", {
+        kind: "occurrence",
+        occ: "occ1",
+        match: "prefix",
+        order: "asc",
+        bookmarked: true,
+      }),
+    ).toBe("/words/w1?occ=occ1&bookmarked=1");
+  });
+
+  test("word: always carries view=word, omits defaults", () => {
+    expect(
+      buildWordDetailHref("w1", {
+        kind: "word",
+        sort: "recent",
+        q: "",
+        match: "prefix",
+        bookmarked: false,
+      }),
+    ).toBe("/words/w1?view=word");
+  });
+
+  test("word: includes non-default filter values", () => {
+    expect(
+      buildWordDetailHref("w1", {
+        kind: "word",
+        sort: "headword",
+        q: "re",
+        match: "suffix",
+        bookmarked: true,
+      }),
+    ).toBe("/words/w1?view=word&q=re&match=suffix&sort=headword&bookmarked=1");
   });
 });

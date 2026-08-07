@@ -434,7 +434,11 @@ export function QuizFlow({
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
   const dialogWordId = dialogStack.at(-1) ?? null;
-  // 結果画面ダイアログの前後ナビ基準となる掲載箇所（TEST は開始入力、DRILL 系・再開経路は元テスト）
+  // 結果画面ダイアログの前後ナビ順序（開いた時点の結果一覧の表示行スナップショット。
+  // docs/adr/0088-quiz-dialog-list-order-nav.md）。null = 順序なし（閉・出題中の詳細ボタン経由）。
+  // dialogStack が空になるすべての経路（閉じるボタン・popstate の pop・スタート画面へ戻る）で null に戻す。
+  const [dialogNavOrder, setDialogNavOrder] = useState<string[] | null>(null);
+  // 結果画面ダイアログの #N 導出の基準となる掲載箇所（TEST は開始入力、DRILL 系・再開経路は元テスト）
   const dialogOccurrenceId = drill?.sourceTest.occurrenceId ?? startInput?.occurrenceId ?? null;
   // 出題中、現在の問題の解答が画面に出たか（英→日の上部見出し語に「詳細」ボタンを出すゲート）。
   const [answerShown, setAnswerShown] = useState(false);
@@ -635,6 +639,7 @@ export function QuizFlow({
     setDrillCompleted(false);
     setStartInput(null);
     setDialogStack([]);
+    setDialogNavOrder(null);
     resetRunState();
     setPhase({ name: "start" });
     // 進行中の定着モード一覧（server 取得）を最新化する（完了・残数進行・新規生成を反映）
@@ -900,8 +905,10 @@ export function QuizFlow({
       // ユーザー back: ダミーを 1 つ消費した
       armedRef.current = Math.max(0, armedRef.current - 1);
       // 最上段: ダイアログが開いていれば確認なしで 1 語 pop する（reconcile が depth 減で整合）。
-      // 関連語をたどっていれば 1 語ずつ戻り、最後の 1 語を pop すると空配列＝閉になる。
+      // 関連語をたどっていれば 1 語ずつ戻り、最後の 1 語を pop すると空配列＝閉になる
+      // （閉じたら前後ナビの順序スナップショットも破棄。開き直しで再スナップショットされる）。
       if (dialogStackRef.current.length > 0) {
+        if (dialogStackRef.current.length === 1) setDialogNavOrder(null);
         setDialogStack((s) => s.slice(0, -1));
         return;
       }
@@ -1058,10 +1065,14 @@ export function QuizFlow({
           onShowDetail={() => setDialogStack([question.wordId])}
         />
         <AnswerFeedbackOverlay feedback={feedback} />
-        {/* 出題中はマップ未取得のため onBookmarkChange は実質 no-op（結果フェーズ入りの一括取得が反映する） */}
+        {/* 出題中はマップ未取得のため onBookmarkChange は実質 no-op（結果フェーズ入りの一括取得が反映する）。
+            出題中の詳細ボタン経由は前後ナビの順序なし（dialogNavOrder はセットされず null のまま） */}
         <WordDetailDialog
           wordId={dialogWordId}
-          onClose={() => setDialogStack([])}
+          onClose={() => {
+            setDialogStack([]);
+            setDialogNavOrder(null);
+          }}
           onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
           onBookmarkChange={handleBookmarkChange}
         />
@@ -1092,16 +1103,25 @@ export function QuizFlow({
           onDrillIncludeCorrectChange={setDrillIncludeCorrect}
           drillRemaining={drillRemaining}
           onDrillRemainingChange={setDrillRemaining}
-          onOpenDialog={(id) => setDialogStack([id])}
+          onOpenDialog={(id, navOrder) => {
+            setDialogNavOrder(navOrder);
+            setDialogStack([id]);
+          }}
           bookmarkStates={bookmarkStates}
           onBookmarkChange={handleBookmarkChange}
         />
         {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
-        {/* 前後ナビはルート単語（スタック深さ 1）のみ。関連語をたどった先は掲載順の文脈外なので出さない */}
+        {/* 前後ナビはルート単語（スタック深さ 1）のみ。関連語をたどった先は結果一覧の文脈外なので出さない。
+            occurrenceId は #N 導出専用（ナビ可否には使わない）で、渡し方は従来どおり深さ 1 限定
+            （関連語スタック先で #N を出さない既存挙動 = ADR-0087 を維持） */}
         <WordDetailDialog
           wordId={dialogWordId}
-          onClose={() => setDialogStack([])}
+          onClose={() => {
+            setDialogStack([]);
+            setDialogNavOrder(null);
+          }}
           onSelectRelated={(id) => setDialogStack((s) => [...s, id])}
+          navOrder={dialogStack.length === 1 ? dialogNavOrder : null}
           occurrenceId={dialogStack.length === 1 ? dialogOccurrenceId : null}
           onNavigate={(id) => setDialogStack([id])}
           onBookmarkChange={handleBookmarkChange}

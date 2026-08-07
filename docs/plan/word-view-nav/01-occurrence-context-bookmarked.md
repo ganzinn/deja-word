@@ -1,6 +1,6 @@
 # 01. occurrence-context-bookmarked
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-07）**　PR: [#213](https://github.com/ganzinn/deja-word/pull/213)
 
 ## 目的
 
@@ -59,4 +59,5 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし（`buildWordsByOccurrenceWhere` は引数型が `bookmarkedOnly` を既に持っていたため、params の透過だけで済んだ）
+- 手動確認（e2e-verify）は実装時に実施済み・全 14 アサーション PASS（絞り込み一覧・詳細リンク・前後ナビ・戻りリンクの `bookmarked=1` 維持、対照確認含む）

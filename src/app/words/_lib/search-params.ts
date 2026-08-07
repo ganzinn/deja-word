@@ -55,66 +55,105 @@ export function buildWordsHref(
 
 /** 掲載箇所ビューから単語詳細へ渡す絞り込みコンテキスト。 */
 export type WordDetailOccurrenceContext = {
+  kind: "occurrence";
   occ: string;
   q?: string;
   match: WordMatchMode;
   from?: string;
   to?: string;
   order: OccurrenceNumberOrder;
+  bookmarked: boolean;
 };
 
-/** 単語詳細・単語編集の searchParams（掲載箇所コンテキストとして解釈しうるもの）。 */
-export type RawOccurrenceContextParams = {
+/** 単語ビューから単語詳細へ渡す絞り込みコンテキスト。 */
+export type WordDetailWordViewContext = {
+  kind: "word";
+  sort: WordListSort;
+  q?: string;
+  match: WordMatchMode;
+  bookmarked: boolean;
+};
+
+/** 単語詳細の前後ナビが従うコンテキスト。kind で由来ビューを判別する。 */
+export type WordDetailNavContext = WordDetailOccurrenceContext | WordDetailWordViewContext;
+
+/** 単語詳細・単語編集の searchParams（ナビコンテキストとして解釈しうるもの）。 */
+export type RawWordDetailNavParams = {
   occ?: string;
+  view?: string;
   q?: string;
   match?: string;
+  sort?: string;
   from?: string;
   to?: string;
   order?: string;
+  bookmarked?: string;
 };
 
 /**
- * searchParams から掲載箇所コンテキストを取り出す。occ が無ければ null（コンテキスト無し）。
+ * searchParams から前後ナビのコンテキストを取り出す。判別順は
+ * (1) occ があれば掲載箇所コンテキスト（view=word が同時に付いていても occ 優先）、
+ * (2) view=word があれば単語ビューコンテキスト、(3) どちらも無ければ null（ナビ非表示）。
  * 不正値は各パーサがデフォルトへ正規化するため、URL 改ざん時も安全な値になる。
  */
-export function parseOccurrenceContext(
-  sp: RawOccurrenceContextParams,
-): WordDetailOccurrenceContext | null {
-  if (!sp.occ) return null;
-  return {
-    occ: sp.occ,
-    q: (sp.q ?? "").trim(),
-    match: parseMatch(sp.match),
-    from: sp.from,
-    to: sp.to,
-    order: parseOrder(sp.order),
-  };
+export function parseWordDetailNavContext(sp: RawWordDetailNavParams): WordDetailNavContext | null {
+  if (sp.occ) {
+    return {
+      kind: "occurrence",
+      occ: sp.occ,
+      q: (sp.q ?? "").trim(),
+      match: parseMatch(sp.match),
+      from: sp.from,
+      to: sp.to,
+      order: parseOrder(sp.order),
+      bookmarked: sp.bookmarked === "1",
+    };
+  }
+  if (sp.view === "word") {
+    return {
+      kind: "word",
+      sort: sp.sort === "headword" ? "headword" : "recent",
+      q: (sp.q ?? "").trim(),
+      match: parseMatch(sp.match),
+      bookmarked: sp.bookmarked === "1",
+    };
+  }
+  return null;
 }
 
 /**
- * 掲載箇所コンテキストをクエリ文字列へ直す。
- * buildWordsHref と同じ方針でデフォルト値（match=prefix / order=asc / 空値）は含めない。
+ * ナビコンテキストをクエリ文字列へ直す。
+ * buildWordsHref と同じ方針でデフォルト値（match=prefix / sort=recent / order=asc / 空値）は
+ * 含めない。判別子（occ / view=word）だけは常時付与する。
  */
-function buildOccurrenceContextQuery(ctx: WordDetailOccurrenceContext): string {
+function buildNavContextQuery(ctx: WordDetailNavContext): string {
   const params = new URLSearchParams();
-  params.set("occ", ctx.occ);
-  if (ctx.q && ctx.q.length > 0) params.set("q", ctx.q);
-  if (ctx.match !== "prefix") params.set("match", ctx.match);
-  if (ctx.from) params.set("from", ctx.from);
-  if (ctx.to) params.set("to", ctx.to);
-  if (ctx.order !== "asc") params.set("order", ctx.order);
+  if (ctx.kind === "occurrence") {
+    params.set("occ", ctx.occ);
+    if (ctx.q && ctx.q.length > 0) params.set("q", ctx.q);
+    if (ctx.match !== "prefix") params.set("match", ctx.match);
+    if (ctx.from) params.set("from", ctx.from);
+    if (ctx.to) params.set("to", ctx.to);
+    if (ctx.order !== "asc") params.set("order", ctx.order);
+  } else {
+    params.set("view", "word");
+    if (ctx.q && ctx.q.length > 0) params.set("q", ctx.q);
+    if (ctx.match !== "prefix") params.set("match", ctx.match);
+    if (ctx.sort !== "recent") params.set("sort", ctx.sort);
+  }
+  if (ctx.bookmarked) params.set("bookmarked", "1");
   return params.toString();
 }
 
-/** 掲載箇所コンテキスト付きの単語詳細 URL を構築する。 */
-export function buildWordDetailHref(wordId: string, ctx: WordDetailOccurrenceContext): string {
-  return `/words/${wordId}?${buildOccurrenceContextQuery(ctx)}`;
+/** ナビコンテキスト付きの単語詳細 URL を構築する。 */
+export function buildWordDetailHref(wordId: string, ctx: WordDetailNavContext): string {
+  return `/words/${wordId}?${buildNavContextQuery(ctx)}`;
 }
 
 /**
- * 掲載箇所コンテキスト付きの単語編集 URL を構築する。
+ * ナビコンテキスト付きの単語編集 URL を構築する。
  * 編集後に詳細へ戻ったとき前後ナビを維持するため、編集画面まで絞り込みを持ち回る。
  */
-export function buildWordEditHref(wordId: string, ctx: WordDetailOccurrenceContext): string {
-  return `/words/${wordId}/edit?${buildOccurrenceContextQuery(ctx)}`;
+export function buildWordEditHref(wordId: string, ctx: WordDetailNavContext): string {
+  return `/words/${wordId}/edit?${buildNavContextQuery(ctx)}`;
 }

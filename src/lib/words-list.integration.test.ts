@@ -7,7 +7,7 @@ import { createWordForUser } from "@/lib/words-create";
 import { getWordDetailForUser } from "@/lib/words-detail";
 import {
   findAdjacentWordsByOccurrence,
-  findAdjacentWordsByOccurrenceNumber,
+  findAdjacentWordsInWordView,
   listWordsByOccurrence,
   listWordsForUser,
 } from "@/lib/words-list";
@@ -799,6 +799,38 @@ describe("findAdjacentWordsByOccurrence", () => {
     expect(atSysThree?.next?.headword).toBe("minetwo");
   });
 
+  test("bookmarkedOnly: prev/next follow only bookmarked words", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, delta, occurrenceId } = await seedWords(user.id);
+    await bookmarkWord(user.id, alpha.id);
+    await bookmarkWord(user.id, bravo.id);
+    // charlie(#10) はブックマーク外 → 飛ばして delta(null)
+    await bookmarkWord(user.id, delta.id);
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(nav?.prev?.headword).toBe("alpha");
+    expect(nav?.next?.headword).toBe("delta");
+  });
+
+  test("bookmarkedOnly: current not bookmarked -> null", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, occurrenceId } = await seedWords(user.id);
+    await bookmarkWord(user.id, alpha.id);
+
+    const nav = await findAdjacentWordsByOccurrence(user.id, {
+      occurrenceId,
+      wordId: bravo.id,
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(nav).toBeNull();
+  });
+
   test("word not in the occurrence -> null", async () => {
     const user = await createTestUser();
     const { occurrenceId } = await seedWords(user.id);
@@ -813,69 +845,207 @@ describe("findAdjacentWordsByOccurrence", () => {
   });
 });
 
-describe("findAdjacentWordsByOccurrenceNumber", () => {
-  const LOC = "Book";
+describe("findAdjacentWordsInWordView", () => {
+  const base = { match: "prefix" as const };
 
-  test("ascending by number with edges", async () => {
+  /** createdAt を明示的にセットする（連続 create の同時刻衝突を避け、recent 順を決定的にする）。 */
+  async function setCreatedAt(wordId: string, iso: string): Promise<void> {
+    await prisma.word.update({ where: { id: wordId }, data: { createdAt: new Date(iso) } });
+  }
+
+  /**
+   * alpha(古) / bravo / charlie(新) を登録して返す。
+   * recent 順: charlie, bravo, alpha ／ headword 順: alpha, bravo, charlie。
+   */
+  async function seedWords(userId: string) {
+    const alpha = await createWordForUser(userId, form("alpha"));
+    const bravo = await createWordForUser(userId, form("bravo"));
+    const charlie = await createWordForUser(userId, form("charlie"));
+    await setCreatedAt(alpha.id, "2026-01-01T00:00:00Z");
+    await setCreatedAt(bravo.id, "2026-01-02T00:00:00Z");
+    await setCreatedAt(charlie.id, "2026-01-03T00:00:00Z");
+    return { alpha, bravo, charlie };
+  }
+
+  test("sort=recent: middle word prev/next follow createdAt desc; edges are null", async () => {
     const user = await createTestUser();
-    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
-    const five = await createWordForUser(user.id, formWithOccurrence("five", LOC, 5));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    const { alpha, bravo, charlie } = await seedWords(user.id);
 
-    const mid = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
-    expect(mid?.current.occurrenceNumber).toBe(3);
-    expect(mid?.prev?.headword).toBe("one");
-    expect(mid?.next?.headword).toBe("five");
+    const mid = await findAdjacentWordsInWordView(user.id, {
+      wordId: bravo.id,
+      sort: "recent",
+      ...base,
+    });
+    expect(mid?.prev?.id).toBe(charlie.id);
+    expect(mid?.next?.id).toBe(alpha.id);
 
-    const first = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
+    const first = await findAdjacentWordsInWordView(user.id, {
+      wordId: charlie.id,
+      sort: "recent",
+      ...base,
+    });
     expect(first?.prev).toBeNull();
+    expect(first?.next?.id).toBe(bravo.id);
 
-    const last = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, five.id);
+    const last = await findAdjacentWordsInWordView(user.id, {
+      wordId: alpha.id,
+      sort: "recent",
+      ...base,
+    });
+    expect(last?.prev?.id).toBe(bravo.id);
     expect(last?.next).toBeNull();
   });
 
-  test("current word without number -> null (not navigable)", async () => {
+  test("sort=headword: middle word prev/next follow headword asc; edges are null", async () => {
     const user = await createTestUser();
-    await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    const noNumber = await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    const { alpha, bravo, charlie } = await seedWords(user.id);
 
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, noNumber.id);
-    expect(nav).toBeNull();
+    const mid = await findAdjacentWordsInWordView(user.id, {
+      wordId: bravo.id,
+      sort: "headword",
+      ...base,
+    });
+    expect(mid?.prev?.id).toBe(alpha.id);
+    expect(mid?.next?.id).toBe(charlie.id);
+
+    const first = await findAdjacentWordsInWordView(user.id, {
+      wordId: alpha.id,
+      sort: "headword",
+      ...base,
+    });
+    expect(first?.prev).toBeNull();
+    expect(first?.next?.id).toBe(bravo.id);
+
+    const last = await findAdjacentWordsInWordView(user.id, {
+      wordId: charlie.id,
+      sort: "headword",
+      ...base,
+    });
+    expect(last?.prev?.id).toBe(bravo.id);
+    expect(last?.next).toBeNull();
   });
 
-  test("null-numbered words never appear as prev/next", async () => {
+  test("sort=recent: createdAt 同値時は id desc で tiebreak（一覧の並びと一致する）", async () => {
     const user = await createTestUser();
-    const one = await createWordForUser(user.id, formWithOccurrence("one", LOC, 1));
-    await createWordForUser(user.id, formWithOccurrence("nonum", LOC, null));
-    const three = await createWordForUser(user.id, formWithOccurrence("three", LOC, 3));
-    const occurrenceId = await occurrenceIdOf(user.id, LOC);
+    const { alpha, bravo, charlie } = await seedWords(user.id);
+    // 3 語とも同時刻にして id だけで順序が決まる状態を明示的に作る
+    const same = "2026-02-01T00:00:00Z";
+    await setCreatedAt(alpha.id, same);
+    await setCreatedAt(bravo.id, same);
+    await setCreatedAt(charlie.id, same);
 
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, one.id);
-    expect(nav?.next?.headword).toBe("three");
-    const back = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, three.id);
-    expect(back?.prev?.headword).toBe("one");
+    // 一覧（createdAt desc, id desc）を並び順のオラクルにする
+    const list = await listWordsForUser(user.id, {
+      sort: "recent",
+      match: "prefix",
+      skip: 0,
+      take: 50,
+    });
+    const orderedIds = list.items.map((i) => i.id);
+    expect(orderedIds).toHaveLength(3);
+    // 同時刻なので一覧は id desc の並びになっているはず
+    expect(orderedIds).toEqual([...orderedIds].sort().reverse());
+
+    const mid = await findAdjacentWordsInWordView(user.id, {
+      wordId: orderedIds[1],
+      sort: "recent",
+      ...base,
+    });
+    expect(mid?.prev?.id).toBe(orderedIds[0]);
+    expect(mid?.next?.id).toBe(orderedIds[2]);
+
+    const first = await findAdjacentWordsInWordView(user.id, {
+      wordId: orderedIds[0],
+      sort: "recent",
+      ...base,
+    });
+    expect(first?.prev).toBeNull();
+    expect(first?.next?.id).toBe(orderedIds[1]);
   });
 
-  test("excludes other users' words within the same system occurrence", async () => {
+  test("q / match filter: skips non-matching words; current not matching -> null", async () => {
+    const user = await createTestUser();
+    const apple = await createWordForUser(user.id, form("apple"));
+    const apricot = await createWordForUser(user.id, form("apricot"));
+    const banana = await createWordForUser(user.id, form("banana"));
+    const avocado = await createWordForUser(user.id, form("avocado"));
+    const withQ = { q: "a", match: "prefix" as const, sort: "headword" as const };
+
+    // headword 順の q=a 集合: apple, apricot, avocado（banana は不一致で飛ばす）
+    const nav = await findAdjacentWordsInWordView(user.id, {
+      wordId: apricot.id,
+      ...withQ,
+    });
+    expect(nav?.prev?.id).toBe(apple.id);
+    expect(nav?.next?.id).toBe(avocado.id);
+
+    const notMatching = await findAdjacentWordsInWordView(user.id, {
+      wordId: banana.id,
+      ...withQ,
+    });
+    expect(notMatching).toBeNull();
+
+    // match=suffix でも同じ where を共有していること（-cot で apricot のみ）
+    const bySuffix = await findAdjacentWordsInWordView(user.id, {
+      wordId: apricot.id,
+      q: "cot",
+      match: "suffix",
+      sort: "headword",
+    });
+    expect(bySuffix?.prev).toBeNull();
+    expect(bySuffix?.next).toBeNull();
+  });
+
+  test("bookmarkedOnly: prev/next follow only bookmarked words; current not bookmarked -> null", async () => {
+    const user = await createTestUser();
+    const { alpha, bravo, charlie } = await seedWords(user.id);
+    const delta = await createWordForUser(user.id, form("delta"));
+    await bookmarkWord(user.id, alpha.id);
+    // bravo はブックマーク外 → headword 順では alpha の次は charlie
+    await bookmarkWord(user.id, charlie.id);
+    await bookmarkWord(user.id, delta.id);
+
+    const nav = await findAdjacentWordsInWordView(user.id, {
+      wordId: charlie.id,
+      sort: "headword",
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(nav?.prev?.id).toBe(alpha.id);
+    expect(nav?.next?.id).toBe(delta.id);
+
+    const notBookmarked = await findAdjacentWordsInWordView(user.id, {
+      wordId: bravo.id,
+      sort: "headword",
+      ...base,
+      bookmarkedOnly: true,
+    });
+    expect(notBookmarked).toBeNull();
+  });
+
+  test("scope: mixes own + system words, excludes other users; foreign current -> null", async () => {
     const user = await createTestUser();
     const stranger = await createTestUser();
-    const sysOne = await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("sysone", LOC, 1));
-    await createWordForUser(SYSTEM_USER_ID, formWithOccurrence("systhree", LOC, 3));
-    const strangerWord = await createWordForUser(
-      stranger.id,
-      formWithOccurrence("strangertwo", LOC, null),
-    );
-    // 番号付きの他ユーザー行は通常パスでは作れないため、スコープ除外の検証用に直接セットする
-    await prisma.wordOccurrence.updateMany({
-      where: { wordId: strangerWord.id },
-      data: { occurrenceNumber: 2 },
-    });
-    const occurrenceId = await occurrenceIdOf(SYSTEM_USER_ID, LOC);
+    const sysWord = await createWordForUser(SYSTEM_USER_ID, form("bravo"));
+    const mine = await createWordForUser(user.id, form("alpha"));
+    const mineToo = await createWordForUser(user.id, form("delta"));
+    // stranger の charlie はスコープ外なので bravo(system) の次は delta
+    const strangerWord = await createWordForUser(stranger.id, form("charlie"));
 
-    const nav = await findAdjacentWordsByOccurrenceNumber(user.id, occurrenceId, sysOne.id);
-    // 他ユーザーの #2 はスコープ外なので #1 の次は #3
-    expect(nav?.next?.headword).toBe("systhree");
+    const nav = await findAdjacentWordsInWordView(user.id, {
+      wordId: sysWord.id,
+      sort: "headword",
+      ...base,
+    });
+    expect(nav?.prev?.id).toBe(mine.id);
+    expect(nav?.next?.id).toBe(mineToo.id);
+
+    // 他ユーザーの単語を current に指定しても集合外なので null
+    const foreign = await findAdjacentWordsInWordView(user.id, {
+      wordId: strangerWord.id,
+      sort: "headword",
+      ...base,
+    });
+    expect(foreign).toBeNull();
   });
 });

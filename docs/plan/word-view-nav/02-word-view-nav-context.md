@@ -1,6 +1,6 @@
 # 02. word-view-nav-context
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-07）**　PR: [#213](https://github.com/ganzinn/deja-word/pull/213)
 
 ## 目的
 
@@ -113,4 +113,8 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- Raw パラメータ型は `RawOccurrenceContextParams` → `RawWordDetailNavParams` に改名した（チケットは「view / sort / bookmarked を追加」とのみ記載だが、union 対応後は旧名が実態と合わないため、パーサ改名（`parseWordDetailNavContext`）と対で実施。利用箇所は詳細・編集ページの 2 箇所のみ）
+- ADR 番号は 0089 を採番（03 実装メモの前提どおり 0088 の次。`docs/adr/README.md` は C 節の 0088 直後に追記）
+- `findAdjacentWordsInWordView` の prev / next は設計どおり `{ id }` のみ（呼び出し側は href 生成に id しか使わない）
+- integration テストの id tiebreak 検証は、同値 createdAt を明示作成し `listWordsForUser` の並びをオラクルに prev / next を照合する形にした（DB collation と JS 文字列比較の差異に依存しないため）
+- 手動確認（e2e-verify）は実装時に実施済み・全 17 アサーション PASS（単語ビュー由来ナビ・`#N` 非表示・戻りリンク維持・掲載箇所由来ナビと直リンクの非退行）

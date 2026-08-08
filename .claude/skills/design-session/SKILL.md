@@ -6,7 +6,7 @@ argument-hint: "[機能名]"
 
 # design-session
 
-機能の仕様詰め・設計を、**トピック単位**で確定を積み上げながら進めるためのスキル。1 セッションで進めるトピック数は固定せず、コンテキスト使用量の見込みで継続を判断する（基準はセッション継続モード手順 7）。設計ドキュメントはハブ（README.md）＆スポーク（トピックファイル）構成で `docs/design/<機能名>/` に置き、セッション間の引き継ぎはハブに集約する。作業は本体の checkout ではなく機能ごとの専用 worktree で行う（「作業場所（専用 worktree）」節）。
+機能の仕様詰め・設計を、**トピック単位**で確定を積み上げながら進めるためのスキル。1 セッションで進めるトピック数は固定せず、コンテキスト使用量の見込みで継続を判断する（基準はセッション継続モード手順 7）。設計ドキュメントはハブ（README.md）＆スポーク（トピックファイル）構成で `docs/design/<機能名>/` に置き、セッション間の引き継ぎはハブに集約する。作業は本体の checkout ではなく機能ごとの起点 worktree で行う（「作業場所（起点 worktree）」節）。
 
 ## 引数
 
@@ -16,16 +16,16 @@ argument-hint: "[機能名]"
 - 機能名より後に続くテキストがある場合は、ユーザーからの事前指示（目的・決定への回答・進め方の許可など）として扱う。事前指示が回答している事項は、改めて質問せずその内容を適用する
 - 空（未指定）の場合: 進行状況の一覧（機能名・確定/全トピック数・次の推奨トピック）に「新しい機能の設計を始める」の選択肢を添えて提示し、選んでもらう。シリーズの把握は本体の checkout に依存せず行う: `git fetch origin main` の上で、進行中は作業ブランチ一覧（`git branch --list 'docs/*-design-plan'`）、マージ済みは `git ls-tree --name-only origin/main docs/design/` で把握し、ハブは `git show <作業ブランチまたは origin/main>:docs/design/<機能名>/README.md` で読む。新規を選んだ場合は機能名を聞いてから新規立ち上げモードへ進む
 
-## 作業場所（専用 worktree）
+## 作業場所（起点 worktree）
 
-設計シリーズの作業は本体の checkout では行わず、機能ごとの専用 worktree で行う（本体側で別の作業が進んでいても衝突しないため）。**機能名が決まったらまず worktree を準備し**、以降のファイルの読み書き・調査委譲・コミットはすべて worktree の絶対パス配下で行う。
+設計シリーズの作業は本体の checkout では行わず、機能ごとの起点 worktree `../deja-word-worktrees/<機能名>` で行う（本体側で別の作業が進んでいても衝突しないため。命名族・ライフサイクルの共通定義は worktree スキル）。設計シリーズの入口である本スキルが起点 worktree の作成起点になる。**機能名が決まったらまず worktree を準備し**、以降のファイルの読み書き・調査委譲・コミットはすべて worktree の絶対パス配下で行う。
 
-- 準備（worktree スキル）: `scripts/wt-new.sh <機能名>-design origin/main --branch docs/<機能名>-design-plan --no-install`。worktree `../deja-word-worktrees/<機能名>-design` が既にあればそのまま使う
-- 撤去: worktree は設計〜計画のシリーズが閉じるまで残す（ticket-split も同じ worktree・作業ブランチで続ける）。設計＋計画 PR のマージ後の撤去は ticket-implement の前提条件チェックが行う
+- 準備（worktree スキル）: `scripts/wt-new.sh <機能名> origin/main --branch docs/<機能名>-design-plan --no-install`。worktree `../deja-word-worktrees/<機能名>` が既にあればそのまま使う
+- 保持: 起点 worktree は設計〜実装完了までフェーズ横断で保持する（ticket-split は同じ worktree・作業ブランチで続け、ticket-implement は同じ worktree でブランチを統合ブランチへ切り替える）。機能完了時の一括撤去は worktree スキルの手順で行う
 
 ## モード判別
 
-専用 worktree を準備した上で、worktree 内に `docs/design/<機能名>/README.md` が**存在しなければ「新規立ち上げ」、存在すれば「セッション継続」**。
+起点 worktree を準備した上で、worktree 内に `docs/design/<機能名>/README.md` が**存在しなければ「新規立ち上げ」、存在すれば「セッション継続」**。
 
 ## 新規立ち上げモード
 

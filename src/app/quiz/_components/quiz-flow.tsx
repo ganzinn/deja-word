@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { getBookmarkStates } from "@/app/words/actions";
+import { addBookmarks, getBookmarkStates } from "@/app/words/actions";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { MeaningText } from "@/components/meaning-text";
@@ -430,6 +431,9 @@ export function QuizFlow({
   // 結果一覧のブックマーク状態マップ（wordId → boolean）。結果フェーズ入りで一括取得し、
   // 行・ダイアログのトグルはコールバックでこのマップを楽観的更新する。null = 未取得（取得前・取得失敗）。
   const [bookmarkStates, setBookmarkStates] = useState<Map<string, boolean> | null>(null);
+  // 一括ブックマークの実行中フラグ。多重押下の抑止に使う。実行本体を常時マウントの QuizFlow 側に
+  // 置くことで、実行中にボタンが消えても（チェック OFF 等）実行・巻き戻し・toast が継続する。
+  const [bulkBookmarking, startBulkBookmarkTransition] = useTransition();
   // 結果一覧・出題中に開いている単語詳細ダイアログの単語 ID スタック（空 = 閉。back ガードの最上段の層）。
   // 末尾が現在表示中の単語。関連語タップで push、ブラウザバックで 1 語ずつ pop し、空になるとダイアログが閉じる。
   const [dialogStack, setDialogStack] = useState<string[]>([]);
@@ -798,6 +802,63 @@ export function QuizFlow({
     });
   }
 
+  /**
+   * 対象 wordId 群のブックマーク状態をまとめて置き換える（先行反映・巻き戻しの共通処理）。
+   * 1 件用の `handleBookmarkChange` の繰り返しにすると対象数に対して Map コピーが二乗になるため、
+   * 1 回のコピーで全件を書き換える。マップに無い wordId は無視する（未取得・対象外）。
+   */
+  function applyBulkBookmarkStates(values: Map<string, boolean>) {
+    setBookmarkStates((prev) => {
+      if (prev === null) return prev;
+      const next = new Map(prev);
+      for (const [wordId, bookmarked] of values) {
+        if (!next.has(wordId)) continue;
+        next.set(wordId, bookmarked);
+      }
+      return next;
+    });
+  }
+
+  /**
+   * 結果画面の一括ブックマーク（「間違えた問題だけ表示」ON 時の対象単語をまとめて登録）。
+   * 個別トグルと同じ楽観的更新: 先に対象全件を ON 表示にし、失敗時は全件、成功でも登録できなかった
+   * 単語（`skippedWordIds` = 削除済み・範囲外）だけをスナップショット値へ戻す。
+   * 既ブックマーク済みを含めても冪等（docs/adr/0094-bulk-bookmark-skip-and-colocation.md）。
+   */
+  function handleBulkBookmark(wordIds: string[]) {
+    // 空配列は action の入力検証で invalid に落ちるため呼ばない（result-list 側でも disabled）
+    if (wordIds.length === 0) return;
+    const snapshot = new Map(
+      wordIds.map((wordId) => [wordId, bookmarkStates?.get(wordId) ?? false]),
+    );
+    applyBulkBookmarkStates(new Map(wordIds.map((wordId) => [wordId, true])));
+
+    startBulkBookmarkTransition(async () => {
+      const result = await addBookmarks({ wordIds });
+      if (!result.ok) {
+        applyBulkBookmarkStates(snapshot);
+        toast.error(result.message);
+        return;
+      }
+      const skippedCount = result.skippedWordIds.length;
+      if (skippedCount > 0) {
+        applyBulkBookmarkStates(
+          new Map(result.skippedWordIds.map((wordId) => [wordId, snapshot.get(wordId) ?? false])),
+        );
+      }
+      const bookmarkedCount = result.bookmarkedWordIds.length;
+      if (bookmarkedCount === 0) {
+        toast.info("ブックマークできる単語がありませんでした");
+        return;
+      }
+      toast.success(
+        skippedCount > 0
+          ? `${bookmarkedCount}語をブックマークしました（${skippedCount}語は登録できませんでした）`
+          : `${bookmarkedCount}語をブックマークしました`,
+      );
+    });
+  }
+
   function handleQuestionComplete(outcome: QuestionOutcome) {
     if (phase.name !== "play" || quiz === null) return;
     const index = phase.index;
@@ -1109,6 +1170,8 @@ export function QuizFlow({
           }}
           bookmarkStates={bookmarkStates}
           onBookmarkChange={handleBookmarkChange}
+          onBulkBookmark={handleBulkBookmark}
+          bulkBookmarking={bulkBookmarking}
         />
         {/* 単語詳細ダイアログは状態の所有者（QuizFlow）が play / result 両フェーズで一元描画する */}
         {/* 前後ナビはルート単語（スタック深さ 1）のみ。関連語をたどった先は結果一覧の文脈外なので出さない。

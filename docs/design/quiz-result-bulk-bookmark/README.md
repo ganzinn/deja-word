@@ -22,6 +22,8 @@
 - **UseCase は `addBookmarksForUser(userId, wordIds)`**。scoped 検証を通った分だけ `createMany({ skipDuplicates: true })` で一括登録し、弾かれた分はスキップして返す。UseCase が `$transaction` を所有し、失敗は常に全体失敗（部分適用なし）。→ [02](02-server-action.md)
 - **Server Action は `addBookmarks({ wordIds })`**。成功時 `bookmarkedWordIds` / `skippedWordIds` を返し、エラーは `unauthorized | invalid | unknown`。`revalidatePath` は呼ばない。→ [02](02-server-action.md)
 - **入力スキーマは `min(1).max(BOOKMARK_WORD_IDS_MAX_COUNT)`**。上限定数は既存 3000 を流用し doc コメントを汎用化。追加先は `src/lib/schema/bookmark.ts`（スキーマの配置のみ 02 で確定）。→ [02](02-server-action.md)
+- **一括ボタンは「間違えた問題だけ表示」チェックボックスの直下、ラベルは件数入り「N語をまとめてブックマーク」**（N = 表示行から削除済みを除いた対象数）。チェック OFF・誤答 0 件・`bookmarkStates` 未取得時は非表示、送信未成功・対象 0 件・実行中は disabled。→ [03](03-ui.md)
+- **押下後は既存トグルと同型の楽観的更新で対象行のトグルを即時 ON にする**。実行本体は `bookmarkStates` を所有する `QuizFlow` 側に置く。成功は toast で件数通知（一部スキップは除外件数も通知、全件スキップは info 通知＋表示を戻す）、失敗は `toast.error` ＋全件ロールバック。リトライ導線は設けず再押下で対応、多重押下は実行中フラグで防止。→ [03](03-ui.md)
 
 ## トピック状態表
 
@@ -31,14 +33,12 @@
 | --- | --- | --- |
 | [01-requirements.md](01-requirements.md) | 確定（2026-08-08） | 要求・対象の定義・スコープ外 |
 | [02-server-action.md](02-server-action.md) | 確定（2026-08-08） | 一括登録の Server Action / UseCase / 入力スキーマ |
-| [03-ui.md](03-ui.md) | 未着手 | ボタン配置・表示条件・フィードバック・失敗時挙動 |
+| [03-ui.md](03-ui.md) | 確定（2026-08-08） | ボタン配置・表示条件・フィードバック・失敗時挙動 |
 | [04-architecture.md](04-architecture.md) | 未着手 | ファイル配置・テスト戦略 |
-
-想定順序（残り）: 03 → 04。要求次第で入れ替え可。
 
 データモデルは既存 `Bookmark` テーブル（userId × wordId 複合 PK）をそのまま使う前提のため独立トピックを立てない。要求次第で必要になれば追加する。
 
-**次セッションの推奨トピック: 03（UI）**。論点は 03 の検討事項リストに集約済み。ボタン配置・押下後のフィードバック・対象 0 件/送信中/失敗時の見せ方はユーザーの好みが入る論点のため、AskUserQuestion での確認を想定。
+**次セッションの推奨トピック: 04（アーキテクチャ・テスト戦略）**。論点は 04 の検討事項リストに集約済み（ファイル配置・ADR-0014/0016 適合・テスト分担・機能紹介ドキュメント更新の要点）。最後のトピックのため、確定時はハブへ「実装への引き継ぎ」セクションを追記して設計を閉じる。
 
 ## セッション運用ルール
 

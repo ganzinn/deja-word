@@ -24,13 +24,16 @@ herdr tab create --label <機能名>-NN --no-focus
 # 返却 JSON の result.tab.tab_id と result.root_pane.pane_id を読む
 herdr agent start <機能名>-NN --cwd <worktree絶対パス> --tab <tab_id> --no-focus \
   -- claude "$(cat <プロンプトファイル>)" \
-     --permission-mode acceptEdits \
-     --add-dir <worktree置き場の絶対パス> \
-     --allowedTools "Bash(pnpm *)" "Bash(git *)"
+     --permission-mode auto \
+     --add-dir <worktree置き場の絶対パス>
 herdr pane close <root_paneのpane_id>  # agent start はタブの root ペインを分割するため、元のシェルを閉じてエージェント単独のフルサイズ表示にする
 ```
 
-- **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` は可変長のため、後置した位置引数を許可リストとして飲み込み、プロンプト未実行の空セッションが起動する
+- **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` のような可変長フラグを後置すると、位置引数が許可リストとして飲み込まれ、プロンプト未実行の空セッションが起動する
+- **`--allowedTools` で `Bash(pnpm *)` のような広いルールを足さない**（追跡対象 `.claude/settings.json` がサブコマンド単位で許可済み。広いルールは絞り込みを無効化し、auto では分類器が無効化する対象でもある）。足すのは settings.json に無い一時的な許可だけにする
+- **`--permission-mode auto`（分類器モード）で起動する**。許可リストに無いコマンドが即プロンプトにならず分類器の判定に回るため、`$( )` / `&` / 未列挙コマンドで停止する頻度が大きく下がる（issue #244）。2 点だけ注意:
+  - **モデル要件がある**（Opus 4.6 以降 / Sonnet 4.6 以降 / Fable 5。Haiku・Sonnet 4.5 等は非対応）。`--model` で非対応モデルを渡すと auto にならないので、委譲では `--model` を指定しない（セッション既定を継承する）
+  - **分類器が 3 連続 / 累計 20 回ブロックすると auto は一時停止してプロンプトに戻る**。下記の承認待ちループは引き続き必要
 - devman 経由で検証させる場合は `"Bash(devman run *)"` を許可リストに追加する（`devman *` にはしない — `devman server` はリポジトリにつき 1 つのサーバ仕様のため、実装エージェントが起動するとユーザーの dev サーバを停止させてしまう）
 - 同名エージェントが残っていると `agent_name_taken` で起動に失敗する。起動前（特に再開時）に `herdr agent list` で確認し、残骸ペインは回収・close してから起動する
 - 起動確認: `herdr agent wait <名前> --status working --timeout 90000` で着手を確認する（以後の idle 待ちが「完了」を意味するようになる）。タイムアウトしたら `herdr agent read <名前> --source visible` で停止原因（trust ダイアログ等）を確認する
@@ -64,6 +67,8 @@ blocked（承認プロンプトで停止）を検知したら、**idle ではな
 repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済み（worktree にも git 経由で入る）。承認プロンプトが必要になるたびに 1 行（`tool_input` 込み）が worktree 内 `tmp/permission-requests.log` に追記される。**許可リスト一致で自動許可された場合は発火しない**ため、記録されるのは実際に停止したものだけ（対話セッション専用 — headless `claude -p` では発火しない）。オーケストレーターは worktree 削除前にログを直接読んでよく、記録された `tool_input` は許可リスト・テンプレ禁止事項の継続改善の材料にする。
 
 ### 承認プロンプトの切り分け
+
+下表は `auto` が使えないモデル・環境と、分類器のブロックで auto がプロンプトに戻ったときの切り分け。`auto` では許可リスト非一致が分類器に回るため、多くはそもそも発生しない（発生源での対処は分類器の往復を減らす意味で維持する）。
 
 判定の決定打は、プロンプトに「don't ask again」「allow all ... during this session」といった**恒久化の選択肢が出るかどうか**。出るものは許可リストで恒久化できる。出ないもの（Yes / No の 2 択のみ）は原理的に毎回聞かれるため、上記の承認待ちループが正規の対処になる。
 

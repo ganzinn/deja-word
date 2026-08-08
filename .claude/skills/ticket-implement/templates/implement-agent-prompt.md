@@ -19,10 +19,10 @@
 - テストは AGENTS.md の規約に従う（`*.unit.test.ts` / `*.integration.test.ts`、SUT の隣にコロケート）
 - `docs/plan/` 配下は**編集しない**（ステータス・実装メモはオーケストレーターが更新する）
 - **コマンドに `cd` を前置きしない**（作業ディレクトリは最初から worktree。`cd`＋書き込みの複合コマンドは解除できない承認プロンプトになる）。パスは worktree ルートからの相対で書く
-- **ファイルの書き換え・コピーは Edit / Write ツールで行う**（permission mode が acceptEdits のとき自動承認される）。`perl -0pi` / `sed -i` / `cp` などシェル経由の書き換えは承認プロンプトになる
+- **ファイルの書き換え・コピーは Edit / Write ツールで行う**（作業ディレクトリ内のファイル編集は自動承認される）。`perl -0pi` / `sed -i` / `cp` などシェル経由の書き換えは承認で止まりうる
 - **一時ファイル（比較用コピー・dev サーバのログ・スクリーンショット等）は worktree 内の `tmp/`（gitignore 済み）に置く**。自分の scratchpad・`/tmp` は使わない（worktree 外の読み書きは承認プロンプトになる）
 - 別ポート dev や E2E の環境変数前置き（`PORT=3100 BETTER_AUTH_URL=... pnpm dev` 等）はそのまま書いてよい（`PORT=` / `BETTER_AUTH_URL=` / `E2E_BASE_URL=` / `E2E_HEADED=` / `SHOT_DIR=` 始まりの `pnpm dev` / `pnpm e2e:*` は許可リスト対応済み）
-- 許可は **pnpm のサブコマンド単位**（`pnpm dev` / `lint` / `typecheck` / `format` / `test*` / `e2e:*` / `db:*` / `docs:*` / `install`、`pnpm exec prisma *`、`pnpm tsx scripts/*`）。`pnpm exec <その他>` / `pnpm dlx` / `pnpm add` は承認プロンプトになるので、**依存追加やツール実行が必要になったらチケットの範囲外を疑い、勝手に足さず報告する**
+- 許可は **pnpm のサブコマンド単位**（`pnpm dev` / `lint` / `typecheck` / `format` / `test*` / `e2e:<script>` / `db:<tool>` / `docs:diff-images` / `install`、`pnpm exec prisma *`、`pnpm tsx scripts/*`）。`pnpm exec <その他>` / `pnpm dlx` / `pnpm add` は許可対象外なので、**依存追加やツール実行が必要になったらチケットの範囲外を疑い、勝手に足さず報告する**
 - **バックグラウンド実行に `&` を付けない**。Bash ツールの `run_in_background: true` を使う（`&` は許可リストで消せない承認プロンプトになる）。出力はツール側で捕捉されるので `> tmp/dev.log 2>&1` のリダイレクトや `mkdir -p tmp` も不要
 - **複数対象の比較・集計を `for` ＋ `$( )` の 1 コマンドにまとめない**（コマンド置換・変数展開は許可リストで消せない）。1 対象ずつ実行する、複数引数を受けるコマンドを使う（例: `git show -s --format=... <sha> <sha> ...`）、または下の定型スクリプトに寄せる
 - 定型作業は repo のスクリプトを使う（いずれも `pnpm` 経由なので承認不要）: dev サーバの起動待ち `pnpm e2e:wait-dev <url>`、停止 `pnpm e2e:stop-dev <port>`、機能紹介画像の差分確認 `pnpm docs:diff-images`

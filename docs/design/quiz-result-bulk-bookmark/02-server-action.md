@@ -73,7 +73,7 @@ async function addBookmarks(input: AddBookmarksInput): Promise<AddBookmarksResul
 - `forbidden` 変種は持たない（決定 2 のスキップ方式のため発生しない）。
 - 入力に mode は含めない（サーバー処理はモード無関係。01 決定 2 の全モード共通）。
 - `revalidatePath` は呼ばない（既存ブックマーク actions と同じ楽観的更新方針。一覧・詳細のサーバ供給値は次の遷移・リロードで最新化される）。
-- エラー分類は action 内で分岐し、error-map モジュールは使わない。ADR-0016 の「変換は error-map に集約」からの逸脱だが、既存ブックマーク actions（`toggleBookmark` / `getBookmarkStates`）が同じ形で先行しており、エラー変種が少ないブックマーク系はこれに揃える（規約適合の再確認は 04 の管轄）。
+- エラー分類は action 内で分岐し、error-map モジュールは使わない。既存ブックマーク actions（`toggleBookmark` / `getBookmarkStates`）が同じ形で先行しており、エラー変種が少ないブックマーク系はこれに揃える。位置づけは 04 決定 2 で確定: 共有ドメインエラーを持たないため ADR-0063 の線引き（単一 action 専用の変換は action 内でよい）に適合し、ADR-0016 からの逸脱ではない。
 
 - 採用理由: 既存の `getBookmarkStates`（入力オブジェクト＋zod＋3 分類エラー）と対称で、呼び出し側（結果画面）が既に同型の Result を扱っている。
 - 却下した代替案: `toggleBookmark` 型の位置引数（配列を含む入力は zod スキーマを通すオブジェクト入力が適切）。skippedWordIds を返さず件数のみ返す（UI が行単位の状態更新（`bookmarkStates`）に使えなくなる。見せ方の選択肢を 03 に残すため ID 群で返す）。

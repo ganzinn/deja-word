@@ -18,7 +18,7 @@ DB レベルの検証は integration テスト（`pnpm test:integration`）で�
 3. dev サーバ: `pnpm dev`（既定 `http://localhost:3000`）。
    - **別ポートで起動する場合は `BETTER_AUTH_URL` の併記が必須**（例: `PORT=3100 BETTER_AUTH_URL=http://localhost:3100 pnpm dev`）。省略すると better-auth が Invalid origin で sign-in を拒否する。
    - **起動は Bash ツールの `run_in_background: true` で行い、`&` を付けない**（`&` は許可リストで消せない承認プロンプトになる。出力はツール側が捕捉するのでリダイレクトも不要）。
-   - **起動待ちは `pnpm e2e:wait-dev [url]`**（既定 `$E2E_BASE_URL` → `http://localhost:${PORT:-3000}`、timeout 既定 90 秒）、**停止は `pnpm e2e:stop-dev <port>`**（ポート必須。既定値を置くと本体の dev を誤って落とすため）。`for i in $(seq ...); do curl ...` や `pkill ... ; lsof ... | xargs kill` を手書きすると毎回承認プロンプトで止まる（issue #244）。
+   - **起動待ちは `pnpm e2e:wait-dev [url]`**（既定 `$E2E_BASE_URL` → `http://localhost:${PORT:-3000}`、timeout 既定 90 秒）、**停止は `pnpm e2e:stop-dev <port>`**（ポート必須。既定値を置くと本体の dev を誤って落とすため）。待ち合わせ・停止をコマンド列で手書きしない（コマンド置換・パイプが承認プロンプトになる）。
 4. `pnpm install` 済み（`playwright-core` は devDependency。ブラウザ実体は同梱せず**端末の Google Chrome** を使うので Chrome がインストール済みであること）。
 
 ハーネスは `E2E_BASE_URL` → `BETTER_AUTH_URL` → `http://localhost:${PORT ?? 3000}` の順で接続先を決める。GUI で見たいときは `E2E_HEADED=1` を付ける。

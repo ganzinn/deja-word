@@ -12,7 +12,7 @@
   ```
 
   未 trust なら計画ドラフト提示で「worktree 置き場で一度 `claude` を起動して trust を承認 → 終了」をユーザーに依頼する
-- **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない。検知したら通知してユーザーの操作を待つ。本番リソースに触れるコマンドの `ask` ルール（ADR-0095）も同じ扱いで、代理承認せずユーザーに判断を仰ぐ（実装チケットで踏むなら、そもそもスコープ外の操作を疑う）
+- **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない。検知したら通知してユーザーの操作を待つ（本番リソースに触れるコマンドの `ask` ルールも同じ扱い）
 - 定型コマンドの許可は、追跡対象の `.claude/settings.json`（`permissions.allow`。worktree には git 経由で入る）で大半が賄われる。`scripts/wt-env.sh` が配る `.claude/settings.local.json` は端末ごとの追加分（「don't ask again」の受け皿）で、有用なルールは追跡対象側へ昇格させる。起動フラグ（下記起動コマンドの `--add-dir` / `--allowedTools`）はそれで消えない分だけを最小限補う — 内訳は「承認プロンプトの切り分け」の表を参照
 
 ## 起動
@@ -31,7 +31,7 @@ herdr pane close <root_paneのpane_id>  # agent start はタブの root ペイ�
 
 - **プロンプト位置引数は必ずフラグより前に置く**。`--allowedTools` のような可変長フラグを後置すると、位置引数が許可リストとして飲み込まれ、プロンプト未実行の空セッションが起動する
 - **`--allowedTools` で `Bash(pnpm *)` のような広いルールを足さない**（追跡対象 `.claude/settings.json` がサブコマンド単位で許可済み。広いルールは絞り込みを無効化し、auto では分類器が無効化する対象でもある）。足すのは settings.json に無い一時的な許可だけにする
-- **`--permission-mode auto`（分類器モード）で起動する**。許可リストに無いコマンドが即プロンプトにならず分類器の判定に回るため、`$( )` / `&` / 未列挙コマンドで停止する頻度が大きく下がる（issue #244）。2 点だけ注意:
+- **`--permission-mode auto`（分類器モード）で起動する**。許可リストに無いコマンドは分類器の判定に回る。2 点だけ注意:
   - **モデル要件がある**（Opus 4.6 以降 / Sonnet 4.6 以降 / Fable 5。Haiku・Sonnet 4.5 等は非対応）。`--model` で非対応モデルを渡すと auto にならないので、委譲では `--model` を指定しない（セッション既定を継承する）
   - **分類器が 3 連続 / 累計 20 回ブロックすると auto は一時停止してプロンプトに戻る**。下記の承認待ちループは引き続き必要
 - devman 経由で検証させる場合は `"Bash(devman run *)"` を許可リストに追加する（`devman *` にはしない — `devman server` はリポジトリにつき 1 つのサーバ仕様のため、実装エージェントが起動するとユーザーの dev サーバを停止させてしまう）
@@ -79,12 +79,12 @@ repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済
 | `Compound command contains cd with write operation`（`cd`＋書き込みの複合コマンド。許可リストでは消せない） | ○（発生源で） | テンプレで `cd` 前置きを禁止（cwd は最初から worktree） |
 | worktree 外への書き込み（報告ファイル） | ○ | `--add-dir <worktree置き場>` |
 | worktree 外の一時ファイルの読み書き（scratchpad・`/tmp` 等） | ○（発生源で） | テンプレで一時ファイルを worktree 内の `tmp/` に限定する（scratchpad・`/tmp` を使わせない） |
-| バックグラウンド演算子 `&`（許可リストでは消せない） | ○（発生源で） | テンプレで `&` を禁止し Bash ツールの `run_in_background: true` を使わせる（リダイレクト・`mkdir -p tmp` も不要になる）。**実証済み** |
+| バックグラウンド演算子 `&`（許可リストでは消せない） | ○（発生源で） | テンプレで `&` を禁止し Bash ツールの `run_in_background: true` を使わせる（リダイレクト・`mkdir -p tmp` も不要になる） |
 | `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）（許可リストでは消せない） | ○（発生源で） | テンプレで `for` ＋ `$( )` の 1 コマンドまとめを禁止し、1 対象ずつ／複数引数を受けるコマンド（`git show -s --format=... <sha> <sha>`）／定型スクリプト（`pnpm e2e:wait-dev` `pnpm e2e:stop-dev` `pnpm docs:diff-images`）に寄せる |
 | 未許可コマンド（`md5` / `magick` / `pkill` / `lsof` / `xargs` 等）を含む複合コマンド | ○ | 単発なら許可リスト、定型なら上のスクリプトへ寄せる（`pnpm` 経由なので `Bash(pnpm *)` で通る） |
 | 本番リソースに触れるコマンドの `ask` ルール（ADR-0095） | ✗（意図的） | 実装チケットでは踏まないのが正。踏んだら代理承認せず通知し、スコープ外の操作でないか確認する |
 
-`&` と `$( )` は、E2E・撮影のように dev サーバの起動・待ち合わせ・停止を伴う作業で踏みやすい（issue #244 の実測 7 件の大半がこれ）。上記の対処を委譲プロンプトに含めれば承認 0 回で完走できる想定で運用し、実測は `tmp/permission-requests.log` で確認する。
+`&` と `$( )` は、E2E・撮影のように dev サーバの起動・待ち合わせ・停止を伴う作業で踏みやすい。上記の対処を委譲プロンプトに含め、発生状況は `tmp/permission-requests.log` で確認する。
 
 worktree 内のプロンプトで「don't ask again」を選ぶと、ルールは worktree を main checkout に解決した上で**本体リポジトリの `.claude/settings.local.json` に保存され、次回以降の全セッション（worktree 含む）に有効**になる。ただし停止したコマンドそのままの断片的なルール（`Bash(break)` 等）が残ることがあるため、実装セッション後に本体の許可リストを見直し、無意味なルールは削除し、**定型として残す価値があるものは追跡対象 `.claude/settings.json` の `permissions.allow` へ昇格させる**（local 側はクローンにも他端末にも共有されない）。
 

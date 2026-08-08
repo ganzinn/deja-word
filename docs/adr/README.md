@@ -16,6 +16,7 @@
 ## 運用ルール
 
 - 1 ADR = 1 判断。新しい設計判断をしたら新規 ADR を起票する（今後は事後推定ではなくリアルタイムの記録として）
+- 番号は「既存の最大 ID + 1」。採番前に `git fetch origin main && git ls-tree --name-only origin/main docs/adr/ | tail -3` で **origin/main の最新**を見る（並行 worktree では手元の `ls docs/adr/` が古く、同じ番号を取り合って重複する）。重複に気づいたら後から main に入った側をリネームし、参照元（この一覧・他 ADR の相互参照・コード内の文書参照）を追随させる
 - 既存の決定を覆す場合は、旧 ADR を「廃止」にして新 ADR から参照する（本文の書き換えで上書きしない）
 - 廃止した ADR は A〜H のテーマ一覧から外し、末尾の「廃止済み ADR」節へ移す。ファイルは残し冒頭に廃止バナー（ステータス: 廃止 ＋ 置換先）を置く（生きた判断の一覧をノイズなく保つ）
 - `docs/design/` は実装済みの設計文書を削除していく運用のため、design/ 由来の決定は該当 ADR が長期の引き継ぎ先になる
@@ -143,8 +144,8 @@
 | [0073](0073-webview-android-app.md) | Android 提供は WebView シェル + ネイティブ TTS ブリッジ | 高 | — |
 | [0091](0091-worktree-unified-creation.md) | worktree 作成の wt-new.sh 一本化＋置き場統一（0054 部分置き換え） | 高 | — |
 | [0093](0093-occurrence-content-export-import-sync.md) | 掲載箇所の単語コンテンツ同期は中間 JSON を挟む 2 段構成 | 高 | — |
-| [0094](0094-feature-origin-worktree-model.md) | 機能開発は起点 worktree モデル（フェーズ横断保持・チケット単位 PR モード廃止） | 高 | — |
 | [0095](0095-production-command-approval-gate.md) | 本番に触れるコマンドは ask ルールで承認ゲート、共有許可リストは追跡対象 settings.json | 高 | — |
+| [0096](0096-feature-origin-worktree-model.md) | 機能開発は起点 worktree モデル（フェーズ横断保持・チケット単位 PR モード廃止） | 高 | — |
 
 ### H. テスト・開発プロセス
 

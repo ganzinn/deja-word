@@ -320,14 +320,18 @@ export async function getWordDetailForDialog(
   if (!parsed.success) return INVALID;
 
   try {
-    const word = await getWordDetailForUser(session.user.id, parsed.data);
+    // 2 つの読み取りは互いに依存しないため並列に投げる（直列だと本番の DB 往復が 1 回分そのまま
+    // ダイアログの待ち時間に乗る）。単語が無かった場合のブックマーク取得は空振りするが、
+    // 本人の bookmark を 1 件引くだけで捨て損は小さい。
+    // ブックマークは read 専用関数を増やさず、1 件配列で本人の状態を取得する。
+    const [word, bookmarkedWordIds] = await Promise.all([
+      getWordDetailForUser(session.user.id, parsed.data),
+      getBookmarkedWordIdsForUser(session.user.id, [parsed.data]),
+    ]);
     if (!word) {
       return { ok: false, error: "not_found", message: "対象の単語が見つかりません。" };
     }
-    // read 専用関数は増やさず、1 件配列で本人のブックマーク状態を取得する。
-    const bookmarked =
-      (await getBookmarkedWordIdsForUser(session.user.id, [parsed.data])).length > 0;
-    return { ok: true, word, bookmarked };
+    return { ok: true, word, bookmarked: bookmarkedWordIds.length > 0 };
   } catch (e) {
     return mapQuizErrorToResult(e);
   }

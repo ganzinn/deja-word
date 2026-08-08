@@ -26,6 +26,7 @@ skill `e2e-verify` の補助資料。**quiz 機能をブラウザ自動化で検
 - **Checkbox は id セレクタで操作しない**（id は不可視の hidden input に付き click がタイムアウトする）。`getByRole("checkbox", { name: "<ラベル文言>" })` で取り、`aria-checked` が目的状態と違うときだけ click する。Input / Select の id は従来どおり使える。
 - **`input[inputmode="numeric"]` の nth(0)/nth(1) で範囲を取らない**。制限時間トグルが ON になると 3 つ目の numeric 入力（制限時間（秒））が増え、nth のインデックスがずれる。範囲は `#quiz-range-from` と `getByLabel("掲載番号（まで）")` で取る。
 - **形式を選ぶと制限時間が自動入力される**。`#quiz-format` を選ぶと、その形式の**保存済み推奨秒**が入り制限時間トグルが ON になることがある（未保存ユーザーでもトグル操作で `DEFAULT_TIMEOUT_SECONDS` が入る）。自動化を単純化したいなら**選択後に制限時間トグルを明示的に OFF** にする。
+- **出題形式の option 名は 2 グループに重複する**。「自己判定」「四択」「TG四択」「TG自己判定」は `英語→日本語` / `日本語→英語` の両方に同じ文言で並ぶため、`getByRole("option", { name: "自己判定", exact: true })` は strict mode violation になる。`page.getByLabel("英語→日本語").getByRole("option", { name: "自己判定", exact: true })` のようにグループで絞る。
 - **「開始」ボタンの disabled は 0 語だけが理由ではない**。`掲載箇所 未選択` / `形式 未選択` / `プレビュー ロード中` / `制限時間 ON なのに秒が空` でも disabled。開始できないときはこれらを疑う。
 
 ## 出題形式（`src/lib/quiz/format-options.ts`、全 10 形式）

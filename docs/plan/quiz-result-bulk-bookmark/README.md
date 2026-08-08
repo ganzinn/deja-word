@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- |
 | [01-server-bulk-add.md](01-server-bulk-add.md) | 一括登録のサーバ側一式（入力スキーマ・UseCase・Server Action）＋新規 ADR 起票 | なし | 完了（2026-08-08） | - |
 | [02-ui-bulk-button.md](02-ui-bulk-button.md) | 結果画面の一括ボタン（対象算出の純関数・ボタン描画・楽観的更新の実行本体） | 01 | 完了（2026-08-08） | - |
-| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 未着手 | - |
+| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 実装中 | - |
 
 ## 依存関係図
 

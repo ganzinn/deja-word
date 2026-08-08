@@ -13,6 +13,10 @@
 #
 # .dev-blob は本体の実体を DEV_BLOB_ROOT で参照しているだけなので、worktree を
 # 消しても共有音源・共有 DB のデータは失われない。
+#
+# worktree 内から実行してもよい（パスは本体基準で解決される）。ただし撤去対象の
+# worktree 自身の中から実行すると、撤去は成功するが自分の cwd が消えた状態になり
+# 以降のコマンドが失敗する。撤去対象の外から実行すること。
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
@@ -26,7 +30,10 @@ if [ "${2:-}" = "--delete-branch" ]; then
   DELETE_BRANCH="true"
 fi
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+# 本体（メイン worktree）の root = git-common-dir（メイン側 .git）の親。
+# show-toplevel は実行場所の worktree root になるため使わない（wt-new.sh と同方式）。
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+REPO_ROOT="$(dirname "$GIT_COMMON_DIR")"
 WORKTREE_DIR="${REPO_ROOT}/../deja-word-worktrees/${NAME}"
 
 if [ ! -d "$WORKTREE_DIR" ]; then

@@ -143,6 +143,7 @@
 | [0073](0073-webview-android-app.md) | Android 提供は WebView シェル + ネイティブ TTS ブリッジ | 高 | — |
 | [0091](0091-worktree-unified-creation.md) | worktree 作成の wt-new.sh 一本化＋置き場統一（0054 部分置き換え） | 高 | — |
 | [0093](0093-occurrence-content-export-import-sync.md) | 掲載箇所の単語コンテンツ同期は中間 JSON を挟む 2 段構成 | 高 | — |
+| [0094](0094-feature-origin-worktree-model.md) | 機能開発は起点 worktree モデル（フェーズ横断保持・チケット単位 PR モード廃止） | 高 | — |
 
 ### H. テスト・開発プロセス
 

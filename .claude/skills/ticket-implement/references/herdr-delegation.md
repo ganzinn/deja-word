@@ -84,4 +84,4 @@ worktree 内のプロンプトで「don't ask again」を選ぶと、ルール�
 
 - **報告回収**: 報告はテンプレの追加指示で `<worktree置き場>/<機能名>-NN-<チケット名>.report.md`（worktree と同じ置き場、リポジトリ外）に書き出させ、メインはそれを読む。idle になっても report ファイルが無い・不完全な場合は `herdr agent read <名前> --source recent-unwrapped --lines 200` で最終メッセージを確認する（recent バッファは直近の描画分しか残らないことがあるため、report ファイルが一次情報）
 - **再委譲**（「失敗・中断時の扱い」の共通規則を適用）: `herdr agent get <名前>` で pane_id を解決し、`herdr pane run <pane_id> "<指示>"` で同一ペインの claude に追加指示を送る（1 行で書き、詳細は失敗内容を書いたファイルのパスを添えて参照させる）。ペインが消えていた場合のみ同一 worktree で claude を起動し直す
-- **後片付け**: 各モードのフローで worktree を削除する段になったら（単一ブランチ統合モード: マージ・検証成功後／PR モード: PR 作成・ステータスコミット push 後）、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・report ファイル・不要になったローカルブランチを削除する（タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）
+- **後片付け**: 実装フローで worktree を削除する段になったら（マージ・検証成功後）、`herdr agent get <名前>` で解決した pane_id を `herdr pane close` で閉じてから worktree・report ファイル・不要になったローカルブランチを削除する（タブは最後のペインが閉じると自動で閉じるため追加の掃除は不要）。失敗で worktree を残す場合はペインも検査用に残し、最終報告に**エージェント名**とパスを明記する（pane_id は変わりうるため名前で示す）

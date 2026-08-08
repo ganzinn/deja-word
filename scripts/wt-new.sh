@@ -6,8 +6,8 @@
 #   Usage: scripts/wt-new.sh <name> [base-branch] [--branch <branch>] [--no-install]
 #     例: scripts/wt-new.sh quiz-timer
 #           -> branch feat/quiz-timer, dir ../deja-word-worktrees/quiz-timer, base main
-#         scripts/wt-new.sh foo-design origin/main --branch docs/foo-design-plan --no-install
-#           -> 任意ブランチ名・origin/main 起点（自動 fetch）・pnpm install なし
+#         scripts/wt-new.sh foo origin/main --branch docs/foo-design-plan --no-install
+#           -> 機能の起点 worktree（任意ブランチ名・origin/main 起点＝自動 fetch・pnpm install なし）
 #
 #   --branch <branch>  作成するブランチ名（既定: feat/<name>）。既存ブランチなら
 #                      base を無視してそのブランチを checkout する（継続作業）
@@ -23,6 +23,7 @@
 #      --no-install 時はどちらも省略）
 #
 # 途中で失敗しても作成済み worktree は残る（検査後 scripts/wt-rm.sh で撤去）。
+# worktree 内から実行してもよい（パスは本体基準で解決される）。
 # 前提: pnpm install する場合は docker の deja-word-db が起動済み（DB は本体と共有する）。
 set -euo pipefail
 
@@ -61,7 +62,11 @@ NAME="${POSITIONAL[0]}"
 BASE="${POSITIONAL[1]:-main}"
 [ -n "$BRANCH" ] || BRANCH="feat/${NAME}"
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+# 本体（メイン worktree）の root = git-common-dir（メイン側 .git）の親。
+# show-toplevel は実行場所の worktree root になり、worktree 内から実行すると
+# 置き場が deja-word-worktrees/ の下に入れ子でズレるため使わない。
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+REPO_ROOT="$(dirname "$GIT_COMMON_DIR")"
 WORKTREE_DIR="${REPO_ROOT}/../deja-word-worktrees/${NAME}"
 
 if [ -e "$WORKTREE_DIR" ]; then

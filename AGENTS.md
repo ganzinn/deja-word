@@ -36,7 +36,9 @@ cp .env.test.example .env.test
 
 ## Worktree（複数機能の並行開発）
 
-git worktree でブランチごとに作業ディレクトリを分けて並行開発する。worktree は用途を問わず `../deja-word-worktrees/<name>`（リポジトリ外。.gitignore 変更不要）に置き、作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` で行う（手動 `git worktree add` はしない。引数の組み合わせ・使い分けは共通スキル `.claude/skills/worktree/` を参照）。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
+git worktree でブランチごとに作業ディレクトリを分けて並行開発する。worktree は用途を問わず `../deja-word-worktrees/<name>`（リポジトリ外。.gitignore 変更不要）に置き、作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` で行う（手動 `git worktree add` はしない。worktree 内から実行してもよい。引数の組み合わせ・使い分けは共通スキル `.claude/skills/worktree/` を参照）。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
+
+機能開発パイプライン（design-session → ticket-split → ticket-implement）は、機能ごとの**起点 worktree** `../deja-word-worktrees/<機能名>` を設計開始〜実装完了まで保持し、フェーズは worktree 内のブランチ切替（`docs/<機能名>-design-plan` → `feature/<機能名>`）で進める。チケット worktree `<機能名>-NN-<チケット名>` は統合ブランチから分岐させる。**本体の checkout は常に main のまま保ち**、どの機能のどのフェーズが進行中でも他の機能の作業を妨げない。命名族・ライフサイクル・機能完了時の一括撤去は共通スキル `.claude/skills/worktree/` に定義する。
 
 ```sh
 scripts/wt-new.sh <name> [base-branch] [--branch <branch>] [--no-install]  # 作成（既定: branch feat/<name>）

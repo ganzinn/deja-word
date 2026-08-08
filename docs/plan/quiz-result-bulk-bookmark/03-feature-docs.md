@@ -1,6 +1,6 @@
 # 03. feature-docs
 
-状態: **完了（2026-08-08）**　PR: （未作成）
+状態: **完了（2026-08-08）**　PR: [#246](https://github.com/ganzinn/deja-word/pull/246)
 
 ## 目的
 

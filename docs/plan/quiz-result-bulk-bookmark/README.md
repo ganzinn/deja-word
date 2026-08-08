@@ -15,9 +15,9 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-server-bulk-add.md](01-server-bulk-add.md) | 一括登録のサーバ側一式（入力スキーマ・UseCase・Server Action）＋新規 ADR 起票 | なし | 完了（2026-08-08） | - |
-| [02-ui-bulk-button.md](02-ui-bulk-button.md) | 結果画面の一括ボタン（対象算出の純関数・ボタン描画・楽観的更新の実行本体） | 01 | 完了（2026-08-08） | - |
-| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 完了（2026-08-08） | - |
+| [01-server-bulk-add.md](01-server-bulk-add.md) | 一括登録のサーバ側一式（入力スキーマ・UseCase・Server Action）＋新規 ADR 起票 | なし | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
+| [02-ui-bulk-button.md](02-ui-bulk-button.md) | 結果画面の一括ボタン（対象算出の純関数・ボタン描画・楽観的更新の実行本体） | 01 | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
+| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
 
 ## 依存関係図
 

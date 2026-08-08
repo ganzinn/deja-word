@@ -22,6 +22,8 @@
 - ルールは **deny → ask → allow** の順に評価され、最初に一致したものが勝つ（ルールの特異性は順序を変えない）。スコープ間ではルールが**マージ**されるため、追跡対象 `.claude/settings.json` の `ask` は `settings.local.json` の `allow` に勝つ
 - `ask` は `acceptEdits` / `bypassPermissions` でもプロンプトが出る（委譲エージェントでも迂回されない）
 - Bash ルールの `*` はスペースを跨いで一致し、先頭・中間にも置ける。複合コマンド（`&&` `||` `;` `|` `&` 改行）は**部分コマンドごとに**照合される。`ask` / `deny` は先頭の環境変数代入を跨いで一致する（`allow` は跨がない）
+- **末尾の `:*` は「trailing wildcard の別記法」として解釈される**（`Bash(ls:*)` ≡ `Bash(ls *)`）。そのため `Bash(pnpm e2e:*)` は `pnpm e2e <引数>` の意味になり、**`pnpm e2e:guard` には一致しない**（実測で確認。設定のスキーマ検証も `:*` を末尾以外に置くとエラーにする）。`pnpm <script>:<name>` 形式を許可するときはスクリプト名まで書き、末尾は `*`（`Bash(pnpm e2e:guard*)`）にする
+- ユーザースコープ（`~/.claude/settings.json`）が `defaultMode: "auto"` の場合、**allow に一致しないコマンドはプロンプトではなく分類器**に回る。allow の絞り込みが「必ず止まる」境界になるのは分類器を使わないモード（`default` / `acceptEdits`。委譲エージェントはこちら）。確実に止めたいものは `ask` / `deny` で書く
 - 権限判定は**入力されたコマンド文字列だけ**を見る。`package.json` の script が内部で何を起動するかは照合対象にならない
 - `mise exec` / `npx` / `pnpm exec` のような環境ランナーは剥がされない（`timeout` / `nice` 等の固定リストのみが剥がされる）ため、`Bash(mise exec *)` は実質「任意コマンド許可」になる
 
@@ -34,12 +36,19 @@
 3. **ランナー経由を拾うため、各ルールは `* ` 前置き版を併記する**（`Bash(* pnpm dotenv *)` が `mise exec -- pnpm dotenv …` や `npx` 経由に一致する）
 4. **`db:purge-*` / `db:import-*` / `db:sync-occurrence` は ask の対象にしない**。接続先がローカル限定か、ドライラン既定であり、本番へ向ける経路は必ず `pnpm dotenv -e` 前置き（＝ 2 のルール）で捕まる。Vercel CLI の読み取り系（`ls` / `inspect` / `whoami`）も対象外（AGENTS.md が状況確認に勧めており、毎回の承認は摩擦だけが増える）
 5. **`pnpm <script>` 経由の自動承認が成立する条件を明示する**: 権限判定はコマンド文字列だけを見るため、`pnpm` に寄せたスクリプトは中身が照合されない。そこに寄せてよいのは **リポジトリに追跡され・レビュー済みで・ローカル資源にしか触れない** スクリプトに限る（`pnpm e2e:*` / `pnpm docs:diff-images` 等）。本番に触れる操作をスクリプト化して `pnpm` 名の裏に隠すことは、本 ADR のゲートを無効化するので禁止する
-6. `Bash(mise exec *)` は任意コマンド許可と同義なので `Bash(mise exec -- pnpm *)` に絞る
+6. **許可は「任意コマンドを実行できる形」を含まない粒度まで絞る**。`Bash(pnpm *)` は `pnpm exec <任意>` / `pnpm dlx <任意パッケージ>` / `pnpm add` を含み、`Bash(mise exec *)` も同義なので、次の方針に置き換える:
+   - `pnpm` は**サブコマンド単位**で許可する（`pnpm dev*` / `pnpm lint*` / `pnpm typecheck` / `pnpm format` / `pnpm test*` / `pnpm e2e:*` / `pnpm docs:*` / `pnpm db:*` / `pnpm install` 等。環境変数前置きも `pnpm dev` / `pnpm e2e:*` に限定する）
+   - `pnpm exec` / `pnpm tsx` は**内側のコマンドまで書いて許可する**（`pnpm exec prisma *` / `pnpm tsx scripts/*` / `pnpm exec vercel` の読み取り系のみ）。公式ドキュメントが環境ランナーについて指示している書き方と同じ
+   - `pnpm add` / `pnpm remove` / `pnpm update` / `pnpm dlx *` / 未列挙の `pnpm exec <x>` は**許可しない**（依存の追加・レジストリからの取得は毎回確認する。頻度は低い）
+   - `mise exec` はコマンドとしてタイプされる箇所が無いため許可ルール自体を置かない
+   - 環境変数前置き（`PORT=` / `BETTER_AUTH_URL=` / `E2E_BASE_URL=` / `E2E_HEADED=` / `SHOT_DIR=` / `AI_GATEWAY_API_KEY=` …）は変数名を列挙せず、`Bash(* pnpm dev*)` / `Bash(* pnpm e2e:<script>*)` の**先頭 `*` 形式**で受ける（変数の順序・組み合わせ・将来の追加に強い）。代償として `sudo pnpm e2e:guard` のような**前置きコマンド全般**も一致するため、必要なら `Bash(sudo *)` を `ask` に足す
+   これにより本番系コマンドは「ask で止まる」だけでなく「allow に一致しない」二重の防御になる
 
 ## 採らなかった代替案
 
 - **`deny` で弾く** — `docs/ops/` に定義された正規の運用手順（本番 env の取得・掲載箇所同期・本番リセット）自体を塞いでしまう。止めたいのは「合意した手順の外で、確認なく走ること」であって手順そのものではない
-- **`Bash(pnpm *)` を削除して個別許可に置き換える** — このリポジトリの操作はほぼすべて `pnpm` 経由で、日常の承認プロンプトが激増する。issue #244（承認プロンプト削減）と正面から衝突する
+- **`pnpm` の許可を全廃して 1 コマンドずつ承認する** — このリポジトリの操作はほぼすべて `pnpm` 経由なので、日常の承認プロンプトが激増し issue #244（承認プロンプト削減）と正面から衝突する。採ったのは「全廃」ではなく決定 6 の**サブコマンド粒度の許可**で、日常の定型（dev / lint / typecheck / test / e2e / db / docs）は素通しのまま、任意コマンドを実行できる形（`pnpm exec <任意>` / `pnpm dlx`）だけを落とす
+- **`Bash(pnpm *)` のような粗い許可を維持し、危険なものを ask で個別に塞ぐだけにする** — ask の列挙漏れがそのまま素通しになる（本番に触れる新しいコマンドを足すたびにルール追加を忘れられない）。allow 側も絞れば、列挙漏れは「プロンプトが出る」側に倒れる
 - **PreToolUse hook でコマンド文字列を判定する** — `ask` ルールで表現できる範囲であり、設定 1 箇所で済む方が追跡しやすい。hook は deny / ask を迂回できない（ルールが先に評価される）ため、ルールで書けるものをわざわざ hook にする理由がない
 - **許可リストをすべて `settings.local.json` に残し、ask だけ追跡対象に置く** — ゲートは共有できるが、許可の正本がリポジトリ外に残り続ける（新規クローン・worktree で再現しない）問題が解決しない
 
@@ -50,6 +59,7 @@
 - 委譲エージェント（`--permission-mode acceptEdits`）でも ask はプロンプトを出す。オーケストレーターによる代理承認は禁止（`.claude/skills/ticket-implement/references/herdr-delegation.md`）
 - 非対話セッション（`claude -p`）では ask 対象コマンドは**拒否**される（プロンプトを出せないため）。本番操作を headless 実行に組み込むことはできない＝人間の確認を必ず経る、という副作用の効いた性質になる（実測で確認済み）
 - `settings.local.json` の共有ルールは追跡対象へ移した。既存の端末では local 側を空にして重複を解消する（放置しても動作は同じ＝マージされるだけ）
+- 決定 6 により、これまで素通しだった次のものは**プロンプトが出るようになる**: `pnpm add` / `remove` / `update`、`pnpm dlx *`、`pnpm approve-builds`、許可リストに列挙していない `pnpm exec <x>`（`bubblewrap` 等）、Vercel CLI の読み取り系のうち `ls` / `inspect` / `whoami` / `logs` 以外。いずれも頻度が低く意図して打つものなので、承認 1 回の負担より列挙漏れが素通しにならない性質を優先する。日常的に打つものが漏れていたら追跡対象の allow に足す（local 側の「don't ask again」に溜めっぱなしにしない）
 
 ## 根拠（コード・コミット・文書参照）
 

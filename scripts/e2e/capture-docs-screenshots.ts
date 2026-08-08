@@ -447,6 +447,19 @@ async function sectionBookmark(browser: Browser): Promise<void> {
       dialog.getByRole("button", { name: "ブックマーク" }),
       dialog.locator("div.mx-auto").first(),
     );
+
+    // 「間違えた問題だけ表示」ON のときだけ出る一括ブックマークボタン（件数入り）。
+    // 直前のダイアログを閉じてから結果一覧に戻ってチェックを入れる。
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.waitFor({ state: "hidden", timeout: 10_000 });
+    await page.getByRole("checkbox", { name: "間違えた問題だけ表示" }).click();
+    // 履歴送信の成功前は disabled（削除済みの確定待ち）のため、押せる状態になってから撮る。
+    await shot(
+      page,
+      "bookmark-quiz-result-bulk",
+      main.locator("button:not([disabled])", { hasText: "語をまとめてブックマーク" }),
+      main,
+    );
   } finally {
     await user.close();
   }

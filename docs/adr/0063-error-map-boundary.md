@@ -34,6 +34,7 @@ ADR-0016 は「Server Action は throw せず Result 型を返し、変換は er
 
 - `mapAudioError` の置き場と `words-delete.ts` の型定義が移動する（挙動不変のリファクタ）
 - 以後のカスタム Error 追加時の置き場判断が機械的になる
+- 適用例: [ADR-0094](0094-bulk-bookmark-skip-and-colocation.md) 決定 2（ブックマーク一括登録 action は共有ドメインエラーを持たないため error-map を新設せず action 内変換に留める）
 
 ## 根拠（コード・コミット・文書参照）
 

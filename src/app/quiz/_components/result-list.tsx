@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import {
+  BookmarkIcon,
   CircleCheckIcon,
   CircleDashedIcon,
   CircleHelpIcon,
@@ -26,6 +27,8 @@ import {
   REMAINING_MIN_COUNT,
 } from "@/lib/quiz/remaining-options";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
+
+import { computeBulkBookmarkTargetIds } from "./bulk-bookmark-targets";
 
 /**
  * 結果一覧の見出し種別（quiz-flow の `promptViewOf` 由来）。主見出しの内容・TG ハイライトの
@@ -176,6 +179,13 @@ type Props = {
   bookmarkStates: Map<string, boolean> | null;
   /** 行・ダイアログのトグルをマップへ同期する（楽観的更新の確定・巻き戻しの両方で呼ばれる）。 */
   onBookmarkChange: (wordId: string, bookmarked: boolean) => void;
+  /**
+   * 「間違えた問題だけ表示」ON 時の一括ブックマークの実行（対象 wordId 群を渡す）。
+   * 実行本体（楽観的更新・ロールバック・toast）は bookmarkStates を持つ QuizFlow 側にある。
+   */
+  onBulkBookmark: (wordIds: string[]) => void;
+  /** 一括ブックマークの実行中（多重押下防止の disabled に使う。QuizFlow 側の isPending）。 */
+  bulkBookmarking: boolean;
 };
 
 export function ResultList({
@@ -198,6 +208,8 @@ export function ResultList({
   onOpenDialog,
   bookmarkStates,
   onBookmarkChange,
+  onBulkBookmark,
+  bulkBookmarking,
 }: Props) {
   const [wrongOnly, setWrongOnly] = useState(false);
   // 残数が 1..9 の整数のときだけ定着モードを開始できる（空欄・範囲外は開始をゲート）。
@@ -222,6 +234,12 @@ export function ResultList({
     submitState.status === "drill-success"
       ? new Map(submitState.remaining.map((r) => [r.wordId, r.remaining]))
       : null;
+  // 一括ブックマークの対象（誤答行から削除済みを除いたもの）。履歴送信の成功前は削除済みが未確定で
+  // 誤答行数のままになるが、その間はボタンが disabled のため押下されない。
+  const bulkTargetIds = computeBulkBookmarkTargetIds(rows, submitState);
+  // 送信成功後のみ実行できる（削除済みの確定が前提）。success = TEST / DRILL_RETRY、drill-success = DRILL。
+  const submitSucceeded =
+    submitState.status === "success" || submitState.status === "drill-success";
 
   return (
     <div className="flex flex-col gap-4">
@@ -259,6 +277,22 @@ export function ResultList({
           />
           間違えた問題だけ表示
         </Label>
+      ) : null}
+
+      {/* 誤答だけを表示している間の一括ブックマーク導線。誤答 0 件・状態マップ未取得では出さない
+          （disabled で残さない）。親が flex-col（stretch）のため self-start で内容幅・左寄せにする。 */}
+      {wrongOnly && visibleRows.length > 0 && bookmarkStates !== null ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          disabled={!submitSucceeded || bulkTargetIds.length === 0 || bulkBookmarking}
+          onClick={() => onBulkBookmark(bulkTargetIds)}
+        >
+          <BookmarkIcon />
+          {bulkTargetIds.length}語をまとめてブックマーク
+        </Button>
       ) : null}
 
       {wrongOnly && visibleRows.length === 0 ? (

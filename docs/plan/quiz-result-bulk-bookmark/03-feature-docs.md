@@ -1,6 +1,6 @@
 # 03. feature-docs
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-08）**　PR: [#246](https://github.com/ganzinn/deja-word/pull/246)
 
 ## 目的
 
@@ -51,4 +51,7 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+実装内容は計画どおり（bookmark.md / word-quiz.md / 撮影スクリプト / 新規画像の 4 点、スコープ外の再撮影なし）。
+
+- **撮影スクリプトの手順詳細**: ダイアログを閉じる操作は shadcn Dialog の閉じるボタン（アクセシブル名 `Close`）のクリック＋ `hidden` 待ち。一括ボタンは履歴送信の成功前 disabled のため、`main.locator("button:not([disabled])", { hasText: "語をまとめてブックマーク" })` を `shot()` の ready ロケータにして「押せる状態」を待ってから撮影している（テキストが件数入りで可変のため name 完全一致は使えない）。
+- **既存画像のドリフトを検出**（本チケットとは無関係の既存問題。コミットには含めず撮影前の状態へ戻した）: `bookmark-quiz-result-dialog.png` が 2026-08-04 撮影のままで、その後の UI 変更（掲載番号の位置・発音ボタンのアイコン化）が未反映。issue #245 として起票済み。`bookmark-quiz-start.png` / `bookmark-words-list.png` の差分はノイズ・微差、`bookmark-quiz-result.png` は出題順ランダムによる行順変化のみで、いずれも意味のある変更なし。

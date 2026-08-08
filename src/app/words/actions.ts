@@ -1,11 +1,16 @@
 "use server";
 
 import {
+  addBookmarksForUser,
   BookmarkWordNotInScopeError,
   getBookmarkedWordIdsForUser,
   setBookmarkForUser,
 } from "@/lib/bookmark-settings";
-import { getBookmarkStatesInputSchema } from "@/lib/schema/bookmark";
+import {
+  addBookmarksInputSchema,
+  getBookmarkStatesInputSchema,
+  type AddBookmarksInput,
+} from "@/lib/schema/bookmark";
 import { getCurrentSession } from "@/lib/session";
 
 export type ToggleBookmarkError = "unauthorized" | "forbidden" | "unknown";
@@ -96,6 +101,54 @@ export async function getBookmarkStates(input: {
       ok: false,
       error: "unknown",
       message: "ブックマーク状態の取得に失敗しました。",
+    };
+  }
+}
+
+export type AddBookmarksError = "unauthorized" | "invalid" | "unknown";
+
+export type AddBookmarksResult =
+  | { ok: true; bookmarkedWordIds: string[]; skippedWordIds: string[] }
+  | { ok: false; error: AddBookmarksError; message: string };
+
+/**
+ * 与えた wordIds を本人のブックマークへ一括登録する。検証で弾かれた wordId
+ * （削除済み・scoped 範囲外）は `skippedWordIds` に入るだけで、全件が弾かれても
+ * エラーにしない（`forbidden` 変種を持たない理由:
+ * docs/adr/0094-bulk-bookmark-skip-and-colocation.md）。楽観的更新の方針のため
+ * `revalidatePath` は呼ばない。
+ */
+export async function addBookmarks(input: AddBookmarksInput): Promise<AddBookmarksResult> {
+  const session = await getCurrentSession();
+  if (!session) {
+    return {
+      ok: false,
+      error: "unauthorized",
+      message: "ログインが必要です。再度ログインしてください。",
+    };
+  }
+
+  const parsed = addBookmarksInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "invalid",
+      message: "ブックマークの一括登録リクエストが不正です。",
+    };
+  }
+
+  try {
+    const { bookmarkedWordIds, skippedWordIds } = await addBookmarksForUser(
+      session.user.id,
+      parsed.data.wordIds,
+    );
+    return { ok: true, bookmarkedWordIds, skippedWordIds };
+  } catch (e) {
+    console.error("[words] addBookmarks failed", e);
+    return {
+      ok: false,
+      error: "unknown",
+      message: "ブックマークの一括登録に失敗しました。",
     };
   }
 }

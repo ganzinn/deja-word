@@ -1,6 +1,6 @@
 # 02. ui-bulk-button
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-08）**　PR: [#246](https://github.com/ganzinn/deja-word/pull/246)
 
 ## 目的
 
@@ -84,4 +84,10 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+実装は計画どおりで設計との差分なし。
+
+- 追加した props は `onBulkBookmark: (wordIds: string[]) => void` / `bulkBookmarking: boolean`。
+- `QuizFlow` に内部ヘルパ `applyBulkBookmarkStates(values: Map<string, boolean>)` を追加（先行反映・部分戻し・全件ロールバックで共用し、いずれも Map コピー 1 回で済ませる）。既存の `handleBookmarkChange` は未変更。
+- 一括ボタンの表示条件は `wrongOnly && visibleRows.length > 0 && bookmarkStates !== null`、disabled は `!submitSucceeded || bulkTargetIds.length === 0 || bulkBookmarking`（`submitSucceeded` = `success` または `drill-success`）。
+- E2E 結合確認は e2e-verify スキルの手順で実施し 4 観点すべて PASS（一回きりの検証スクリプトは実行後に削除、コミットに含まない）。headless 実行のため**画面の目視確認は未実施**。
+- **チケット 03 への申し送り**: 撮影対象のボタンは「間違えた問題だけ表示」チェックボックス行の直下・行リストの上、`variant="outline" size="sm"` の内容幅・左寄せ（`self-start`）、ラベルは `N語をまとめてブックマーク`（`BookmarkIcon` 付き）。**履歴送信の成功前は disabled** なので、撮影は送信完了後（「結果を送信中…」が消えた後）に行う。

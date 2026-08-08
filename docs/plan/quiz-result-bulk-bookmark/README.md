@@ -15,9 +15,9 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-server-bulk-add.md](01-server-bulk-add.md) | 一括登録のサーバ側一式（入力スキーマ・UseCase・Server Action）＋新規 ADR 起票 | なし | 未着手 | - |
-| [02-ui-bulk-button.md](02-ui-bulk-button.md) | 結果画面の一括ボタン（対象算出の純関数・ボタン描画・楽観的更新の実行本体） | 01 | 未着手 | - |
-| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 未着手 | - |
+| [01-server-bulk-add.md](01-server-bulk-add.md) | 一括登録のサーバ側一式（入力スキーマ・UseCase・Server Action）＋新規 ADR 起票 | なし | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
+| [02-ui-bulk-button.md](02-ui-bulk-button.md) | 結果画面の一括ボタン（対象算出の純関数・ボタン描画・楽観的更新の実行本体） | 01 | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
+| [03-feature-docs.md](03-feature-docs.md) | 機能紹介ドキュメント更新＋一括ボタンの新規画像撮影 | 02 | 完了（2026-08-08） | [#246](https://github.com/ganzinn/deja-word/pull/246) |
 
 ## 依存関係図
 
@@ -47,6 +47,8 @@ graph LR
 
 - **単一ブランチ統合モード（デフォルト）**: 統合ブランチ `feature/quiz-result-bulk-bookmark` に 1 チケット = 1 squash コミットで取り込み、機能全体で 1 PR。「実装中」= worktree 作成時、「完了」= 統合ブランチへのマージ。PR 列は統合 PR 作成時に全行へ同一 URL を一括記載する
 - **チケット単位 PR モード（--pr）**: 1 チケット = 1 PR。「完了」= PR マージ。PR 作成済み・未マージは「実装中」＋PR リンクで表現する
+
+運用メモ: 単一ブランチ統合モードで実装中（統合ブランチ `feature/quiz-result-bulk-bookmark`）
 
 ## ステータス運用ルール
 

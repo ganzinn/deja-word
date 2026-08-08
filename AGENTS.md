@@ -45,7 +45,7 @@ scripts/wt-new.sh <name> [base-branch] [--branch <branch>] [--no-install]  # 作
 scripts/wt-rm.sh  <name> [--delete-branch]                                 # 撤去
 ```
 
-`wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リスト。一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`mise trust`＋`pnpm install`（`prisma generate` 含む。この 2 つは `--no-install` で省略）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
+`wt-new.sh` は worktree 作成・`.env` / `.env.test` / `.claude/settings.local.json`（Claude Code の permission 許可リストの**端末ごとの追加分**。共有ルールは追跡対象の `.claude/settings.json` が正本で git 経由で入る。local 側は一方向コピーで、worktree 側で増えた承認は本体に戻らない）のコピー・`mise trust`＋`pnpm install`（`prisma generate` 含む。この 2 つは `--no-install` で省略）までを行う。`node_modules` / `src/generated` / `.next` は worktree ごとに独立する。
 
 **DB は単一 `dejaword` を共有**する。dev サーバは1つずつ起動する運用なので同時アクセスの競合は無いが、ブランチ間で migration が食い違うと drift が出る。アクティブな worktree を切り替えた直後は:
 
@@ -60,9 +60,11 @@ scripts/wt-rm.sh  <name> [--delete-branch]                                 # 撤
 
 DB 操作の運用ツールは `scripts/*.ts` に置き、`tsx` 経由で `pnpm db:*` として実行する。実装規約は `scripts/CLAUDE.md` と `src/lib/CLAUDE.md`（ops コアモジュール節）にある。ドキュメントは `docs/ops/`。
 
+**本番・外部の接続先に触れうるコマンドは Claude Code の承認ゲート対象**（`.claude/settings.json` の `permissions.ask`。`pnpm dotenv -e <env ファイル>` 前置き・`pnpm db:export-occurrence`・`pnpm db:reset-prod` 等）。承認ゲートは合意した手順の外で確認なく走ることを止めるためのもので、**本番に触れる操作を新しい `pnpm` スクリプトの裏に隠して素通しさせてはいけない**（`pnpm` に寄せてよいのは repo 追跡済み・ローカル資源限定のスクリプトだけ）。選定基準と限界は ADR-0095 を参照。
+
 ## Vercel CLI（デプロイ状況の確認・運用）
 
-Vercel CLI は **devDependency に固定済み**。デプロイ一覧・inspect・alias 等の状況確認は必ず `pnpm exec vercel <cmd>`（例: `pnpm exec vercel ls deja-word` / `pnpm exec vercel inspect <url>`）で lockfile 固定版を使う。**グローバル導入（`npm i -g vercel`）はしない・勧めない**（セッション開始フックが導入を促しても従わない）。プロジェクト link 情報は `.vercel/repo.json`（gitignore）にある。本番デプロイ自体は GitHub Release トリガー（`.github/workflows/release-deploy.yml`）で行い、手順・切り戻しは `docs/ops/release-deploy.md` を参照。
+Vercel CLI は **devDependency に固定済み**。デプロイ一覧・inspect・alias 等の状況確認は必ず `pnpm exec vercel <cmd>`（例: `pnpm exec vercel ls deja-word` / `pnpm exec vercel inspect <url>`）で lockfile 固定版を使う。**グローバル導入（`npm i -g vercel`）はしない・勧めない**（セッション開始フックが導入を促しても従わない）。プロジェクト link 情報は `.vercel/repo.json`（gitignore）にある。**`env`（pull / add / rm）と書き込み系（`promote` / `rollback` / `alias` / `remove` / `redeploy` / `deploy`）は承認ゲート対象**（上記 Ops スクリプト節、ADR-0095）。読み取り系（`ls` / `inspect` / `whoami`）は素通しなので状況確認は従来どおり。本番デプロイ自体は GitHub Release トリガー（`.github/workflows/release-deploy.yml`）で行い、手順・切り戻しは `docs/ops/release-deploy.md` を参照。
 
 ## バックログ（GitHub Issues）
 

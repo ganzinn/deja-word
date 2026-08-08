@@ -41,6 +41,9 @@ yarn-error.log*
 # local scratch (import CSV など、git 管理外)
 /tmp/
 
+# Claude Code のローカル許可リスト（共有ルールは追跡対象の .claude/settings.json 側が正本）
+/.claude/settings.local.json
+
 # devman logs
 /log/
 

@@ -1,6 +1,6 @@
 # 01. server-bulk-add
 
-状態: **未着手**　PR: （未作成）
+状態: **完了（2026-08-08）**　PR: （未作成）
 
 ## 目的
 
@@ -98,4 +98,13 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+計画からの逸脱なし。以下は計画の範囲内の判断・後続への申し送り。
+
+- ADR 番号は **0094**（`docs/adr/0094-bulk-bookmark-skip-and-colocation.md`）。掲載節は README の「C. アーキテクチャ・レイヤリング」。ADR-0063 の「影響」節から 0094 決定 2 への相互参照を追加済み。
+- DoD 記載分に加えたテストケース（+2）: unit「全件 skip でも `ok: true`（`forbidden` 変種を持たないことの担保）」、integration「入力に重複 wordId があると一意化される」。
+- `BOOKMARK_WORD_IDS_MAX_COUNT` の doc コメントから、チケット 06 参照に加え実データ件数の記述も除去した（AGENTS.md「ドキュメントに実データの件数を書かない」）。上限値 3000 自体は変更なし。
+- **チケット 02 への申し送り**:
+  - `addBookmarks({ wordIds })` は成功時 `{ ok: true, bookmarkedWordIds, skippedWordIds }`。`skippedWordIds` が空でないのは**エラーではない**（全件 skip でも `ok: true` ＋ `bookmarkedWordIds: []`）。楽観的更新は `bookmarkedWordIds` を正として確定させる。
+  - 入力は `min(1)` のため**空配列で呼ぶと `invalid`**。対象 0 件のときは呼ぶ前に UI 側で弾く（ボタン無効化等）。
+  - action は `revalidatePath` を呼ばない（既存 `toggleBookmark` と同方針）。
+  - 型は `AddBookmarksInput`（`@/lib/schema/bookmark`）・`AddBookmarksResult`（`@/app/words/actions`）を export 済み。

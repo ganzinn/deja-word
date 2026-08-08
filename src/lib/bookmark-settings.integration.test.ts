@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  addBookmarksForUser,
   BookmarkWordNotInScopeError,
   getBookmarkedWordIdsForUser,
   setBookmarkForUser,
@@ -52,6 +53,84 @@ describe("setBookmarkForUser", () => {
       where: { userId: user.id, wordId: sysWord.id },
     });
     expect(count).toBe(1);
+  });
+});
+
+describe("addBookmarksForUser", () => {
+  test("bookmarks all valid wordIds at once", async () => {
+    const user = await createTestUser();
+    const w1 = await createWordRow(user.id, "単語1");
+    const w2 = await createWordRow(user.id, "単語2");
+
+    const result = await addBookmarksForUser(user.id, [w1.id, w2.id]);
+    expect(result.bookmarkedWordIds.sort()).toEqual([w1.id, w2.id].sort());
+    expect(result.skippedWordIds).toEqual([]);
+
+    const rows = await prisma.bookmark.findMany({
+      where: { userId: user.id },
+      select: { wordId: true },
+    });
+    expect(rows.map((r) => r.wordId).sort()).toEqual([w1.id, w2.id].sort());
+  });
+
+  test("is idempotent: already-bookmarked ids mix in without duplicating rows", async () => {
+    const user = await createTestUser();
+    const w1 = await createWordRow(user.id, "単語1");
+    const w2 = await createWordRow(user.id, "単語2");
+    await setBookmarkForUser(user.id, w1.id, true);
+
+    const first = await addBookmarksForUser(user.id, [w1.id, w2.id]);
+    // 既存か新規かは区別せず、操作後に ON の wordId をまとめて返す。
+    expect(first.bookmarkedWordIds.sort()).toEqual([w1.id, w2.id].sort());
+    const countAfterFirst = await prisma.bookmark.count({ where: { userId: user.id } });
+    expect(countAfterFirst).toBe(2);
+
+    const second = await addBookmarksForUser(user.id, [w1.id, w2.id]);
+    expect(second.bookmarkedWordIds.sort()).toEqual([w1.id, w2.id].sort());
+    expect(await prisma.bookmark.count({ where: { userId: user.id } })).toBe(2);
+  });
+
+  test("dedupes the input (duplicate wordIds are collapsed)", async () => {
+    const user = await createTestUser();
+    const w1 = await createWordRow(user.id, "単語1");
+
+    const result = await addBookmarksForUser(user.id, [w1.id, w1.id]);
+    expect(result.bookmarkedWordIds).toEqual([w1.id]);
+    expect(await prisma.bookmark.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  test("skips out-of-scope ids and still bookmarks the rest (no side effect on skipped)", async () => {
+    const a = await createTestUser();
+    const b = await createTestUser();
+    const aWord = await createWordRow(a.id, "Aの単語");
+    const bWord = await createWordRow(b.id, "Bの単語");
+
+    const result = await addBookmarksForUser(a.id, [aWord.id, bWord.id, "w_missing"]);
+    expect(result.bookmarkedWordIds).toEqual([aWord.id]);
+    expect(result.skippedWordIds.sort()).toEqual([bWord.id, "w_missing"].sort());
+
+    expect(await prisma.bookmark.count({ where: { userId: a.id, wordId: bWord.id } })).toBe(0);
+    expect(await prisma.bookmark.count({ where: { userId: a.id } })).toBe(1);
+  });
+
+  test("all ids out of scope succeeds with an empty bookmarkedWordIds", async () => {
+    const a = await createTestUser();
+    const b = await createTestUser();
+    const bWord = await createWordRow(b.id, "Bの単語");
+
+    const result = await addBookmarksForUser(a.id, [bWord.id, "w_missing"]);
+    expect(result.bookmarkedWordIds).toEqual([]);
+    expect(result.skippedWordIds.sort()).toEqual([bWord.id, "w_missing"].sort());
+    expect(await prisma.bookmark.count({ where: { userId: a.id } })).toBe(0);
+  });
+
+  test("regular user can bulk-bookmark system-owned words", async () => {
+    const user = await createTestUser();
+    const sysWord = await createWordRow(SYSTEM_USER_ID, "共有マスタ単語");
+
+    const result = await addBookmarksForUser(user.id, [sysWord.id]);
+    expect(result.bookmarkedWordIds).toEqual([sysWord.id]);
+    expect(await prisma.bookmark.count({ where: { userId: user.id, wordId: sysWord.id } })).toBe(1);
   });
 });
 

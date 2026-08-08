@@ -5,8 +5,9 @@
 #   Usage: scripts/wt-env.sh [worktree-dir]   # 省略時はカレントディレクトリ
 #
 # 行うこと:
-#   1. .env / .env.test / .claude/settings.local.json（Claude Code の
-#      permission 許可リスト）が無ければ本体（メイン worktree）からコピー
+#   1. .env / .env.test / .claude/settings.local.json（Claude Code の permission
+#      許可リストの端末ごとの追加分。共有ルールは追跡対象の .claude/settings.json が
+#      正本で git 経由で入る）が無ければ本体（メイン worktree）からコピー
 #      （既存ファイルは上書きしない — worktree 側のローカル調整を壊さないため。
 #       一方向コピーなので、worktree 側で増えた承認は本体には戻らない）
 #   2. .env の DEV_BLOB_ROOT を本体の .dev-blob へ向ける（既存行は置換）

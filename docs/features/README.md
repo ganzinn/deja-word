@@ -29,9 +29,11 @@ DejaWord は「一度忘れた単語との再会体験」をコンセプトに�
 ### 再生成レシピ
 
 ```sh
-docker compose up -d   # ローカル DB（deja-word-db）
-pnpm dev               # localhost:3000（別ポートの場合は BETTER_AUTH_URL も上書きする）
-pnpm e2e:capture-docs  # docs/features/images/ に一括出力
+docker compose up -d    # ローカル DB（deja-word-db）
+pnpm dev                # localhost:3000（別ポートの場合は BETTER_AUTH_URL も上書きする）
+pnpm e2e:wait-dev       # 起動待ち（別ポートなら URL を渡す。停止は pnpm e2e:stop-dev <port>）
+pnpm e2e:capture-docs   # docs/features/images/ に一括出力
+pnpm docs:diff-images   # 変更画像の寸法・差分ピクセル・md5 を一覧（目視レビューの起点）
 ```
 
 - 前提: `pnpm db:seed`・`pnpm db:set-system-password` 済みのローカル DB と、
@@ -51,5 +53,8 @@ pnpm e2e:capture-docs  # docs/features/images/ に一括出力
 - 撮影内容はローカル DB の登録データに依存する。commit 前に画像を目視レビューし、
   公開して問題ない内容かを確認すること。特に部分再撮影では、意図した画面以外の画像に
   被写体の欠落（ブックマークの塗り潰し・AI入力導線など）が出ていないかを差分で確認する。
+  `pnpm docs:diff-images`（引数なしで変更画像を自動収集、パス指定も可）で寸法・差分
+  ピクセル数・md5 を一覧できるので、差分の大きい画像から目視に回す。ImageMagick
+  （`magick`）が無い環境では md5 とサイズだけになる。
 - 端末やフォントの差でピクセル単位の差分は出るため、完全一致は求めない
   （意味のある変更があったときのみ再生成・コミットする）。

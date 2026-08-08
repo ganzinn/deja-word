@@ -92,6 +92,19 @@ function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
 }
 
 /**
+ * その行に「自分の回答」として出す内容があるか。自己判定形式の正解・不正解は回答内容を持たない
+ * （`answerDisplay` が null で、VAGUE / GAVE_UP / TIMEOUT のような固定文言にも当たらない）ため false。
+ */
+function hasMyAnswer(row: ResultRow): boolean {
+  return (
+    row.answerDisplay !== null ||
+    row.result === "VAGUE" ||
+    row.result === "GAVE_UP" ||
+    row.result === "TIMEOUT"
+  );
+}
+
+/**
  * 履歴送信の状態（single-flight は quiz-flow 側で担保。再送ボタンは失敗確定後のみ表示）。
  * success は TEST（`submitQuizAnswers`）と DRILL_RETRY（`submitDrillRetry`）、drill-success は
  * DRILL（`submitDrillRound`）の成功。
@@ -212,6 +225,8 @@ export function ResultList({
   bulkBookmarking,
 }: Props) {
   const [wrongOnly, setWrongOnly] = useState(false);
+  // 「自分の回答」の表示切替。既定は非表示で、確認したいときだけ開く（ADR-0097）。
+  const [showMyAnswer, setShowMyAnswer] = useState(false);
   // 残数が 1..9 の整数のときだけ定着モードを開始できる（空欄・範囲外は開始をゲート）。
   // 「正解した問題」の回数は出題トグル ON のときだけ効かせる（OFF は正解語を投入しないため不問）。
   const remainingValid =
@@ -224,6 +239,9 @@ export function ResultList({
   const rate = total === 0 ? 0 : Math.round((correctCount / total) * 100);
   // 表示専用フィルタ。集計（correctCount 等）は全行ベースのまま、一覧だけを誤答（CORRECT 以外）に絞る。
   const visibleRows = wrongOnly ? rows.filter((r) => r.result !== "CORRECT") : rows;
+  // 「自分の回答を表示」トグルを出すか。誤答フィルタと同じく全行ベースで判定する（絞り込みで
+  // トグルが出入りしないように）。
+  const anyMyAnswer = rows.some(hasMyAnswer);
   // 誤答のみ（トグル OFF）かつ全問正解だと定着対象が 0 件になるため開始を抑止する。
   const noDrillWords = !drillIncludeCorrect && wrongCount === 0;
   const skippedWordIds =
@@ -266,17 +284,24 @@ export function ResultList({
       </p>
 
       {total > 0 ? (
-        <Label
-          htmlFor="result-wrong-only"
-          className="text-muted-foreground flex cursor-pointer items-center gap-2 text-sm font-normal"
-        >
-          <Checkbox
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <ListToggle
             id="result-wrong-only"
+            label="間違えた問題だけ表示"
             checked={wrongOnly}
-            onCheckedChange={(checked) => setWrongOnly(checked === true)}
+            onCheckedChange={setWrongOnly}
           />
-          間違えた問題だけ表示
-        </Label>
+          {/* 「自分の回答」は既定で非表示（正解を先に確認したいときに視界へ入れない）。
+              回答内容を持つ行が 1 つも無い一覧（自己判定だけの結果など）では効かないため出さない。 */}
+          {anyMyAnswer ? (
+            <ListToggle
+              id="result-show-my-answer"
+              label="自分の回答を表示"
+              checked={showMyAnswer}
+              onCheckedChange={setShowMyAnswer}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {/* 誤答だけを表示している間の一括ブックマーク導線。誤答 0 件・状態マップ未取得では出さない
@@ -378,13 +403,10 @@ export function ResultList({
                       </div>
                     ) : null}
                   </div>
-                  {row.answerDisplay !== null ||
-                  row.result === "GAVE_UP" ||
-                  row.result === "TIMEOUT" ||
-                  row.result === "VAGUE" ||
-                  remainingByWordId !== null ? (
+                  {/* 「自分の回答」行。非表示のときも残数バッジ（DRILL）はこの行に残す。 */}
+                  {(showMyAnswer && hasMyAnswer(row)) || remainingByWordId !== null ? (
                     <div className="flex w-full items-start gap-2">
-                      {row.result === "VAGUE" ? (
+                      {!showMyAnswer ? null : row.result === "VAGUE" ? (
                         // うろ覚えは正解時のみ選べる＝回答内容は正解と同じ。全形式とも「うろ覚え」と表示する。
                         <p className="text-muted-foreground text-sm">自分の回答: うろ覚え</p>
                       ) : row.answerDisplay !== null ? (
@@ -615,6 +637,33 @@ export function ResultList({
         )}
       </div>
     </div>
+  );
+}
+
+/** 結果一覧の表示切替（誤答フィルタ・自分の回答）の 1 項目。 */
+function ListToggle({
+  id,
+  label,
+  checked,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <Label
+      htmlFor={id}
+      className="text-muted-foreground flex cursor-pointer items-center gap-2 text-sm font-normal"
+    >
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(next) => onCheckedChange(next === true)}
+      />
+      {label}
+    </Label>
   );
 }
 

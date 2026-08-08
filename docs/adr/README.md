@@ -97,6 +97,7 @@
 | [0070](0070-bookmark-all-scope-quiz.md) | ブックマーク全件モード（掲載箇所なし出題、0022 の明示的例外） | 高 | — |
 | [0072](0072-quiz-order-by-occurrence-number.md) | 掲載番号順出題（出題順の決定を buildQuiz に集約、0039 の明示的例外） | 高 | — |
 | [0074](0074-quiz-question-count-sampling.md) | 出題数の指定（範囲からランダム抽選、再テストは再抽選） | 高 | — |
+| [0097](0097-result-my-answer-hidden-by-default.md) | 結果一覧の「自分の回答」は既定で非表示・トグルで表示（非永続。残数バッジは非表示中も残す） | 高 | — |
 
 ### E. drill（定着モード）
 

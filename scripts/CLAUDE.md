@@ -1,5 +1,7 @@
 # scripts (ops 運用ツール)
 
+以下は **DB 操作の運用ツール（`scripts/*.ts`）の規約**。worktree 補助・開発補助の shell スクリプト（`wt-*.sh` / `diff-docs-images.sh` / `e2e/*.sh`）には適用しない（ローカル資源にしか触れず、`pnpm <name>` から呼ぶ。本番に触れる操作を shell 側へ移して承認ゲートを迂回することは禁止 — ADR-0095）。
+
 tsx で実行する (`pnpm db:*`)。tsx は `import "server-only"` と `@/` エイリアスの実行時 import を解決できないため:
 
 - アプリ本体のサービス関数や `@/lib/prisma` を import しない。コアロジックは `src/lib/` に DI 対応モジュール (server-only なし・prisma 引数注入) として新設し、ここからは相対 import する (src/lib/CLAUDE.md の ops コア規約を参照)。

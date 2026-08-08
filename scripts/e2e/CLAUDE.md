@@ -1,6 +1,8 @@
 # scripts/e2e (ブラウザ E2E ハーネス)
 
-ここは **ブラウザ E2E 検証ヘルパ**であり、`scripts/CLAUDE.md` の DB ops スクリプト規約（既定ドライラン・`--execute` で書込み等）は**適用しない**。実行は `pnpm e2e:*`（tsx 経由）。使い方の全体像は skill `e2e-verify`（`.claude/skills/e2e-verify/SKILL.md`）を参照。
+ここは **ブラウザ E2E 検証ヘルパ**であり、`scripts/CLAUDE.md` の DB ops スクリプト規約（既定ドライラン・`--execute` で書込み等）は**適用しない**。実行は `pnpm e2e:*`（検証本体は tsx、dev サーバの待ち合わせ・停止は shell）。使い方の全体像は skill `e2e-verify`（`.claude/skills/e2e-verify/SKILL.md`）を参照。
+
+- dev サーバのプロセス補助は shell に置く（`wait-for-dev.sh` = 起動待ち / `stop-dev.sh` = ポート指定停止）。**待ち合わせ・停止をコマンド列で手書きしない**（`for i in $(seq ...)` / `lsof | xargs kill` はコマンド置換・未許可コマンドで承認プロンプトになる。issue #244）。同種の定型が増えたらここへ足し、`pnpm e2e:*` から呼ぶ。
 
 - ブラウザ操作は `playwright-core` + システムの Google Chrome（`chromium.launch({ channel: "chrome" })`）。ブラウザ実体はリポジトリに同梱しない。CI では動かさない（integration テスト同様ローカル専用）。
 - アプリ本体には **HTTP（ブラウザ）経由**でのみ触れる。`@/` エイリアスやサービス関数は import しない。

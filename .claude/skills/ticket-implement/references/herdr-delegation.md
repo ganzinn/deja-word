@@ -12,8 +12,8 @@
   ```
 
   未 trust なら計画ドラフト提示で「worktree 置き場で一度 `claude` を起動して trust を承認 → 終了」をユーザーに依頼する
-- **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない。検知したら通知してユーザーの操作を待つ
-- 定型コマンドの許可は、準備手順の `scripts/wt-env.sh` が配る `.claude/settings.local.json` で大半が賄われる。起動フラグ（下記起動コマンドの `--add-dir` / `--allowedTools`）はそれで消えない分だけを最小限補う — 内訳は「承認プロンプトの切り分け」の表を参照
+- **trust ダイアログ・permission プロンプトの代理承認（Enter や選択キーの送信）は絶対にしない**。これらは人間の承認ゲートであり、オーケストレーターが迂回してはならない。検知したら通知してユーザーの操作を待つ。本番リソースに触れるコマンドの `ask` ルール（ADR-0095）も同じ扱いで、代理承認せずユーザーに判断を仰ぐ（実装チケットで踏むなら、そもそもスコープ外の操作を疑う）
+- 定型コマンドの許可は、追跡対象の `.claude/settings.json`（`permissions.allow`。worktree には git 経由で入る）で大半が賄われる。`scripts/wt-env.sh` が配る `.claude/settings.local.json` は端末ごとの追加分（「don't ask again」の受け皿）で、有用なルールは追跡対象側へ昇格させる。起動フラグ（下記起動コマンドの `--add-dir` / `--allowedTools`）はそれで消えない分だけを最小限補う — 内訳は「承認プロンプトの切り分け」の表を参照
 
 ## 起動
 
@@ -69,16 +69,19 @@ repo 管理の `.claude/settings.json` に `PermissionRequest` hook が定義済
 
 | プロンプトの種類 | 消せるか | 対策 |
 | --- | --- | --- |
-| `This command requires approval`（許可リストに無い定型コマンド） | ○ | wt-env.sh の `.claude/settings.local.json` 配布＋`--allowedTools` |
-| 同上だが**環境変数の前置き**が原因（`PORT=3100 ... pnpm dev` は `Bash(pnpm dev *)` に不一致） | ○ | 本体の settings.local.json に env 名から始まるルール（`Bash(PORT=* pnpm *)` 等。`*` はスペースをまたいで一致）を追加。wt-env.sh が全 worktree に配る |
+| `This command requires approval`（許可リストに無い定型コマンド） | ○ | 追跡対象 `.claude/settings.json` の `permissions.allow`＋`--allowedTools` |
+| 同上だが**環境変数の前置き**が原因（`PORT=3100 ... pnpm dev` は `Bash(pnpm dev *)` に不一致） | ○ | env 名から始まるルール（`Bash(PORT=* pnpm *)` 等。`*` はスペースをまたいで一致）を追跡対象 settings.json に追加 |
 | `Compound command contains cd with write operation`（`cd`＋書き込みの複合コマンド。許可リストでは消せない） | ○（発生源で） | テンプレで `cd` 前置きを禁止（cwd は最初から worktree） |
 | worktree 外への書き込み（報告ファイル） | ○ | `--add-dir <worktree置き場>` |
 | worktree 外の一時ファイルの読み書き（scratchpad・`/tmp` 等） | ○（発生源で） | テンプレで一時ファイルを worktree 内の `tmp/` に限定する（scratchpad・`/tmp` を使わせない） |
-| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）/ バックグラウンド演算子 `&` を含む Bash | ✗ | 承認待ちループで対処 |
+| バックグラウンド演算子 `&`（許可リストでは消せない） | ○（発生源で） | テンプレで `&` を禁止し Bash ツールの `run_in_background: true` を使わせる（リダイレクト・`mkdir -p tmp` も不要になる）。**実証済み** |
+| `Contains expansion`（コマンド置換 `$( )`）/ `Contains simple_expansion`（変数展開 `$VAR`）（許可リストでは消せない） | ○（発生源で） | テンプレで `for` ＋ `$( )` の 1 コマンドまとめを禁止し、1 対象ずつ／複数引数を受けるコマンド（`git show -s --format=... <sha> <sha>`）／定型スクリプト（`pnpm e2e:wait-dev` `pnpm e2e:stop-dev` `pnpm docs:diff-images`）に寄せる |
+| 未許可コマンド（`md5` / `magick` / `pkill` / `lsof` / `xargs` 等）を含む複合コマンド | ○ | 単発なら許可リスト、定型なら上のスクリプトへ寄せる（`pnpm` 経由なので `Bash(pnpm *)` で通る） |
+| 本番リソースに触れるコマンドの `ask` ルール（ADR-0095） | ✗（意図的） | 実装チケットでは踏まないのが正。踏んだら代理承認せず通知し、スコープ外の操作でないか確認する |
 
-`&` は `pnpm e2e:capture-docs` のように dev サーバを要する作業で必ず踏む。撮影を伴うチケットを委譲する場合は、**承認待ちが最低 1 回発生する前提**で運用する。
+`&` と `$( )` は、E2E・撮影のように dev サーバの起動・待ち合わせ・停止を伴う作業で踏みやすい（issue #244 の実測 7 件の大半がこれ）。上記の対処を委譲プロンプトに含めれば承認 0 回で完走できる想定で運用し、実測は `tmp/permission-requests.log` で確認する。
 
-worktree 内のプロンプトで「don't ask again」を選ぶと、ルールは worktree を main checkout に解決した上で**本体リポジトリの `.claude/settings.local.json` に保存され、次回以降の全セッション（worktree 含む）に有効**になる。ただし停止したコマンドそのままの断片的なルール（`Bash(break)` 等）が残ることがあるため、実装セッション後に本体の許可リストを見直し、無意味なルールは削除する。
+worktree 内のプロンプトで「don't ask again」を選ぶと、ルールは worktree を main checkout に解決した上で**本体リポジトリの `.claude/settings.local.json` に保存され、次回以降の全セッション（worktree 含む）に有効**になる。ただし停止したコマンドそのままの断片的なルール（`Bash(break)` 等）が残ることがあるため、実装セッション後に本体の許可リストを見直し、無意味なルールは削除し、**定型として残す価値があるものは追跡対象 `.claude/settings.json` の `permissions.allow` へ昇格させる**（local 側はクローンにも他端末にも共有されない）。
 
 ## 報告回収・再委譲・後片付け
 

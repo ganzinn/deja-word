@@ -22,6 +22,9 @@
 - **ファイルの書き換え・コピーは Edit / Write ツールで行う**（permission mode が acceptEdits のとき自動承認される）。`perl -0pi` / `sed -i` / `cp` などシェル経由の書き換えは承認プロンプトになる
 - **一時ファイル（比較用コピー・dev サーバのログ・スクリーンショット等）は worktree 内の `tmp/`（gitignore 済み）に置く**。自分の scratchpad・`/tmp` は使わない（worktree 外の読み書きは承認プロンプトになる）
 - 別ポート dev や E2E の環境変数前置き（`PORT=3100 BETTER_AUTH_URL=... pnpm dev` 等）はそのまま書いてよい（`PORT=` / `BETTER_AUTH_URL=` / `E2E_BASE_URL=` / `SHOT_DIR=` 始まりの pnpm コマンドは許可リスト対応済み）
+- **バックグラウンド実行に `&` を付けない**。Bash ツールの `run_in_background: true` を使う（`&` は許可リストで消せない承認プロンプトになる）。出力はツール側で捕捉されるので `> tmp/dev.log 2>&1` のリダイレクトや `mkdir -p tmp` も不要
+- **複数対象の比較・集計を `for` ＋ `$( )` の 1 コマンドにまとめない**（コマンド置換・変数展開は許可リストで消せない）。1 対象ずつ実行する、複数引数を受けるコマンドを使う（例: `git show -s --format=... <sha> <sha> ...`）、または下の定型スクリプトに寄せる
+- 定型作業は repo のスクリプトを使う（いずれも `pnpm` 経由なので承認不要）: dev サーバの起動待ち `pnpm e2e:wait-dev <url>`、停止 `pnpm e2e:stop-dev <port>`、機能紹介画像の差分確認 `pnpm docs:diff-images`
 - **コミット前に必ず整形する**: `pnpm format` で整形 → `pnpm format:check` がクリーン → `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` を通すこと（この順）。整形差分は実装コミットに含める（別コミットにしない）。**`pnpm test:integration` は実行しない**（共有 DB を使うためオーケストレーター側で直列実行される。integration テストファイルの新規作成・変更自体はチケットに従い行う）
   - 任意: devman が導入済みの環境では、これらのコマンドを `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される）
 - **migration はファイル作成まで**: schema 変更時は `pnpm exec prisma migrate dev --create-only -n <名前>` で migration ファイルだけを作り、共有 dev DB へ適用する `pnpm db:migrate` は実行しない（適用は実装完了後の手動確認工程で行われる）

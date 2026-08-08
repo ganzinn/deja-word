@@ -7,9 +7,7 @@
 #   url         既定: $E2E_BASE_URL → http://localhost:${PORT:-3000}
 #   timeout-sec 既定: 90（next dev の初回コンパイルを見込む）
 #
-# 存在理由: 待ち合わせを `for i in $(seq ...)` のワンライナーで書くと、コマンド置換が
-# Claude Code の許可リストで消せず毎回承認プロンプトになる（issue #244）。定型の
-# 待ち合わせをここに寄せて `pnpm e2e:wait-dev` 経由で呼ぶことで承認なしに走る。
+# 待ち合わせをコマンド列で手書きしない（コマンド置換が承認プロンプトになる）。
 set -euo pipefail
 
 URL="${1:-${E2E_BASE_URL:-http://localhost:${PORT:-3000}}}"

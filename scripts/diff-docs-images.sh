@@ -10,9 +10,8 @@
 # 出力: 状態 / 寸法（旧 -> 新）/ 差分ピクセル数（ImageMagick の AE メトリクス）/ md5。
 # ImageMagick（magick）が無い環境では md5 とファイルサイズのみ出す。
 #
-# 存在理由: 再撮影後の目視レビュー（docs/features/README.md）で毎回同じ比較をするが、
-# `for n in ...; do magick compare ...; $(magick identify ...); done` のワンライナーは
-# コマンド置換・未許可コマンドで承認プロンプトになる（issue #244）。ここに寄せる。
+# 再撮影後の目視レビュー（docs/features/README.md）の起点。比較をコマンド列で
+# 手書きしない（コマンド置換・未許可コマンドが承認プロンプトになる）。
 set -euo pipefail
 
 IMAGE_DIR="docs/features/images"

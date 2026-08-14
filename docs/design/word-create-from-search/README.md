@@ -14,12 +14,16 @@
 結論のみを記載する。採用理由・却下した代替案は各トピックファイルを参照。
 
 - **対象は単語ビューの検索のみ**。掲載箇所ビュー・関連語ピッカーはスコープ外。→ [01](01-requirements.md)
-- **発動条件は「有効な検索語あり、かつ可視範囲（system＋自分）に完全一致 headword なし」**。部分一致ヒットがあっても表示。完全一致は「正規化後キーワード（ADR-0084）と headword の等値比較・大文字小文字を区別しない」で、表示上の絞り込み（ブックマーク・ページング）には依存しない。→ [01](01-requirements.md)
+- **発動条件は「有効な検索語あり、かつ正規化後キーワードが headword 最大長（100 文字）以内、かつ可視範囲（system＋自分）に完全一致 headword なし」**。部分一致ヒットがあっても表示。完全一致は「正規化後キーワード（ADR-0084）と headword の等値比較・大文字小文字を区別しない」で、表示上の絞り込み（ブックマーク・ページング）には依存しない。→ [01](01-requirements.md)
 - **検索仕様・登録フォーム項目・重複警告の照合仕様は変更しない**。追加するのは導線と受け口（検索語プリフィル＋戻り先）のみ。→ [01](01-requirements.md)
 - **導線は件数行直下に 1 箇所、＋アイコン付きの控えめなテキストリンク「「{表示語}」を登録」**。ゼロ件・部分一致あり共通で、空状態の表示は変更しない。リンクは `/words/new` へ検索語と戻り先コンテキストを渡す。→ [02](02-ui.md)
 - **表示語・プリフィル値は正規化後キーワードで統一**（大文字小文字は保持）。ADR-0084「入力のまま見せる」方針の例外となるため、実装 PR で ADR-0084 に例外を追記する。→ [02](02-ui.md)
 - **重複警告は既存の blur 発火のまま（初期表示時のチェックは追加しない）**。→ [02](02-ui.md)
 - **導線経由時の「戻る」は元の検索条件の一覧へ、送信成功後は既存どおり登録した単語の詳細へ**。→ [02](02-ui.md)
+- **完全一致判定は `src/lib/words-list.ts` の新関数（`scopedOwnerIds`＋大文字小文字を区別しない equals）で行い、一覧取得と並列実行**。ブックマーク・ページングは入力に持たない。→ [03](03-architecture.md)
+- **導線リンクは一覧コンテキスト（`q`/`sort`/`match`/`bookmarked`/`page`）のみを渡し、プリフィル値と戻り先 URL は `/words/new` 側で導出・再構築**。生 URL は受けない。→ [03](03-architecture.md)
+- **テストは判定関数の integration が本体、UI 分岐は e2e-verify の手動確認を実装チケットの完了条件にする**。→ [03](03-architecture.md)
+- **機能紹介は word-management.md の単語ビュー節に追記し、導線が写るショットを 1 枚追加**。→ [03](03-architecture.md)
 
 ## トピック状態表
 
@@ -27,13 +31,45 @@
 
 | ファイル | 状態 | 要約 |
 | --- | --- | --- |
-| [01-requirements.md](01-requirements.md) | 確定（2026-08-14） | 要求・発動条件・スコープ外 |
+| [01-requirements.md](01-requirements.md) | 確定（2026-08-15） | 要求・発動条件・スコープ外 |
 | [02-ui.md](02-ui.md) | 確定（2026-08-15） | 導線の表示・プリフィルする値・重複警告との整合 |
-| [03-architecture.md](03-architecture.md) | 未着手 | 実装構成（searchParams 受け渡し・変更ファイル）・テスト戦略 |
+| [03-architecture.md](03-architecture.md) | 確定（2026-08-15） | 実装構成（searchParams 受け渡し・変更ファイル）・テスト戦略 |
 
-想定順序（残り）: 03。
+**全トピック確定（2026-08-15）。設計完了。次工程はチケット分割（`/ticket-split word-create-from-search`）。**
 
-**次セッションの推奨トピック: 03（アーキテクチャ）**。引き継ぎ論点: 完全一致有無の判定方式（表示上の絞り込み・ページング非依存のクエリ設計。一覧取得と同一リクエスト内でどう並べるか）、`/words/new` の searchParams 設計（プリフィル値＝正規化後キーワードと戻り先の受け渡し方式・検証。`returnHref` の create 対応か別方式か）、変更対象ファイルの一覧（ADR-0084 への例外追記を含む）、テスト戦略、docs/features/word-management.md の更新範囲。
+## 実装への引き継ぎ
+
+### 変更対象の一覧
+
+スキーマ変更・マイグレーション・naming-book の変更は無い。
+
+- `src/lib/words-list.ts` — 完全一致判定関数の追加（03 決定 1）
+- `src/lib/words-list.integration.test.ts` — 判定関数のテスト追加（03 決定 4）
+- `src/app/words/page.tsx` — `WordView` での並列取得＋件数行直下の導線（ページ内ローカルコンポーネント）（03 決定 1、02 決定 1）
+- `src/app/words/_lib/search-params.ts`（＋ `search-params.unit.test.ts`） — `parsePage` の移設ほか一覧コンテキスト受け渡しのヘルパ追加（03 決定 2）
+- `src/app/words/new/page.tsx` — searchParams の受け口（`q` からのプリフィル導出・検証、returnHref 再構築）（03 決定 2）
+- `src/app/words/new/word-form.tsx` — create モードの `backHref` に `returnHref` を使用（03 決定 2、02 決定 5）
+- `docs/adr/0084-search-keyword-accent-normalization.md` — 画面表示・プリフィルに正規化後キーワードを用いる例外の追記（02 決定 2）
+- `docs/features/word-management.md`＋`scripts/e2e/capture-docs-screenshots.ts` — 単語ビュー節への追記と導線ショット 1 枚の追加（03 決定 5）
+
+### 着手順序のヒント
+
+1. `words-list.ts` の判定関数＋integration テスト（他に依存しない）
+2. `/words/new` の受け口（search-params ヘルパ・word-form の backHref 変更を含む）＋unit テスト
+3. `words/page.tsx` の並列取得＋導線表示（1 に依存。2 とは URL 仕様＝03 決定 2 を接点に設計上は独立だが、2 に含む `parsePage` 移設が page.tsx の import 差し替えを伴い同一ファイルを触るため、並行するなら移設を先に済ませる）
+4. ADR-0084 追記・word-management.md 更新・ショット追加（1〜3 の後）
+
+共有物で競合しやすいのは `search-params.ts`・`word-form.tsx`・`words/page.tsx`（他機能がフォーム・一覧 URL に触れる場合や手順 2・3 の並行時）。
+
+### テスト戦略の要点（チケット完了条件に転記できる粒度）
+
+- integration: 判定関数について (a) 自分の単語に一致 → true、(b) system 単語に一致 → true、(c) 部分一致のみ → false、(d) 大文字小文字差でも一致、(e) 空文字は false を返す（防御ガード。検証は戻り値のみ）、(f) 他ユーザーの単語は対象外（アクセント正規化は正規化関数の既存 unit テストと手動観点で担保）
+- unit: search-params の `parsePage` 移設・ヘルパ追加分、プリフィル導出・returnHref 再構築（純関数に切り出した場合）
+- 手動（e2e-verify スキル）: ゼロ件で導線表示・部分一致ありで表示・2 ページ目以降でも表示・完全一致ありで非表示・記号のみ等の正規化後空の検索語で非表示・101 文字以上の検索語で非表示・ブックマーク絞り込み中（完全一致が結果に出ない状態）でも非表示・アクセント付き入力で表示語とプリフィルが正規化後の値で一致・「戻る」で検索条件維持
+
+### 次工程
+
+チケット分割は ticket-split スキルで行う（チケットの置き場は `docs/plan/word-create-from-search/`、形式は ticket-split 側で定義）。
 
 ## セッション運用ルール
 

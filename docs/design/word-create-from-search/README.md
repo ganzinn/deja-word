@@ -41,7 +41,7 @@
 
 ### 変更対象の一覧
 
-スキーマ変更・マイグレーション・naming-book の変更は無い。
+スキーマ変更・マイグレーションは無い。naming-book は新規用語の追加は無いが、既存エントリの記述更新がある（下記）。
 
 - `src/lib/words-list.ts` — 完全一致判定関数の追加（03 決定 1）
 - `src/lib/words-list.integration.test.ts` — 判定関数のテスト追加（03 決定 4）
@@ -50,6 +50,7 @@
 - `src/app/words/new/page.tsx` — searchParams の受け口（`q` からのプリフィル導出・検証、returnHref 再構築）（03 決定 2）
 - `src/app/words/new/word-form.tsx` — create モードの `backHref` に `returnHref` を使用（03 決定 2、02 決定 5）
 - `docs/adr/0084-search-keyword-accent-normalization.md` — 画面表示・プリフィルに正規化後キーワードを用いる例外の追記（02 決定 2）
+- `docs/reference/naming-book.md` — 「検索キーワード正規化」既存エントリの記述更新（上記例外と矛盾する注意書き・適用箇所の列挙を改める）（03 決定 3）
 - `docs/features/word-management.md`＋`scripts/e2e/capture-docs-screenshots.ts` — 単語ビュー節への追記と導線ショット 1 枚の追加（03 決定 5）
 
 ### 着手順序のヒント

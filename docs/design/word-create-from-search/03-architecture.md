@@ -66,10 +66,11 @@
 - `src/app/words/new/page.tsx` — searchParams の受け口（`q` からのプリフィル導出・検証、returnHref 再構築）
 - `src/app/words/new/word-form.tsx` — create モードの `backHref` に `returnHref` を使用
 - `docs/adr/0084-search-keyword-accent-normalization.md` — 「正規化後キーワードを画面表示・プリフィルに用いる例外」の追記（02 確定）
+- `docs/reference/naming-book.md` — 「検索キーワード正規化」既存エントリの記述更新（適用箇所の列挙と「検索窓・URL の `q`・件数ラベルは入力されたままを保持する」の注意書きが、本機能の例外＝表示語・プリフィルへの使用と矛盾するため。新規用語の追加は無い）
 - `docs/features/word-management.md` — 機能紹介の更新（決定 5）
 - `scripts/e2e/capture-docs-screenshots.ts` — words セクションへの導線ショット定義の追加（決定 5）
 
-採用理由: 決定 1・2 の帰結の棚卸し。スキーマ（prisma）・migration・naming-book の変更は無い（新規ドメイン用語を導入しないため）。
+採用理由: 決定 1・2 の帰結の棚卸し。スキーマ（prisma）・migration の変更は無い。naming-book は新規ドメイン用語を導入しないため追加エントリは無いが、既存エントリの記述が ADR-0084 の例外追記と矛盾したまま残らないよう更新のみ行う（2026-08-15、チケット分割時の整合性チェックで検出し改訂）。
 却下した代替案: 導線を独立コンポーネントファイルに切り出す — 単語ビュー専用の小さな表示であり、`EmptyState` 等と同じく page.tsx 内ローカルで足りる（凝集度・変更理由の観点で分割根拠が無い）。
 
 ### 決定 4: テスト戦略

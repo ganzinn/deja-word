@@ -163,11 +163,19 @@ export function meaningDisplaysOf(word: QuizWord): MeaningDisplay[] {
 }
 
 /**
+ * 最初の Meaning（sortOrder 先頭）の MeaningText を sortOrder 順のまま。未登録なら空配列。
+ * 「連結するか・先頭だけに絞るか」は表示側の都合なので、素材の切り出しはここに 1 本化する。
+ */
+export function firstMeaningTexts(word: QuizWord): string[] {
+  return word.meanings[0]?.texts ?? [];
+}
+
+/**
  * 最初の Meaning（sortOrder 先頭）の MeaningText を「; 」で連結。品詞は含めない。
  * 「先頭の訳語だけ表示する」設定が OFF のときの表示（`firstMeaningDisplayText` の OFF 経路）。
  */
 export function firstMeaningText(word: QuizWord): string {
-  return (word.meanings[0]?.texts ?? []).join("; ");
+  return firstMeaningTexts(word).join("; ");
 }
 
 /**

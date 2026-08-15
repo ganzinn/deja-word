@@ -4,6 +4,7 @@ import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-
 import {
   allMeaningTexts,
   firstMeaningDisplayText,
+  firstMeaningTexts,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -21,7 +22,7 @@ const CHOICE_DUMMY_COUNT = 3;
  * 成立判定（checkFormatAvailability）で同じキーを使う必要があるため共有する。
  */
 export function choiceCandidateTexts(word: QuizWord, firstMeaningTextOnly: boolean): string[] {
-  const texts = word.meanings[0]?.texts ?? [];
+  const texts = firstMeaningTexts(word);
   return firstMeaningTextOnly ? texts.slice(0, 1) : texts;
 }
 
@@ -62,6 +63,8 @@ export function buildChoiceQuestions(
       ...questionBaseOf(target, "CHOICE"),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
+      // 結果一覧の正解列用。選択肢の表示は設定で先頭 1 つに絞られうるが、こちらは常に全訳語
+      correctMeaningTexts: firstMeaningTexts(target),
     };
   });
 }

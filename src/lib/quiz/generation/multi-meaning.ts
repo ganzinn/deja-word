@@ -53,6 +53,11 @@ export function buildMultiMeaningQuestions(
       ],
       rng,
     );
-    return { ...questionBaseOf(target, "MULTI_MEANING"), options };
+    return {
+      ...questionBaseOf(target, "MULTI_MEANING"),
+      options,
+      // 結果一覧の正解列用。options は選択肢としてシャッフル済みなので、訳語順は別に持たせる
+      correctMeaningTexts: correctTexts,
+    };
   });
 }

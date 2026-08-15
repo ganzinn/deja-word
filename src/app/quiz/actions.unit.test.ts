@@ -260,6 +260,7 @@ describe("startQuiz (Server Action)", () => {
           ttsText: "ubiquitous",
           choices: [{ text: "a" }, { text: "b" }],
           correctIndex: 0,
+          correctMeaningTexts: ["a"],
         },
       ],
     };
@@ -515,6 +516,7 @@ describe("startDrillRound (Server Action)", () => {
           ttsText: "ubiquitous",
           choices: [{ text: "a" }, { text: "b" }],
           correctIndex: 0,
+          correctMeaningTexts: ["a"],
         },
       ],
     };
@@ -650,6 +652,7 @@ describe("startDrillRetry (Server Action)", () => {
           ttsText: "ubiquitous",
           choices: [{ text: "a" }, { text: "b" }],
           correctIndex: 0,
+          correctMeaningTexts: ["a"],
         },
       ],
     };

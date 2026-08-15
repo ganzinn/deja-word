@@ -24,9 +24,9 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
 
 ## 前提条件チェックと作業場所（起点 worktree）
 
-- 本スキルは機能の起点 worktree（`../deja-word-worktrees/<機能名>`。命名族・ライフサイクルの共通定義は worktree スキル）を作業場所とする。設計〜計画シリーズから保持されている worktree をそのまま使い、無ければ `scripts/wt-new.sh <機能名> origin/main --branch feature/<機能名>`（worktree スキル。統合ブランチが既存ならそれを checkout する = 再開）で用意する。以降の git 操作・検証・ステータス更新・push はすべて起点 worktree の絶対パス配下で行う（本体の checkout は使わない。チケット worktree の準備・撤去も起点 worktree 内から実行してよい）
+- 本スキルは機能の起点 worktree（`../deja-word-worktrees/<機能名>`。命名族・ライフサイクルの共通定義は worktree スキル）を作業場所とする。設計〜計画シリーズから保持されている worktree をそのまま使い、無ければ `scripts/wt-new.sh <機能名> <統合ブランチの分岐元> --branch feature/<機能名>`（worktree スキル。分岐元は実装フロー手順 1 に従う。統合ブランチが既存ならそれを checkout する = 再開）で用意する。以降の git 操作・検証・ステータス更新・push はすべて起点 worktree の絶対パス配下で行う（本体の checkout は使わない。チケット worktree の準備・撤去も起点 worktree 内から実行してよい）
 - 起点 worktree に `node_modules` が無い場合（設計フェーズを `--no-install` で始めた場合）や設計期間が長く陳腐化している場合は、起点 worktree で `pnpm install` を実行してから始める（メイン自身がマージ後検証で使うため）
-- `docs/plan/<機能名>/README.md` が統合ブランチ `feature/<機能名>`（再開時）または origin/main に存在すること。なければ中断し、状態で誘導先を分岐する: 設計＋計画の PR（作業ブランチ `docs/<機能名>-design-plan`）が未マージならそのマージを促し、チケット分割自体が未実施なら ticket-split スキルへ誘導する
+- `docs/plan/<機能名>/README.md` が統合ブランチ `feature/<機能名>`（再開時）・作業ブランチ `docs/<機能名>-design-plan`・origin/main のいずれかに存在すること。なければ中断し、チケット分割が未実施として ticket-split スキルへ誘導する。設計＋計画 PR を作成済みで未マージなら、先にそのマージを促す（分岐元が `origin/main` になるため）
 - 起点 worktree の working tree が clean であること。main の最新化は `git fetch origin main` で行う（起点 worktree では main を checkout しない。以降の main 参照はすべて `origin/main`）。**main は統合ブランチへ取り込まない**（main との差分は統合 PR のマージ時に解消する）
 - ハブの一覧表に「ファイル未作成」のチケットが残っていれば中断し、ticket-split の見直し・追加モードへ誘導する
 - 未マージの plan-update PR が無いこと。統合ブランチ作成前ならそのマージを促し、マージ後に統合ブランチを作成する（統合ブランチは `origin/main` 起点のため計画変更が取り込まれる）。統合ブランチ作成後（再開時）に見つかった場合は close を促し、内容は統合ブランチ上の見直し（ticket-split の管轄）で反映し直す
@@ -71,7 +71,9 @@ plan ハブの「ステータス運用ルール」が言う**「実装セッシ�
 
 ## 実装フロー
 
-1. 起点 worktree で統合ブランチ `feature/<機能名>` を `origin/main` から作成する（`git switch -c feature/<機能名> origin/main`。既存なら `git switch feature/<機能名>` = 再開。設計〜計画シリーズから続く場合はここで作業ブランチ `docs/<機能名>-design-plan` から切り替わる）
+1. 起点 worktree で統合ブランチ `feature/<機能名>` を作成する（既存なら `git switch feature/<機能名>` = 再開）。**分岐元は設計＋計画 PR の有無で決まる**（ticket-split 新規分割モード手順 8 の判断。不明なら作業ブランチ `docs/<機能名>-design-plan` の状態で判定する — 未マージで残っていれば作らない運用、マージ済み・不在なら `origin/main` 起点）:
+   - 設計＋計画 PR を作ってマージ済み: `git switch -c feature/<機能名> origin/main`
+   - 設計＋計画 PR を作らない: `git switch -c feature/<機能名> docs/<機能名>-design-plan`（設計・計画のコミットが統合 PR の先頭に入る。統合 PR 本文でその旨に触れる）
 2. **wave ループ**: ready 集合から並行度上限まで選び、チケットごとに worktree を準備する（「worktree の扱い」どおり、起点は統合ブランチ）→ **メインが統合ブランチ上で**、選んだチケットをまとめて「実装中」に更新し **1 コミット**（チケットに紐づかない運用コミット）→ 実装エージェントを並行起動（worktree は状態更新コミットの前に分岐するが、worktree 側は `docs/plan/` を編集しないため squash マージで衝突しない）
 3. 報告を受けたら**チケット番号順に**統合ブランチへ取り込む:
    - `git merge --squash <worktreeブランチ>`（ステージのみでコミットは作られない）→ ハブとチケット冒頭の状態行を「完了＋日付」に編集・実装メモを転記 → まとめて 1 コミット。メッセージ `<機能名>: NN <チケット名>`（PR タイトル規約と同形。**実装差分は 1 チケット = 1 コミット**を保つ。手順 2 のステータス運用コミットはこれとは別勘定）

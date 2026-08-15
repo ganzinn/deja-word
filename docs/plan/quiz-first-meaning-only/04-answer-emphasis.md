@@ -1,6 +1,6 @@
 # 04. answer-emphasis
 
-状態: **完了**（2026-08-15）　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: [#270](https://github.com/ganzinn/deja-word/pull/270)
 
 ## 目的
 

@@ -21,9 +21,20 @@
 
 - 正規化は純関数 `normalizeSearchKeyword`（`src/lib/search-keyword.ts`）に集約する。処理は「NFD 分解 → 結合文字（`\p{M}`）除去 → trim」。合成済み（`é`）・分解済み（`e` + `́`）のどちらの入力でも同じ結果になる。
 - 大文字小文字は変換しない。既存の照合が Prisma の `mode: "insensitive"` で吸収しており、正規化側で二重に持たない。
-- 適用箇所は検索キーワードを受け取る **2 モジュールの入口**（`words-list.ts` の `searchKeyword` ヘルパ経由の 2 呼び出し、`words-search.ts` の `searchWordsForLink`）。一致方法（prefix / contains / suffix）による分岐は持たせない。
+- 適用箇所は検索キーワードを受け取る**各入口**。照合に使うのは `words-list.ts` の `searchKeyword` ヘルパ経由の 2 呼び出しと `words-search.ts` の `searchWordsForLink`、表示・プリフィルに使うのは `src/app/words/page.tsx`（`WordView` の登録導線の表示語・完全一致判定）と `src/app/words/_lib/search-params.ts` の `parsePrefillHeadword`（`/words/new` のプリフィル導出。`src/app/words/new/page.tsx` から呼ぶ）。一致方法（prefix / contains / suffix）による分岐は持たせない。
 - **正規化の結果が空文字になる入力（結合文字だけ等）は「キーワード指定なし」に倒す**。既存の `q.length > 0` 判定を正規化後の値で行うことで、`contains: ""` による全件一致を防ぐ。
-- URL の `q` パラメータ・検索窓の表示・件数ラベル（`「〜」の検索結果`）は**入力されたまま**を保持する。正規化するのは DB へ渡す照合値だけで、ユーザーには自分が打った文字列が見えるようにする。
+- URL の `q` パラメータ・検索窓の表示・件数ラベル（`「〜」の検索結果`）は**入力されたまま**を保持する。正規化するのは DB へ渡す照合値だけで、ユーザーには自分が打った文字列が見えるようにする（後述の例外を除く）。
+
+### 例外: 正規化後キーワードを画面表示・プリフィルに用いる（word-create-from-search）
+
+検索で見つからなかった語をそのまま登録へ進める導線（word-create-from-search）では、**正規化後のキーワードを画面に出す**。上の「ユーザーには入力したままの文字列を見せる」に対する初の例外で、対象は次の 2 つに限る。
+
+- 単語ビューの件数行直下に出る導線リンクの表示語（`「{正規化後キーワード}」を登録`）
+- 導線から開いた `/words/new` の見出し語プリフィル値
+
+理由は、**リンクの表示語と実際に登録される見出し語を一致させる**ため。導線が登録できるかどうかの判定（可視範囲に完全一致 `headword` があるか）は照合値＝正規化後で行うので、表示だけ入力のままにすると「`thóught` を登録」と書いてあるのに `thought` が登録される、という食い違いが起きる。
+
+例外が及ぶ範囲は狭い。正規化は「アクセント除去と trim」だけなので、**大文字小文字は入力のまま保持される**（`Thought` と打てば `Thought` が表示・プリフィルされる）。また、**件数ラベル・検索窓・URL の `q` は従来どおり入力されたまま**で、この例外の対象外。同一画面で「件数ラベルは入力のまま／導線の表示語は正規化後」と食い違って見えうるが、アクセント記号付きで検索したときにだけ生じる差であり、登録される語を正しく見せる方を優先する。
 
 ## 採らなかった代替案
 
@@ -46,4 +57,7 @@
 - `src/lib/words-list.ts`（`searchKeyword` / `headwordCondition`）— 一覧・掲載箇所ビュー・前後ナビの照合
 - `src/lib/words-search.ts`（`searchWordsForLink`）— 「既存単語からリンク」の照合
 - `src/app/words/new/_components/linked-word-picker.tsx` — term を検索窓の初期値に使う経路
+- `src/app/words/page.tsx`（`WordView`）— 登録導線の表示語・完全一致判定（上記の例外）
+- `src/app/words/_lib/search-params.ts`（`parsePrefillHeadword`）/ `src/app/words/new/page.tsx` — `/words/new` の見出し語プリフィル（上記の例外）
+- `docs/features/word-management.md` — 導線のユーザー向け説明
 - [ADR-0078](0078-speech-text-normalization.md) / [ADR-0081](0081-speech-bracket-normalization.md) — 表示用記号を落とす別系統の正規化（読み上げ）。共有しない理由は上記

@@ -33,9 +33,9 @@
 
 - 英語名: `normalizeSearchKeyword`（`src/lib/search-keyword.ts`）
 - 日本語名: 検索キーワード正規化
-- 定義: 単語検索のキーワードを見出し語と突き合わせられる形へ揃える純関数。NFD 分解 → 結合文字（アクセント記号）除去 → trim。単語一覧（単語ビュー・掲載箇所ビュー・前後ナビ）と「既存単語からリンク」の入口で使う。見出し語はアクセント記号を持たないのに対し関連語の見出し（`term`）は `péssimist` のように持つため、キーワード側を落として揃える。
-- 混同注意: 正規化するのは**DB へ渡す照合値だけ**で、検索窓・URL の `q`・件数ラベルは入力されたままを保持する。保存データ（`headword` / `term`）は正規化しない（→ 非対称: アクセント記号付きの見出し語を記号なしで引くことはできない）。大文字小文字は変換しない（Prisma の `mode: "insensitive"` が吸収する）。読み上げ正規化（`toSpokenText`）とは目的が違うので共有しない。
-- 出典: src/lib/search-keyword.ts, src/lib/words-list.ts, src/lib/words-search.ts, docs/adr/0084-search-keyword-accent-normalization.md
+- 定義: 単語検索のキーワードを見出し語と突き合わせられる形へ揃える純関数。NFD 分解 → 結合文字（アクセント記号）除去 → trim。単語一覧（単語ビュー・掲載箇所ビュー・前後ナビ）と「既存単語からリンク」の入口、および単語ビューの登録導線（表示語・完全一致判定）と `/words/new` の見出し語プリフィル導出で使う。見出し語はアクセント記号を持たないのに対し関連語の見出し（`term`）は `péssimist` のように持つため、キーワード側を落として揃える。
+- 混同注意: 正規化するのは原則**DB へ渡す照合値だけ**で、検索窓・URL の `q`・件数ラベルは入力されたままを保持する。**例外は登録導線の表示語（`「〜」を登録`）と `/words/new` のプリフィル値**で、実際に登録される見出し語と一致させるため正規化後を表示する（検索窓・URL の `q`・件数ラベルが入力のままである点は変わらない → ADR-0084 の例外節）。保存データ（`headword` / `term`）は正規化しない（→ 非対称: アクセント記号付きの見出し語を記号なしで引くことはできない）。大文字小文字は変換しない（Prisma の `mode: "insensitive"` が吸収する。表示・プリフィルでも入力の大文字小文字は保持される）。読み上げ正規化（`toSpokenText`）とは目的が違うので共有しない。
+- 出典: src/lib/search-keyword.ts, src/lib/words-list.ts, src/lib/words-search.ts, src/app/words/page.tsx, src/app/words/_lib/search-params.ts, src/app/words/new/page.tsx, docs/adr/0084-search-keyword-accent-normalization.md
 
 #### Meaning（意味）
 

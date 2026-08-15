@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   ALL_QUIZ_FORMATS,
   formatLabelOf,
+  isFirstMeaningTextOnlyFormat,
   isJaToEnFormat,
   isSelfJudgeFormat,
   isTgExampleFormat,
@@ -54,6 +55,21 @@ describe("isJaToEnFormat", () => {
   test("TG自己判定も日→英のみ true（英→日は英文が問題文に見えるため抑止しない）", () => {
     expect(isJaToEnFormat("SELF_JUDGE_TG_JA_EN")).toBe(true);
     expect(isJaToEnFormat("SELF_JUDGE_TG")).toBe(false);
+  });
+});
+
+describe("isFirstMeaningTextOnlyFormat", () => {
+  test("四択（英→日）と日本語→英語 3 形式のみ true（残りは訳語を表示しない／全訳語を出す）", () => {
+    const targetFormats: QuizFormat[] = ["CHOICE", "CHOICE_JA_EN", "SELF_JUDGE_JA_EN", "SPELLING"];
+    for (const format of targetFormats) {
+      expect(isFirstMeaningTextOnlyFormat(format)).toBe(true);
+    }
+    const others = ALL_QUIZ_FORMATS.filter((f) => !targetFormats.includes(f));
+    // 対象外は 6 形式（SELF_JUDGE / MULTI_MEANING / TG 4 種）。全 10 形式を網羅する。
+    expect(others).toHaveLength(6);
+    for (const format of others) {
+      expect(isFirstMeaningTextOnlyFormat(format)).toBe(false);
+    }
   });
 });
 

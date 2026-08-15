@@ -1,6 +1,6 @@
 # 06. settings-ui
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -126,4 +126,9 @@ export function isFirstMeaningTextOnlyFormat(format: QuizFormat): boolean {
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし（チケット記載のコード片どおり）。integration テストの新規・変更はなし
+- 裁量部分（計画の意図の範囲内）:
+  - 開始フォームのトグルは補足文を追加するため、`flex items-center gap-2 pt-1` を外側 `flex flex-col gap-2 pt-1` ＋内側 `flex items-center gap-2` の 2 階層に組み替えた（同フォームの他項目と同じ「チェック行 + `text-muted-foreground text-xs` の補足文」体裁）
+  - `format-options.ts` の述語は `isSelfJudgeFormat` の直後・`formatLabelOf` の直前に配置。JSDoc に「生成側の網羅 switch と独立に存在するので形式追加時は両方更新」を 1 文追記
+  - `quiz-defaults-form.tsx` の移設先ブロックに `{/* 形式共通: 訳語を先頭の 1 件だけ表示するか（形式カードの選択状態とは連動しない） */}` のコメントを付与（旧「四択（英→日）固有: …」の置き換え）
+- **07 へ**: 開始フォームのトグルは対象外形式では DOM に描画されない（`null` を返す）。スクリーンショット撮影・E2E で「トグルが見えること」を確かめるには先に対象 4 形式のいずれかを選択しておく必要がある。Checkbox は `getByRole("checkbox", { name: "最初の訳語だけを表示する" })` で取る（両画面でラベルが同一なので取り違えに注意）

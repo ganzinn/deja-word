@@ -103,7 +103,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
   const [autoplayAnswerAudioJaEn, setAutoplayAnswerAudioJaEn] = useState(
     defaults.autoplayAnswerAudioJaEn ?? true,
   );
-  // 四択（英→日）の選択肢で先頭の訳語のみ表示する。未設定（null）は ON（先頭の訳語のみ）。
+  // 訳語を先頭の 1 件だけ表示する（四択（英→日）は選択肢、日→英 3 形式は問題文に効く）。
+  // 未設定（null）は ON（先頭の訳語のみ）。
   const [firstMeaningTextOnly, setFirstMeaningTextOnly] = useState(
     defaults.firstMeaningTextOnly ?? true,
   );
@@ -399,36 +400,29 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
                           <span className="text-muted-foreground shrink-0 text-sm">秒</span>
                         </div>
                       ) : null}
-
-                      {/* 四択（英→日）固有: 選択肢に先頭の訳語だけを表示するか */}
-                      {option.value === "CHOICE" ? (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="quiz-defaults-first-meaning-text-only"
-                              checked={firstMeaningTextOnly}
-                              onCheckedChange={(checked) =>
-                                setFirstMeaningTextOnly(checked === true)
-                              }
-                            />
-                            <Label
-                              htmlFor="quiz-defaults-first-meaning-text-only"
-                              className="font-normal"
-                            >
-                              選択肢に最初の訳語だけを表示する
-                            </Label>
-                          </div>
-                          <p className="text-muted-foreground pl-6 text-xs">
-                            オフにすると、複数の訳語を「; 」で連結して選択肢に表示します。
-                          </p>
-                        </>
-                      ) : null}
                     </div>
                   </div>
                 );
               })}
             </div>
           ))}
+        </div>
+
+        {/* 形式共通: 訳語を先頭の 1 件だけ表示するか（形式カードの選択状態とは連動しない） */}
+        <div className="flex flex-col gap-1 pt-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="quiz-defaults-first-meaning-text-only"
+              checked={firstMeaningTextOnly}
+              onCheckedChange={(checked) => setFirstMeaningTextOnly(checked === true)}
+            />
+            <Label htmlFor="quiz-defaults-first-meaning-text-only" className="font-normal">
+              最初の訳語だけを表示する
+            </Label>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            オフにすると、複数の訳語を「; 」で連結して表示します。
+          </p>
         </div>
       </section>
 

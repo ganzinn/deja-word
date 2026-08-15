@@ -4,7 +4,11 @@
 
 import type { QuizFormat } from "@/generated/prisma/enums";
 import { buildChoiceQuestions, choiceCandidateTexts } from "@/lib/quiz/generation/choice";
-import { buildChoiceJaEnQuestions } from "@/lib/quiz/generation/choice-ja-en";
+import {
+  buildChoiceJaEnQuestions,
+  choiceJaEnCandidate,
+  choiceJaEnCorrectTexts,
+} from "@/lib/quiz/generation/choice-ja-en";
 import { buildChoiceTgQuestions } from "@/lib/quiz/generation/choice-tg";
 import { buildChoiceTgJaEnQuestions } from "@/lib/quiz/generation/choice-tg-ja-en";
 import { hasValidDummyCandidate, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
@@ -228,11 +232,13 @@ export function checkFormatAvailability(
           };
     }
     case "CHOICE_JA_EN": {
-      // 日本語→英語の四択は選択肢が英単語。正解側は headword、ダミー候補も headword。
+      // 日本語→英語の四択は選択肢が英単語。生成（buildChoiceJaEnQuestions）と同じキーで判定する:
+      // 正解側・ダミー候補とも headword、設定 ON のときは先頭訳語も衝突対象に加わる。
+      const firstMeaningTextOnly = options.firstMeaningTextOnly ?? false;
       const dummyless = findDummylessTarget(
         material,
-        (word) => [{ value: word, texts: [word.headword] }],
-        (word) => [word.headword],
+        (word) => [choiceJaEnCandidate(word, firstMeaningTextOnly)],
+        (word) => choiceJaEnCorrectTexts(word, firstMeaningTextOnly),
       );
       return dummyless === undefined
         ? AVAILABLE

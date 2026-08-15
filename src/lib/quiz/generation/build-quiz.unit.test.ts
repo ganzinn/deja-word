@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildQuiz, checkFormatAvailability } from "@/lib/quiz/generation/build-quiz";
+import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import type { QuizSourceMaterial, QuizWord } from "@/lib/quiz/generation/material";
 import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
 import { seededRng } from "../../../../tests/setup/seeded-rng";
@@ -270,8 +271,8 @@ describe("checkFormatAvailability", () => {
     expect(checkFormatAvailability("SPELLING", m)).toEqual({ available: true, reason: null });
   });
 
-  test("CHOICE_JA_EN dummy availability is judged by headword, independent of meanings", () => {
-    // 意味は衝突しても headword が異なれば成立（向きが逆なので正解側は headword）
+  test("CHOICE_JA_EN dummy availability is judged by headword alone when firstMeaningTextOnly is OFF", () => {
+    // 設定 OFF なら意味は衝突しても headword が異なれば成立（向きが逆なので正解側は headword）
     const ok = material({
       targets: [word("t", [["走る"]])],
       sameOccurrencePool: [word("d1", [["走る"]])],
@@ -282,6 +283,49 @@ describe("checkFormatAvailability", () => {
     const r = checkFormatAvailability("CHOICE_JA_EN", starved);
     expect(r.available).toBe(false);
     expect(r.reason).toContain("hw-t");
+  });
+
+  test("CHOICE_JA_EN availability agrees with generation success when firstMeaningTextOnly is ON", () => {
+    // 設定 ON では先頭訳語も衝突対象になるため、headword だけ違うダミーでは不成立になる
+    const options = { firstMeaningTextOnly: true };
+    const collides = material({
+      targets: [word("t", [["走る"]])],
+      sameOccurrencePool: [word("d1", [["走る"]])],
+    });
+    const r = checkFormatAvailability("CHOICE_JA_EN", collides, options);
+    expect(r.available).toBe(false);
+    expect(r.reason).toContain("hw-t");
+    expect(() => buildQuiz("CHOICE_JA_EN", collides, seededRng(1), options)).toThrow();
+    // 設定 OFF なら同じ素材で成立し、生成も成功する
+    expect(checkFormatAvailability("CHOICE_JA_EN", collides).available).toBe(true);
+    expect(() => buildQuiz("CHOICE_JA_EN", collides, seededRng(1))).not.toThrow();
+
+    // 先頭訳語が異なるダミーがあれば設定 ON でも成立し、生成も成功する
+    const ok = material({
+      targets: [word("t", [["走る"]])],
+      sameOccurrencePool: [word("d1", [["歩く"]])],
+    });
+    expect(checkFormatAvailability("CHOICE_JA_EN", ok, options)).toEqual({
+      available: true,
+      reason: null,
+    });
+    expect(() => buildQuiz("CHOICE_JA_EN", ok, seededRng(1), options)).not.toThrow();
+  });
+
+  test("CHOICE_JA_EN generation throws for collision-only material even without an availability check", () => {
+    // drill のラウンド生成・再テスト生成は checkFormatAvailability を経ず buildQuiz を直接呼ぶ。
+    // ダミー候補がすべて headword か先頭訳語で正解と衝突する素材では生成時エラーになる
+    // （docs/plan の 03 で受け入れたリスクの経路）。
+    const options = { firstMeaningTextOnly: true };
+    const m = material({
+      targets: [word("t", [["走る"]])],
+      sameOccurrencePool: [word("d1", [["走る"]])], // 先頭訳語で衝突
+      allWordsPool: [
+        { ...word("f1", [["歩く"]]), headword: "hw-t" }, // headword で衝突
+        word("f2", [[" **走る** "]]), // 装飾・空白を除いた先頭訳語で衝突
+      ],
+    });
+    expect(() => buildQuiz("CHOICE_JA_EN", m, seededRng(1), options)).toThrow(QuizGenerationError);
   });
 
   test("CHOICE is unavailable when some target cannot get any dummy (trim-exact collision)", () => {

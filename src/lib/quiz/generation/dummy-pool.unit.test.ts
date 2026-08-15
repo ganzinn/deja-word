@@ -111,6 +111,53 @@ describe("selectDummies", () => {
     ).toThrow(QuizGenerationError);
   });
 
+  test("matchTexts is used for the correct-text collision check instead of texts", () => {
+    const primary = [
+      // texts（表示・重複排除）は正解と一致しないが、matchTexts が正解と一致 → 除外
+      { value: "collides-by-match", texts: ["hw-a"], matchTexts: ["hw-a", "走る"] },
+      // texts が正解と一致しても、matchTexts が一致しなければ残る（判定は matchTexts のみ）
+      { value: "ok-by-match", texts: ["走る"], matchTexts: ["hw-b", "歩く"] },
+    ];
+    const selected = selectDummies({
+      correctTexts: ["走る"],
+      primaryPool: primary,
+      fallbackPool: [],
+      desiredCount: 2,
+      rng: seededRng(1),
+    });
+    expect(selected).toEqual(["ok-by-match"]);
+  });
+
+  test("dedupes among selected dummies by texts even when matchTexts overlap", () => {
+    // matchTexts が重なるだけの候補同士は排除されない（重複排除は texts のまま）
+    const sharedMatch = [
+      { value: "a", texts: ["hw-a"], matchTexts: ["hw-a", "走る"] },
+      { value: "b", texts: ["hw-b"], matchTexts: ["hw-b", "走る"] },
+    ];
+    const selected = selectDummies({
+      correctTexts: ["正解"],
+      primaryPool: sharedMatch,
+      fallbackPool: [],
+      desiredCount: 3,
+      rng: seededRng(1),
+    });
+    expect([...selected].sort()).toEqual(["a", "b"]);
+
+    // 一方、texts が重なる候補同士は matchTexts が異なっても排除される
+    const sharedTexts = [
+      { value: "c", texts: ["hw-same"], matchTexts: ["hw-same", "走る"] },
+      { value: "d", texts: [" hw-same "], matchTexts: ["hw-same", "歩く"] },
+    ];
+    const deduped = selectDummies({
+      correctTexts: ["正解"],
+      primaryPool: sharedTexts,
+      fallbackPool: [],
+      desiredCount: 3,
+      rng: seededRng(1),
+    });
+    expect(deduped).toHaveLength(1);
+  });
+
   test("is deterministic for the same seed", () => {
     const primary = ["p1", "p2", "p3", "p4", "p5"].map((v) => candidate(v));
     const run = () =>
@@ -141,5 +188,19 @@ describe("hasValidDummyCandidate", () => {
 
   test("returns false for an empty candidate list", () => {
     expect(hasValidDummyCandidate(["走る"], [])).toBe(false);
+  });
+
+  test("judges the collision by matchTexts when present", () => {
+    // texts は衝突しないが matchTexts が衝突 → 有効な候補なし
+    expect(
+      hasValidDummyCandidate(
+        ["走る"],
+        [{ value: "a", texts: ["hw-a"], matchTexts: ["hw-a", "走る"] }],
+      ),
+    ).toBe(false);
+    // texts が衝突しても matchTexts が衝突しなければ有効
+    expect(
+      hasValidDummyCandidate(["走る"], [{ value: "a", texts: ["走る"], matchTexts: ["hw-a"] }]),
+    ).toBe(true);
   });
 });

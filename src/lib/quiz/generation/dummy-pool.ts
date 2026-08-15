@@ -16,6 +16,12 @@ function dedupeKey(text: string): string {
 export type DummyCandidate<T> = {
   value: T;
   texts: string[];
+  /**
+   * 正解一致判定にだけ使うキー（trim 前で渡してよい）。省略時は `texts` を使う。
+   * 表示（重複排除の単位）と「正解と等価か」の判定単位が食い違う形式のためにある
+   * （四択（日→英）で設定 ON のとき、表示は headword・正解一致判定は headword ＋先頭訳語）。
+   */
+  matchTexts?: string[];
 };
 
 /** 問題生成が成立しない場合（ダミー 0 件等）に投げるエラー。 */
@@ -42,6 +48,7 @@ type SelectDummiesParams<T> = {
  *
  * - 優先プールから無作為に選び、不足分のみ補完プールから補う（優先プール由来の候補は保持）
  * - 候補のテキストが正解側・選定済みダミーと trim 後完全一致する場合は除外
+ *   （正解一致判定は `matchTexts ?? texts`、選定済みダミーとの重複排除は常に `texts`）
  * - 不足時はある分まで縮退して返す（縮退の許容範囲は呼び出し側の仕様）
  * - 1 件も選べない場合は {@link QuizGenerationError} を投げる
  */
@@ -55,7 +62,8 @@ export function selectDummies<T>(params: SelectDummiesParams<T>): T[] {
     for (const candidate of fisherYatesShuffle(pool, rng)) {
       if (selected.length >= desiredCount) return;
       const texts = candidate.texts.map(dedupeKey);
-      if (texts.some((t) => correctSet.has(t))) continue;
+      const matchTexts = (candidate.matchTexts ?? candidate.texts).map(dedupeKey);
+      if (matchTexts.some((t) => correctSet.has(t))) continue;
       if (texts.some((t) => usedTexts.has(t))) continue;
       selected.push(candidate.value);
       for (const t of texts) usedTexts.add(t);
@@ -71,11 +79,16 @@ export function selectDummies<T>(params: SelectDummiesParams<T>): T[] {
   return selected;
 }
 
-/** 正解側テキストと trim 後完全一致しない候補が 1 件でもあるか（成立判定用）。 */
+/**
+ * 正解側テキストと trim 後完全一致しない候補が 1 件でもあるか（成立判定用）。
+ * 正解一致判定のキーは `selectDummies` と同じく `matchTexts ?? texts`。
+ */
 export function hasValidDummyCandidate<T>(
   correctTexts: string[],
   candidates: DummyCandidate<T>[],
 ): boolean {
   const correctSet = new Set(correctTexts.map(dedupeKey));
-  return candidates.some((c) => c.texts.every((t) => !correctSet.has(dedupeKey(t))));
+  return candidates.some((c) =>
+    (c.matchTexts ?? c.texts).every((t) => !correctSet.has(dedupeKey(t))),
+  );
 }

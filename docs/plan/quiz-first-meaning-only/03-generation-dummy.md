@@ -1,6 +1,6 @@
 # 03. generation-dummy
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -113,4 +113,8 @@ export function choiceJaEnCandidate(word: QuizWord, firstMeaningTextOnly: boolea
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし（チケット記載のシグネチャ・実装方針どおり）。integration テストの新規・変更はなし
+- `choiceJaEnCorrectTexts` / `choiceJaEnCandidate` は「設定 ON かつ先頭訳語が非空」のときだけ先頭訳語を足す（`matchTexts` も同条件でのみ付与）
+- `dummy-pool.ts` の `selectDummies` JSDoc に「正解一致判定は `matchTexts ?? texts`、重複排除は常に `texts`」の 1 行を追記（キーが 2 種類になったため）
+- 追加テストが実挙動を捉えていることを、実装を一時的に旧挙動へ戻して確認済み（`selectDummies` を `texts` に戻すと 6 件失敗、`hasValidDummyCandidate` で 2 件失敗。確認後に復元）
+- **07 へ**: 四択（日→英）の設定 ON では不成立条件が広がる（先頭訳語の衝突でもダミー枯渇になる）。テスト開始時は成立判定で理由表示されるが、drill のラウンド生成・再テスト生成は成立判定を経ないため `QuizGenerationError` になる経路が残る（受け入れ済みリスク。`build-quiz.unit.test.ts` の `"CHOICE_JA_EN generation throws for collision-only material even without an availability check"` が押さえている）

@@ -132,4 +132,69 @@ describe("buildChoiceJaEnQuestions", () => {
     expect(first.map((q) => q.wordId)).toEqual(second.map((q) => q.wordId));
     expect([...first.map((q) => q.wordId)].sort()).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
+
+  // 設定 ON では問題文が先頭の訳語 1 つになるため、先頭訳語が同じ単語は正解と等価な選択肢になる。
+  describe("firstMeaningTextOnly = true: ダミーの先頭訳語衝突", () => {
+    /** target "t"（先頭訳語「走る」）の問題のダミー選択肢テキスト。 */
+    function dummiesOf(m: QuizSourceMaterial, firstMeaningTextOnly: boolean): string[] {
+      const q = buildChoiceJaEnQuestions(m, seededRng(1), firstMeaningTextOnly).find(
+        (x) => x.wordId === "t",
+      );
+      expect(q).toBeDefined();
+      return q!.choices.filter((_, i) => i !== q!.correctIndex).map((c) => c.text);
+    }
+
+    test("excludes a dummy whose first meaning text matches the target's", () => {
+      const m = material({
+        targets: [word("t", [["走る", "駆ける"]])],
+        // d1 は先頭訳語が「走る」で衝突。d2 は先頭訳語が違う（2 件目が「走る」でも衝突しない）
+        sameOccurrencePool: [word("d1", [["走る", "疾走する"]]), word("d2", [["歩く", "走る"]])],
+      });
+      expect(dummiesOf(m, true)).toEqual(["hw-d2"]);
+    });
+
+    test("keeps such a dummy when the setting is OFF (従来どおり)", () => {
+      const m = material({
+        targets: [word("t", [["走る", "駆ける"]])],
+        sameOccurrencePool: [word("d1", [["走る", "疾走する"]]), word("d2", [["歩く", "走る"]])],
+      });
+      expect([...dummiesOf(m, false)].sort()).toEqual(["hw-d1", "hw-d2"]);
+    });
+
+    test("does not treat words without meanings (empty head text) as colliding", () => {
+      // 訳語未登録同士は空文字で一致するが、キーに載せないので衝突扱いにしない
+      const m = material({
+        targets: [word("t", [])],
+        sameOccurrencePool: [word("d1", []), word("d2", [[]])],
+      });
+      expect([...dummiesOf(m, true)].sort()).toEqual(["hw-d1", "hw-d2"]);
+    });
+
+    test("compares first meaning texts with rich-text markup stripped", () => {
+      const m = material({
+        targets: [word("t", [["走る"]])],
+        sameOccurrencePool: [word("d1", [["**走る**"]]), word("d2", [["歩く"]])],
+      });
+      expect(dummiesOf(m, true)).toEqual(["hw-d2"]);
+    });
+
+    test("still dedupes dummies by headword, not by first meaning text", () => {
+      // 先頭訳語が同じダミー同士（正解とは衝突しない）は両方残る（表示は headword なので見た目重複しない）
+      const m = material({
+        targets: [word("t", [["走る"]])],
+        sameOccurrencePool: [word("d1", [["歩く"]]), word("d2", [["歩く"]])],
+      });
+      expect([...dummiesOf(m, true)].sort()).toEqual(["hw-d1", "hw-d2"]);
+    });
+
+    test("throws QuizGenerationError when every candidate collides by headword or first meaning", () => {
+      const m = material({
+        targets: [word("t", [["走る"]])],
+        sameOccurrencePool: [word("d1", [["走る"]]), word("d2", [[" 走る "]])],
+      });
+      // 設定 OFF なら headword が異なるので成立する
+      expect(() => buildChoiceJaEnQuestions(m, seededRng(1), false)).not.toThrow();
+      expect(() => buildChoiceJaEnQuestions(m, seededRng(1), true)).toThrow(QuizGenerationError);
+    });
+  });
 });

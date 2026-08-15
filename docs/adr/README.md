@@ -173,6 +173,7 @@ ADR に残すのは、次の**両方**を満たす判断。
 | [0095](0095-production-command-approval-gate.md) | 本番に触れるコマンドは ask ルールで承認ゲート、共有許可リストは追跡対象 settings.json | 高 | — |
 | [0096](0096-feature-origin-worktree-model.md) | 機能開発は起点 worktree モデル（フェーズ横断保持・チケット単位 PR モード廃止） | 高 | — |
 | [0099](0099-feature-close-phase.md) | 機能開発パイプラインにクローズ工程 feature-close を新設・ADR 引き継ぎを工程別に担当割り当て（0096 追補。起点 worktree の寿命をクローズ完了まで延長） | 高 | — |
+| [0101](0101-design-plan-pr-optional.md) | 設計＋計画 PR は選択制・作らない場合は統合ブランチを作業ブランチから分岐（0096 追補） | 高 | — |
 
 ### H. テスト・開発プロセス
 

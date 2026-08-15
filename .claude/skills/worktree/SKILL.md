@@ -35,7 +35,7 @@ scripts/wt-new.sh foo-01-schema feature/foo --branch feature/foo-01-schema     #
 
 | worktree | ブランチ | ライフサイクル |
 | --- | --- | --- |
-| 起点 `<機能名>` | `docs/<機能名>-design-plan` →（設計＋計画 PR マージ後）`feature/<機能名>` →（統合 PR マージ後）`chore/<機能名>-cleanup` | 設計開始〜クローズ完了までフェーズ横断で保持する。フェーズはこの worktree 内のブランチ切替で進む |
+| 起点 `<機能名>` | `docs/<機能名>-design-plan` →（実装フェーズ移行時）`feature/<機能名>` →（統合 PR マージ後）`chore/<機能名>-cleanup` | 設計開始〜クローズ完了までフェーズ横断で保持する。フェーズはこの worktree 内のブランチ切替で進む |
 | チケット `<機能名>-NN-<チケット名>` | `feature/<機能名>-NN-<チケット名>` | 統合ブランチ起点。マージ成功時に即削除する（検査用に残した失敗分と区別するため） |
 | 臨時 `<機能名>-plan-update` | `docs/<機能名>-plan-update` | main 起点の計画見直し専用。PR マージ後に撤去する |
 
@@ -47,7 +47,7 @@ scripts/wt-new.sh foo-01-schema feature/foo --branch feature/foo-01-schema     #
   git switch -c <次フェーズのブランチ> origin/main   # 既存ブランチへ戻る場合は -c を外す
   ```
 
-  実装フェーズの統合ブランチだけは ticket-implement の実装フロー（`origin/main` 起点で作成し、以降 main を取り込まない）に従う
+  実装フェーズの統合ブランチだけは ticket-implement の実装フロー（分岐元は設計＋計画 PR の有無で決まる。以降 main を取り込まない）に従う
 - 起点 worktree を `--no-install` で作った場合は、実装フェーズ移行時に worktree 内で `pnpm install` を実行する（設計期間が長く `node_modules` が陳腐化した場合も同様）
 - 並行開発の同時機能数は、共有 DB・dev サーバ 1 つずつの運用・worktree ごとの `node_modules` のディスクコストが実質の上限になる
 

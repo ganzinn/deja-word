@@ -147,6 +147,7 @@
 | [0093](0093-occurrence-content-export-import-sync.md) | 掲載箇所の単語コンテンツ同期は中間 JSON を挟む 2 段構成 | 高 | — |
 | [0095](0095-production-command-approval-gate.md) | 本番に触れるコマンドは ask ルールで承認ゲート、共有許可リストは追跡対象 settings.json | 高 | — |
 | [0096](0096-feature-origin-worktree-model.md) | 機能開発は起点 worktree モデル（フェーズ横断保持・チケット単位 PR モード廃止） | 高 | — |
+| [0098](0098-ticket-implement-commit-hygiene.md) | ticket-implement の「実装中」更新はチケット取り込みコミットへ同梱（内側 squash / 外側 merge commit は維持） | 高 | — |
 
 ### H. テスト・開発プロセス
 

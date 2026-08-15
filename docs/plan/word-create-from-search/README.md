@@ -15,8 +15,8 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-exact-match-check.md](01-exact-match-check.md) | 完全一致判定関数 `hasExactHeadwordForUser` の追加＋integration テスト | なし | 未着手 | - |
-| [02-new-page-prefill.md](02-new-page-prefill.md) | `/words/new` の受け口（プリフィル導出・returnHref 再構築）＋search-params ヘルパ・`parsePage` 移設＋unit テスト | なし | 未着手 | - |
+| [01-exact-match-check.md](01-exact-match-check.md) | 完全一致判定関数 `hasExactHeadwordForUser` の追加＋integration テスト | なし | 実装中 | - |
+| [02-new-page-prefill.md](02-new-page-prefill.md) | `/words/new` の受け口（プリフィル導出・returnHref 再構築）＋search-params ヘルパ・`parsePage` 移設＋unit テスト | なし | 実装中 | - |
 | [03-search-view-link.md](03-search-view-link.md) | `WordView` の並列取得＋件数行直下の導線リンク表示 | 01, 02 | 未着手 | - |
 | [04-docs-and-adr.md](04-docs-and-adr.md) | ADR-0084 例外追記・naming-book 記述更新・word-management.md 追記・導線ショット追加 | 03 | 未着手 | - |
 

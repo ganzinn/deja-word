@@ -31,15 +31,23 @@ scripts/wt-new.sh foo-01-schema feature/foo --branch feature/foo-01-schema     #
 
 ## 機能開発の命名族とライフサイクル
 
-機能開発パイプライン（design-session → ticket-split → ticket-implement）の worktree は、機能名を prefix にした命名族で運用する。並行開発する機能の見分けと、機能単位の一括掃除のための共通定義:
+機能開発パイプライン（design-session → ticket-split → ticket-implement → feature-close）の worktree は、機能名を prefix にした命名族で運用する。並行開発する機能の見分けと、機能単位の一括掃除のための共通定義:
 
 | worktree | ブランチ | ライフサイクル |
 | --- | --- | --- |
-| 起点 `<機能名>` | `docs/<機能名>-design-plan` →（設計＋計画 PR マージ後）`feature/<機能名>` | 設計開始〜実装完了までフェーズ横断で保持する。フェーズはこの worktree 内のブランチ切替で進む |
+| 起点 `<機能名>` | `docs/<機能名>-design-plan` →（設計＋計画 PR マージ後）`feature/<機能名>` →（統合 PR マージ後）`chore/<機能名>-cleanup` | 設計開始〜クローズ完了までフェーズ横断で保持する。フェーズはこの worktree 内のブランチ切替で進む |
 | チケット `<機能名>-NN-<チケット名>` | `feature/<機能名>-NN-<チケット名>` | 統合ブランチ起点。マージ成功時に即削除する（検査用に残した失敗分と区別するため） |
 | 臨時 `<機能名>-plan-update` | `docs/<機能名>-plan-update` | main 起点の計画見直し専用。PR マージ後に撤去する |
 
 - 進行状態は「checkout 中のブランチ＋PR の状態」で判断する（worktree の存在の有無をフェーズ状態とみなさない）
+- **フェーズ移行は起点 worktree 内でのブランチ切替**で行う（worktree を作り直さない）。前フェーズの PR がマージ済みなら、次フェーズのブランチは `origin/main` から作る:
+
+  ```sh
+  git fetch origin main
+  git switch -c <次フェーズのブランチ> origin/main   # 既存ブランチへ戻る場合は -c を外す
+  ```
+
+  実装フェーズの統合ブランチだけは ticket-implement の実装フロー（`origin/main` 起点で作成し、以降 main を取り込まない）に従う
 - 起点 worktree を `--no-install` で作った場合は、実装フェーズ移行時に worktree 内で `pnpm install` を実行する（設計期間が長く `node_modules` が陳腐化した場合も同様）
 - 並行開発の同時機能数は、共有 DB・dev サーバ 1 つずつの運用・worktree ごとの `node_modules` のディスクコストが実質の上限になる
 
@@ -53,12 +61,13 @@ scripts/wt-rm.sh <name> [--delete-branch]
 
 撤去対象の worktree 自身の中から実行すると、撤去は成功するが自分の cwd が消えた状態になり以降のコマンドが失敗する。撤去は必ず対象の外から実行する。
 
-### 機能完了時の一括撤去（統合 PR マージ後）
+### 機能完了時の一括撤去（クローズ PR マージ後）
 
-起点 worktree の撤去は本体（または起点の外）から実行する:
+feature-close スキルの終端で実行する。起点 worktree の撤去は本体から実行し、本体の main を先に最新化しておく（取り込み済みと判定でき `-d` が通るようになる）:
 
 ```sh
+git pull --ff-only                         # 本体で実行。クローズ PR のマージを取り込む
 git worktree list | grep <機能名>          # 残存の確認（起点＋残存するチケット・plan-update worktree）
 scripts/wt-rm.sh <機能名>                  # 起点 worktree の撤去（残存 worktree も検査後に同様に撤去）
-git branch -D feature/<機能名> docs/<機能名>-design-plan   # ローカルブランチの削除（残存していれば docs/<機能名>-plan-update・feature/<機能名>-NN-* も）
+git branch -d chore/<機能名>-cleanup feature/<機能名> docs/<機能名>-design-plan   # ローカルブランチの削除（残存していれば docs/<機能名>-plan-update・feature/<機能名>-NN-* も。`-d` が通らないものは `-D`）
 ```

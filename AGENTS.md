@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ドメイン用語（英語コード名⇔日本語名・定義・使ってはいけない類義語）は `docs/reference/naming-book.md` を参照。
 
-設計判断（採用理由・却下した代替案・影響）は `docs/adr/` を参照。設計判断に迷ったら該当 ADR を読み、新しい判断をしたら ADR を起票する。
+設計判断（採用理由・却下した代替案・影響）は `docs/adr/` を参照。設計判断に迷ったら該当 ADR を読み、新しい判断をしたら ADR を起票する（何を ADR に残し何はコードで足りるかの線引きは `docs/adr/README.md`「ADR に書く判断の線引き」）。
 
 **共有すべき知識・規約・再現ノウハウは repo 内に一元化する**（ドメイン用語→naming-book、設計判断→ADR、E2E・運用手順→スキル `.claude/skills/`（記述規約は `.claude/skills/README.md`）と `docs/ops/`、機能設計→`docs/design/`、機能紹介→`docs/features/`）。エージェントの個人メモには共有知識を重複させない（個人メモは repo クローンに含まれず共有されないため、二重管理・乖離を生む）。ノウハウを残したくなったら、まず上記いずれの置き場に書くべきかを検討する。
 
@@ -38,7 +38,7 @@ cp .env.test.example .env.test
 
 git worktree でブランチごとに作業ディレクトリを分けて並行開発する。worktree は用途を問わず `../deja-word-worktrees/<name>`（リポジトリ外。.gitignore 変更不要）に置き、作成・撤去は `scripts/wt-new.sh` / `wt-rm.sh` で行う（手動 `git worktree add` はしない。worktree 内から実行してもよい。引数の組み合わせ・使い分けは共通スキル `.claude/skills/worktree/` を参照）。前提として docker の `deja-word-db` を起動しておくこと（**DB は本体と共有する**）。
 
-機能開発パイプライン（design-session → ticket-split → ticket-implement）は、機能ごとの**起点 worktree** `../deja-word-worktrees/<機能名>` を設計開始〜実装完了まで保持し、フェーズは worktree 内のブランチ切替（`docs/<機能名>-design-plan` → `feature/<機能名>`）で進める。チケット worktree `<機能名>-NN-<チケット名>` は統合ブランチから分岐させる。**本体の checkout は常に main のまま保ち**、どの機能のどのフェーズが進行中でも他の機能の作業を妨げない。命名族・ライフサイクル・機能完了時の一括撤去は共通スキル `.claude/skills/worktree/` に定義する。
+機能開発パイプライン（design-session → ticket-split → ticket-implement → feature-close）は、機能ごとの**起点 worktree** `../deja-word-worktrees/<機能名>` を設計開始〜クローズ完了まで保持し、フェーズは worktree 内のブランチ切替（`docs/<機能名>-design-plan` → `feature/<機能名>` → `chore/<機能名>-cleanup`）で進める。チケット worktree `<機能名>-NN-<チケット名>` は統合ブランチから分岐させる。**本体の checkout は常に main のまま保ち**、どの機能のどのフェーズが進行中でも他の機能の作業を妨げない。命名族・ライフサイクル・クローズ完了時の一括撤去は共通スキル `.claude/skills/worktree/` に定義する。
 
 ```sh
 scripts/wt-new.sh <name> [base-branch] [--branch <branch>] [--no-install]  # 作成（既定: branch feat/<name>）

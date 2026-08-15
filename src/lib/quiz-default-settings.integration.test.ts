@@ -333,7 +333,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
     );
 
     // 開始画面からの部分上書き: occurrence/range/format・選択中形式（SELF_JUDGE）の制限時間・
-    // 四択先頭訳語のみ表示のみ（null→true に上書きされることを確認）
+    // 先頭訳語のみ表示のみ（null→true に上書きされることを確認）
     await saveStartSettingsAsDefaultsForUser(user.id, {
       occurrenceId: occB.id,
       rangeFrom: 3,
@@ -351,7 +351,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         format: "SELF_JUDGE",
         // CHOICE の制限時間は温存、SELF_JUDGE は 20→30 に更新
         timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 30 }),
-        // 開始画面項目（四択先頭訳語のみ表示）は上書きされる
+        // 開始画面項目（先頭訳語のみ表示）は上書きされる
         firstMeaningTextOnly: true,
         // bookmarkedOnly も開始画面項目。入力で未指定 = false へ上書きされる（決定 6）
         bookmarkedOnly: false,

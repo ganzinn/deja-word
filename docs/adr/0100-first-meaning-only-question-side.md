@@ -8,7 +8,7 @@
 
 単語テストには「選択肢に最初の訳語だけを表示する」設定があり、四択（英語→日本語）の選択肢だけに効いていた（`choiceFirstMeaningTextOnly`）。一方、日本語→英語の 3 形式（四択・自己判定・スペル確認）の問題文は常に最初の Meaning の訳語を「; 」で連結して出しており、訳語を複数持つ単語では手がかりが多すぎて答えが透けるという要望が出た。
 
-quiz-first-meaning-only の設計（要求・適用範囲／設定モデルと移行／UI・文言とテスト戦略の 3 トピック。実装完了に伴い設計文書は削除されるため、恒久的な判断は本 ADR に転記してある）で、この設定を形式横断の**共通設定**へ広げ、コード名・DB 列名を `firstMeaningTextOnly` / `first_meaning_text_only` へ改名することを確定した。
+quiz-first-meaning-only の設計（要求・適用範囲／設定モデルと移行／UI・文言とテスト戦略の 3 トピック。実装完了に伴い設計文書は削除済みで、恒久的な判断は本 ADR に転記してある）で、この設定を形式横断の**共通設定**へ広げ、コード名・DB 列名を `firstMeaningTextOnly` / `first_meaning_text_only` へ改名することを確定した。
 
 本 ADR が引き継ぐのは、いずれもコードからは「なぜ他案を採らなかったか」が復元できない次の 4 つの判断である。
 
@@ -115,7 +115,7 @@ ON は「最初の Meaning の先頭 MeaningText 1 つ」、OFF は「最初の 
 - `prisma/schema.prisma` / `prisma/migrations/*_rename_first_meaning_text_only`（2 テーブルの `ALTER TABLE ... RENAME COLUMN`）
 - `docs/reference/naming-book.md` — `firstMeaningTextOnly` の用語エントリと、訳語の色に関する記述
 - `docs/features/word-quiz.md` / `settings.md` / `drill.md` — ユーザー向け説明
-- quiz-first-meaning-only 設計（要求・適用範囲 決定 1・4・5／設定モデルと移行 決定 2・4・6／UI・文言とテスト戦略 決定 3。実装完了に伴い削除 → 本 ADR が長期の引き継ぎ先）
+- quiz-first-meaning-only 設計（要求・適用範囲 決定 1・4・5／設定モデルと移行 決定 2・4・6／UI・文言とテスト戦略 決定 3。実装完了に伴い削除済み → 本 ADR が長期の引き継ぎ先）
 - [ADR-0026](0026-dummy-choices-same-occurrence-first.md) — 四択の表示と、設定 ON でのダミー除外（本 ADR 決定 3 の緩和策の受け皿）
 - [ADR-0077](0077-rich-text-markup.md) — 装飾記法とベース体裁の重ね方（赤字の合成順の前提）
 - [ADR-0083](0083-placeholder-italic-shared.md) — 訳語の自動体裁（本 ADR 決定 2 は覆さず、画面側の強調として追加する）

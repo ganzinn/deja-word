@@ -12,6 +12,9 @@ export type CorrectDisplay = {
  * 結果一覧の「正解」表示データを payload から導出する（形式網羅 switch。形式追加時の更新漏れを型で検出する）。
  * 自己判定（英語→日本語）だけは最初の Meaning の訳語を連結せず配列のまま返し、描画側で先頭を赤字にする
  * （連結すると先頭の訳語を切り出せないため）。区切りの「; 」は描画側が要素の間に置く。
+ *
+ * この形式では装飾記法（ADR-0077）の解釈単位が「連結後の文字列全体」から「訳語 1 件ごと」に変わる。
+ * 記法は訳語 1 件の中で閉じるのが本来の使い方なので、この違いは許容している。
  */
 export function correctAnswerDisplay(quiz: QuizPayload, index: number): CorrectDisplay {
   switch (quiz.format) {

@@ -34,9 +34,15 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected quiz format: ${String(value)}`);
 }
 
-/** `buildQuiz` の形式別オプション。CHOICE の選択肢表示のみ参照する。 */
+/**
+ * `buildQuiz` の形式別オプション。`firstMeaningTextOnly` を参照するのは CHOICE の選択肢表示と
+ * 日本語→英語 3 形式（CHOICE_JA_EN / SELF_JUDGE_JA_EN / SPELLING）の問題文のみ。
+ */
 export type BuildQuizOptions = {
-  /** 四択（英→日）の選択肢を先頭の訳語のみで表示する（false = 全訳語を「; 」連結）。 */
+  /**
+   * 最初の Meaning の表示を先頭の訳語のみにする（false = 全訳語を「; 」連結）。
+   * 四択（英→日）の選択肢表示と、日本語→英語 3 形式の問題文に効く。他形式では無視される。
+   */
   firstMeaningTextOnly?: boolean;
   /**
    * 掲載番号順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。指定すると
@@ -71,7 +77,14 @@ export function buildQuiz(
   return { ...built, questions } as QuizQuestionsPayload;
 }
 
-/** 形式ディスパッチ（出題順は各ビルダーの Fisher–Yates のまま）。並べ替えは `buildQuiz` が行う。 */
+/**
+ * 形式ディスパッチ（出題順は各ビルダーの Fisher–Yates のまま）。並べ替えは `buildQuiz` が行う。
+ *
+ * `options.firstMeaningTextOnly` を渡す 4 case（CHOICE / CHOICE_JA_EN / SELF_JUDGE_JA_EN /
+ * SPELLING）が「設定が効く形式」の一次情報。UI 側（開始フォームでトグルを出す条件）は
+ * `format-options.ts` に独立した述語を持つため、**出題形式を増やすときは両方を更新する**
+ * （片方だけだと「トグルは出るのに効かない／効くのに出ない」になる）。
+ */
 function buildQuestions(
   format: QuizFormat,
   material: QuizSourceMaterial,
@@ -89,11 +102,24 @@ function buildQuestions(
     case "MULTI_MEANING":
       return { format: "MULTI_MEANING", questions: buildMultiMeaningQuestions(material, rng) };
     case "CHOICE_JA_EN":
-      return { format: "CHOICE_JA_EN", questions: buildChoiceJaEnQuestions(material, rng) };
+      return {
+        format: "CHOICE_JA_EN",
+        questions: buildChoiceJaEnQuestions(material, rng, options.firstMeaningTextOnly ?? false),
+      };
     case "SELF_JUDGE_JA_EN":
-      return { format: "SELF_JUDGE_JA_EN", questions: buildSelfJudgeJaEnQuestions(material, rng) };
+      return {
+        format: "SELF_JUDGE_JA_EN",
+        questions: buildSelfJudgeJaEnQuestions(
+          material,
+          rng,
+          options.firstMeaningTextOnly ?? false,
+        ),
+      };
     case "SPELLING":
-      return { format: "SPELLING", questions: buildSpellingQuestions(material, rng) };
+      return {
+        format: "SPELLING",
+        questions: buildSpellingQuestions(material, rng, options.firstMeaningTextOnly ?? false),
+      };
     case "CHOICE_TG":
       return { format: "CHOICE_TG", questions: buildChoiceTgQuestions(material, rng) };
     case "CHOICE_TG_JA_EN":

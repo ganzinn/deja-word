@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { buildQuiz, checkFormatAvailability } from "@/lib/quiz/generation/build-quiz";
 import type { QuizSourceMaterial, QuizWord } from "@/lib/quiz/generation/material";
+import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
 import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function word(id: string, meaningTexts: string[][]): QuizWord {
@@ -130,7 +131,9 @@ describe("buildQuiz", () => {
     }
   });
 
-  test("forwards firstMeaningTextOnly to the CHOICE generator", () => {
+  // 設定が効く 4 形式（この switch の case が「設定が効く形式」の一次情報）。
+  // CHOICE は選択肢表示、日→英 3 形式は問題文に効く。
+  test("forwards firstMeaningTextOnly to the CHOICE generator (選択肢表示)", () => {
     // 既定（連結）: t1 の正解は複数訳語を含むので「; 」を含む選択肢が現れる
     const joined = buildQuiz("CHOICE", richMaterial, seededRng(1));
     if (joined.format !== "CHOICE") throw new Error("unreachable");
@@ -144,6 +147,27 @@ describe("buildQuiz", () => {
     expect(firstOnly.questions.every((q) => q.choices.every((c) => !c.text.includes("; ")))).toBe(
       true,
     );
+  });
+
+  test("forwards firstMeaningTextOnly to the 日本語→英語 3 formats (問題文)", () => {
+    /** 指定単語の問題文（形式でループするため union のまま取り出す）。 */
+    function promptOf(payload: QuizQuestionsPayload, wordId: string): string {
+      const q = payload.questions.find((x) => x.wordId === wordId);
+      if (q === undefined || !("prompt" in q)) throw new Error("unreachable");
+      return q.prompt;
+    }
+
+    for (const format of ["CHOICE_JA_EN", "SELF_JUDGE_JA_EN", "SPELLING"] as const) {
+      // 既定（連結）: t1 の問題文は最初の Meaning の全訳語を「; 」連結したもの
+      const joined = buildQuiz(format, richMaterial, seededRng(1));
+      expect(promptOf(joined, "t1")).toBe("走る; 駆ける");
+
+      // ON（先頭訳語のみ）: 問題文は先頭の訳語 1 つ
+      const firstOnly = buildQuiz(format, richMaterial, seededRng(1), {
+        firstMeaningTextOnly: true,
+      });
+      expect(promptOf(firstOnly, "t1")).toBe("走る");
+    }
   });
 
   // 掲載番号順出題（docs/adr/0072-quiz-order-by-occurrence-number.md）

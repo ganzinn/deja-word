@@ -1,6 +1,6 @@
 # 02. generation-prompt
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -129,4 +129,9 @@ export function buildSpellingQuestions(
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- ビルダーの `firstMeaningTextOnly` は必須引数（チケット記載どおり、既存 `buildChoiceQuestions` に揃えた）。既存 unit テストの呼び出し 11 箇所に `false` を明示する追随変更が発生（挙動は不変）
+- `build-quiz.unit.test.ts` に `QuizQuestionsPayload` 型 import を追加。形式でループしながら `prompt` を取り出すため、`"prompt" in q` で絞るローカルヘルパ `promptOf` をテスト内に置いた（cast なし）
+- integration テストは `drill-round-generate.integration.test.ts` のテスト名文字列 1 本のみの変更（アサーション・SUT は無変更）
+- **03 へ**: `choice-ja-en.ts` の `toHeadwordCandidate`・`build-quiz.ts` の `checkFormatAvailability` の `CHOICE_JA_EN` 分岐は無変更のまま。`buildChoiceJaEnQuestions` の第 3 引数が既に `firstMeaningTextOnly` として通っているので、03 はそれを `toHeadwordCandidate` 側へ引き回すだけで済む
+- チェックリスト外で「四択」限定表現が残っている箇所（本チケットのスコープ外と判断）: `src/lib/quiz-default-settings.integration.test.ts` のコメント 2 箇所／`src/app/quiz/_lib/build-start-drill-input.ts` のコメント（01 の所有）／`start-form.tsx`・`quiz-defaults-form.tsx` のコメント（**06 の所有**。06 の文言変更で一緒に直る想定）
+- `src/generated/prisma/internal/class.ts` の inline schema 文字列に旧コメントが残るが、gitignore 対象かつデータモデル未変更のため実害なし（`prisma generate` で消える）

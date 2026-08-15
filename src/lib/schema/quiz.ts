@@ -136,7 +136,8 @@ export const startQuizInputSchema = quizRangeInputObject
     questionCount: quizQuestionCountSchema.optional(),
     format: quizFormatSchema,
     timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
-    // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
+    // 訳語の表示を先頭の訳語のみにする。四択（英→日）の選択肢表示と日→英 3 形式
+    // （CHOICE_JA_EN / SELF_JUDGE_JA_EN / SPELLING）の問題文に効き、他形式では下流で無視される。
     firstMeaningTextOnly: z.boolean(),
     // 掲載番号の昇順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。
     // 掲載箇所未指定（全件モード）では掲載番号が無いため下流で無視される。`.default(false)` で

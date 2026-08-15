@@ -1,9 +1,10 @@
 // 四択（CHOICE_JA_EN / 日本語→英語）の問題生成。
-// 問題文は target の全 Meaning、選択肢は英単語（headword）。
+// 問題文は target の最初の Meaning（`firstMeaningTextOnly` が ON なら先頭の訳語 1 つ、
+// OFF なら「; 」連結）、選択肢は英単語（headword）。
 
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
-  firstMeaningText,
+  firstMeaningDisplayText,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -22,6 +23,7 @@ function toHeadwordCandidate(word: QuizWord): DummyCandidate<QuizWord> {
 export function buildChoiceJaEnQuestions(
   material: QuizSourceMaterial,
   rng: Rng,
+  firstMeaningTextOnly: boolean,
 ): ChoiceJaEnQuestion[] {
   const orderedTargets = fisherYatesShuffle(material.targets, rng);
   return orderedTargets.map((target) => {
@@ -45,7 +47,7 @@ export function buildChoiceJaEnQuestions(
     );
     return {
       ...questionBaseOf(target, "CHOICE_JA_EN"),
-      prompt: firstMeaningText(target),
+      prompt: firstMeaningDisplayText(target, firstMeaningTextOnly),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
     };

@@ -3,8 +3,7 @@
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
   allMeaningTexts,
-  firstMeaningHeadText,
-  firstMeaningText,
+  firstMeaningDisplayText,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -14,14 +13,6 @@ import type { ChoiceQuestion } from "@/lib/quiz/payload";
 
 /** ダミーの基本数（正解 1 ＋ダミー 3 ＝四択）。不足時は縮退（最低 2 択＝ダミー 1 件）。 */
 const CHOICE_DUMMY_COUNT = 3;
-
-/**
- * 四択の選択肢表示。最初の Meaning（sortOrder 先頭）の MeaningText を、
- * `firstMeaningTextOnly` が false なら「; 」で連結、true なら先頭の訳語のみ表示する。
- */
-export function choiceDisplayText(word: QuizWord, firstMeaningTextOnly: boolean): string {
-  return firstMeaningTextOnly ? firstMeaningHeadText(word) : firstMeaningText(word);
-}
 
 /**
  * 四択の重複排除・成立判定に使う候補テキスト（最初の Meaning の MeaningText）。
@@ -59,9 +50,9 @@ export function buildChoiceQuestions(
     });
     const shuffled = fisherYatesShuffle(
       [
-        { text: choiceDisplayText(target, firstMeaningTextOnly), isCorrect: true },
+        { text: firstMeaningDisplayText(target, firstMeaningTextOnly), isCorrect: true },
         ...dummies.map((w) => ({
-          text: choiceDisplayText(w, firstMeaningTextOnly),
+          text: firstMeaningDisplayText(w, firstMeaningTextOnly),
           isCorrect: false,
         })),
       ],

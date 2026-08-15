@@ -51,7 +51,7 @@ async function setupDrill(
 }
 
 describe("generateDrillRoundForUser", () => {
-  test("sourceTest reflects the Drill row (occurrenceId / sourceRange / format / timeout / choice option)", async () => {
+  test("sourceTest reflects the Drill row (occurrenceId / sourceRange / format / timeout / firstMeaningTextOnly)", async () => {
     const { user, occurrence, drillId } = await setupDrill(
       [
         { headword: "alpha", number: 5, correct: false },

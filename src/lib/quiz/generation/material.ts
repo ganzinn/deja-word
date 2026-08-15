@@ -164,7 +164,7 @@ export function meaningDisplaysOf(word: QuizWord): MeaningDisplay[] {
 
 /**
  * 最初の Meaning（sortOrder 先頭）の MeaningText を「; 」で連結。品詞は含めない。
- * 英語→日本語の四択の選択肢表示と、日本語→英語の問題文（意味の提示）で共用する。
+ * 「先頭の訳語だけ表示する」設定が OFF のときの表示（`firstMeaningDisplayText` の OFF 経路）。
  */
 export function firstMeaningText(word: QuizWord): string {
   return (word.meanings[0]?.texts ?? []).join("; ");
@@ -172,10 +172,19 @@ export function firstMeaningText(word: QuizWord): string {
 
 /**
  * 最初の Meaning（sortOrder 先頭）の先頭 MeaningText（先頭の訳語）のみ。未登録なら空文字。
- * 四択（英語→日本語）で「先頭の訳語だけ表示する」設定が ON のときの選択肢表示に使う。
+ * 「先頭の訳語だけ表示する」設定が ON のときの表示（`firstMeaningDisplayText` の ON 経路）。
  */
 export function firstMeaningHeadText(word: QuizWord): string {
   return word.meanings[0]?.texts[0] ?? "";
+}
+
+/**
+ * 設定に従った最初の Meaning の表示文字列。
+ * `firstMeaningTextOnly` が true なら先頭の訳語のみ、false なら MeaningText を「; 」で連結。
+ * 四択（英→日）の選択肢表示と、日本語→英語 3 形式の問題文で共用する。
+ */
+export function firstMeaningDisplayText(word: QuizWord, firstMeaningTextOnly: boolean): string {
+  return firstMeaningTextOnly ? firstMeaningHeadText(word) : firstMeaningText(word);
 }
 
 /**

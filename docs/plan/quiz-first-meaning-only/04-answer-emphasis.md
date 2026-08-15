@@ -1,6 +1,6 @@
 # 04. answer-emphasis
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -116,4 +116,7 @@ export function MeaningBlocks({
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし（シグネチャ・条件式・体裁値はチケット記載どおり）。integration テストの新規・変更はなし
+- `renderPlaceholders` 内 `push` の行内コメント（ベース → ユーザー記法の順に合成し後者を勝たせる）は、同内容を `composeSegmentClassName` の docstring が持つため削除した
+- `meaning-blocks.tsx` の `"text-red-500"` は定数に切り出さずリテラル 2 箇所のまま
+- **05 へ**: `MeaningText` の `baseClassName` prop と `composeSegmentClassName` の合成契約（ベース → プレースホルダ体裁 → ユーザー記法の順、後勝ち）は unit テスト 4 件で固定済み。05 は `<MeaningText text={...} baseClassName="text-red-500" />` を呼ぶだけでよい

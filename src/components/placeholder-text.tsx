@@ -25,6 +25,15 @@ export function isItalicPlaceholder(token: string): boolean {
   return ITALIC_PLACEHOLDER_TOKEN.test(token);
 }
 
+/** ベース → プレースホルダ体裁 → ユーザー記法の順に合成する（tailwind-merge の後勝ちで記法が優先）。 */
+export function composeSegmentClassName(
+  baseClassName: string | undefined,
+  tokenClassName: string | null,
+  markClassName: string,
+): string {
+  return cn(baseClassName, tokenClassName, markClassName);
+}
+
 /**
  * 装飾記法を解いたうえで、各セグメント内のプレースホルダ記号だけ体裁を変えて返す。
  * pattern は global フラグ必須。classFor が空文字を返したトークンは素のまま出す。
@@ -33,14 +42,15 @@ export function renderPlaceholders(
   text: string,
   pattern: RegExp,
   classFor: (token: string) => string,
+  /** セグメント全体（プレースホルダ以外も含む）に当てるベース体裁。ユーザー記法が後勝ちする。 */
+  baseClassName?: string,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   parseRichText(text).forEach((segment, segmentIndex) => {
     const markClassName = richTextMarkClassName(segment.marks);
     const push = (chunk: string, tokenClassName: string | null, key: string) => {
       if (chunk.length === 0) return;
-      // ベース（プレースホルダ体裁）→ ユーザー記法の順に合成し、後者を勝たせる
-      const className = cn(tokenClassName, markClassName);
+      const className = composeSegmentClassName(baseClassName, tokenClassName, markClassName);
       nodes.push(
         className.length === 0 ? (
           chunk

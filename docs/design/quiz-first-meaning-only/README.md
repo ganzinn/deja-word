@@ -100,6 +100,7 @@
 - `docs/reference/naming-book.md` — `QuizDefaultSetting` エントリの列挙差し替え、`firstMeaningTextOnly` の単独エントリ新設、「訳語には色を付けない」記述 2 箇所の訂正（02 決定 7）
 - `docs/features/word-quiz.md` — 設定の説明を新設（現状は未記載）、開始画面の保存項目の列挙に追加、自己判定（英→日）の赤字強調を追記
 - `docs/features/settings.md` — デフォルト設定の項目列挙に追加
+- `docs/features/drill.md` — 「もとのテストの設定を引き継ぐ」項目の列挙に追加（本設定も `Drill` 列として全ラウンド・再テストへ引き継がれる）
 - スクリーンショット再撮影 — `pnpm e2e:capture-docs --only quiz` / `--only settings` / `--only bookmark`。bookmark セクションもトグル（`bookmark-quiz-start.png`）と自己判定の結果一覧（`bookmark-quiz-result.png` / `bookmark-quiz-result-bulk.png`）を撮っている
 - `scripts/e2e/db.ts` — ON / OFF の差が出るのは先頭 Meaning に訳語が 2 つ以上ある `brisk` のみ。撮影の構図に入らない場合だけ語を冪等に追加する（03 決定 4）
 - `.claude/skills/e2e-verify/references/quiz.md` — トグルのラベル文言と表示条件の記述
@@ -125,6 +126,7 @@
 
 - unit: 表示切替ヘルパの ON / OFF、`choice-ja-en` / `self-judge-ja-en` / `spelling` の ON 時に問題文が先頭訳語 1 つになること、四択（日→英）の ON 時のダミー除外とキー 2 種の使い分け、`build-quiz` の受け渡しを 4 形式へ、`CHOICE_JA_EN` の不成立条件に先頭訳語の衝突が加わることと可用性判定の一致。既存 `choice.unit.test.ts` の `describe("firstMeaningTextOnly = true")` はそのまま維持。`rich-text.unit.test.ts` は変更しない
 - integration: `firstMeaningTextOnly` 単独の保存・再保存ケース新設、`saveStartSettingsAsDefaultsForUser` が本項目を保存すること、`drill-round-generate` の `sourceTest` アサートの改名追随と進行中 drill の保存値が移行されないこと、`prisma migrate deploy` で RENAME COLUMN が通ること
+- 結果一覧の正解列の導出（02 決定 5）と `MeaningText` のベース体裁の合成（02 決定 5）は、JSX を返さない純関数として切り離し、`*.unit.test.ts` から検証できる形にする。別モジュールへ出すか `.tsx` から export するかは実装の裁量
 - UI コンポーネントテストは新設しない（`.test.tsx` は実行対象外・0 件）。トグルの表示条件・文言・赤字は e2e-verify スキルでの手動確認に委ねる（観点は 03 決定 5 の「手動確認」）
 
 ### チケット分割

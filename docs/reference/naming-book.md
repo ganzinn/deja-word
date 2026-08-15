@@ -50,7 +50,7 @@
 - 英語名: `MeaningText`（モデル）
 - 日本語名: 訳語
 - 定義: 意味（Meaning）に属する訳語テキスト 1 件。1 意味に複数、`sortOrder` 順。四択の選択肢・多義語選択の単位になる。描画は `MeaningText`（`src/components/meaning-text.tsx`）に集約し、プレースホルダ `do` / `doing` を斜体にする（→ プレースホルダの斜体）。
-- 混同注意: 「意味未登録の単語」とは可視 MeaningText が 0 件の単語を指す（非 TG 形式の出題対象外条件）。`MeaningText` が自動で付ける体裁に色は含まない（自動の色分けは TG例文だけ）。先頭の訳語（先頭 Meaning の先頭 MeaningText）だけは画面側が赤字にする（単語一覧・単語詳細・単語テストの自己判定（英→日）の解答表示と、英→日 3 形式（四択・自己判定・多義語選択）の結果一覧の正解列。体裁は画面ごとに揃っていない。設計: docs/adr/0100-first-meaning-only-question-side.md / docs/adr/0101-result-correct-column-meaning-texts.md）。
+- 混同注意: 「意味未登録の単語」とは可視 MeaningText が 0 件の単語を指す（非 TG 形式の出題対象外条件）。`MeaningText` が自動で付ける体裁に色は含まない（自動の色分けは TG例文だけ）。先頭の訳語（先頭 Meaning の先頭 MeaningText）だけは画面側が赤字にする。対象は**最初の Meaning の訳語を全部見せている表示**（単語一覧・単語詳細・単語テストの自己判定（英→日）の解答表示・英→日 3 形式の結果一覧の正解列・設定 OFF のときの日→英 3 形式の問題文）で、先頭 1 つに絞った表示には付けない。四択（英→日）の選択肢だけは難度に関わるため対象外。体裁は画面ごとに揃っていない（設計: docs/adr/0100-first-meaning-only-question-side.md / docs/adr/0102-result-correct-column-meaning-texts.md / docs/adr/0103-first-meaning-emphasis-by-full-display.md）。
 - 出典: prisma/schema.prisma:157, src/lib/quiz/queries/quiz-source.ts:275, src/components/meaning-text.tsx
 
 #### partOfSpeech（品詞）
@@ -342,7 +342,7 @@
 - 英語名: `firstMeaningTextOnly`（DB カラム `first_meaning_text_only`。`QuizDefaultSetting` / `Drill` / テスト開始入力）
 - 日本語名: 先頭の訳語のみ表示（UI 文言は「最初の訳語だけを表示する」）
 - 定義: 出題データの生成時に、訳語の表示を最初の Meaning の**先頭 MeaningText 1 つ**に絞る形式横断の共通設定。OFF は最初の Meaning の MeaningText を「; 」連結（従来どおり）。効く先は四択（英→日）の**選択肢**と、日→英 3 形式（`CHOICE_JA_EN` / `SELF_JUDGE_JA_EN` / `SPELLING`）の**問題文**の 4 形式。`QuizDefaultSetting` では nullable で null = ON（アプリ既定）、元テストの指定は `Drill` に保存され定着モードの全ラウンド・再テストへ引き継がれる（設計: docs/adr/0100-first-meaning-only-question-side.md）。
-- 混同注意: 多義語選択の選択肢・自己判定（英→日）の解答表示・TG例文形式・訳語が出る他の画面（単語詳細・単語一覧）には効かない。結果一覧では、**正解列だけが本設定と切り離されている**（英→日 3 形式の正解列は設定に依らず最初の Meaning の全訳語を「; 」連結・先頭赤字 → docs/adr/0101-result-correct-column-meaning-texts.md）。四択（英→日）の「自分の回答」列と日→英 3 形式の問題文列は生成済みデータの再表示なので、本設定の結果がそのまま出る。先頭の訳語を赤字にする強調（→ MeaningText）は本設定と連動しない別の仕組み。設定が効く形式の集合は生成側（`build-quiz.ts` の網羅 switch）と UI 側（`format-options.ts` の `isFirstMeaningTextOnlyFormat`）に独立して存在するため、形式を増やすときは両方を更新する。四択（英→日）専用だった頃の `choice` を冠した旧名（DB カラムも `choice_` 前置き）は使わない。適用先が 4 形式に広がったため、コード名・DB カラム名とも改名済み。
+- 混同注意: 多義語選択の選択肢・自己判定（英→日）の解答表示・TG例文形式・訳語が出る他の画面（単語詳細・単語一覧）には効かない。結果一覧では、**正解列だけが本設定と切り離されている**（英→日 3 形式の正解列は設定に依らず最初の Meaning の全訳語を「; 」連結・先頭赤字 → docs/adr/0102-result-correct-column-meaning-texts.md）。四択（英→日）の「自分の回答」列と日→英 3 形式の問題文列は生成済みデータの再表示なので、本設定の結果がそのまま出る。先頭の訳語を赤字にする強調（→ MeaningText）は本設定と連動する仕組みではなく「全訳語を見せているか」で決まるため、日→英 3 形式の問題文では結果として本設定が OFF のときだけ赤字が付く（→ docs/adr/0103-first-meaning-emphasis-by-full-display.md）。設定が効く形式の集合は生成側（`build-quiz.ts` の網羅 switch）と UI 側（`format-options.ts` の `isFirstMeaningTextOnlyFormat`）に独立して存在するため、形式を増やすときは両方を更新する。四択（英→日）専用だった頃の `choice` を冠した旧名（DB カラムも `choice_` 前置き）は使わない。適用先が 4 形式に広がったため、コード名・DB カラム名とも改名済み。
 - 出典: prisma/schema.prisma:402, src/lib/quiz/generation/material.ts, src/lib/quiz/format-options.ts
 
 #### countdown（カウントダウン）

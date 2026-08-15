@@ -27,7 +27,7 @@ describe("correctAnswerDisplay", () => {
         questions: [
           {
             ...base,
-            prompt: "問題文",
+            // 問題文は正解列の導出に関わらないため埋めない（形式で型が違う）
             choices: [{ text: "ダミー" }, { text: correctText }, { text: "ダミー2" }],
             correctIndex: 1,
           },
@@ -109,7 +109,7 @@ describe("correctAnswerDisplay", () => {
       const quiz = {
         format,
         timeoutSeconds: null,
-        questions: [{ ...base, prompt: "見捨てる; 断念する" }],
+        questions: [{ ...base, prompt: { texts: ["見捨てる", "断念する"], emphasizeFirst: true } }],
       } as QuizPayload;
       expect(correctAnswerDisplay(quiz, 0)).toEqual({ texts: ["abandon"], emphasizeFirst: false });
     },
@@ -131,7 +131,14 @@ describe("correctAnswerDisplay", () => {
     const quiz: QuizPayload = {
       format: "CHOICE_JA_EN",
       timeoutSeconds: null,
-      questions: [{ ...base, prompt: "見捨てる", choices: [{ text: "abandon" }], correctIndex: 3 }],
+      questions: [
+        {
+          ...base,
+          prompt: { texts: ["見捨てる"], emphasizeFirst: false },
+          choices: [{ text: "abandon" }],
+          correctIndex: 3,
+        },
+      ],
     };
     expect(correctAnswerDisplay(quiz, 0)).toEqual({ texts: [""], emphasizeFirst: false });
   });

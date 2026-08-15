@@ -4,7 +4,7 @@
 
 import { isTgExampleFormat } from "@/lib/quiz/format-options";
 import type { QuizFormat } from "@/generated/prisma/enums";
-import type { MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
+import type { JaEnPrompt, MeaningDisplay, QuestionBase } from "@/lib/quiz/payload";
 
 /**
  * `fetchQuizSource` が返す 1 行（ユーザーの可視単語）。
@@ -189,10 +189,26 @@ export function firstMeaningHeadText(word: QuizWord): string {
 /**
  * 設定に従った最初の Meaning の表示文字列。
  * `firstMeaningTextOnly` が true なら先頭の訳語のみ、false なら MeaningText を「; 」で連結。
- * 四択（英→日）の選択肢表示と、日本語→英語 3 形式の問題文で共用する。
+ * 四択（英→日）の選択肢表示で使う（日本語→英語 3 形式の問題文は `firstMeaningPrompt`）。
  */
 export function firstMeaningDisplayText(word: QuizWord, firstMeaningTextOnly: boolean): string {
   return firstMeaningTextOnly ? firstMeaningHeadText(word) : firstMeaningText(word);
+}
+
+/**
+ * 設定に従った日本語→英語 3 形式の問題文（連結は描画側が行う）。
+ * ON は先頭の訳語 1 件だけを出すので赤字にしない（表示が絞られていて代表なのは自明）。
+ * OFF は全訳語を出すので先頭を赤字にする — 訳語が 1 件でも赤字にするため、
+ * 描画側が件数から判別することはできず、ここで決めて payload に持たせる（ADR-0103）。
+ */
+export function firstMeaningPrompt(
+  word: QuizWord,
+  firstMeaningTextOnly: boolean,
+): JaEnPrompt["prompt"] {
+  const texts = firstMeaningTexts(word);
+  return firstMeaningTextOnly
+    ? { texts: texts.slice(0, 1), emphasizeFirst: false }
+    : { texts, emphasizeFirst: true };
 }
 
 /**

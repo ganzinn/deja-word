@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { buildQuiz, checkFormatAvailability } from "@/lib/quiz/generation/build-quiz";
 import { QuizGenerationError } from "@/lib/quiz/generation/dummy-pool";
 import type { QuizSourceMaterial, QuizWord } from "@/lib/quiz/generation/material";
-import type { QuizQuestionsPayload } from "@/lib/quiz/payload";
+import type { JaEnPrompt, QuizQuestionsPayload } from "@/lib/quiz/payload";
 import { seededRng } from "../../../../tests/setup/seeded-rng";
 
 function word(id: string, meaningTexts: string[][]): QuizWord {
@@ -69,8 +69,7 @@ describe("buildQuiz", () => {
     expect(choiceJaEn.questions).toHaveLength(2);
     if (choiceJaEn.format === "CHOICE_JA_EN") {
       const q = choiceJaEn.questions[0];
-      expect(typeof q.prompt).toBe("string");
-      expect(q.prompt.length).toBeGreaterThanOrEqual(1);
+      expect(q.prompt.texts.length).toBeGreaterThanOrEqual(1);
       // 選択肢は英単語（headword）で、正解は target の headword
       expect(q.choices[q.correctIndex].text).toBe(q.headword);
     }
@@ -79,16 +78,14 @@ describe("buildQuiz", () => {
     expect(selfJudgeJaEn.format).toBe("SELF_JUDGE_JA_EN");
     expect(selfJudgeJaEn.questions).toHaveLength(2);
     if (selfJudgeJaEn.format === "SELF_JUDGE_JA_EN") {
-      expect(typeof selfJudgeJaEn.questions[0].prompt).toBe("string");
-      expect(selfJudgeJaEn.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
+      expect(selfJudgeJaEn.questions[0].prompt.texts.length).toBeGreaterThanOrEqual(1);
     }
 
     const spelling = buildQuiz("SPELLING", richMaterial, seededRng(1));
     expect(spelling.format).toBe("SPELLING");
     expect(spelling.questions).toHaveLength(2);
     if (spelling.format === "SPELLING") {
-      expect(typeof spelling.questions[0].prompt).toBe("string");
-      expect(spelling.questions[0].prompt.length).toBeGreaterThanOrEqual(1);
+      expect(spelling.questions[0].prompt.texts.length).toBeGreaterThanOrEqual(1);
     }
 
     const choiceTg = buildQuiz("CHOICE_TG", richTgMaterial, seededRng(1));
@@ -152,22 +149,24 @@ describe("buildQuiz", () => {
 
   test("forwards firstMeaningTextOnly to the 日本語→英語 3 formats (問題文)", () => {
     /** 指定単語の問題文（形式でループするため union のまま取り出す）。 */
-    function promptOf(payload: QuizQuestionsPayload, wordId: string): string {
+    function promptOf(payload: QuizQuestionsPayload, wordId: string): JaEnPrompt["prompt"] {
       const q = payload.questions.find((x) => x.wordId === wordId);
-      if (q === undefined || !("prompt" in q)) throw new Error("unreachable");
+      if (q === undefined || !("prompt" in q) || typeof q.prompt === "string") {
+        throw new Error("unreachable");
+      }
       return q.prompt;
     }
 
     for (const format of ["CHOICE_JA_EN", "SELF_JUDGE_JA_EN", "SPELLING"] as const) {
-      // 既定（連結）: t1 の問題文は最初の Meaning の全訳語を「; 」連結したもの
+      // 既定（OFF）: t1 の問題文は最初の Meaning の全訳語で、先頭を赤字にする
       const joined = buildQuiz(format, richMaterial, seededRng(1));
-      expect(promptOf(joined, "t1")).toBe("走る; 駆ける");
+      expect(promptOf(joined, "t1")).toEqual({ texts: ["走る", "駆ける"], emphasizeFirst: true });
 
-      // ON（先頭訳語のみ）: 問題文は先頭の訳語 1 つ
+      // ON（先頭訳語のみ）: 問題文は先頭の訳語 1 つで、赤字にしない
       const firstOnly = buildQuiz(format, richMaterial, seededRng(1), {
         firstMeaningTextOnly: true,
       });
-      expect(promptOf(firstOnly, "t1")).toBe("走る");
+      expect(promptOf(firstOnly, "t1")).toEqual({ texts: ["走る"], emphasizeFirst: false });
     }
   });
 

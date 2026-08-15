@@ -1,11 +1,11 @@
 // 四択（CHOICE_JA_EN / 日本語→英語）の問題生成。
 // 問題文は target の最初の Meaning（`firstMeaningTextOnly` が ON なら先頭の訳語 1 つ、
-// OFF なら「; 」連結）、選択肢は英単語（headword）。
+// OFF なら全訳語＋先頭を赤字）、選択肢は英単語（headword）。
 
 import { selectDummies, type DummyCandidate } from "@/lib/quiz/generation/dummy-pool";
 import {
-  firstMeaningDisplayText,
   firstMeaningHeadText,
+  firstMeaningPrompt,
   questionBaseOf,
   type QuizSourceMaterial,
   type QuizWord,
@@ -70,7 +70,7 @@ export function buildChoiceJaEnQuestions(
     );
     return {
       ...questionBaseOf(target, "CHOICE_JA_EN"),
-      prompt: firstMeaningDisplayText(target, firstMeaningTextOnly),
+      prompt: firstMeaningPrompt(target, firstMeaningTextOnly),
       choices: shuffled.map((c) => ({ text: c.text })),
       correctIndex: shuffled.findIndex((c) => c.isCorrect),
     };

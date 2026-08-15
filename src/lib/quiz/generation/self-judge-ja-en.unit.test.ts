@@ -19,7 +19,7 @@ const target: QuizWord = {
 };
 
 describe("buildSelfJudgeJaEnQuestions", () => {
-  test("prompt is the first meaning joined with '; '; headword (answer) is preserved", () => {
+  test("prompt is the first meaning's texts with the first one emphasized; headword (answer) is preserved", () => {
     const [q] = buildSelfJudgeJaEnQuestions(material([target]), seededRng(1), false);
     expect(q.wordId).toBe("t");
     expect(q.headword).toBe("run");
@@ -27,12 +27,12 @@ describe("buildSelfJudgeJaEnQuestions", () => {
     expect(q.pronunciationAudioUrl).toBe("https://audio/run");
     expect(q.ttsText).toBe("run");
     // 最初の Meaning のみ「; 」連結（2 件目「経営する」・品詞は含めない）
-    expect(q.prompt).toBe("走る; 駆ける");
+    expect(q.prompt).toEqual({ texts: ["走る", "駆ける"], emphasizeFirst: true });
   });
 
-  test("firstMeaningTextOnly = true: prompt is only the head text of the first meaning", () => {
+  test("firstMeaningTextOnly = true: prompt is only the head text of the first meaning, unemphasized", () => {
     const [q] = buildSelfJudgeJaEnQuestions(material([target]), seededRng(1), true);
-    expect(q.prompt).toBe("走る");
+    expect(q.prompt).toEqual({ texts: ["走る"], emphasizeFirst: false });
     // 解答（headword）は設定の影響を受けない
     expect(q.headword).toBe("run");
   });

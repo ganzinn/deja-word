@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 
 import {
   BookmarkIcon,
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { RowBookmarkButton } from "@/components/bookmark-button";
-import { MeaningText } from "@/components/meaning-text";
+import { MeaningText, MeaningTextList } from "@/components/meaning-text";
 import { RowAudioButton } from "@/components/row-audio-button";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { Badge } from "@/components/ui/badge";
@@ -29,24 +29,18 @@ import {
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
 import type { CorrectDisplay } from "../_lib/correct-answer-display";
+import type { PromptKind, PromptView } from "../_lib/prompt-view";
 import { computeBulkBookmarkTargetIds } from "./bulk-bookmark-targets";
-
-/**
- * 結果一覧の見出し種別（quiz-flow の `promptViewOf` 由来）。主見出しの内容・TG ハイライトの
- * 適用・発音ボタンの行（英語がある行に置く）をこの種別から導出する。
- * headword = 英→日（見出しは英単語）/ ja-plain = 日→英（見出しは意味のプレーン表示）/
- * tg-text = TG四択 英→日（見出しは TG 例文の英文）/ tg-meaning = TG四択 日→英（見出しは TG 例文の意味）。
- */
-export type PromptKind = "headword" | "ja-plain" | "tg-text" | "tg-meaning";
 
 /** 結果一覧の 1 行分。quiz-flow が問題ごとの解答結果（QuestionOutcome）を収集して組み立てる。 */
 export type ResultRow = {
   wordId: string;
   headword: string;
-  /** 見出しの種別。headword 以外は prompt（問題文）を主見出しにする。 */
-  promptKind: PromptKind;
-  /** 問題文（ja-plain=意味の「; 」連結、tg-text=TG 例文の英文、tg-meaning=TG 例文の意味）。headword では null。 */
-  prompt: string | null;
+  /**
+   * 問題文の表示データ（出題画面の見出しと同じもの）。主見出しの内容・TG ハイライトの適用・
+   * 発音ボタンの行（英語がある行に置く）をこれの kind から導出する。
+   */
+  prompt: PromptView;
   /** 正解の表示データ（強調ありは自己判定（英→日）のみ）。 */
   correctDisplay: CorrectDisplay;
   result: QuizResult;
@@ -64,18 +58,21 @@ export type ResultRow = {
 
 /**
  * 主見出しの内容。TG四択は出題画面・単語詳細と同じ TG ハイライトを再現する。
- * ja-plain（訳語）は装飾記法の対象欄、headword（英単語）は対象外のため素で出す。
+ * ja-plain（訳語）は装飾記法の対象欄で、連結と先頭の赤字も出題画面と同じ（ADR-0103）。
+ * headword（英単語）は装飾記法の対象外のため素で出す。
  */
 function promptDisplayOf(row: ResultRow): React.ReactNode {
-  switch (row.promptKind) {
+  switch (row.prompt.kind) {
     case "headword":
       return row.headword;
     case "ja-plain":
-      return <MeaningText text={row.prompt ?? ""} />;
+      return (
+        <MeaningTextList texts={row.prompt.texts} emphasizeFirst={row.prompt.emphasizeFirst} />
+      );
     case "tg-text":
-      return <TgExampleText text={row.prompt ?? ""} />;
+      return <TgExampleText text={row.prompt.text} />;
     case "tg-meaning":
-      return <TgExampleMeaning text={row.prompt ?? ""} />;
+      return <TgExampleMeaning text={row.prompt.text} />;
   }
 }
 
@@ -94,20 +91,15 @@ function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
 
 /**
  * 正解列の表示。強調なしのときは形式分岐を持つ既存ヘルパへ委譲し、
- * 強調ありのときだけ配列を「; 」でつなぎ直して先頭を赤字にする。
+ * 強調ありのときだけ訳語の並びとして描画する（「; 」連結・先頭を赤字）。
  *
  * 強調ありは正解が訳語になる英→日 3 形式（四択・自己判定・多義語選択）で、いずれも kind は
  * "headword"（＝解答側が訳語）になる。この対応が崩れる形式へ強調を広げるなら、
- * 訳語として描画してよいかから見直すこと（ADR-0101）。
+ * 訳語として描画してよいかから見直すこと（ADR-0102）。
  */
 function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.ReactNode {
   if (!display.emphasizeFirst) return answerSideDisplayOf(kind, display.texts[0] ?? "");
-  return display.texts.map((text, i) => (
-    <Fragment key={i}>
-      {i > 0 ? "; " : null}
-      <MeaningText text={text} baseClassName={i === 0 ? "text-red-500" : undefined} />
-    </Fragment>
-  ));
+  return <MeaningTextList texts={display.texts} emphasizeFirst />;
 }
 
 /**
@@ -348,7 +340,7 @@ export function ResultList({
           {visibleRows.map((row) => {
             // 発音ボタンは英語（headword / TG 英文）が見出し行にある形式では見出し行の右端、
             // 英語が正解行に出る形式（日→英）では正解行の右端に置く。
-            const audioOnHeading = row.promptKind === "headword" || row.promptKind === "tg-text";
+            const audioOnHeading = row.prompt.kind === "headword" || row.prompt.kind === "tg-text";
             // 単語削除済みの行にはブックマークトグルを出さない（wordId の参照先なし）。
             // 削除の判定源は送信応答: TEST / DRILL_RETRY は skippedWordIds、DRILL は確定残数に行が無いこと。
             const deleted =
@@ -409,7 +401,7 @@ export function ResultList({
                     <p className="text-sm whitespace-pre-wrap">
                       <span className="text-muted-foreground">正解: </span>
                       <span className="font-content font-semibold">
-                        {correctDisplayNode(row.promptKind, row.correctDisplay)}
+                        {correctDisplayNode(row.prompt.kind, row.correctDisplay)}
                       </span>
                     </p>
                     {!audioOnHeading ? (
@@ -432,7 +424,7 @@ export function ResultList({
                         <p className="text-sm whitespace-pre-wrap">
                           <span className="text-muted-foreground">自分の回答: </span>
                           <span className="font-content">
-                            {answerSideDisplayOf(row.promptKind, row.answerDisplay)}
+                            {answerSideDisplayOf(row.prompt.kind, row.answerDisplay)}
                           </span>
                         </p>
                       ) : row.result === "GAVE_UP" ? (

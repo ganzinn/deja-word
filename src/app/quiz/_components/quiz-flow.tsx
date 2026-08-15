@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { addBookmarks, getBookmarkStates } from "@/app/words/actions";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { ScreenHeader } from "@/components/screen-header";
-import { MeaningText } from "@/components/meaning-text";
+import { MeaningText, MeaningTextList } from "@/components/meaning-text";
 import { TgExampleMeaning, TgExampleText } from "@/components/tg-example-text";
 import { useTtsFallbackEnabled } from "@/components/tts-fallback-context";
 import { isJaToEnFormat, isSelfJudgeFormat } from "@/lib/quiz/format-options";
@@ -26,6 +26,7 @@ import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import { buildStartDrillInput } from "../_lib/build-start-drill-input";
 import { correctAnswerDisplay } from "../_lib/correct-answer-display";
+import { promptViewOf } from "../_lib/prompt-view";
 import {
   getQuizPreview,
   startDrill,
@@ -54,7 +55,6 @@ import { QuestionSpelling } from "./question-spelling";
 import {
   ResultList,
   type DrillRemainingText,
-  type PromptKind,
   type ResultRow,
   type SourceTestPreview,
   type SubmitState,
@@ -136,39 +136,6 @@ function preloadAudio(
   audio.load();
   cache.set(url, audio);
   return audio;
-}
-
-/**
- * 出題画面の見出し表示の種別（形式網羅 switch。形式追加時の更新漏れを型で検出する）。
- * kind は結果一覧の `PromptKind`（result-list）と共有し、結果一覧の主見出し・TG ハイライト・
- * 発音ボタンの行もこの種別から導出される（`ResultRow.promptKind`）。
- */
-type PromptView =
-  | { kind: "headword" }
-  /** 日本語→英語（意味のプレーン表示。headword・発音は解答のため伏せる）。 */
-  | { kind: "ja-plain"; text: string }
-  /** TG四択（英→日）: TG 例文の英文をハイライト表示（headword は英文中に含まれるため出さない）。 */
-  | { kind: "tg-text"; text: string }
-  /** TG四択（日→英）: TG 例文の意味をハイライト表示（headword・発音は解答のため伏せる）。 */
-  | { kind: "tg-meaning"; text: string };
-
-function promptViewOf(quiz: QuizPayload, index: number): PromptView {
-  switch (quiz.format) {
-    case "CHOICE":
-    case "SELF_JUDGE":
-    case "MULTI_MEANING":
-      return { kind: "headword" };
-    case "CHOICE_JA_EN":
-    case "SELF_JUDGE_JA_EN":
-    case "SPELLING":
-      return { kind: "ja-plain", text: quiz.questions[index].prompt };
-    case "CHOICE_TG":
-    case "SELF_JUDGE_TG":
-      return { kind: "tg-text", text: quiz.questions[index].prompt };
-    case "CHOICE_TG_JA_EN":
-    case "SELF_JUDGE_TG_JA_EN":
-      return { kind: "tg-meaning", text: quiz.questions[index].prompt };
-  }
 }
 
 function QuestionView({
@@ -829,15 +796,14 @@ export function QuizFlow({
     if (phase.name !== "play" || quiz === null) return;
     const index = phase.index;
     const question = quiz.questions[index];
-    // 結果一覧の主見出し・TG ハイライト・発音ボタン配置は出題見出しと同じ種別（PromptKind）から導出する
+    // 結果一覧の主見出し・TG ハイライト・発音ボタン配置は出題見出しと同じ表示データから導出する
     const promptView = promptViewOf(quiz, index);
     const nextRows: ResultRow[] = [
       ...rows,
       {
         wordId: question.wordId,
         headword: question.headword,
-        promptKind: promptView.kind satisfies PromptKind,
-        prompt: promptView.kind === "headword" ? null : promptView.text,
+        prompt: promptView,
         correctDisplay: correctAnswerDisplay(quiz, index),
         result: outcome.result,
         answerDisplay: outcome.answerDisplay,
@@ -1032,7 +998,10 @@ export function QuizFlow({
           // 日本語→英語は問題文が「意味」。headword（＝解答の英単語）と発音は伏せる
           <div className="flex flex-wrap items-center justify-center py-4">
             <h1 className="font-content text-3xl font-bold tracking-tight break-words whitespace-pre-wrap">
-              <MeaningText text={promptView.text} />
+              <MeaningTextList
+                texts={promptView.texts}
+                emphasizeFirst={promptView.emphasizeFirst}
+              />
             </h1>
           </div>
         ) : promptView.kind === "tg-meaning" ? (

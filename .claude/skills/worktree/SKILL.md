@@ -49,7 +49,7 @@ scripts/wt-new.sh foo-01-schema feature/foo --branch feature/foo-01-schema     #
 scripts/wt-rm.sh <name> [--delete-branch]
 ```
 
-撤去のタイミングは呼び出し元の規約（各 SKILL.md など）に従う。`--delete-branch` はマージ済みブランチのみ削除できる（`git branch -d`）。squash マージ後など `-d` が通らないブランチは、`scripts/wt-rm.sh <name>` で worktree だけ撤去してから `git branch -D <branch>` で削除する。
+撤去のタイミングは呼び出し元の規約（各 SKILL.md など）に従う。`--delete-branch` は `git branch -d` のため、取り込み済みと判定できるブランチしか削除できない。squash マージで取り込んだブランチ（ticket-implement のチケットブランチ）や、統合 PR がマージ済みでも本体の main を更新していない段階のブランチは `-d` が通らない。その場合は `scripts/wt-rm.sh <name>` で worktree だけ撤去してから `git branch -D <branch>` で削除する。
 
 撤去対象の worktree 自身の中から実行すると、撤去は成功するが自分の cwd が消えた状態になり以降のコマンドが失敗する。撤去は必ず対象の外から実行する。
 
@@ -60,5 +60,5 @@ scripts/wt-rm.sh <name> [--delete-branch]
 ```sh
 git worktree list | grep <機能名>          # 残存の確認（起点＋残存するチケット・plan-update worktree）
 scripts/wt-rm.sh <機能名>                  # 起点 worktree の撤去（残存 worktree も検査後に同様に撤去）
-git branch -D feature/<機能名> docs/<機能名>-design-plan   # squash マージ済みブランチの削除（残存していれば docs/<機能名>-plan-update・feature/<機能名>-NN-* も）
+git branch -D feature/<機能名> docs/<機能名>-design-plan   # ローカルブランチの削除（残存していれば docs/<機能名>-plan-update・feature/<機能名>-NN-* も）
 ```

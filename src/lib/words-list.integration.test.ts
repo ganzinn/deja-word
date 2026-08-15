@@ -8,6 +8,7 @@ import { getWordDetailForUser } from "@/lib/words-detail";
 import {
   findAdjacentWordsByOccurrence,
   findAdjacentWordsInWordView,
+  hasExactHeadwordForUser,
   listWordsByOccurrence,
   listWordsForUser,
 } from "@/lib/words-list";
@@ -1047,5 +1048,43 @@ describe("findAdjacentWordsInWordView", () => {
       ...base,
     });
     expect(foreign).toBeNull();
+  });
+});
+
+describe("hasExactHeadwordForUser", () => {
+  test("matches own word / system word; partial match alone -> false", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("apple"));
+    await createWordForUser(SYSTEM_USER_ID, form("banana"));
+
+    expect(await hasExactHeadwordForUser(user.id, "apple")).toBe(true);
+    expect(await hasExactHeadwordForUser(user.id, "banana")).toBe(true);
+    // 部分一致（既存 headword の一部・既存 headword を含む語）は完全一致ではない
+    expect(await hasExactHeadwordForUser(user.id, "app")).toBe(false);
+    expect(await hasExactHeadwordForUser(user.id, "applesauce")).toBe(false);
+  });
+
+  test("is case-insensitive", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("Ubiquitous"));
+
+    expect(await hasExactHeadwordForUser(user.id, "ubiquitous")).toBe(true);
+    expect(await hasExactHeadwordForUser(user.id, "UBIQUITOUS")).toBe(true);
+  });
+
+  test("empty keyword -> false (defensive guard)", async () => {
+    const user = await createTestUser();
+    await createWordForUser(user.id, form("apple"));
+
+    expect(await hasExactHeadwordForUser(user.id, "")).toBe(false);
+  });
+
+  test("excludes other users' words", async () => {
+    const user = await createTestUser();
+    const stranger = await createTestUser();
+    await createWordForUser(stranger.id, form("secret"));
+
+    expect(await hasExactHeadwordForUser(user.id, "secret")).toBe(false);
+    expect(await hasExactHeadwordForUser(stranger.id, "secret")).toBe(true);
   });
 });

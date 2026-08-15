@@ -97,16 +97,16 @@ export function MeaningBlocks({
 
 ## 完了条件（Definition of Done）
 
-- [ ] unit（`src/components/placeholder-text.unit.test.ts` を新設）: `composeSegmentClassName` が (1) ベース未指定なら現状と同じ結果を返す、(2) ベース `text-red-500` ＋ 記法の赤（`text-red-500`）で結果が `text-red-500` のまま変わらない、(3) ベース `text-red-500` ＋ 記法の太字で赤と太字が両立する、(4) 3 つとも空なら空文字を返す（素の文字列を push する既存分岐が保たれる）。**05 が使う `baseClassName` の契約を守る唯一の自動テスト**
-- [ ] unit: JSX を返す関数（`renderPlaceholders` / `MeaningText` / `MeaningBlocks`）自体のテストは**追加しない**。`vitest.config.mts` の include が `*.unit.test.ts` のみ（`.test.tsx` は実行対象外）のため（[03-ui.md](../../design/quiz-first-meaning-only/03-ui.md) 決定 5）
-- [ ] unit: `src/components/rich-text.unit.test.ts` は**変更しない**（装飾記法の色を変えないため）。既存のまま通ること
+- [x] unit（`src/components/placeholder-text.unit.test.ts` を新設）: `composeSegmentClassName` が (1) ベース未指定なら現状と同じ結果を返す、(2) ベース `text-red-500` ＋ 記法の赤（`text-red-500`）で結果が `text-red-500` のまま変わらない、(3) ベース `text-red-500` ＋ 記法の太字で赤と太字が両立する、(4) 3 つとも空なら空文字を返す（素の文字列を push する既存分岐が保たれる）。**05 が使う `baseClassName` の契約を守る唯一の自動テスト**
+- [x] unit: JSX を返す関数（`renderPlaceholders` / `MeaningText` / `MeaningBlocks`）自体のテストは**追加しない**。`vitest.config.mts` の include が `*.unit.test.ts` のみ（`.test.tsx` は実行対象外）のため（[03-ui.md](../../design/quiz-first-meaning-only/03-ui.md) 決定 5）
+- [x] unit: `src/components/rich-text.unit.test.ts` は**変更しない**（装飾記法の色を変えないため）。既存のまま通ること
 - [ ] 手動確認: 自己判定（英語→日本語）でテストを開始し、解答表示で**先頭 Meaning の先頭訳語だけ**が赤字になる。2 番目以降の訳語・2 番目以降の Meaning・品詞バッジは赤くならない
 - [ ] 手動確認: 先頭 Meaning に訳語が 1 つだけの単語（`<p>` 経路）と 2 つ以上ある単語（`<ul>` 経路）の**両方**で強調が出る
 - [ ] 手動確認: Meaning が 2 つ以上ある単語で、**2 番目以降の Meaning の先頭訳語は赤くならない**（「各 Meaning の先頭」を赤くする実装になっていないこと）
-- [ ] `MeaningBlocks` の docstring が実際の呼び出し元（自己判定（英→日）の解答表示のみ）に合わせて直っている
+- [x] `MeaningBlocks` の docstring が実際の呼び出し元（自己判定（英→日）の解答表示のみ）に合わせて直っている
 - [ ] 手動確認: 装飾記法 `==赤==` を含む訳語が先頭にある場合も見た目が変わらない。`**太字**` を含む場合は太字と赤字が両立する
 - [ ] 手動確認: 自己判定（英→日）以外の画面で訳語の見た目が変わっていない（四択（英→日）の選択肢、単語一覧、単語詳細、TG 例文）
-- [ ] `pnpm format`（整形）の上で `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` が通る
+- [x] `pnpm format`（整形）の上で `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` が通る
 
 手動確認の手順は e2e-verify スキル（`.claude/skills/e2e-verify/references/quiz.md`）に従う。
 
@@ -119,4 +119,5 @@ export function MeaningBlocks({
 - 計画との差分なし（シグネチャ・条件式・体裁値はチケット記載どおり）。integration テストの新規・変更はなし
 - `renderPlaceholders` 内 `push` の行内コメント（ベース → ユーザー記法の順に合成し後者を勝たせる）は、同内容を `composeSegmentClassName` の docstring が持つため削除した
 - `meaning-blocks.tsx` の `"text-red-500"` は定数に切り出さずリテラル 2 箇所のまま
+- **E2E 検証（2026-08-15、統合ブランチ / 一回きりスクリプトで実行後に削除）**: 自己判定（英→日）の解答表示で、訳語 2 件の Meaning（`<ul>` 経路）の先頭訳語が `text-red-500` の computed color と一致し、2 つ目の訳語は一致しないことを確認（21 件中の 2 件）。**未確認のまま残るのは、訳語 1 件（`<p>` 経路）／Meaning 2 つ以上／装飾記法との重ね／対象外画面の見た目**（E2E デッキが 1 Meaning 構成のため）
 - **05 へ**: `MeaningText` の `baseClassName` prop と `composeSegmentClassName` の合成契約（ベース → プレースホルダ体裁 → ユーザー記法の順、後勝ち）は unit テスト 4 件で固定済み。05 は `<MeaningText text={...} baseClassName="text-red-500" />` を呼ぶだけでよい

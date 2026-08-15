@@ -101,12 +101,12 @@ function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.Re
 
 ## 完了条件（Definition of Done）
 
-- [ ] unit（`src/app/quiz/_lib/correct-answer-display.unit.test.ts` を新設）: 全 10 形式について `texts` / `emphasizeFirst` が上表のとおりになる。`SELF_JUDGE` だけ `emphasizeFirst: true` かつ最初の Meaning の訳語が**連結されずに配列で**返る。正解選択肢が無い / Meaning が空のときも例外を投げない
+- [x] unit（`src/app/quiz/_lib/correct-answer-display.unit.test.ts` を新設）: 全 10 形式について `texts` / `emphasizeFirst` が上表のとおりになる。`SELF_JUDGE` だけ `emphasizeFirst: true` かつ最初の Meaning の訳語が**連結されずに配列で**返る。正解選択肢が無い / Meaning が空のときも例外を投げない
   - テストの入力は **`QuizPayload` を形式ごとに手書きする**（`buildQuiz` を通さない）。`buildQuiz` 経由にすると 03 の変更にテストが引きずられ、本チケットが検証したい「payload → 表示データの導出」以外の理由で落ちるため。`QuizPayload` は discriminated union なので、形式ごとに `format` と当該問題型の必要フィールドだけを埋めた最小オブジェクトでよい
-- [ ] 手動確認: 自己判定（英語→日本語）でテストを完走し、結果一覧の「正解:」の先頭訳語だけが赤字になる。2 番目以降の訳語は赤くならず、区切りが「; 」で表示される
+- [x] 手動確認: 自己判定（英語→日本語）でテストを完走し、結果一覧の「正解:」の先頭訳語だけが赤字になる。2 番目以降の訳語は赤くならず、区切りが「; 」で表示される
 - [ ] 手動確認: 四択（英→日）・四択（日→英）・スペル確認・多義語選択・TG 形式の結果一覧で、正解列の見た目が従来と変わらない
 - [ ] 手動確認: 「自分の回答」列の見た目が全形式で従来と変わらない（赤字が入らない）
-- [ ] `pnpm format`（整形）の上で `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` が通る
+- [x] `pnpm format`（整形）の上で `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` が通る
 
 手動確認の手順は e2e-verify スキル（`.claude/skills/e2e-verify/references/quiz.md`）に従う。
 
@@ -119,4 +119,5 @@ function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.Re
 - 計画との差分なし（`CorrectDisplay` の型・`correctAnswerDisplay` のシグネチャ・形式ごとの戻り値表・`correctDisplayNode`・`Fragment` の import はチケット記載どおり）。integration テストの新規・変更はなし
 - `answerSideDisplayOf` の 4 分岐と「自分の回答」列は未変更
 - unit テストでは `test.each` で形式をパラメータ化した 3 ブロックの payload リテラルに `as QuizPayload` を使用（`format` が変数だと discriminated union へ直接代入できないため）。単一形式を直接書いた 4 テストは型注釈のみでキャストなし
+- **E2E 検証（2026-08-15、統合ブランチ / 一回きりスクリプトで実行後に削除）**: 自己判定（英→日）を完走し、結果一覧の正解列で先頭訳語の要素色が `text-red-500` と一致・親要素の色は非赤で親テキストが `きびきびした、活発な; （風などが）さわやかな`（区切りが「; 」）であることを確認。対照として日→英・自己判定の結果一覧で赤字が入らないことも確認。**未確認は四択・スペル確認・多義語選択・TG 形式の正解列と「自分の回答」列の見た目**
 - **07 へ**: `CorrectDisplay` は `src/app/quiz/_lib/correct-answer-display.ts` に定義。出題形式を増やすときは `build-quiz.ts` / `format-options.ts` に加えてこの形式網羅 switch も更新が要る（網羅チェックが効くのでコンパイルエラーで検出される）

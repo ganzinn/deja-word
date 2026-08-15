@@ -63,13 +63,15 @@ ADR-0066 の削除ガード = 「単語の子孫に**別 owner** の行が 1 つ
 
 ## 新しい E2E を足すとき
 
-1. `scripts/e2e/verify-<対象>.ts` を作り、`harness.ts` / `auth.ts` / `db.ts` のヘルパを使う。
+1. `scripts/e2e/verify-<対象>.ts` を作り、先頭に `import "dotenv/config";` を置いてから `harness.ts` / `auth.ts` / `db.ts` のヘルパを使う（env の読み込みは各スクリプトの責務。無いと `makePrisma()` が `DATABASE_URL ... is not set` で落ちる）。
 2. テストデータ headword / email は `e2e-<対象>-*` にし、`finally` で prefix 掃除する（クラッシュ時も次回に持ち越さない）。
 3. 一般ユーザーは上の「ユーザーパターン」に従う（既定は使い回し①/②、使い捨ては fresh account が本質のときだけ）。
 4. `package.json` に `"e2e:<対象>": "tsx scripts/e2e/verify-<対象>.ts"` を追加。
 5. UI セレクタは対象の component / form（`src/app/.../*.tsx`）を読んで確定する（placeholder / `aria-label` / ボタン文言が安定。子配列は上の規則で当たる）。
 
 **一回きり（永続化しない）確認**なら 4 を省き、`scripts/e2e/verify-<対象>.ts` を作って `tsx scripts/e2e/verify-<対象>.ts` で直接実行 → 確認後に**ファイルごと削除**する（`package.json` に足さない）。`./harness` 等の import を素直にするため scratchpad でなく `scripts/e2e/` 配下に置く。
+
+**「表示されないこと」を検証するときは、表示される画面で同じロケータが当たる対照を必ず置く**（要素が無いことのアサートは、ロケータ自体が誤っていても PASS するため）。同一スクリプト内に「出る画面でヒット数 1」のケースを 1 つ入れれば足りる。
 
 **漏洩・認可系は空振り防止（negative control）まで**やる: fix を一時 revert（`git stash push -- <file>`）→ 対象ページを 1 回叩いて再コンパイル → E2E が **FAIL** することを確認 → `git stash pop`。アサートの空振りと dev の stale を同時に排除できる（`next dev` は Server Component をリクエスト毎に再コンパイルするので、revert 後は対象ページへ 1 回アクセスしてから走らせる）。
 

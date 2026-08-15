@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AudioPlayButton } from "@/components/audio-play-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ChoiceQuestion } from "@/lib/quiz/payload";
+import type { ChoiceQuestionBase } from "@/lib/quiz/payload";
 import type { QuizResult } from "@/generated/prisma/enums";
 
 import { AnswerAdvanceFooter } from "./answer-advance-footer";
@@ -15,7 +15,7 @@ import { useQuestionTimer } from "./use-question-timer";
 import { WordDetailButton } from "./word-detail-button";
 
 type Props = {
-  question: ChoiceQuestion;
+  question: ChoiceQuestionBase;
   /** 1 問あたりの制限時間（秒）。null = 制限なし。 */
   timeoutSeconds: number | null;
   onComplete: (outcome: QuestionOutcome) => void;
@@ -37,7 +37,7 @@ type Props = {
 type Answered = { selectedIndex: number | null; timedOut: boolean };
 
 /** 確定状態から結果＋表示文字列を導出する（onReveal / onComplete で共用）。 */
-function outcomeFor(question: ChoiceQuestion, answered: Answered): QuestionOutcome {
+function outcomeFor(question: ChoiceQuestionBase, answered: Answered): QuestionOutcome {
   const { selectedIndex, timedOut } = answered;
   if (timedOut) return { result: "TIMEOUT", answerDisplay: null };
   if (selectedIndex === null) return { result: "GAVE_UP", answerDisplay: null };

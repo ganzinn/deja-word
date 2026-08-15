@@ -17,14 +17,31 @@ export type QuestionBase = {
 /** Meaning 1 件分の表示用データ（自己判定の解答／日本語→英語の問題文で共用）。 */
 export type MeaningDisplay = { partOfSpeech: string | null; texts: string[] };
 
-export type ChoiceQuestion = QuestionBase & {
+/**
+ * 結果一覧の「正解」列に出す最初の Meaning の訳語（sortOrder 順）。
+ * 出題側の表示（選択肢）は「先頭の訳語のみ表示」設定やシャッフルで内容・順序が変わるが、
+ * 結果一覧は答え合わせの材料を出す解答側なので、設定に依らず全訳語を訳語順で出す（ADR-0101）。
+ * 自己判定（英→日）は `answer[0].texts` が同じ役割を担うため持たない。
+ */
+type CorrectMeaningTexts = { correctMeaningTexts: string[] };
+
+/**
+ * 四択 4 形式に共通の出題データ。選択肢の中身（訳語 / 英単語 / TG 例文）は形式で違うが
+ * 「選択肢を選んで採点する」挙動は同じで、出題 UI（`QuestionChoice`）は形式を問わず
+ * この形だけを受け取る。形式固有のフィールドを増やすときは各形式の型側へ足すこと。
+ */
+export type ChoiceQuestionBase = QuestionBase & {
   choices: { text: string }[];
   correctIndex: number;
 };
 
-export type MultiMeaningQuestion = QuestionBase & {
-  options: { text: string; isCorrect: boolean }[];
-};
+/** 四択（英語→日本語）。choices は訳語。 */
+export type ChoiceQuestion = ChoiceQuestionBase & CorrectMeaningTexts;
+
+export type MultiMeaningQuestion = QuestionBase &
+  CorrectMeaningTexts & {
+    options: { text: string; isCorrect: boolean }[];
+  };
 
 export type SelfJudgeQuestion = QuestionBase & {
   answer: MeaningDisplay[]; // 全 Meaning の表示用データ
@@ -38,11 +55,7 @@ export type SelfJudgeQuestion = QuestionBase & {
 export type JaEnPrompt = { prompt: string };
 
 /** 四択（日本語→英語）。choices は英単語、correctIndex が target の headword。 */
-export type ChoiceJaEnQuestion = QuestionBase &
-  JaEnPrompt & {
-    choices: { text: string }[];
-    correctIndex: number;
-  };
+export type ChoiceJaEnQuestion = ChoiceQuestionBase & JaEnPrompt;
 
 /** 自己判定（日本語→英語）。解答は headword（英単語）。 */
 export type SelfJudgeJaEnQuestion = QuestionBase & JaEnPrompt;
@@ -54,18 +67,10 @@ export type SpellingQuestion = QuestionBase & JaEnPrompt;
  * TG四択（英語→日本語）。prompt は TG 例文の英文、choices は各単語の TG 例文の意味。
  * 出題画面は headword の代わりに英文を表示する（headword は英文中に含まれるため出さない）。
  */
-export type ChoiceTgQuestion = QuestionBase & {
-  prompt: string;
-  choices: { text: string }[];
-  correctIndex: number;
-};
+export type ChoiceTgQuestion = ChoiceQuestionBase & { prompt: string };
 
 /** TG四択（日本語→英語）。prompt は TG 例文の意味、choices は各単語の TG 例文の英文。 */
-export type ChoiceTgJaEnQuestion = QuestionBase & {
-  prompt: string;
-  choices: { text: string }[];
-  correctIndex: number;
-};
+export type ChoiceTgJaEnQuestion = ChoiceQuestionBase & { prompt: string };
 
 /** TG自己判定（英語→日本語）。prompt は TG 例文の英文、answer は TG 例文の意味。 */
 export type SelfJudgeTgQuestion = QuestionBase & { prompt: string; answer: string };

@@ -1,6 +1,6 @@
 # 02. new-page-prefill
 
-状態: **完了**（2026-08-15）　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: [#260](https://github.com/ganzinn/deja-word/pull/260)
 
 ## 目的
 

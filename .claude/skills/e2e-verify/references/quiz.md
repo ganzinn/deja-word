@@ -20,7 +20,7 @@ skill `e2e-verify` の補助資料。**quiz 機能をブラウザ自動化で検
 | 開始 | ボタン「開始」 | `disabled` 条件は下記。 |
 | 対象語数 | テキスト `対象 N語`（id 無し） | プレビュー結果。0 語だと開始不可。 |
 
-その他のチェックボックス: 「選択肢に最初の訳語だけを表示する」（形式が `CHOICE` のときだけ表示）、「この設定をデフォルト設定とする」。**data-testid は無い**ので上記の id / role+ラベル文言 / aria-label / ボタン文言で取る。
+その他のチェックボックス: 「最初の訳語だけを表示する」（形式が `CHOICE` / `CHOICE_JA_EN` / `SELF_JUDGE_JA_EN` / `SPELLING` の 4 形式のときだけ表示。他の 6 形式では描画されない）、「この設定をデフォルト設定とする」。**data-testid は無い**ので上記の id / role+ラベル文言 / aria-label / ボタン文言で取る。
 
 ### 落とし穴
 - **Checkbox は id セレクタで操作しない**（id は不可視の hidden input に付き click がタイムアウトする）。`getByRole("checkbox", { name: "<ラベル文言>" })` で取り、`aria-checked` が目的状態と違うときだけ click する。Input / Select の id は従来どおり使える。

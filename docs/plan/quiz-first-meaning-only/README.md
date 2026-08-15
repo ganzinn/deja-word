@@ -24,7 +24,7 @@
 | [04-answer-emphasis.md](04-answer-emphasis.md) | 自己判定（英→日）の解答表示で先頭訳語を赤字にする | なし | 完了（2026-08-15） | - |
 | [05-result-list-emphasis.md](05-result-list-emphasis.md) | 結果一覧の正解列を構造化し、自己判定（英→日）だけ先頭訳語を赤字にする | 04 | 完了（2026-08-15） | - |
 | [06-settings-ui.md](06-settings-ui.md) | トグルの表示条件・配置・文言を共通設定として置き直す | 01 | 完了（2026-08-15） | - |
-| [07-docs-and-adr.md](07-docs-and-adr.md) | ADR 3 件・用語集・機能紹介・スクリーンショット・E2E 手順書 | 03, 05, 06 | 実装中 | - |
+| [07-docs-and-adr.md](07-docs-and-adr.md) | ADR 3 件・用語集・機能紹介・スクリーンショット・E2E 手順書 | 03, 05, 06 | 完了（2026-08-15） | - |
 
 ## 依存関係図
 

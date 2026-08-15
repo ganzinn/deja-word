@@ -122,6 +122,7 @@ ADR に残すのは、次の**両方**を満たす判断。
 | [0072](0072-quiz-order-by-occurrence-number.md) | 掲載番号順出題（出題順の決定を buildQuiz に集約、0039 の明示的例外） | 高 | — |
 | [0074](0074-quiz-question-count-sampling.md) | 出題数の指定（範囲からランダム抽選、再テストは再抽選） | 高 | — |
 | [0097](0097-result-my-answer-hidden-by-default.md) | 結果一覧の「自分の回答」は既定で非表示・トグルで表示（非永続。残数バッジは非表示中も残す） | 高 | — |
+| [0100](0100-first-meaning-only-question-side.md) | 訳語の「先頭のみ表示」は共通設定として出題側にだけ効かせ、解答側は先頭訳語の常時赤字で補う（一意性は非保証・drill 保存値は非移行・既定値の非対称は維持） | 高 | — |
 
 ### E. drill（定着モード）
 

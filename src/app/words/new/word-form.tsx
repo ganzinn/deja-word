@@ -33,7 +33,11 @@ type WordFormProps = {
   occurrencePresets: OccurrencePreset[];
   autoNumberByOccurrenceId?: Record<string, number>;
   wordId?: string;
-  /** 編集モードの戻り先・更新後の遷移先。掲載箇所の絞り込みを保った詳細 URL を渡す。 */
+  /**
+   * 「戻る」の遷移先。編集モードでは更新後の遷移先も兼ね、掲載箇所の絞り込みを保った詳細 URL を渡す。
+   * 新規モードでは検索結果一覧の URL を渡し、登録をやめたとき元の検索結果へ戻せるようにする
+   * （登録成功後の遷移先は既定どおり登録した単語の詳細で、returnHref は使わない）。
+   */
   returnHref?: string;
   wordOwnerId?: string;
   isCurrentUserSystem?: boolean;
@@ -71,7 +75,7 @@ export function WordForm({
   const title = isEdit ? "単語を編集" : "単語を登録";
   const submitLabel = isEdit ? "更新する" : "登録する";
   const submittingLabel = "送信中…";
-  const backHref = isEdit && wordId ? (returnHref ?? `/words/${wordId}`) : "/words";
+  const backHref = returnHref ?? (isEdit && wordId ? `/words/${wordId}` : "/words");
 
   async function onSubmit(values: WordFormValues) {
     const result = isEdit && wordId ? await updateWord(wordId, values) : await createWord(values);

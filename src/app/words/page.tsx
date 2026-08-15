@@ -29,6 +29,7 @@ import {
   buildWordsHref,
   parseMatch,
   parseOrder,
+  parsePage,
   parseRangeNumber,
 } from "./_lib/search-params";
 
@@ -279,13 +280,6 @@ function WordRows({
       ))}
     </ul>
   );
-}
-
-function parsePage(value: string | undefined): number {
-  if (!value) return 1;
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n < 1) return 1;
-  return n;
 }
 
 function WordRow({

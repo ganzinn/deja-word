@@ -73,6 +73,7 @@
 | [0089](0089-word-detail-nav-list-context.md) | 単語詳細の前後ナビは一覧コンテキストに追随（`view=word` URL コンテキスト、kind 付き union、一覧と where 共有の隣接クエリ） | 高 | — |
 | [0090](0090-word-nav-no-prefetch.md) | 前後ナビのフルプリフェッチ廃止・毎回サーバー取得で一覧の表示順と同期（0086 決定 3 のページ側プリフェッチを置き換え） | 高 | — |
 | [0094](0094-bulk-bookmark-skip-and-colocation.md) | ブックマーク一括登録は検証落ちを skip（1 件版との非対称）・変換は action 内・UseCase は bookmark-settings.ts へ相乗り（0063 の適用例、0014 からの明示的逸脱） | 高 | — |
+| [0098](0098-word-create-from-search-link.md) | 検索結果からの登録導線は検索と同じ照合規則で完全一致を判定・`/words/new` へは一覧コンテキストのみ渡す（生 URL・専用プリフィル param 不採用） | 高 | — |
 
 ### D. quiz 機能
 

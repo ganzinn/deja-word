@@ -35,7 +35,7 @@ export async function generateQuizForUser(
     questionCount?: number;
     format: QuizFormat;
     timeoutSeconds: number | null;
-    choiceFirstMeaningTextOnly: boolean;
+    firstMeaningTextOnly: boolean;
     orderByOccurrenceNumber: boolean;
   },
 ): Promise<QuizPayload> {
@@ -61,7 +61,7 @@ export async function generateQuizForUser(
 
   // 掲載番号順は掲載箇所を指定したときだけ有効（全件モードは掲載番号を持たない。ADR-0072）。
   const buildOptions = {
-    choiceFirstMeaningTextOnly: input.choiceFirstMeaningTextOnly,
+    firstMeaningTextOnly: input.firstMeaningTextOnly,
     occurrenceNumberByWordId:
       input.orderByOccurrenceNumber && input.occurrenceId !== undefined
         ? occurrenceNumbersOf(targetRows)

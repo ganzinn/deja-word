@@ -62,7 +62,7 @@ export async function generateDrillRoundForUser(
       occurrence: { select: { location: true } },
       format: true,
       timeoutSeconds: true,
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
       orderByOccurrenceNumber: true,
       rangeFrom: true,
       rangeTo: true,
@@ -120,7 +120,7 @@ export async function generateDrillRoundForUser(
   return {
     quiz: {
       ...buildQuiz(drill.format, material, Math.random, {
-        choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+        firstMeaningTextOnly: drill.firstMeaningTextOnly,
         // 掲載箇所なし drill は掲載番号を持たないため常にランダム（全件モードの扱いと一貫）。
         occurrenceNumberByWordId:
           drill.orderByOccurrenceNumber && drill.occurrenceId !== null
@@ -142,7 +142,7 @@ export async function generateDrillRoundForUser(
       questionCount: drill.sourceQuestionCount ?? undefined,
       format: drill.format,
       timeoutSeconds: drill.timeoutSeconds,
-      choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+      firstMeaningTextOnly: drill.firstMeaningTextOnly,
       // 元テストの「掲載番号順に出題する」指定。再テストにも引き継ぐ（ADR-0042 の同じ範囲と同流儀）
       orderByOccurrenceNumber: drill.orderByOccurrenceNumber,
     },

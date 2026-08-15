@@ -29,7 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FORMAT_GROUPS, formatLabelOf, isTgExampleFormat } from "@/lib/quiz/format-options";
+import {
+  FORMAT_GROUPS,
+  formatLabelOf,
+  isFirstMeaningTextOnlyFormat,
+  isTgExampleFormat,
+} from "@/lib/quiz/format-options";
 import {
   DEFAULT_TIMEOUT_SECONDS,
   formatTimeoutLabel,
@@ -136,9 +141,11 @@ export function StartForm({
   const [format, setFormat] = useState<QuizFormat | null>(initialFormat);
   const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
   const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
-  // 四択（英→日）の選択肢で先頭の訳語のみ表示する。初期値はデフォルト設定（未設定は ON）。
-  const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
-    defaults.choiceFirstMeaningTextOnly ?? true,
+  // 訳語を先頭の 1 件だけ表示する（四択（英→日）は選択肢、日→英 3 形式は問題文に効く）。
+  // 対象外の形式を選んでいる間はトグルを描画しないが state は保持し、送信値には常に含める。
+  // 初期値はデフォルト設定（未設定は ON）。
+  const [firstMeaningTextOnly, setFirstMeaningTextOnly] = useState(
+    defaults.firstMeaningTextOnly ?? true,
   );
   // 掲載番号順に出題する。初期値はデフォルト設定（未設定は OFF＝ランダム）。
   const [orderByOccurrenceNumber, setOrderByOccurrenceNumber] = useState(
@@ -254,7 +261,7 @@ export function StartForm({
       questionCount,
       format,
       timeoutSeconds: timeoutSeconds ?? null,
-      choiceFirstMeaningTextOnly,
+      firstMeaningTextOnly,
       orderByOccurrenceNumber: sendOrderByOccurrenceNumber,
     };
     // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
@@ -426,17 +433,22 @@ export function StartForm({
         {selectedOption ? (
           <p className="text-muted-foreground text-xs">{selectedOption.description}</p>
         ) : null}
-        {format === "CHOICE" ? (
-          <div className="flex items-center gap-2 pt-1">
-            <Checkbox
-              id="quiz-choice-first-meaning-text-only"
-              className="size-6"
-              checked={choiceFirstMeaningTextOnly}
-              onCheckedChange={(checked) => setChoiceFirstMeaningTextOnly(checked === true)}
-            />
-            <Label htmlFor="quiz-choice-first-meaning-text-only" className="font-normal">
-              選択肢に最初の訳語だけを表示する
-            </Label>
+        {format !== null && isFirstMeaningTextOnlyFormat(format) ? (
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="quiz-first-meaning-text-only"
+                className="size-6"
+                checked={firstMeaningTextOnly}
+                onCheckedChange={(checked) => setFirstMeaningTextOnly(checked === true)}
+              />
+              <Label htmlFor="quiz-first-meaning-text-only" className="font-normal">
+                最初の訳語だけを表示する
+              </Label>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              オフにすると、複数の訳語を「; 」で連結して表示します。
+            </p>
           </div>
         ) : null}
       </section>
@@ -518,7 +530,7 @@ export function StartForm({
           </Label>
         </div>
         <p className="text-muted-foreground text-xs">
-          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題数・出題形式・掲載番号順・制限時間をデフォルト設定として保存します。
+          オンで開始すると、上の掲載箇所・掲載番号範囲・ブックマークのみ・出題数・出題形式・最初の訳語の表示・掲載番号順・制限時間をデフォルト設定として保存します。
         </p>
       </section>
 

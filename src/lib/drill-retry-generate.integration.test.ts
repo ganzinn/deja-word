@@ -27,7 +27,7 @@ async function setupDrill(
     occurrenceId: occurrence.id,
     format: "SELF_JUDGE",
     timeoutSeconds: options.timeoutSeconds ?? null,
-    choiceFirstMeaningTextOnly: false,
+    firstMeaningTextOnly: false,
     drillIncludeCorrect: true,
     resetRemaining: 3,
     vagueRemaining: 2,

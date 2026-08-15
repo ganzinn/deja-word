@@ -46,7 +46,7 @@ function defaults(overrides: Partial<QuizDefaults> = {}): QuizDefaults {
     autoplayPronunciation: null,
     enableAnswerSound: null,
     autoplayAnswerAudioJaEn: null,
-    choiceFirstMeaningTextOnly: null,
+    firstMeaningTextOnly: null,
     orderByOccurrenceNumber: null,
     drillIncludeCorrect: null,
     resetRemaining: null,
@@ -132,6 +132,19 @@ describe("saveQuizDefaultsForUser", () => {
     const user = await createTestUser();
     await saveQuizDefaultsForUser(user.id, defaults({ drillIncludeCorrect: true }));
     expect((await getQuizDefaultsForUser(user.id))?.drillIncludeCorrect).toBe(true);
+  });
+
+  test("persists firstMeaningTextOnly (round-trips true / false / null on re-save)", async () => {
+    const user = await createTestUser();
+    // null（アプリ既定 ON）以外の 2 値と、null への戻しがそれぞれ独立に往復すること。
+    await saveQuizDefaultsForUser(user.id, defaults({ firstMeaningTextOnly: true }));
+    expect((await getQuizDefaultsForUser(user.id))?.firstMeaningTextOnly).toBe(true);
+
+    await saveQuizDefaultsForUser(user.id, defaults({ firstMeaningTextOnly: false }));
+    expect((await getQuizDefaultsForUser(user.id))?.firstMeaningTextOnly).toBe(false);
+
+    await saveQuizDefaultsForUser(user.id, defaults({ firstMeaningTextOnly: null }));
+    expect((await getQuizDefaultsForUser(user.id))?.firstMeaningTextOnly).toBeNull();
   });
 
   test("persists bookmarkedOnly (round-trips true) and retains it after occurrence SetNull (決定 6)", async () => {
@@ -327,7 +340,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: 7,
       format: "SELF_JUDGE",
       timeoutSeconds: 30,
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
     });
 
     expect(await getQuizDefaultsForUser(user.id)).toEqual(
@@ -339,7 +352,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         // CHOICE の制限時間は温存、SELF_JUDGE は 20→30 に更新
         timeoutByFormat: timeoutMap({ CHOICE: 5, SELF_JUDGE: 30 }),
         // 開始画面項目（四択先頭訳語のみ表示）は上書きされる
-        choiceFirstMeaningTextOnly: true,
+        firstMeaningTextOnly: true,
         // bookmarkedOnly も開始画面項目。入力で未指定 = false へ上書きされる（決定 6）
         bookmarkedOnly: false,
         // 掲載番号順も開始画面項目。入力で未指定 = false へ上書きされる（ADR-0072）
@@ -365,7 +378,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: undefined,
       format: "CHOICE",
       timeoutSeconds: 8,
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
     });
 
     // 初回保存なので推奨デフォルトの全形式制限時間が確立され、選択中の CHOICE のみ 8 に上書き。
@@ -375,7 +388,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         occurrenceId: occ.id,
         format: "CHOICE",
         timeoutByFormat: { ...DEFAULT_QUIZ_SETTINGS.timeoutByFormat, CHOICE: 8 },
-        choiceFirstMeaningTextOnly: true,
+        firstMeaningTextOnly: true,
         // bookmarkedOnly も開始画面項目。入力で未指定 = false（決定 6）
         bookmarkedOnly: false,
         // 掲載番号順も開始画面項目。入力で未指定 = false（ADR-0072）
@@ -396,7 +409,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: undefined,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
     });
 
     expect((await getQuizDefaultsForUser(user.id))?.timeoutByFormat).toEqual({
@@ -423,7 +436,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       rangeTo: undefined,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     });
 
     const saved = await getQuizDefaultsForUser(user.id);
@@ -442,7 +455,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
         rangeTo: undefined,
         format: "CHOICE",
         timeoutSeconds: null,
-        choiceFirstMeaningTextOnly: false,
+        firstMeaningTextOnly: false,
       }),
     ).rejects.toBeInstanceOf(DefaultOccurrenceNotInScopeError);
   });
@@ -458,7 +471,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       questionCount: 10,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     });
     expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBe(10);
 
@@ -467,9 +480,33 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       occurrenceId: occ.id,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     });
     expect((await getQuizDefaultsForUser(user.id))?.questionCount).toBeNull();
+  });
+
+  test("firstMeaningTextOnly は開始画面項目として保存される（true / false とも上書きされる）", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "先頭訳語のみ", 0);
+    await saveQuizDefaultsForUser(user.id, defaults({ firstMeaningTextOnly: null }));
+
+    // 開始画面でトグル ON のまま開始 → デフォルトも ON に上書きされる
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      occurrenceId: occ.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      firstMeaningTextOnly: true,
+    });
+    expect((await getQuizDefaultsForUser(user.id))?.firstMeaningTextOnly).toBe(true);
+
+    // OFF にして開始 → false へ上書きされる（true のまま据え置かれない）
+    await saveStartSettingsAsDefaultsForUser(user.id, {
+      occurrenceId: occ.id,
+      format: "CHOICE",
+      timeoutSeconds: null,
+      firstMeaningTextOnly: false,
+    });
+    expect((await getQuizDefaultsForUser(user.id))?.firstMeaningTextOnly).toBe(false);
   });
 
   test("all-bookmark mode (no occurrence) stores bookmarkedOnly with a null occurrence (決定 6)", async () => {
@@ -479,7 +516,7 @@ describe("saveStartSettingsAsDefaultsForUser", () => {
       bookmarkedOnly: true,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     });
     const saved = await getQuizDefaultsForUser(user.id);
     expect(saved?.occurrenceId).toBeNull();

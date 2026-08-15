@@ -56,6 +56,8 @@
 
 TG 例文の自動着色（英文＝青太字、意味＝赤、`A`/`B`/`do`/`doing` 等のプレースホルダの体裁）は**ベースの体裁**、ユーザーの装飾記法は**その上に重ねる**。競合するプロパティは `cn`（tailwind-merge）の後勝ちでユーザー記法を優先する。
 
+アプリが訳語へ付ける強調（先頭の訳語の赤字。[ADR-0100](0100-first-meaning-only-question-side.md) 決定 2）も同じ扱いで、ベース体裁として置いた上にユーザー記法を後勝ちで重ねる。自動の赤は記法の赤マークと同じ `text-red-500` にしてあるため、重なっても見た目は変わらない。
+
 ### 選択肢の重複排除
 
 四択・多義語選択のダミー選択肢の重複排除キーは、装飾記号を除いてから比較する（`src/lib/quiz/generation/dummy-pool.ts` の `dedupeKey`）。除かないと「片方だけ装飾された同じ訳語」が別物と判定され、画面上は同一文言の選択肢が並ぶ。
@@ -93,3 +95,4 @@ TG 例文の自動着色（英文＝青太字、意味＝赤、`A`/`B`/`do`/`doi
 - `src/app/words/new/_components/rich-text-help.tsx` — フォーム上の凡例
 - [ADR-0068](0068-content-input-max-limits.md) — 文章系フィールドの入力上限（記法の記号も同じ上限に含まれる）
 - [ADR-0076](0076-audio-source-visual-distinction.md) — 無彩色テーマの配色規約（本 ADR での例外整理の前提）
+- [ADR-0100](0100-first-meaning-only-question-side.md) — 先頭の訳語の赤字（記法と同じ重ね方・同じ色）

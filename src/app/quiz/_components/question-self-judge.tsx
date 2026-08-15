@@ -33,7 +33,7 @@ export function QuestionSelfJudge({
       onReveal={onReveal}
       onAnswerShown={onAnswerShown}
     >
-      <MeaningBlocks meanings={question.answer} />
+      <MeaningBlocks meanings={question.answer} emphasizeFirstText />
     </SelfJudgePanel>
   );
 }

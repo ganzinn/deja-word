@@ -47,7 +47,7 @@ export async function generateDrillRetryForUser(
       occurrenceId: true,
       format: true,
       timeoutSeconds: true,
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
       orderByOccurrenceNumber: true,
       rangeFrom: true,
       rangeTo: true,
@@ -79,7 +79,7 @@ export async function generateDrillRetryForUser(
   return {
     quiz: {
       ...buildQuiz(drill.format, material, Math.random, {
-        choiceFirstMeaningTextOnly: drill.choiceFirstMeaningTextOnly,
+        firstMeaningTextOnly: drill.firstMeaningTextOnly,
         // 掲載箇所なし drill は掲載番号を持たないため常にランダム（全件モードの扱いと一貫）。
         occurrenceNumberByWordId:
           drill.orderByOccurrenceNumber && drill.occurrenceId !== null

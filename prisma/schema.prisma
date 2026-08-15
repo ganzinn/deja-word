@@ -399,7 +399,7 @@ model QuizDefaultSetting {
   autoplayPronunciation Boolean? @map("autoplay_pronunciation") // 発音の自動再生。null = 有効（デフォルト）
   enableAnswerSound     Boolean? @map("enable_answer_sound")    // 正誤の効果音。null = 有効（デフォルト）
   autoplayAnswerAudioJaEn Boolean? @map("autoplay_answer_audio_ja_en") // 日→英の解答表示時の発音自動再生。null = 有効（デフォルト）
-  choiceFirstMeaningTextOnly Boolean? @map("choice_first_meaning_text_only") // 四択（英→日）の選択肢で先頭の訳語のみ表示。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
+  firstMeaningTextOnly Boolean? @map("first_meaning_text_only") // 訳語の表示を先頭の訳語のみにする（四択（英→日）の選択肢と日→英 3 形式の問題文）。null = ON（デフォルト＝先頭の訳語のみ）。false で全訳語を「; 」連結
   bookmarkedOnly Boolean? @map("bookmarked_only") // 出題対象を「ブックマークのみ」に絞る。null = アプリ既定 OFF。occurrence 削除（SetNull）で occurrenceId が null になっても残す（全件モードの初期値として成立）
   orderByOccurrenceNumber Boolean? @map("order_by_occurrence_number") // 出題順を掲載番号の昇順にする。null = アプリ既定 OFF（＝ランダム）。掲載箇所を指定したときのみ有効（全件モードは番号が無いため無視）
   drillIncludeCorrect Boolean? @map("drill_include_correct") // 定着モードに正答単語も含める（テスト結果画面トグルの初期値）。null = OFF（デフォルト＝誤答のみ）。true で正答も出題
@@ -455,7 +455,7 @@ model Drill {
   sourceBookmarkedOnly Boolean @default(false) @map("source_bookmarked_only")
   format         QuizFormat // 元テストの出題形式。全ラウンドで引き継ぐ
   timeoutSeconds Int?       @map("timeout_seconds") // 元テストの制限時間（秒）。全ラウンドで引き継ぐ。null = 制限なし
-  choiceFirstMeaningTextOnly Boolean @default(false) @map("choice_first_meaning_text_only") // 元テストの「四択で先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ
+  firstMeaningTextOnly Boolean @default(false) @map("first_meaning_text_only") // 元テストの「先頭の訳語のみ表示」設定。全ラウンドで引き継ぐ
   // 元テストの「掲載番号順に出題する」設定。全ラウンド・再テストで引き継ぐ（ADR-0039 の例外）。
   // 掲載箇所なし drill（occurrenceId が null）では番号が無いため常に無視される（既存行は false で backfill）
   orderByOccurrenceNumber Boolean @default(false) @map("order_by_occurrence_number")

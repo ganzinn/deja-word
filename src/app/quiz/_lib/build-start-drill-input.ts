@@ -37,7 +37,7 @@ export function buildStartDrillInput(params: {
     // 元テストの制限時間を Drill に保存し、全ラウンドで引き継ぐ
     timeoutSeconds: quiz.timeoutSeconds,
     // 元テストの「四択で先頭の訳語のみ表示」設定も Drill に保存して引き継ぐ
-    choiceFirstMeaningTextOnly: startInput.choiceFirstMeaningTextOnly,
+    firstMeaningTextOnly: startInput.firstMeaningTextOnly,
     // 元テストの「掲載番号順に出題する」設定も Drill に保存し、全ラウンド・再テストで引き継ぐ
     // （掲載番号順の drill はラウンドごとの再シャッフルをしない。ADR-0072）
     orderByOccurrenceNumber: startInput.orderByOccurrenceNumber,

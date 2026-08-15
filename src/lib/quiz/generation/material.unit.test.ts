@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  firstMeaningDisplayText,
   partitionMaterial,
   retargetMaterial,
   type QuizSourceMaterial,
@@ -30,6 +31,41 @@ function row(id: string): QuizSourceRow {
     ],
   };
 }
+
+describe("firstMeaningDisplayText", () => {
+  /** 最初の Meaning に訳語 2 件、2 件目の Meaning にも訳語を持つ単語。 */
+  const multi: QuizWord = {
+    id: "t",
+    headword: "run",
+    tgExample: null,
+    meanings: [
+      { partOfSpeech: "動詞", pronunciationAudioUrl: null, texts: ["走る", "駆ける"] },
+      { partOfSpeech: null, pronunciationAudioUrl: null, texts: ["経営する"] },
+    ],
+  };
+
+  test("ON: returns only the first MeaningText of the first Meaning", () => {
+    expect(firstMeaningDisplayText(multi, true)).toBe("走る");
+  });
+
+  test("OFF: joins the first Meaning's texts with '; ' (2 件目の Meaning は含めない)", () => {
+    expect(firstMeaningDisplayText(multi, false)).toBe("走る; 駆ける");
+  });
+
+  test("returns an empty string when the word has no meaning text", () => {
+    const noMeanings: QuizWord = { id: "n", headword: "n", tgExample: null, meanings: [] };
+    const noTexts: QuizWord = {
+      id: "e",
+      headword: "e",
+      tgExample: null,
+      meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [] }],
+    };
+    expect(firstMeaningDisplayText(noMeanings, true)).toBe("");
+    expect(firstMeaningDisplayText(noMeanings, false)).toBe("");
+    expect(firstMeaningDisplayText(noTexts, true)).toBe("");
+    expect(firstMeaningDisplayText(noTexts, false)).toBe("");
+  });
+});
 
 describe("partitionMaterial", () => {
   test("attaches the TG example row to the matching word across all three partitions", () => {

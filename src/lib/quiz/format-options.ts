@@ -112,6 +112,24 @@ export function isSelfJudgeFormat(format: QuizFormat): boolean {
 }
 
 /**
+ * 「最初の訳語だけを表示する」設定が効く出題形式。
+ * 四択（英→日）は選択肢、日本語→英語 3 形式は問題文に効く。TG 例文形式は訳語を表示しないため含めない。
+ * この Set は生成側（build-quiz の網羅 switch で設定を渡す case）と独立に存在するため、
+ * 出題形式を増やすときは両方を更新する（片方だけだと「トグルは出るのに効かない／効くのに出ない」になる）。
+ */
+const FIRST_MEANING_TEXT_ONLY_FORMATS = new Set<QuizFormat>([
+  "CHOICE",
+  "CHOICE_JA_EN",
+  "SELF_JUDGE_JA_EN",
+  "SPELLING",
+]);
+
+/** 「最初の訳語だけを表示する」設定が効く出題形式か（開始フォームのトグル表示条件）。 */
+export function isFirstMeaningTextOnlyFormat(format: QuizFormat): boolean {
+  return FIRST_MEANING_TEXT_ONLY_FORMATS.has(format);
+}
+
+/**
  * 出題形式を単一の表示用ラベルに変換する（例「英語→日本語・四択」）。
  * `label` だけだとカテゴリ間で重複する（「四択」など）ため、向き（category）を併記する。
  * 文言は FORMAT_GROUPS を単一の出どころとして再利用しドリフトを防ぐ。

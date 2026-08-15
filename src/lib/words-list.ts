@@ -180,6 +180,28 @@ export async function listWordsForUser(
 }
 
 /**
+ * 可視範囲（system＋自分）に、検索語と完全一致する headword の単語が存在するかを判定する。
+ * `keyword` は `normalizeSearchKeyword` 適用済みの正規化後キーワードで、正規化は呼び出し側の責務
+ * （防御として空文字なら DB を見ずに false）。
+ * 照合は検索の一致規則に合わせて**大文字小文字を区別しない**。書き込みガードの
+ * `words-duplicate.ts` が区別する equals を使うのは一意制約 `@@unique([ownerId, headword])` と
+ * 挙動を揃えるためで、本関数は目的が異なる（検索の照合規則に合わせた表示判定）。
+ * ブックマーク絞り込み・ページングなど表示上の絞り込みは入力に持たない。
+ */
+export async function hasExactHeadwordForUser(userId: string, keyword: string): Promise<boolean> {
+  if (keyword.length === 0) return false;
+
+  const found = await prisma.word.findFirst({
+    where: {
+      ownerId: { in: scopedOwnerIds(userId) },
+      headword: { equals: keyword, mode: "insensitive" },
+    },
+    select: { id: true },
+  });
+  return found !== null;
+}
+
+/**
  * 掲載箇所単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
  * bookmarkedOnly は WordsByOccurrenceParams / AdjacentWordsParams の双方が渡す（未指定＝無効）。
  * q と同じ word リレーション条件に畳んで単一の word キーへまとめる。

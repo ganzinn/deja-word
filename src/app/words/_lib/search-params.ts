@@ -1,3 +1,6 @@
+import { headwordSchema } from "@/lib/schema/word-form";
+import { normalizeSearchKeyword } from "@/lib/search-keyword";
+
 import type { OccurrenceNumberOrder, WordListSort, WordMatchMode } from "@/lib/words-list";
 
 import type { WordsViewMode } from "../_components/view-mode-toggle";
@@ -9,6 +12,18 @@ import type { WordsViewMode } from "../_components/view-mode-toggle";
 
 export function parseMatch(value: string | undefined): WordMatchMode {
   return value === "contains" ? "contains" : value === "suffix" ? "suffix" : "prefix";
+}
+
+export function parseSort(value: string | undefined): WordListSort {
+  return value === "headword" ? "headword" : "recent";
+}
+
+/** ページ番号。1 以上の整数のみ採用し、それ以外は 1 ページ目へフォールバック。 */
+export function parsePage(value: string | undefined): number {
+  if (!value) return 1;
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return n;
 }
 
 /** 掲載番号レンジ用。1 以上の整数のみ採用し、それ以外は未指定(undefined)扱い。 */
@@ -156,4 +171,70 @@ export function buildWordDetailHref(wordId: string, ctx: WordDetailNavContext): 
  */
 export function buildWordEditHref(wordId: string, ctx: WordDetailNavContext): string {
   return `/words/${wordId}/edit?${buildNavContextQuery(ctx)}`;
+}
+
+/** 単語ビューの一覧コンテキスト。登録フォームへの引き回し（プリフィル・戻り先）で使う。 */
+export type WordListContext = {
+  q: string;
+  sort: WordListSort;
+  match: WordMatchMode;
+  bookmarked: boolean;
+  page: number;
+};
+
+/** 単語ビュー / 登録フォームの searchParams（一覧コンテキストとして解釈しうるもの）。 */
+export type RawWordListContextParams = {
+  q?: string;
+  sort?: string;
+  match?: string;
+  bookmarked?: string;
+  page?: string;
+};
+
+/** searchParams から単語ビューの一覧コンテキストを取り出す。不正値はデフォルトへ正規化する。 */
+export function parseWordListContext(sp: RawWordListContextParams): WordListContext {
+  return {
+    q: (sp.q ?? "").trim(),
+    sort: parseSort(sp.sort),
+    match: parseMatch(sp.match),
+    bookmarked: sp.bookmarked === "1",
+    page: parsePage(sp.page),
+  };
+}
+
+/**
+ * 一覧コンテキスト付きの単語登録 URL を構築する。
+ * 省略規則は buildWordsHref と同じ（デフォルト値・1 ページ目の page は含めない）。
+ * プリフィル専用パラメータや生の戻り先 URL は持たせず、一覧の検索条件だけを渡す。
+ */
+export function buildNewWordHref(ctx: WordListContext): string {
+  const params = new URLSearchParams();
+  if (ctx.q.length > 0) params.set("q", ctx.q);
+  if (ctx.match !== "prefix") params.set("match", ctx.match);
+  if (ctx.sort !== "recent") params.set("sort", ctx.sort);
+  if (ctx.bookmarked) params.set("bookmarked", "1");
+  if (ctx.page > 1) params.set("page", String(ctx.page));
+  const qs = params.toString();
+  return qs.length > 0 ? `/words/new?${qs}` : "/words/new";
+}
+
+/**
+ * 登録フォームの headword プリフィル値を検索キーワードから導出する。
+ * 正規化（アクセント記号の除去と trim。大文字小文字は保持）した値が headwordSchema に
+ * 通った場合のみ採用し、通らなければ null（プリフィルなし）。手打ち URL への防御を兼ねる。
+ */
+export function parsePrefillHeadword(q: string | undefined): string | null {
+  const normalized = normalizeSearchKeyword(q ?? "");
+  const parsed = headwordSchema.safeParse(normalized);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * 登録フォームの戻り先（元の単語ビュー一覧 URL）を searchParams から再構築する。
+ * 検索コンテキストの有無は q の trim 後が非空かで判別し、無ければ null（既定の /words）。
+ */
+export function parseWordListReturnHref(sp: RawWordListContextParams): string | null {
+  const ctx = parseWordListContext(sp);
+  if (ctx.q.length === 0) return null;
+  return buildWordsHref("word", ctx);
 }

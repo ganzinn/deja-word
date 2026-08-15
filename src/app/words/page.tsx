@@ -11,10 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { commonPartOfSpeechShortLabel } from "@/lib/mock/parts-of-speech";
 import { listOccurrencesForUser } from "@/lib/occurrences-list";
+import { SHORT_TEXT_MAX_LENGTH } from "@/lib/schema/content-limits";
+import { normalizeSearchKeyword } from "@/lib/search-keyword";
 import { getCurrentSession } from "@/lib/session";
 import { getTtsFallbackEnabled } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import {
+  hasExactHeadwordForUser,
   listWordsByOccurrence,
   listWordsForUser,
   type WordListItem,
@@ -25,10 +28,12 @@ import { OccurrenceFilterToolbar } from "./_components/occurrence-filter-toolbar
 import { ViewModeToggle, type WordsViewMode } from "./_components/view-mode-toggle";
 import { WordListToolbar } from "./_components/word-list-toolbar";
 import {
+  buildNewWordHref,
   buildWordDetailHref,
   buildWordsHref,
   parseMatch,
   parseOrder,
+  parsePage,
   parseRangeNumber,
 } from "./_lib/search-params";
 
@@ -77,14 +82,24 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
   const bookmarkedOnly = params.bookmarked === "1";
   const page = parsePage(params.page);
 
-  const { items, total } = await listWordsForUser(userId, {
-    q: q.length > 0 ? q : undefined,
-    sort,
-    match,
-    bookmarkedOnly,
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  // 検索語をそのまま登録へ進める導線の判定値。表示語・プリフィル値と揃うよう正規化後を使う。
+  const keyword = normalizeSearchKeyword(q);
+  // 登録できない語（空・見出し語の最大長超過）では判定を省き、DB へも問い合わせない。
+  const keywordCreatable = keyword.length > 0 && keyword.length <= SHORT_TEXT_MAX_LENGTH;
+
+  const [{ items, total }, hasExactMatch] = await Promise.all([
+    listWordsForUser(userId, {
+      q: q.length > 0 ? q : undefined,
+      sort,
+      match,
+      bookmarkedOnly,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    keywordCreatable ? hasExactHeadwordForUser(userId, keyword) : Promise.resolve(false),
+  ]);
+  // 一致方法・ブックマーク絞り込み・ページングに依らず、可視範囲に完全一致が無ければ表示する。
+  const showCreateLink = keywordCreatable && !hasExactMatch;
 
   const totalPages = total === 0 ? 1 : Math.ceil(total / PAGE_SIZE);
   const hrefForPage = (p: number) =>
@@ -103,7 +118,21 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
       <ViewModeToggle view="word" />
       <WordListToolbar initialQuery={q} sort={sort} match={match} bookmarked={bookmarkedOnly} />
 
-      <ResultCount label={q.length > 0 ? `「${q}」の検索結果` : "全"} total={total} />
+      <div className="flex flex-col gap-2">
+        <ResultCount label={q.length > 0 ? `「${q}」の検索結果` : "全"} total={total} />
+        {showCreateLink ? (
+          <CreateWordLink
+            keyword={keyword}
+            href={buildNewWordHref({
+              q,
+              sort,
+              match,
+              bookmarked: bookmarkedOnly,
+              page: currentPage,
+            })}
+          />
+        ) : null}
+      </div>
 
       {items.length === 0 ? (
         <EmptyState hasQuery={q.length > 0} />
@@ -255,6 +284,22 @@ function ResultCount({ label, total }: { label: string; total: number }) {
   );
 }
 
+/**
+ * 検索語に一致する単語が未登録のとき、その語をそのまま登録へ進める導線。
+ * 件数行の直下に置く控えめなテキストリンクで、部分一致ヒットの有無にかかわらず同じ位置に出す。
+ */
+function CreateWordLink({ keyword, href }: { keyword: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-sm underline-offset-4 transition-colors hover:underline"
+    >
+      <PlusIcon className="size-4 shrink-0" />
+      <span className="break-all">「{keyword}」を登録</span>
+    </Link>
+  );
+}
+
 function WordRows({
   items,
   showOccurrenceNumber = false,
@@ -279,13 +324,6 @@ function WordRows({
       ))}
     </ul>
   );
-}
-
-function parsePage(value: string | undefined): number {
-  if (!value) return 1;
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n < 1) return 1;
-  return n;
 }
 
 function WordRow({

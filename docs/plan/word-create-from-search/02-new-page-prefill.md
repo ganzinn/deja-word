@@ -1,6 +1,6 @@
 # 02. new-page-prefill
 
-状態: **未着手**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: [#260](https://github.com/ganzinn/deja-word/pull/260)
 
 ## 目的
 
@@ -57,4 +57,9 @@
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- **命名**: 一覧 URL 再構築は `parseWordListReturnHref`、プリフィル導出は `parsePrefillHeadword`、リンク生成は計画の例示どおり `buildNewWordHref`。いずれも `search-params.ts` に同居し unit テスト済み。あわせて `parseSort` を新設、`parseWordListContext` / `WordListContext` / `RawWordListContextParams` を追加
+- **チケット 03 への申し送り**: 導線リンクの URL は `buildNewWordHref({ q, sort, match, bookmarked, page })` を呼ぶだけでよい（`WordView` が既に持っている 5 値をそのまま渡せる形にしてある）。`page` は必須引数。渡すキーワードは正規化前の生の `q`（`buildNewWordHref` 側は素通し。完全一致判定に渡すキーワードの正規化はチケット 01 のメモのとおり呼び出し側責務）
+- **`word-form.tsx` の `backHref`**: `returnHref ?? (isEdit && wordId ? "/words/{wordId}" : "/words")` に整理。edit モードの挙動は従来と同じ（`wordId` 無しの edit という実在しない組み合わせのみ形式上変わる）。送信成功時の遷移は `isEdit && returnHref` ガードのままで未変更
+- **`page.tsx` のインライン `sort` 判定**: チケットの指示どおり未変更（`parseSort` は新設したが `page.tsx` からは呼んでいない）。まとめたい場合は別チケット扱い
+- 未ログイン時のサインインリダイレクト（`/sign-in?redirect=/words/new` の固定文字列）はスコープ外のため未変更
+- DoD の手動確認（dev サーバ・手打ち URL）は使い捨てスクリプトで自動化して実施済み（プリフィルの大文字保持・アクセント除去、戻り先 URL の往復、空白のみ / `q` 無しのフォールバック、登録後は詳細へ遷移）。スクリプトは実行後に削除済みでコミットに含まない

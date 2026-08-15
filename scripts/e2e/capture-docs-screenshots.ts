@@ -36,6 +36,13 @@ const captured: string[] = [];
 let demoWordId = "";
 let sharedOccurrenceId = "";
 
+/**
+ * 登録導線（検索で見つからない語をそのまま登録する導線）の被写体キーワード。
+ * 可視範囲（system＋test1）に完全一致の見出し語が無い語を選ぶこと（一致があると導線が出ない）。
+ * 登録済みになった場合は撮影がリンク待ちで失敗するので、別の未登録語へ差し替える。
+ */
+const UNREGISTERED_SEARCH_KEYWORD = "ephemeral";
+
 /** quiz セクションの被写体デッキ（掲載箇所名・語数）。main() の DB 準備で解決してから撮影で使う。 */
 let quizDeckLocation = "";
 let quizDeckWordCount = 0;
@@ -153,7 +160,7 @@ async function sectionAccount(browser: Browser): Promise<void> {
   }
 }
 
-/** 単語管理（一覧の 2 ビュー・登録フォーム・重複警告・AI 入力・詳細・編集）。 */
+/** 単語管理（一覧の 2 ビュー・検索からの登録導線・登録フォーム・重複警告・AI 入力・詳細・編集）。 */
 async function sectionWords(browser: Browser): Promise<void> {
   const user = await docsContext(browser);
   try {
@@ -163,6 +170,16 @@ async function sectionWords(browser: Browser): Promise<void> {
     // 単語一覧（単語ビュー）。デモ単語が新着順の先頭に並ぶ。
     await page.goto("/words");
     await shot(page, "words-list-word-view", page.getByRole("heading", { name: "単語一覧" }), main);
+
+    // 単語ビューの登録導線。未登録の語で検索し、件数行の直下に出るリンクごと撮る
+    // （リンクを ready にしているので、その語が登録済みになると撮影が失敗して気づける）。
+    await page.goto(`/words?q=${encodeURIComponent(UNREGISTERED_SEARCH_KEYWORD)}`);
+    await shot(
+      page,
+      "words-list-create-link",
+      page.getByRole("link", { name: `「${UNREGISTERED_SEARCH_KEYWORD}」を登録` }),
+      main,
+    );
 
     // 単語一覧（掲載箇所ビュー）。共有掲載箇所を掲載番号 1〜6 に絞って部分的に映す。
     await page.goto(`/words?view=occurrence&occ=${sharedOccurrenceId}&to=6`);

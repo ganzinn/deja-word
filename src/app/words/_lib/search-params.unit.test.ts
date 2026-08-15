@@ -1,13 +1,19 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  buildNewWordHref,
   buildWordDetailHref,
   buildWordEditHref,
   buildWordsHref,
   parseMatch,
   parseOrder,
+  parsePage,
+  parsePrefillHeadword,
   parseRangeNumber,
+  parseSort,
   parseWordDetailNavContext,
+  parseWordListContext,
+  parseWordListReturnHref,
 } from "./search-params";
 
 describe("parseMatch", () => {
@@ -41,6 +47,30 @@ describe("parseOrder", () => {
     expect(parseOrder("asc")).toBe("asc");
     expect(parseOrder("bogus")).toBe("asc");
     expect(parseOrder(undefined)).toBe("asc");
+  });
+});
+
+describe("parseSort", () => {
+  test("accepts headword, falls back to recent otherwise", () => {
+    expect(parseSort("headword")).toBe("headword");
+    expect(parseSort("recent")).toBe("recent");
+    expect(parseSort("bogus")).toBe("recent");
+    expect(parseSort(undefined)).toBe("recent");
+  });
+});
+
+describe("parsePage", () => {
+  test("accepts integers >= 1", () => {
+    expect(parsePage("1")).toBe(1);
+    expect(parsePage("42")).toBe(42);
+  });
+
+  test("falls back to 1 for zero, negatives, and non-numbers", () => {
+    expect(parsePage("0")).toBe(1);
+    expect(parsePage("-3")).toBe(1);
+    expect(parsePage("abc")).toBe(1);
+    expect(parsePage("")).toBe(1);
+    expect(parsePage(undefined)).toBe(1);
   });
 });
 
@@ -273,5 +303,137 @@ describe("buildWordDetailHref", () => {
         bookmarked: true,
       }),
     ).toBe("/words/w1?view=word&q=re&match=suffix&sort=headword&bookmarked=1");
+  });
+});
+
+describe("parseWordListContext", () => {
+  test("normalizes invalid values and trims q", () => {
+    expect(
+      parseWordListContext({
+        q: "  ap  ",
+        sort: "bogus",
+        match: "bogus",
+        bookmarked: "true",
+        page: "0",
+      }),
+    ).toEqual({ q: "ap", sort: "recent", match: "prefix", bookmarked: false, page: 1 });
+  });
+
+  test("keeps valid values", () => {
+    expect(
+      parseWordListContext({
+        q: "run",
+        sort: "headword",
+        match: "contains",
+        bookmarked: "1",
+        page: "2",
+      }),
+    ).toEqual({ q: "run", sort: "headword", match: "contains", bookmarked: true, page: 2 });
+  });
+
+  test("defaults when nothing is given", () => {
+    expect(parseWordListContext({})).toEqual({
+      q: "",
+      sort: "recent",
+      match: "prefix",
+      bookmarked: false,
+      page: 1,
+    });
+  });
+});
+
+describe("buildNewWordHref", () => {
+  test("omits all defaults (page 1)", () => {
+    expect(
+      buildNewWordHref({ q: "", sort: "recent", match: "prefix", bookmarked: false, page: 1 }),
+    ).toBe("/words/new");
+  });
+
+  test("includes non-default values only", () => {
+    expect(
+      buildNewWordHref({
+        q: "ap",
+        sort: "headword",
+        match: "contains",
+        bookmarked: false,
+        page: 3,
+      }),
+    ).toBe("/words/new?q=ap&match=contains&sort=headword&page=3");
+  });
+
+  test("omits bookmarked when false, includes bookmarked=1 when true", () => {
+    expect(
+      buildNewWordHref({ q: "ap", sort: "recent", match: "prefix", bookmarked: true, page: 1 }),
+    ).toBe("/words/new?q=ap&bookmarked=1");
+  });
+});
+
+describe("parsePrefillHeadword", () => {
+  test("strips accents and trims, preserving case", () => {
+    expect(parsePrefillHeadword("  RUN  ")).toBe("RUN");
+    expect(parsePrefillHeadword("péssimist")).toBe("pessimist");
+    // 分解済み（e + 結合アクセント）でも同じ結果になる
+    expect(parsePrefillHeadword("péssimist")).toBe("pessimist");
+  });
+
+  test("returns null when the normalized keyword fails headwordSchema", () => {
+    expect(parsePrefillHeadword(undefined)).toBeNull();
+    expect(parsePrefillHeadword("")).toBeNull();
+    expect(parsePrefillHeadword("   ")).toBeNull();
+    expect(parsePrefillHeadword("a".repeat(101))).toBeNull();
+  });
+
+  test("accepts the maximum length", () => {
+    expect(parsePrefillHeadword("a".repeat(100))).toBe("a".repeat(100));
+  });
+});
+
+describe("parseWordListReturnHref", () => {
+  test("returns null without a search keyword", () => {
+    expect(parseWordListReturnHref({})).toBeNull();
+    expect(parseWordListReturnHref({ q: "   ", sort: "headword", page: "2" })).toBeNull();
+  });
+
+  test("rebuilds the word view list URL from the context", () => {
+    expect(
+      parseWordListReturnHref({
+        q: "  ap  ",
+        sort: "headword",
+        match: "contains",
+        bookmarked: "1",
+        page: "2",
+      }),
+    ).toBe("/words?q=ap&match=contains&sort=headword&bookmarked=1&page=2");
+  });
+
+  test("falls back to defaults for invalid values", () => {
+    expect(parseWordListReturnHref({ q: "ap", sort: "bogus", match: "bogus", page: "0" })).toBe(
+      "/words?q=ap",
+    );
+  });
+});
+
+describe("buildNewWordHref → parseWordListReturnHref のラウンドトリップ", () => {
+  /** 生成した /words/new URL の searchParams を、ページが受け取る生の形に戻す。 */
+  function rawParamsOf(href: string) {
+    const sp = new URL(href, "https://example.test").searchParams;
+    return {
+      q: sp.get("q") ?? undefined,
+      sort: sp.get("sort") ?? undefined,
+      match: sp.get("match") ?? undefined,
+      bookmarked: sp.get("bookmarked") ?? undefined,
+      page: sp.get("page") ?? undefined,
+    };
+  }
+
+  test.each([
+    { q: "ap", sort: "recent", match: "prefix", bookmarked: false, page: 1 },
+    { q: "ap", sort: "headword", match: "contains", bookmarked: true, page: 2 },
+    { q: "ré", sort: "recent", match: "suffix", bookmarked: false, page: 5 },
+    { q: "RUN", sort: "headword", match: "prefix", bookmarked: true, page: 1 },
+  ] as const)("元の一覧 URL に戻る: %o", (ctx) => {
+    expect(parseWordListReturnHref(rawParamsOf(buildNewWordHref(ctx)))).toBe(
+      buildWordsHref("word", ctx),
+    );
   });
 });

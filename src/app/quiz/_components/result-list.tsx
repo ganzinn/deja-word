@@ -95,6 +95,9 @@ function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
 /**
  * 正解列の表示。強調なしのときは形式分岐を持つ既存ヘルパへ委譲し、
  * 強調ありのとき（自己判定（英→日）＝ kind は "headword"）だけ配列を組み立てて先頭を赤字にする。
+ *
+ * 強調ありが 1 形式だけ（＝ kind は訳語表示のもの 1 つ）という前提で書いてある。
+ * 他形式へ強調を広げるなら、この前提から見直すこと（ADR-0100 決定 2）。
  */
 function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.ReactNode {
   if (!display.emphasizeFirst) return answerSideDisplayOf(kind, display.texts[0] ?? "");

@@ -97,7 +97,8 @@ describe("generateDrillRoundForUser", () => {
 
   test("drill 行に保存済みの firstMeaningTextOnly は変換されずそのままラウンド生成へ流れる", async () => {
     // 列名の改名は RENAME COLUMN のみで、データ移行・backfill をしない
-    // （02-settings-model.md 決定 6）。保存値がそのまま引き継がれることをここで担保する。
+    // （docs/adr/0100-first-meaning-only-question-side.md 決定 4）。
+    // 保存値がそのまま引き継がれることをここで担保する。
     const { user, drillId } = await setupDrill(
       [
         { headword: "alpha", number: 5, correct: false },

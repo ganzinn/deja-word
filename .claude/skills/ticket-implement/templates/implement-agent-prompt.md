@@ -29,6 +29,7 @@
 - **コミット前に必ず整形する**: `pnpm format` で整形 → `pnpm format:check` がクリーン → `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` を通すこと（この順）。整形差分は実装コミットに含める（別コミットにしない）。**`pnpm test:integration` は実行しない**（共有 DB を使うためオーケストレーター側で直列実行される。integration テストファイルの新規作成・変更自体はチケットに従い行う）
   - 任意: devman が導入済みの環境では、これらのコマンドを `devman run <worktreeディレクトリ名> <タスク>` 経由で実行してもよい（cd 不要で worktree を名前指定でき、mise 経由のツールチェーンが保証される）
 - **migration はファイル作成まで**: schema 変更時は `pnpm exec prisma migrate dev --create-only -n <名前>` で migration ファイルだけを作り、共有 dev DB へ適用する `pnpm db:migrate` は実行しない（適用は実装完了後の手動確認工程で行われる）
+  - このコマンドは**非対話環境では失敗する**（`Prisma Migrate has detected that the environment is non-interactive`）。その場合は `prisma/migrations/<timestamp>_<name>/migration.sql` を自分で採番して手書きする（`<timestamp>` は既存 migration に倣った 14 桁。`RENAME COLUMN` のように Prisma が生成できない SQL でも同じ手順になる）
 - worktree 内でコミットすること。メッセージは `{機能名}: {NN} {チケット名}`（複数コミット可。後で squash される）
 - 設計・計画と実装が矛盾する、またはチケットに書かれていない判断が必要になったら、**勝手に補完せず**矛盾・不明点を報告して終了すること
 

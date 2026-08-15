@@ -1,6 +1,6 @@
 # 05. result-list-emphasis
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -116,4 +116,7 @@ function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.Re
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- 計画との差分なし（`CorrectDisplay` の型・`correctAnswerDisplay` のシグネチャ・形式ごとの戻り値表・`correctDisplayNode`・`Fragment` の import はチケット記載どおり）。integration テストの新規・変更はなし
+- `answerSideDisplayOf` の 4 分岐と「自分の回答」列は未変更
+- unit テストでは `test.each` で形式をパラメータ化した 3 ブロックの payload リテラルに `as QuizPayload` を使用（`format` が変数だと discriminated union へ直接代入できないため）。単一形式を直接書いた 4 テストは型注釈のみでキャストなし
+- **07 へ**: `CorrectDisplay` は `src/app/quiz/_lib/correct-answer-display.ts` に定義。出題形式を増やすときは `build-quiz.ts` / `format-options.ts` に加えてこの形式網羅 switch も更新が要る（網羅チェックが効くのでコンパイルエラーで検出される）

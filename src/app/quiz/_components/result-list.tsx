@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import {
   BookmarkIcon,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/quiz/remaining-options";
 import type { QuizMode, QuizResult } from "@/generated/prisma/enums";
 
+import type { CorrectDisplay } from "../_lib/correct-answer-display";
 import { computeBulkBookmarkTargetIds } from "./bulk-bookmark-targets";
 
 /**
@@ -46,8 +47,8 @@ export type ResultRow = {
   promptKind: PromptKind;
   /** 問題文（ja-plain=意味の「; 」連結、tg-text=TG 例文の英文、tg-meaning=TG 例文の意味）。headword では null。 */
   prompt: string | null;
-  /** 正解の表示文字列（四択・自己判定＝最初の Meaning の「; 」連結、多義語選択＝正解選択肢の連結）。 */
-  correctDisplay: string;
+  /** 正解の表示データ（強調ありは自己判定（英→日）のみ）。 */
+  correctDisplay: CorrectDisplay;
   result: QuizResult;
   /** 自分の回答（四択＝選んだ選択肢、多義語選択＝選んだ意味の組。自己判定・GAVE_UP・TIMEOUT・VAGUE は null）。
    *  うろ覚え（VAGUE）は全形式とも null で、結果一覧では一律「うろ覚え」と表示する。 */
@@ -89,6 +90,20 @@ function answerSideDisplayOf(kind: PromptKind, text: string): React.ReactNode {
   if (kind === "tg-meaning") return <TgExampleText text={text} />;
   if (kind === "headword") return <MeaningText text={text} />;
   return text;
+}
+
+/**
+ * 正解列の表示。強調なしのときは形式分岐を持つ既存ヘルパへ委譲し、
+ * 強調ありのとき（自己判定（英→日）＝ kind は "headword"）だけ配列を組み立てて先頭を赤字にする。
+ */
+function correctDisplayNode(kind: PromptKind, display: CorrectDisplay): React.ReactNode {
+  if (!display.emphasizeFirst) return answerSideDisplayOf(kind, display.texts[0] ?? "");
+  return display.texts.map((text, i) => (
+    <Fragment key={i}>
+      {i > 0 ? "; " : null}
+      <MeaningText text={text} baseClassName={i === 0 ? "text-red-500" : undefined} />
+    </Fragment>
+  ));
 }
 
 /**
@@ -390,7 +405,7 @@ export function ResultList({
                     <p className="text-sm whitespace-pre-wrap">
                       <span className="text-muted-foreground">正解: </span>
                       <span className="font-content font-semibold">
-                        {answerSideDisplayOf(row.promptKind, row.correctDisplay)}
+                        {correctDisplayNode(row.promptKind, row.correctDisplay)}
                       </span>
                     </p>
                     {!audioOnHeading ? (

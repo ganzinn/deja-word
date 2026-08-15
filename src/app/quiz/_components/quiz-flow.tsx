@@ -25,6 +25,7 @@ import type { QuizPayload } from "@/lib/quiz/payload";
 import type { StartQuizInput } from "@/lib/schema/quiz";
 
 import { buildStartDrillInput } from "../_lib/build-start-drill-input";
+import { correctAnswerDisplay } from "../_lib/correct-answer-display";
 import {
   getQuizPreview,
   startDrill,
@@ -135,41 +136,6 @@ function preloadAudio(
   audio.load();
   cache.set(url, audio);
   return audio;
-}
-
-/** 結果一覧の「正解」表示文字列を payload から導出する。 */
-function correctAnswerDisplay(quiz: QuizPayload, index: number): string {
-  switch (quiz.format) {
-    case "CHOICE":
-    case "CHOICE_JA_EN":
-    case "CHOICE_TG":
-    case "CHOICE_TG_JA_EN": {
-      // 四択系の正解は正解選択肢のテキスト（訳語 / 英単語 / TG 例文の意味 / TG 例文の英文）
-      const question = quiz.questions[index];
-      return question.choices[question.correctIndex]?.text ?? "";
-    }
-    case "SELF_JUDGE": {
-      // 最初の Meaning の MeaningText を「; 」連結
-      const question = quiz.questions[index];
-      return question.answer[0]?.texts.join("; ") ?? "";
-    }
-    case "MULTI_MEANING": {
-      // 正解集合（payload の正解選択肢）を「; 」連結
-      const question = quiz.questions[index];
-      return question.options
-        .filter((option) => option.isCorrect)
-        .map((option) => option.text)
-        .join("; ");
-    }
-    case "SELF_JUDGE_JA_EN":
-    case "SPELLING":
-      // 日本語→英語の正解は英単語（headword）
-      return quiz.questions[index].headword;
-    case "SELF_JUDGE_TG":
-    case "SELF_JUDGE_TG_JA_EN":
-      // TG自己判定の正解は解答表示と同じ（TG 例文の意味 / 英文）
-      return quiz.questions[index].answer;
-  }
 }
 
 /**

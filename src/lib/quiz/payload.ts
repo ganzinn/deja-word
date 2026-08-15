@@ -20,7 +20,7 @@ export type MeaningDisplay = { partOfSpeech: string | null; texts: string[] };
 /**
  * 結果一覧の「正解」列に出す最初の Meaning の訳語（sortOrder 順）。
  * 出題側の表示（選択肢）は「先頭の訳語のみ表示」設定やシャッフルで内容・順序が変わるが、
- * 結果一覧は答え合わせの材料を出す解答側なので、設定に依らず全訳語を訳語順で出す（ADR-0101）。
+ * 結果一覧は答え合わせの材料を出す解答側なので、設定に依らず全訳語を訳語順で出す（ADR-0102）。
  * 自己判定（英→日）は `answer[0].texts` が同じ役割を担うため持たない。
  */
 type CorrectMeaningTexts = { correctMeaningTexts: string[] };
@@ -48,11 +48,23 @@ export type SelfJudgeQuestion = QuestionBase & {
 };
 
 /**
- * 日本語→英語の問題文。最初の Meaning の MeaningText を「; 」で連結したプレーン文字列
- * （品詞なし。英語→日本語の選択肢表示と同じルール）。出題画面は headword の代わりに
- * これを表示し、解答（英単語＝headword）は形式ごとの UI が確定後に見せる。
+ * 日本語→英語の問題文。最初の Meaning の MeaningText（品詞なし。英語→日本語の選択肢表示と
+ * 同じルール）を持つ。出題画面は headword の代わりにこれを表示し、解答（英単語＝headword）は
+ * 形式ごとの UI が確定後に見せる。TG 例文形式の `prompt`（例文の英文・意味）と違い、
+ * 文字列ではなく訳語の配列＋強調の有無を運ぶ。
+ *
+ * 「; 」での連結は描画側が行う（連結済みの文字列からは先頭の訳語を切り出せないため）。
+ * `emphasizeFirst` は「全訳語を見せているか（＝設定 OFF）」で、訳語の件数からは判別できない
+ * （設定 OFF なら訳語 1 件の単語も赤字にする）ため、生成時に決めて運ぶ（ADR-0103）。
  */
-export type JaEnPrompt = { prompt: string };
+export type JaEnPrompt = {
+  prompt: {
+    /** 最初の Meaning の MeaningText（sortOrder 順。「先頭の訳語のみ表示」設定 ON なら先頭 1 件だけ）。 */
+    texts: string[];
+    /** 先頭の訳語を赤字で強調するか（全訳語を出す設定 OFF のときだけ true）。 */
+    emphasizeFirst: boolean;
+  };
+};
 
 /** 四択（日本語→英語）。choices は英単語、correctIndex が target の headword。 */
 export type ChoiceJaEnQuestion = ChoiceQuestionBase & JaEnPrompt;

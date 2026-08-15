@@ -166,7 +166,7 @@ describe("buildChoiceQuestions", () => {
     });
   });
 
-  // 結果一覧の正解列は設定に依らず全訳語を出す（ADR-0101）。選択肢の絞り込みと独立していることを見る
+  // 結果一覧の正解列は設定に依らず全訳語を出す（ADR-0102）。選択肢の絞り込みと独立していることを見る
   test.each([false, true])(
     "correctMeaningTexts is the first meaning's texts in order (firstMeaningTextOnly = %s)",
     (firstMeaningTextOnly) => {

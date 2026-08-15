@@ -48,7 +48,7 @@ describe("buildMultiMeaningQuestions", () => {
     const [q] = buildMultiMeaningQuestions(m, seededRng(1));
     const correct = q.options.filter((o) => o.isCorrect).map((o) => o.text);
     expect([...correct].sort()).toEqual(["走る", "駆ける"].sort());
-    // 結果一覧の正解列用。選択肢と同じ集合を、シャッフル前の訳語順で持つ（ADR-0101）
+    // 結果一覧の正解列用。選択肢と同じ集合を、シャッフル前の訳語順で持つ（ADR-0102）
     expect(q.correctMeaningTexts).toEqual(["走る", "駆ける"]);
     // 非 TG 形式の鳴らす対象は従来どおり見出し語（音源＝最初の Meaning、読み上げ＝headword）
     expect(q.pronunciationAudioUrl).toBeNull();

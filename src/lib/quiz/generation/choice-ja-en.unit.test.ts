@@ -27,7 +27,7 @@ function material(partial: Partial<QuizSourceMaterial>): QuizSourceMaterial {
 }
 
 describe("buildChoiceJaEnQuestions", () => {
-  test("prompt is the first meaning joined with '; ' and choices are English headwords", () => {
+  test("prompt is the first meaning's texts with the first one emphasized; choices are English headwords", () => {
     const target = word("t", [["走る", "駆ける"], ["走行"]], { audio: "https://audio/t" });
     const m = material({
       targets: [target],
@@ -40,7 +40,7 @@ describe("buildChoiceJaEnQuestions", () => {
     expect(q.pronunciationAudioUrl).toBe("https://audio/t");
     expect(q.ttsText).toBe("hw-t");
     // 問題文は最初の Meaning のみ「; 」連結（2 件目「走行」は含めない）
-    expect(q.prompt).toBe("走る; 駆ける");
+    expect(q.prompt).toEqual({ texts: ["走る", "駆ける"], emphasizeFirst: true });
     // 正解は target の headword、選択肢はすべて headword
     expect(q.choices).toHaveLength(4);
     expect(q.choices[q.correctIndex].text).toBe("hw-t");
@@ -48,14 +48,14 @@ describe("buildChoiceJaEnQuestions", () => {
     expect([...dummyTexts].sort()).toEqual(["hw-d1", "hw-d2", "hw-d3"]);
   });
 
-  test("firstMeaningTextOnly = true: prompt is only the head text of the first meaning", () => {
+  test("firstMeaningTextOnly = true: prompt is only the head text of the first meaning, unemphasized", () => {
     const target = word("t", [["走る", "駆ける"], ["走行"]]);
     const m = material({
       targets: [target],
       sameOccurrencePool: [word("d1", [["歩く"]]), word("d2", [["泳ぐ"]]), word("d3", [["飛ぶ"]])],
     });
     const [q] = buildChoiceJaEnQuestions(m, seededRng(1), true);
-    expect(q.prompt).toBe("走る");
+    expect(q.prompt).toEqual({ texts: ["走る"], emphasizeFirst: false });
     // 選択肢（headword）は設定の影響を受けない
     expect(q.choices[q.correctIndex].text).toBe("hw-t");
   });

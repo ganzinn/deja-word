@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   firstMeaningDisplayText,
+  firstMeaningPrompt,
   partitionMaterial,
   retargetMaterial,
   type QuizSourceMaterial,
@@ -64,6 +65,58 @@ describe("firstMeaningDisplayText", () => {
     expect(firstMeaningDisplayText(noMeanings, false)).toBe("");
     expect(firstMeaningDisplayText(noTexts, true)).toBe("");
     expect(firstMeaningDisplayText(noTexts, false)).toBe("");
+  });
+});
+
+describe("firstMeaningPrompt", () => {
+  /** 最初の Meaning に訳語 2 件、2 件目の Meaning にも訳語を持つ単語。 */
+  const multi: QuizWord = {
+    id: "t",
+    headword: "run",
+    tgExample: null,
+    meanings: [
+      { partOfSpeech: "動詞", pronunciationAudioUrl: null, texts: ["走る", "駆ける"] },
+      { partOfSpeech: null, pronunciationAudioUrl: null, texts: ["経営する"] },
+    ],
+  };
+
+  test("ON: only the head text of the first Meaning, unemphasized", () => {
+    expect(firstMeaningPrompt(multi, true)).toEqual({ texts: ["走る"], emphasizeFirst: false });
+  });
+
+  test("OFF: the first Meaning's texts, first emphasized (2 件目の Meaning は含めない)", () => {
+    expect(firstMeaningPrompt(multi, false)).toEqual({
+      texts: ["走る", "駆ける"],
+      emphasizeFirst: true,
+    });
+  });
+
+  // 赤字の有無は訳語の件数では判別できない（描画側で決められない）ことの担保
+  test("OFF: emphasizes the first text even when the word has only one text", () => {
+    const single: QuizWord = {
+      id: "s",
+      headword: "abandon",
+      tgExample: null,
+      meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: ["見捨てる"] }],
+    };
+    expect(firstMeaningPrompt(single, false)).toEqual({
+      texts: ["見捨てる"],
+      emphasizeFirst: true,
+    });
+  });
+
+  test("returns no texts when the word has no meaning text", () => {
+    const noMeanings: QuizWord = { id: "n", headword: "n", tgExample: null, meanings: [] };
+    const noTexts: QuizWord = {
+      id: "e",
+      headword: "e",
+      tgExample: null,
+      meanings: [{ partOfSpeech: null, pronunciationAudioUrl: null, texts: [] }],
+    };
+    expect(firstMeaningPrompt(noMeanings, true).texts).toEqual([]);
+    expect(firstMeaningPrompt(noMeanings, false).texts).toEqual([]);
+    expect(firstMeaningPrompt(noTexts, true).texts).toEqual([]);
+    expect(firstMeaningPrompt(noTexts, false).texts).toEqual([]);
   });
 });
 

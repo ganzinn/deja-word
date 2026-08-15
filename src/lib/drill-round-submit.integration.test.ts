@@ -26,7 +26,7 @@ async function setupDrill(words: { headword: string; number: number; correct: bo
     occurrenceId: occurrence.id,
     format: "SELF_JUDGE",
     timeoutSeconds: null,
-    choiceFirstMeaningTextOnly: false,
+    firstMeaningTextOnly: false,
     drillIncludeCorrect: true,
     resetRemaining: 3,
     vagueRemaining: 2,

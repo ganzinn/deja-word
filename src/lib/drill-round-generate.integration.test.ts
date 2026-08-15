@@ -16,6 +16,7 @@ async function setupDrill(
     sourceRangeTo?: number;
     sourceQuestionCount?: number;
     orderByOccurrenceNumber?: boolean;
+    firstMeaningTextOnly?: boolean;
   } = {},
 ) {
   const user = await createTestUser();
@@ -35,7 +36,7 @@ async function setupDrill(
     sourceQuestionCount: options.sourceQuestionCount,
     format: "SELF_JUDGE",
     timeoutSeconds: options.timeoutSeconds ?? null,
-    choiceFirstMeaningTextOnly: false,
+    firstMeaningTextOnly: options.firstMeaningTextOnly ?? false,
     orderByOccurrenceNumber: options.orderByOccurrenceNumber,
     drillIncludeCorrect: true,
     resetRemaining: 3,
@@ -74,7 +75,7 @@ describe("generateDrillRoundForUser", () => {
       bookmarkedOnly: false,
       format: "SELF_JUDGE",
       timeoutSeconds: 7,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       // 元テストの「掲載番号順に出題する」指定（Drill.orderByOccurrenceNumber の既定 false）
       orderByOccurrenceNumber: false,
     });
@@ -94,6 +95,24 @@ describe("generateDrillRoundForUser", () => {
     expect(sourceTest.questionCount).toBe(20);
   });
 
+  test("drill 行に保存済みの firstMeaningTextOnly は変換されずそのままラウンド生成へ流れる", async () => {
+    // 列名の改名は RENAME COLUMN のみで、データ移行・backfill をしない
+    // （02-settings-model.md 決定 6）。保存値がそのまま引き継がれることをここで担保する。
+    const { user, drillId } = await setupDrill(
+      [
+        { headword: "alpha", number: 5, correct: false },
+        { headword: "beta", number: 12, correct: false },
+      ],
+      { firstMeaningTextOnly: true },
+    );
+    // drill 行に true が保存されている（既定 false と区別できる値）
+    const drill = await prisma.drill.findUniqueOrThrow({ where: { id: drillId } });
+    expect(drill.firstMeaningTextOnly).toBe(true);
+
+    const { sourceTest } = await generateDrillRoundForUser(user.id, { drillId });
+    expect(sourceTest.firstMeaningTextOnly).toBe(true);
+  });
+
   test("NULL sourceRange (source test had no range) maps to undefined rangeFrom/rangeTo", async () => {
     const { user, occurrence, drillId } = await setupDrill([
       { headword: "alpha", number: 5, correct: false },
@@ -108,7 +127,7 @@ describe("generateDrillRoundForUser", () => {
       bookmarkedOnly: false,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       // 元テストの「掲載番号順に出題する」指定（Drill.orderByOccurrenceNumber の既定 false）
       orderByOccurrenceNumber: false,
     });

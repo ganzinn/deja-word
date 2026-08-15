@@ -18,7 +18,7 @@
 
 | チケット | 概要 | 依存 | 状態 | PR |
 | --- | --- | --- | --- | --- |
-| [01-rename-flag.md](01-rename-flag.md) | フラグを `firstMeaningTextOnly` / `first_meaning_text_only` へ改名（挙動不変） | なし | 実装中 | - |
+| [01-rename-flag.md](01-rename-flag.md) | フラグを `firstMeaningTextOnly` / `first_meaning_text_only` へ改名（挙動不変） | なし | 完了（2026-08-15） | - |
 | [02-generation-prompt.md](02-generation-prompt.md) | 表示切替ヘルパを新設し、日→英 3 形式の問題文へ設定を効かせる | 01 | 未着手 | - |
 | [03-generation-dummy.md](03-generation-dummy.md) | 四択（日→英）で先頭訳語が正解と衝突する単語をダミーから外す | 02 | 未着手 | - |
 | [04-answer-emphasis.md](04-answer-emphasis.md) | 自己判定（英→日）の解答表示で先頭訳語を赤字にする | なし | 実装中 | - |

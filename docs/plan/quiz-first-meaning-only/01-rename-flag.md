@@ -1,6 +1,6 @@
 # 01. rename-flag
 
-状態: **実装中**　PR: （未作成）
+状態: **完了**（2026-08-15）　PR: （未作成）
 
 ## 目的
 
@@ -135,4 +135,10 @@ ALTER TABLE "quiz_default_setting" RENAME COLUMN "choice_first_meaning_text_only
 
 ## 実装メモ
 
-（実装セッションが記入する。計画との差分・後続チケットへの申し送り）
+- マージ後の直列 integration 実行で全通過（36 files / 341 tests）。`prisma migrate deploy` が `RENAME COLUMN` を `dejaword_test` へ適用できることも確認済み（DoD の integration 4 項目を充足）
+- migration ディレクトリ名は `20260815110729_rename_first_meaning_text_only`。`pnpm exec prisma migrate dev --create-only` は非対話環境で使えない（`Prisma Migrate has detected that the environment is non-interactive`）ため、タイムスタンプを採番して `migration.sql` を手書きした
+- DoD の「drill 行の値がそのまま流れる」検証のため、`drill-round-generate.integration.test.ts` のヘルパ `setupDrill` に `firstMeaningTextOnly?: boolean` オプションを追加（既定 `false` のため既存ケースの挙動は不変）
+- 02 へ: `build-quiz.ts` の `checkFormatAvailability` 内 `const firstMeaningTextOnly = options.firstMeaningTextOnly ?? false;` は改名により左右が同名になった。受け渡しを広げる際に局所変数の要否を再検討してよい（本チケットでは据え置き）
+- 02 へ（本チケットが意図的に触っていない限定表現・文言）: `prisma/schema.prisma` の 2 コメント／`src/lib/schema/quiz.ts` の `startQuizInputSchema` コメント／`build-quiz.ts` の型・フィールド JSDoc／`src/lib/quiz-default-settings.ts` の JSDoc とコメント 2 箇所／`build-quiz.unit.test.ts` のテスト名 `"forwards firstMeaningTextOnly to the CHOICE generator"`／`drill-round-generate.integration.test.ts` のテスト名末尾の `choice option`／`quiz-default-settings.integration.test.ts` の既存コメント「四択先頭訳語のみ表示」
+- 06 へ: UI の `id` は `quiz-first-meaning-text-only` / `quiz-defaults-first-meaning-text-only` に変わった。表示条件（`format === "CHOICE"`）とラベル文言は未変更のまま残してある
+- 07 へ: `docs/reference/naming-book.md` に旧名 `choiceFirstMeaningTextOnly` が残っている（本チケットの検査対象外）

@@ -29,7 +29,7 @@ describe("generateQuizForUser (TG four-choice, meaning-independent)", () => {
       rangeTo: 50,
       format: "CHOICE_TG",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -60,7 +60,7 @@ describe("generateQuizForUser (TG four-choice, meaning-independent)", () => {
       rangeTo: 50,
       format: "SELF_JUDGE_TG",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -100,7 +100,7 @@ describe("generateQuizForUser (all-bookmark mode / bookmarkedOnly の pass-throu
       bookmarkedOnly: true,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -136,7 +136,7 @@ describe("generateQuizForUser (掲載番号順出題 / docs/adr/0072-quiz-order-
       rangeTo: 5,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: true,
     });
 
@@ -162,7 +162,7 @@ describe("generateQuizForUser (掲載番号順出題 / docs/adr/0072-quiz-order-
       bookmarkedOnly: true,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: true,
     });
 
@@ -195,7 +195,7 @@ describe("generateQuizForUser (出題数指定 / docs/adr/0074-quiz-question-cou
       questionCount: 3,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -218,7 +218,7 @@ describe("generateQuizForUser (出題数指定 / docs/adr/0074-quiz-question-cou
       questionCount: 100,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -236,7 +236,7 @@ describe("generateQuizForUser (出題数指定 / docs/adr/0074-quiz-question-cou
       rangeTo: 5,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 
@@ -256,7 +256,7 @@ describe("generateQuizForUser (出題数指定 / docs/adr/0074-quiz-question-cou
       questionCount: 4,
       format: "SELF_JUDGE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: true,
     });
 
@@ -279,7 +279,7 @@ describe("generateQuizForUser (出題数指定 / docs/adr/0074-quiz-question-cou
       questionCount: 1,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       orderByOccurrenceNumber: false,
     });
 

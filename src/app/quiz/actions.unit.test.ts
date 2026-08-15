@@ -208,7 +208,7 @@ describe("startQuiz (Server Action)", () => {
     occurrenceId: "occ_1",
     format: "CHOICE" as const,
     timeoutSeconds: null,
-    choiceFirstMeaningTextOnly: false,
+    firstMeaningTextOnly: false,
   };
 
   test("unauthorized: no session", async () => {
@@ -381,7 +381,7 @@ describe("startDrill (Server Action)", () => {
     occurrenceId: "occ_1",
     format: "CHOICE" as const,
     timeoutSeconds: null,
-    choiceFirstMeaningTextOnly: false,
+    firstMeaningTextOnly: false,
     drillIncludeCorrect: false,
     resetRemaining: 3,
     vagueRemaining: 2,
@@ -405,7 +405,7 @@ describe("startDrill (Server Action)", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,
@@ -525,7 +525,7 @@ describe("startDrillRound (Server Action)", () => {
       rangeTo: 20,
       format: "CHOICE" as const,
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     };
     mockedDrillRoundGenerate.mockResolvedValue({
       quiz,

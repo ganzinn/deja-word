@@ -108,7 +108,7 @@ describe("quizRangeInputSchema bookmarkedOnly / cross-field (決定 1・3)", () 
     const startBase = {
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     } as const;
     expect(startQuizInputSchema.safeParse({ ...startBase, bookmarkedOnly: true }).success).toBe(
       true,
@@ -179,7 +179,7 @@ describe("startQuizInputSchema", () => {
         occurrenceId: "occ_1",
         format: "CHOICE",
         timeoutSeconds: null,
-        choiceFirstMeaningTextOnly: false,
+        firstMeaningTextOnly: false,
       }).success,
     ).toBe(true);
   });
@@ -199,7 +199,7 @@ describe("startQuizInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     } as const;
     // 省略時は `.default(false)` = ランダム出題（この項目を送らない旧フォームの後方互換）。
     const omitted = startQuizInputSchema.safeParse(base);
@@ -219,7 +219,7 @@ describe("startQuizInputSchema", () => {
     const base = {
       occurrenceId: "occ_1",
       format: "CHOICE",
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     } as const;
     for (const timeoutSeconds of [null, 1, 5, 60]) {
       expect(startQuizInputSchema.safeParse({ ...base, timeoutSeconds }).success).toBe(true);
@@ -238,7 +238,7 @@ describe("startQuizInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     } as const;
     const omitted = startQuizInputSchema.safeParse(base);
     expect(omitted.success).toBe(true);
@@ -257,7 +257,7 @@ describe("startQuizInputSchema", () => {
       questionCount: 10,
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
     });
     expect(r.success).toBe(true);
   });
@@ -329,7 +329,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -351,7 +351,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
-        choiceFirstMeaningTextOnly: null,
+        firstMeaningTextOnly: null,
         drillIncludeCorrect: null,
         resetRemaining: null,
         vagueRemaining: null,
@@ -370,7 +370,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
-        choiceFirstMeaningTextOnly: null,
+        firstMeaningTextOnly: null,
         drillIncludeCorrect: null,
         resetRemaining: null,
         vagueRemaining: null,
@@ -391,7 +391,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: true,
       enableAnswerSound: true,
       autoplayAnswerAudioJaEn: true,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -411,7 +411,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -446,7 +446,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -473,7 +473,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
-        choiceFirstMeaningTextOnly: null,
+        firstMeaningTextOnly: null,
         drillIncludeCorrect: null,
         resetRemaining: null,
         vagueRemaining: null,
@@ -496,7 +496,7 @@ describe("saveQuizDefaultsInputSchema", () => {
           autoplayPronunciation: null,
           enableAnswerSound: null,
           autoplayAnswerAudioJaEn: null,
-          choiceFirstMeaningTextOnly: null,
+          firstMeaningTextOnly: null,
           drillIncludeCorrect: null,
           saveOnStart: null,
         }).success,
@@ -516,7 +516,7 @@ describe("saveQuizDefaultsInputSchema", () => {
         autoplayPronunciation: null,
         enableAnswerSound: null,
         autoplayAnswerAudioJaEn: null,
-        choiceFirstMeaningTextOnly: null,
+        firstMeaningTextOnly: null,
         drillIncludeCorrect: null,
         resetRemaining: null,
         vagueRemaining: null,
@@ -536,7 +536,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -562,7 +562,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -590,7 +590,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -618,7 +618,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       showCountdown: null,
       autoplayPronunciation: null,
       enableAnswerSound: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -636,7 +636,7 @@ describe("saveQuizDefaultsInputSchema", () => {
     expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
 
-  test("choiceFirstMeaningTextOnly accepts true / false / null, rejects non-boolean / missing", () => {
+  test("firstMeaningTextOnly accepts true / false / null, rejects non-boolean / missing", () => {
     const base = {
       occurrenceId: null,
       rangeFrom: null,
@@ -653,14 +653,13 @@ describe("saveQuizDefaultsInputSchema", () => {
       initialCorrectRemaining: null,
       saveOnStart: null,
     };
-    for (const choiceFirstMeaningTextOnly of [true, false, null]) {
-      expect(
-        saveQuizDefaultsInputSchema.safeParse({ ...base, choiceFirstMeaningTextOnly }).success,
-      ).toBe(true);
+    for (const firstMeaningTextOnly of [true, false, null]) {
+      expect(saveQuizDefaultsInputSchema.safeParse({ ...base, firstMeaningTextOnly }).success).toBe(
+        true,
+      );
     }
     expect(
-      saveQuizDefaultsInputSchema.safeParse({ ...base, choiceFirstMeaningTextOnly: "true" })
-        .success,
+      saveQuizDefaultsInputSchema.safeParse({ ...base, firstMeaningTextOnly: "true" }).success,
     ).toBe(false);
     expect(saveQuizDefaultsInputSchema.safeParse(base).success).toBe(false);
   });
@@ -676,7 +675,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       resetRemaining: null,
       vagueRemaining: null,
       initialCorrectRemaining: null,
@@ -704,7 +703,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -725,7 +724,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -755,7 +754,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -787,7 +786,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -817,7 +816,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       resetRemaining: null,
       vagueRemaining: null,
@@ -843,7 +842,7 @@ describe("saveQuizDefaultsInputSchema", () => {
       autoplayPronunciation: null,
       enableAnswerSound: null,
       autoplayAnswerAudioJaEn: null,
-      choiceFirstMeaningTextOnly: null,
+      firstMeaningTextOnly: null,
       drillIncludeCorrect: null,
       vagueRemaining: null,
       initialCorrectRemaining: null,
@@ -867,7 +866,7 @@ describe("startDrillInputSchema", () => {
     const base = {
       occurrenceId: "occ_1",
       format: "CHOICE",
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,
@@ -888,7 +887,7 @@ describe("startDrillInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       resetRemaining: 3,
       vagueRemaining: 2,
       initialCorrectRemaining: 1,
@@ -908,7 +907,7 @@ describe("startDrillInputSchema", () => {
     const base = {
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,
@@ -936,7 +935,7 @@ describe("startDrillInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,
@@ -959,7 +958,7 @@ describe("startDrillInputSchema", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,
@@ -1018,7 +1017,7 @@ describe("answers/results array max limits (issue #107)", () => {
       occurrenceId: "occ_1",
       format: "CHOICE",
       timeoutSeconds: null,
-      choiceFirstMeaningTextOnly: false,
+      firstMeaningTextOnly: false,
       drillIncludeCorrect: false,
       resetRemaining: 3,
       vagueRemaining: 2,

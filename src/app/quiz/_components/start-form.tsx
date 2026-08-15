@@ -137,8 +137,8 @@ export function StartForm({
   const [timeoutEnabled, setTimeoutEnabled] = useState(initialTimeout !== null);
   const [timeoutText, setTimeoutText] = useState(initialTimeout?.toString() ?? "");
   // 四択（英→日）の選択肢で先頭の訳語のみ表示する。初期値はデフォルト設定（未設定は ON）。
-  const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
-    defaults.choiceFirstMeaningTextOnly ?? true,
+  const [firstMeaningTextOnly, setFirstMeaningTextOnly] = useState(
+    defaults.firstMeaningTextOnly ?? true,
   );
   // 掲載番号順に出題する。初期値はデフォルト設定（未設定は OFF＝ランダム）。
   const [orderByOccurrenceNumber, setOrderByOccurrenceNumber] = useState(
@@ -254,7 +254,7 @@ export function StartForm({
       questionCount,
       format,
       timeoutSeconds: timeoutSeconds ?? null,
-      choiceFirstMeaningTextOnly,
+      firstMeaningTextOnly,
       orderByOccurrenceNumber: sendOrderByOccurrenceNumber,
     };
     // トグル ON ならデフォルトへ部分上書き（非ブロッキング。失敗してもテストは進める）。
@@ -429,12 +429,12 @@ export function StartForm({
         {format === "CHOICE" ? (
           <div className="flex items-center gap-2 pt-1">
             <Checkbox
-              id="quiz-choice-first-meaning-text-only"
+              id="quiz-first-meaning-text-only"
               className="size-6"
-              checked={choiceFirstMeaningTextOnly}
-              onCheckedChange={(checked) => setChoiceFirstMeaningTextOnly(checked === true)}
+              checked={firstMeaningTextOnly}
+              onCheckedChange={(checked) => setFirstMeaningTextOnly(checked === true)}
             />
-            <Label htmlFor="quiz-choice-first-meaning-text-only" className="font-normal">
+            <Label htmlFor="quiz-first-meaning-text-only" className="font-normal">
               選択肢に最初の訳語だけを表示する
             </Label>
           </div>

@@ -104,8 +104,8 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     defaults.autoplayAnswerAudioJaEn ?? true,
   );
   // 四択（英→日）の選択肢で先頭の訳語のみ表示する。未設定（null）は ON（先頭の訳語のみ）。
-  const [choiceFirstMeaningTextOnly, setChoiceFirstMeaningTextOnly] = useState(
-    defaults.choiceFirstMeaningTextOnly ?? true,
+  const [firstMeaningTextOnly, setFirstMeaningTextOnly] = useState(
+    defaults.firstMeaningTextOnly ?? true,
   );
   // 掲載番号順に出題するか。未設定（null）は OFF（ランダム）。掲載箇所を指定したときのみ有効。
   const [orderByOccurrenceNumber, setOrderByOccurrenceNumber] = useState(
@@ -151,7 +151,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
         autoplayPronunciation,
         enableAnswerSound,
         autoplayAnswerAudioJaEn,
-        choiceFirstMeaningTextOnly,
+        firstMeaningTextOnly,
         // 掲載箇所「指定なし」では掲載番号順が成立しないため、範囲と同じく false に正規化して保存する。
         orderByOccurrenceNumber: occurrenceId === null ? false : orderByOccurrenceNumber,
         drillIncludeCorrect,
@@ -182,7 +182,7 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
     setAutoplayPronunciation(DEFAULT_QUIZ_SETTINGS.autoplayPronunciation ?? true);
     setEnableAnswerSound(DEFAULT_QUIZ_SETTINGS.enableAnswerSound ?? true);
     setAutoplayAnswerAudioJaEn(DEFAULT_QUIZ_SETTINGS.autoplayAnswerAudioJaEn ?? true);
-    setChoiceFirstMeaningTextOnly(DEFAULT_QUIZ_SETTINGS.choiceFirstMeaningTextOnly ?? true);
+    setFirstMeaningTextOnly(DEFAULT_QUIZ_SETTINGS.firstMeaningTextOnly ?? true);
     setOrderByOccurrenceNumber(DEFAULT_QUIZ_SETTINGS.orderByOccurrenceNumber ?? false);
     setDrillIncludeCorrect(DEFAULT_QUIZ_SETTINGS.drillIncludeCorrect ?? false);
     setResetRemainingText(
@@ -405,14 +405,14 @@ export function QuizDefaultsForm({ occurrences, defaults }: Props) {
                         <>
                           <div className="flex items-center gap-2">
                             <Checkbox
-                              id="quiz-defaults-choice-first-meaning-text-only"
-                              checked={choiceFirstMeaningTextOnly}
+                              id="quiz-defaults-first-meaning-text-only"
+                              checked={firstMeaningTextOnly}
                               onCheckedChange={(checked) =>
-                                setChoiceFirstMeaningTextOnly(checked === true)
+                                setFirstMeaningTextOnly(checked === true)
                               }
                             />
                             <Label
-                              htmlFor="quiz-defaults-choice-first-meaning-text-only"
+                              htmlFor="quiz-defaults-first-meaning-text-only"
                               className="font-normal"
                             >
                               選択肢に最初の訳語だけを表示する

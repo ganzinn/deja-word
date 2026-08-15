@@ -37,7 +37,7 @@ function assertNever(value: never): never {
 /** `buildQuiz` の形式別オプション。CHOICE の選択肢表示のみ参照する。 */
 export type BuildQuizOptions = {
   /** 四択（英→日）の選択肢を先頭の訳語のみで表示する（false = 全訳語を「; 」連結）。 */
-  choiceFirstMeaningTextOnly?: boolean;
+  firstMeaningTextOnly?: boolean;
   /**
    * 掲載番号順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。指定すると
    * 生成後の問題を掲載番号の昇順へ並べ替える。未指定（ランダム出題）は従来どおり各ビルダーの
@@ -82,7 +82,7 @@ function buildQuestions(
     case "CHOICE":
       return {
         format: "CHOICE",
-        questions: buildChoiceQuestions(material, rng, options.choiceFirstMeaningTextOnly ?? false),
+        questions: buildChoiceQuestions(material, rng, options.firstMeaningTextOnly ?? false),
       };
     case "SELF_JUDGE":
       return { format: "SELF_JUDGE", questions: buildSelfJudgeQuestions(material, rng) };
@@ -179,7 +179,7 @@ export function checkFormatAvailability(
   switch (format) {
     case "CHOICE": {
       // 選択肢生成（buildChoiceQuestions）と同じキーで成立判定する。
-      const firstMeaningTextOnly = options.choiceFirstMeaningTextOnly ?? false;
+      const firstMeaningTextOnly = options.firstMeaningTextOnly ?? false;
       const dummyless = findDummylessTarget(material, (word) => [
         { value: word, texts: choiceCandidateTexts(word, firstMeaningTextOnly) },
       ]);

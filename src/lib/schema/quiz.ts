@@ -137,7 +137,7 @@ export const startQuizInputSchema = quizRangeInputObject
     format: quizFormatSchema,
     timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
     // 四択（英→日）の選択肢表示。CHOICE 以外では下流で無視される。
-    choiceFirstMeaningTextOnly: z.boolean(),
+    firstMeaningTextOnly: z.boolean(),
     // 掲載番号の昇順に出題する（docs/adr/0072-quiz-order-by-occurrence-number.md）。
     // 掲載箇所未指定（全件モード）では掲載番号が無いため下流で無視される。`.default(false)` で
     // 省略時 false（未更新フォームも後方互換で通る。bookmarkedOnly と同じ流儀）。
@@ -176,7 +176,7 @@ export const saveQuizDefaultsInputSchema = z.object({
   autoplayPronunciation: z.boolean().nullable(),
   enableAnswerSound: z.boolean().nullable(),
   autoplayAnswerAudioJaEn: z.boolean().nullable(),
-  choiceFirstMeaningTextOnly: z.boolean().nullable(),
+  firstMeaningTextOnly: z.boolean().nullable(),
   // 掲載番号順出題のデフォルト。null = アプリ既定 OFF（＝ランダム）。`.default(null)` で
   // 省略時は null（この項目を送らない旧フォームとの後方互換。bookmarkedOnly と同じ流儀）。
   orderByOccurrenceNumber: z.boolean().nullable().default(null),
@@ -217,7 +217,7 @@ export const startDrillInputSchema = z.object({
   sourceBookmarkedOnly: z.boolean().default(false),
   format: quizFormatSchema,
   timeoutSeconds: quizTimeoutSecondsSchema.nullable(),
-  choiceFirstMeaningTextOnly: z.boolean(),
+  firstMeaningTextOnly: z.boolean(),
   // 元テストの「掲載番号順に出題する」指定。`Drill` に保存し全ラウンド・再テストへ引き継ぐ
   // （docs/adr/0072-quiz-order-by-occurrence-number.md）。省略時 false（後方互換）。
   orderByOccurrenceNumber: z.boolean().default(false),

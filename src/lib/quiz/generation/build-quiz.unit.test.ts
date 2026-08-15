@@ -130,7 +130,7 @@ describe("buildQuiz", () => {
     }
   });
 
-  test("forwards choiceFirstMeaningTextOnly to the CHOICE generator", () => {
+  test("forwards firstMeaningTextOnly to the CHOICE generator", () => {
     // 既定（連結）: t1 の正解は複数訳語を含むので「; 」を含む選択肢が現れる
     const joined = buildQuiz("CHOICE", richMaterial, seededRng(1));
     if (joined.format !== "CHOICE") throw new Error("unreachable");
@@ -138,7 +138,7 @@ describe("buildQuiz", () => {
 
     // ON（先頭訳語のみ）: どの選択肢にも「; 」は現れない
     const firstOnly = buildQuiz("CHOICE", richMaterial, seededRng(1), {
-      choiceFirstMeaningTextOnly: true,
+      firstMeaningTextOnly: true,
     });
     if (firstOnly.format !== "CHOICE") throw new Error("unreachable");
     expect(firstOnly.questions.every((q) => q.choices.every((c) => !c.text.includes("; ")))).toBe(

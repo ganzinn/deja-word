@@ -24,3 +24,31 @@ export const addBookmarksInputSchema = z.object({
 });
 
 export type AddBookmarksInput = z.infer<typeof addBookmarksInputSchema>;
+
+/** 単語一覧のキーワード一致方法（words-list.ts の WordMatchMode と同値。client 共用のため zod で再定義）。 */
+const wordMatchModeSchema = z.enum(["prefix", "contains", "suffix"]);
+
+/**
+ * 一括解除 action（`removeBookmarksByFilter`）の入力。一括登録と違い wordIds を列挙せず、
+ * 単語一覧の「ブックマークのみ」絞り込みと同じ条件をサーバで再評価する
+ * （ページを跨ぐ全件が対象のため。設計: docs/adr/0104-bulk-unbookmark-by-filter.md）。
+ * kind は一覧のビュー（単語単位 / 掲載箇所単位）に対応する。q は未指定・空文字とも
+ * 「キーワードなし」扱いで、正規化はサーバ側 builder の責務。
+ */
+export const removeBookmarksByFilterInputSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("word"),
+    q: z.string().optional(),
+    match: wordMatchModeSchema,
+  }),
+  z.object({
+    kind: z.literal("occurrence"),
+    occurrenceId: z.string().min(1),
+    q: z.string().optional(),
+    match: wordMatchModeSchema,
+    from: z.number().int().min(1).optional(),
+    to: z.number().int().min(1).optional(),
+  }),
+]);
+
+export type RemoveBookmarksByFilterInput = z.infer<typeof removeBookmarksByFilterInputSchema>;

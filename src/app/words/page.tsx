@@ -25,6 +25,7 @@ import {
 } from "@/lib/words-list";
 
 import { OccurrenceFilterToolbar } from "./_components/occurrence-filter-toolbar";
+import { RemoveBookmarksButton } from "./_components/remove-bookmarks-button";
 import { ViewModeToggle, type WordsViewMode } from "./_components/view-mode-toggle";
 import { WordListToolbar } from "./_components/word-list-toolbar";
 import {
@@ -132,6 +133,12 @@ async function WordView({ userId, params }: { userId: string; params: RawParams 
             })}
           />
         ) : null}
+        {bookmarkedOnly && total > 0 ? (
+          <RemoveBookmarksButton
+            filter={{ kind: "word", q: q.length > 0 ? q : undefined, match }}
+            total={total}
+          />
+        ) : null}
       </div>
 
       {items.length === 0 ? (
@@ -237,7 +244,22 @@ async function OccurrenceView({ userId, params }: { userId: string; params: RawP
       <ViewModeToggle view="occurrence" />
       {toolbar}
 
-      <ResultCount label="対象" total={total} />
+      <div className="flex flex-col gap-2">
+        <ResultCount label="対象" total={total} />
+        {bookmarkedOnly && total > 0 ? (
+          <RemoveBookmarksButton
+            filter={{
+              kind: "occurrence",
+              occurrenceId,
+              q: q.length > 0 ? q : undefined,
+              match,
+              from,
+              to,
+            }}
+            total={total}
+          />
+        ) : null}
+      </div>
 
       {items.length === 0 ? (
         <div className="border-border text-muted-foreground rounded-lg border border-dashed px-4 py-12 text-center text-sm">

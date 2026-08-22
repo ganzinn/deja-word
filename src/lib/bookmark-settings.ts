@@ -2,6 +2,9 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { scopedOwnerIds } from "@/lib/system-user";
+import { buildWordListWhere, buildWordsByOccurrenceWhere } from "@/lib/words-list";
+
+import type { RemoveBookmarksByFilterInput } from "@/lib/schema/bookmark";
 
 export class BookmarkWordNotInScopeError extends Error {
   constructor() {
@@ -79,6 +82,41 @@ export async function addBookmarksForUser(
       skippedWordIds: uniqueIds.filter((id) => !validIdSet.has(id)),
     };
   });
+}
+
+/**
+ * 単語一覧の「ブックマークのみ」絞り込みに一致するブックマークをまとめて解除する
+ * （純 per-user 設定）。対象は表示中ページではなく絞り込み結果の全件で、一覧と同じ
+ * where builder（words-list.ts）で条件を再評価して deleteMany する（表示集合と解除集合の
+ * 定義を乖離させない。設計: docs/adr/0104-bulk-unbookmark-by-filter.md）。
+ * 削除は本人行のみ（userId 固定）のため対象 word の scoped 検証は不要で、範囲外の
+ * occurrenceId は builder の ownerId 条件により空集合＝0 件解除の正常系になる
+ * （`getBookmarkedWordIdsForUser` と同じ理由づけ）。
+ */
+export async function removeBookmarksForUser(
+  userId: string,
+  filter: RemoveBookmarksByFilterInput,
+): Promise<{ removedCount: number }> {
+  const wordWhere =
+    filter.kind === "word"
+      ? buildWordListWhere(userId, { q: filter.q, match: filter.match, bookmarkedOnly: true })
+      : {
+          wordOccurrences: {
+            some: buildWordsByOccurrenceWhere(userId, {
+              occurrenceId: filter.occurrenceId,
+              q: filter.q,
+              match: filter.match,
+              from: filter.from,
+              to: filter.to,
+              bookmarkedOnly: true,
+            }),
+          },
+        };
+
+  const { count } = await prisma.bookmark.deleteMany({
+    where: { userId, word: wordWhere },
+  });
+  return { removedCount: count };
 }
 
 /**

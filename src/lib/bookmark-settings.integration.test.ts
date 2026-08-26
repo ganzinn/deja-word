@@ -4,12 +4,18 @@ import {
   addBookmarksForUser,
   BookmarkWordNotInScopeError,
   getBookmarkedWordIdsForUser,
+  removeBookmarksForUser,
   setBookmarkForUser,
 } from "@/lib/bookmark-settings";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/lib/system-user";
 
-import { createTestUser, createWordRow } from "../../tests/setup/fixtures";
+import {
+  createOccurrenceRow,
+  createQuizWordRow,
+  createTestUser,
+  createWordRow,
+} from "../../tests/setup/fixtures";
 
 describe("setBookmarkForUser", () => {
   test("bookmarked=true creates a record (upsert) and the second call is a no-op", async () => {
@@ -161,5 +167,116 @@ describe("getBookmarkedWordIdsForUser", () => {
     const user = await createTestUser();
     const result = await getBookmarkedWordIdsForUser(user.id, []);
     expect(result).toEqual([]);
+  });
+});
+
+describe("removeBookmarksForUser", () => {
+  test("word ビュー: 絞り込みに一致する自分のブックマークだけを解除する", async () => {
+    const user = await createTestUser();
+    const other = await createTestUser();
+    const apple = await createWordRow(user.id, "apple");
+    const apricot = await createWordRow(user.id, "apricot");
+    const banana = await createWordRow(user.id, "banana");
+    const otherApple = await createWordRow(other.id, "apple");
+    await prisma.bookmark.createMany({
+      data: [
+        { userId: user.id, wordId: apple.id },
+        { userId: user.id, wordId: apricot.id },
+        { userId: user.id, wordId: banana.id },
+        { userId: other.id, wordId: otherApple.id },
+      ],
+    });
+
+    const { removedCount } = await removeBookmarksForUser(user.id, {
+      kind: "word",
+      q: "ap",
+      match: "prefix",
+    });
+
+    expect(removedCount).toBe(2);
+    const remaining = await prisma.bookmark.findMany({
+      select: { userId: true, wordId: true },
+    });
+    expect(remaining).toHaveLength(2);
+    expect(remaining).toEqual(
+      expect.arrayContaining([
+        { userId: user.id, wordId: banana.id },
+        { userId: other.id, wordId: otherApple.id },
+      ]),
+    );
+  });
+
+  test("word ビュー: キーワードなしは自分の全ブックマークを解除する（system 単語のブックマーク含む）", async () => {
+    const user = await createTestUser();
+    const own = await createWordRow(user.id, "自前単語");
+    const sysWord = await createWordRow(SYSTEM_USER_ID, "共有マスタ単語");
+    await prisma.bookmark.createMany({
+      data: [
+        { userId: user.id, wordId: own.id },
+        { userId: user.id, wordId: sysWord.id },
+      ],
+    });
+
+    const { removedCount } = await removeBookmarksForUser(user.id, {
+      kind: "word",
+      match: "prefix",
+    });
+
+    expect(removedCount).toBe(2);
+    expect(await prisma.bookmark.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  test("occurrence ビュー: 掲載番号レンジに一致するブックマークだけを解除する", async () => {
+    const user = await createTestUser();
+    const occ = await createOccurrenceRow(user.id, "単語帳A");
+    const inRange = await createQuizWordRow(user.id, "alpha", {
+      occurrence: { id: occ.id, occurrenceNumber: 1 },
+    });
+    const outOfRange = await createQuizWordRow(user.id, "beta", {
+      occurrence: { id: occ.id, occurrenceNumber: 50 },
+    });
+    const noOccurrence = await createWordRow(user.id, "gamma");
+    await prisma.bookmark.createMany({
+      data: [inRange, outOfRange, noOccurrence].map((w) => ({ userId: user.id, wordId: w.id })),
+    });
+
+    const { removedCount } = await removeBookmarksForUser(user.id, {
+      kind: "occurrence",
+      occurrenceId: occ.id,
+      match: "prefix",
+      from: 1,
+      to: 10,
+    });
+
+    expect(removedCount).toBe(1);
+    const remainingIds = (
+      await prisma.bookmark.findMany({
+        where: { userId: user.id },
+        select: { wordId: true },
+      })
+    )
+      .map((r) => r.wordId)
+      .sort();
+    expect(remainingIds).toEqual([outOfRange.id, noOccurrence.id].sort());
+  });
+
+  test("occurrence ビュー: 他ユーザーの occurrenceId では何も解除されない（0 件の正常系）", async () => {
+    const user = await createTestUser();
+    const other = await createTestUser();
+    const otherOcc = await createOccurrenceRow(other.id, "他人の単語帳");
+    await createQuizWordRow(other.id, "alpha", {
+      occurrence: { id: otherOcc.id, occurrenceNumber: 1 },
+    });
+    const own = await createWordRow(user.id, "自前単語");
+    await prisma.bookmark.create({ data: { userId: user.id, wordId: own.id } });
+
+    const { removedCount } = await removeBookmarksForUser(user.id, {
+      kind: "occurrence",
+      occurrenceId: otherOcc.id,
+      match: "prefix",
+    });
+
+    expect(removedCount).toBe(0);
+    expect(await prisma.bookmark.count({ where: { userId: user.id } })).toBe(1);
   });
 });

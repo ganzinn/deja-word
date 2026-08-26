@@ -138,10 +138,11 @@ function headwordCondition(q: string, match: WordMatchMode) {
 }
 
 /**
- * 単語単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
- * 掲載箇所側の buildWordsByOccurrenceWhere と同じパターン。
+ * 単語単位の絞り込み条件（一覧・隣接取得・ブックマーク一括解除（bookmark-settings.ts）で
+ * 共有し、集合の定義が乖離しないようにする）。掲載箇所側の buildWordsByOccurrenceWhere と
+ * 同じパターン。
  */
-function buildWordListWhere(
+export function buildWordListWhere(
   userId: string,
   params: Pick<WordListParams, "q" | "match" | "bookmarkedOnly">,
 ): Prisma.WordWhereInput {
@@ -202,11 +203,12 @@ export async function hasExactHeadwordForUser(userId: string, keyword: string): 
 }
 
 /**
- * 掲載箇所単位の絞り込み条件（一覧と隣接取得で共有し、集合の定義が乖離しないようにする）。
+ * 掲載箇所単位の絞り込み条件（一覧・隣接取得・ブックマーク一括解除（bookmark-settings.ts）で
+ * 共有し、集合の定義が乖離しないようにする）。
  * bookmarkedOnly は WordsByOccurrenceParams / AdjacentWordsParams の双方が渡す（未指定＝無効）。
  * q と同じ word リレーション条件に畳んで単一の word キーへまとめる。
  */
-function buildWordsByOccurrenceWhere(
+export function buildWordsByOccurrenceWhere(
   userId: string,
   params: Pick<WordsByOccurrenceParams, "occurrenceId" | "q" | "match" | "from" | "to"> & {
     bookmarkedOnly?: boolean;
